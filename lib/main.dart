@@ -5,9 +5,11 @@ Purpose: App entry point & root widget
 Project: Wafferly
 ========================================
 */
-
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:wafferly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'core/main_layout.dart';
+
 
 void main() {
   runApp(const WafferlyApp());
@@ -22,17 +24,30 @@ class WafferlyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Wafferly',
-      debugShowCheckedModeBanner: false,
+  debugShowCheckedModeBanner: false,
 
-      // STEP 1.1: App Theme
-      theme: ThemeData(
-        useMaterial3: false,
-        primarySwatch: Colors.green,
-      ),
+  // 🌍 Localization Setup
+  localizationsDelegates: const [
+    AppLocalizations.delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
 
-      // STEP 1.2: App Entry Layout
-      home: MainLayout(),
-    );
+  supportedLocales: const [
+    Locale('en'),
+    Locale('ar'),
+  ],
+
+  locale: const Locale('ar'), // العربي افتراضي
+
+  theme: ThemeData(
+    useMaterial3: false,
+    primarySwatch: Colors.green,
+  ),
+
+  home: MainLayout(),
+);
+
   }
 }

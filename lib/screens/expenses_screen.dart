@@ -8,6 +8,7 @@ STEP: 3
 */
 
 import 'package:flutter/material.dart';
+import 'package:wafferly/l10n/app_localizations.dart';
 
 // ================================
 // STEP 3: Expenses Screen
@@ -20,7 +21,7 @@ class ExpensesScreen extends StatelessWidget {
     return Scaffold(
       // STEP 3.1: AppBar
       appBar: AppBar(
-        title: const Text('Expenses'),
+        title: Text(AppLocalizations.of(context)!.expenses),
         centerTitle: true,
       ),
 
