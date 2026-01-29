@@ -1,0 +1,1 @@
+ E:\\FlutterProjects\\wafferly\\lib\\l10n\\app_localizations_ar.dart E:\\FlutterProjects\\wafferly\\lib\\l10n\\app_localizations_en.dart E:\\FlutterProjects\\wafferly\\lib\\l10n\\app_localizations.dart:  E:\\FlutterProjects\\wafferly\\l10n.yaml E:\\FlutterProjects\\wafferly\\lib\\l10n\\app_ar.arb E:\\FlutterProjects\\wafferly\\lib\\l10n\\app_en.arb

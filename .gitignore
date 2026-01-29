@@ -1,45 +1,86 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+# =========================================================
+# STEP 1️⃣ : ملفات عامة النظام وملفات مؤقتة
+# الحاجات دي بتتولد تلقائي من أنظمة التشغيل أو البرامج
+# وملهاش أي لازمة تدخل Git
+# =========================================================
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
+*.class        # ملفات مترجمة من Java
+*.log          # ملفات اللوجز (سجلات تشغيل)
+*.pyc          # ملفات بايثون المؤقتة
+*.swp          # ملفات مؤقتة من محرر Vim
+.DS_Store      # ملف بيعمله macOS تلقائي
+.atom/         # إعدادات محرر Atom
+.build/        # فولدرات Build مؤقتة
+.buildlog/     # سجلات عمليات البناء
+.history       # تاريخ ملفات من بعض الأدوات
+.svn/          # بقايا نظام SVN القديم
+.swiftpm/      # ملفات Swift Package Manager
+migrate_working_dir/ # ملفات مؤقتة من أدوات الهجرة
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
+# =========================================================
+# STEP 2️⃣ : ملفات IntelliJ / Android Studio
+# دي إعدادات خاصة بكل جهاز مطوّر
+# مينفعش تترفع على Git
+# =========================================================
+
+*.iml          # إعدادات الموديولات
+*.ipr          # إعدادات مشروع قديم
+*.iws          # إعدادات Workspace
+.idea/         # إعدادات Android Studio المحلية
+
+# =========================================================
+# STEP 3️⃣ : VS Code (اختياري)
+# متشالة من الكومنت لو عايز تشارك إعدادات VS Code
+# =========================================================
+
 #.vscode/
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
+# =========================================================
+# STEP 4️⃣ : ملفات Flutter / Dart المؤقتة
+# دي أهم جزء — ملفات بتتولد تلقائي أثناء التشغيل والبناء
+# =========================================================
 
-# Symbolication related
-app.*.symbols
+**/doc/api/                     # ملفات توثيق متولدة تلقائي
+**/ios/Flutter/.last_build_id   # آخر عملية build على iOS
 
-# Obfuscation related
-app.*.map.json
+.dart_tool/                     # أدوات Dart الداخلية
+.flutter-plugins-dependencies   # لستة plugins متولدة
+.pub-cache/                     # كاش الحزم
+.pub/                           # ملفات pub المؤقتة
+/build/                         # ناتج البناء (APK/IPA وغيره)
+/coverage/                      # تقارير اختبار الكود
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
+# =========================================================
+# STEP 5️⃣ : ملفات خاصة بتحليل الأخطاء بعد النشر
+# =========================================================
+
+app.*.symbols       # ملفات رموز الأخطاء (Symbol files)
+
+# =========================================================
+# STEP 6️⃣ : ملفات التشفير (Obfuscation)
+# =========================================================
+
+app.*.map.json      # خرائط الكود بعد التشفير
+
+# =========================================================
+# STEP 7️⃣ : نواتج Build الخاصة بأندرويد
+# =========================================================
+
+/android/app/debug      # نسخة Debug
+/android/app/profile    # نسخة Profile
+/android/app/release    # نسخة Release
+
+# =========================================================
+# STEP 8️⃣ : ملفات حساسة أو محلية (مهمة جدًا)
+# =========================================================
+
+android/local.properties   # مسار Android SDK على جهازك
+*.jks                      # مفاتيح التوقيع
+*.keystore                 # مفاتيح التوقيع للتطبيق
+
+# =========================================================
+# STEP 9️⃣ : ملفات Flutter متولدة تلقائي
+# =========================================================
+
+lib/generated_plugin_registrant.dart  # بيتولد تلقائي من Flutter
+

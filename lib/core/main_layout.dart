@@ -6,7 +6,7 @@ Project: Wafferly
 STEP: 2
 ========================================
 */
-
+import 'package:wafferly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import '../screens/expenses_screen.dart';
 
@@ -42,14 +42,14 @@ class _MainLayoutState extends State<MainLayout> {
             _currentIndex = index;
           });
         },
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            label: 'Expenses',
+            icon: const Icon(Icons.receipt_long),
+            label:  AppLocalizations.of(context)!.expenses,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'Income',
+            icon: const Icon(Icons.account_balance_wallet),
+            label: AppLocalizations.of(context)!.income,
           ),
         ],
       ),
