@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/main_categories_section.dart';
 import '../widgets/sub_categories_section.dart';
+import '../l10n/app_localizations.dart'; // 👈 إضافة
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -9,49 +10,47 @@ class ExpensesScreen extends StatefulWidget {
   State<ExpensesScreen> createState() => _ExpensesScreenState();
 }
 
-class _ExpensesScreenState extends State<ExpensesScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  int selectedMainIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
+class _ExpensesScreenState extends State<ExpensesScreen> {
+  int selectedMainIndex = -1;
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!; // 👈 اختصار للترجمة
+
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 56,
-        title: const Text("Expenses"),
+        toolbarHeight: 44,
         centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: "Expenses"),
-            Tab(text: "Incomes"),
-          ],
+        elevation: 0,
+        title: Text(
+          t.expenses, // 👈 مترجمة بدل "Expenses"
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          ListView(
-            children: [
-              const SizedBox(height: 12),
-              MainCategoriesSection(
-                selectedIndex: selectedMainIndex,
-                onSelect: (i) => setState(() => selectedMainIndex = i),
-              ),
-              const SizedBox(height: 20),
-              SubCategoriesSection(mainIndex: selectedMainIndex),
-              const SizedBox(height: 40),
-            ],
-          ),
-          const Center(child: Text("Incomes Screen (Later)")),
-        ],
+
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+
+            MainCategoriesSection(
+              selectedIndex: selectedMainIndex,
+              onSelect: (i) {
+                setState(() {
+                  selectedMainIndex = i;
+                });
+              },
+            ),
+
+            const SizedBox(height: 18),
+
+            SubCategoriesSection(
+              mainCategoryIndex: selectedMainIndex,
+            ),
+
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
     );
   }

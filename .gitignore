@@ -84,3 +84,13 @@ android/local.properties   # مسار Android SDK على جهازك
 
 lib/generated_plugin_registrant.dart  # بيتولد تلقائي من Flutter
 
+# =========================================================
+# 🔥 ملفات Flutter build الداخلية
+.dart_tool/
+build/
+# =========================================================
+# 🔥 ملفات localization المتولدة تلقائي (ماينفعش تترفع)
+lib/l10n/app_localizations.dart
+lib/l10n/app_localizations_*.dart
+
+

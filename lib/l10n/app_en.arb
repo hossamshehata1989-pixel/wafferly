@@ -1,5 +1,9 @@
 {
   "appTitle": "Wafferly",
   "expenses": "Expenses",
-  "income": "Income"
+  "income": "Income",
+  "subCategories": "Sub Categories",
+  "input": "Input",
+  "sub": "Sub",
+  "dailyTransport": "Daily transport"
 }

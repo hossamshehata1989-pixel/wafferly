@@ -1,5 +1,9 @@
 {
   "appTitle": "وفرلي",
   "expenses": "المصروفات",
-  "income": "الدخل"
+  "income": "الدخل",
+  "subCategories": "الفئات الفرعية",
+  "input": "إدخال",
+  "sub": "فرعي",
+  "dailyTransport": "مواصلات يومية"
 }
