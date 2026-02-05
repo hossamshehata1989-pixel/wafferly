@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
-import '../l10n/app_localizations.dart'; // 👈 إضافة
+import '../l10n/app_localizations.dart';
+import '../data/categories_data.dart';
+import '../utils/category_icons.dart';
+import 'add_expense_bottom_sheet.dart';
+import '../utils/translation_helper.dart';
+import '../utils/category_icons.dart';
+
+
 
 class SubCategoriesSection extends StatelessWidget {
   final int mainCategoryIndex;
@@ -11,18 +18,9 @@ class SubCategoriesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!; // 👈 اختصار
+    final t = AppLocalizations.of(context)!;
 
-    final Map<int, List<String>> subData = {
-      0: ["Fuel", "Uber", "Bus", "Maintenance"],
-      1: ["Groceries", "Restaurant", "Snacks"],
-      2: ["Electricity", "Water", "Internet"],
-      3: ["Cinema", "Games", "Trips"],
-    };
-
-    final subs = subData[mainCategoryIndex] ??
-        ["Sub 1", "Sub 2", "Sub 3", "Sub 4"];
-
+    final subs = categories[mainCategoryIndex].subCategories;
     final bool twoRows = subs.length > 10;
 
     return Padding(
@@ -31,25 +29,19 @@ class SubCategoriesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
             child: Text(
-              t.subCategories, // 👈 مترجمة بدل "Sub Categories"
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              t.subCategories,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
-
           Container(
-            height: twoRows ? 300 : 160,
+            height: twoRows ? 260 : 150,
             padding: const EdgeInsets.only(top: 8, bottom: 8, right: 4),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: Colors.black.withOpacity(0.15),
-                width: 1,
-              ),
+              border: Border.all(color: Colors.black.withOpacity(0.15)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -58,7 +50,6 @@ class SubCategoriesSection extends StatelessWidget {
                 ),
               ],
             ),
-
             child: Scrollbar(
               thumbVisibility: true,
               radius: const Radius.circular(10),
@@ -67,66 +58,56 @@ class SubCategoriesSection extends StatelessWidget {
                 physics: const BouncingScrollPhysics(),
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: subs.length + 1,
+                itemCount: subs.length,
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: twoRows ? 2 : 1,
-                  mainAxisSpacing: 5,
+                  mainAxisSpacing: 10,
                   crossAxisSpacing: 10,
-                  mainAxisExtent: 100,
+                  mainAxisExtent: 110,
                 ),
                 itemBuilder: (context, index) {
-                  if (index == subs.length) {
-                    return const AddSubCategoryCard();
-                  }
+                  final sub = subs[index];
 
-                  return Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(
-                        color: Colors.black.withOpacity(0.15),
-                        width: 1,
+                  return GestureDetector(
+                    onTap: () {
+                      showAddExpenseSheet(context, t.tr(sub.titleKey));
+                    },
+                    child: Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: Colors.black.withOpacity(0.15),
+                        ),
                       ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Column(
-                        children: [
-                          Align(
-                            alignment: AlignmentDirectional.topStart,
-                            child: Icon(Icons.more_vert,
-                                size: 18, color: Colors.grey.shade600),
-                          ),
-                          Text(
-                            subs[index],
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                          const Spacer(),
-                          const Icon(Icons.directions_car,
-                              size: 26, color: Colors.blue),
-                          const Spacer(),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 4),
-                                minimumSize: const Size(0, 30),
-                                backgroundColor: Colors.blue.shade400,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              onPressed: () {},
-                              child: Text(
-                                t.input, // 👈 مترجمة بدل "Input"
-                                style: const TextStyle(fontSize: 11),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                             t.tr(sub.titleKey),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+
+                            Icon(
+                              getSubCategoryIcon(),
+                              size: 26,
+                              color: Colors.blue,
+                            ),
+                            Text(
+                              t.dailyTransport,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.black54,
                               ),
                             ),
-                          )
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -135,27 +116,6 @@ class SubCategoriesSection extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class AddSubCategoryCard extends StatelessWidget {
-  const AddSubCategoryCard({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: Colors.black.withOpacity(0.15),
-          width: 1,
-        ),
-      ),
-      child: const Center(
-        child: Icon(Icons.add, size: 36, color: Colors.blue),
       ),
     );
   }

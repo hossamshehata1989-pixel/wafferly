@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/main_categories_section.dart';
 import '../widgets/sub_categories_section.dart';
-import '../l10n/app_localizations.dart'; // 👈 إضافة
+import '../l10n/app_localizations.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -11,11 +11,11 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
-  int selectedMainIndex = -1;
+  int selectedMainIndex = -1; // -1 يعني مفيش اختيار
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!; // 👈 اختصار للترجمة
+    final t = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
@@ -23,16 +23,16 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         centerTitle: true,
         elevation: 0,
         title: Text(
-          t.expenses, // 👈 مترجمة بدل "Expenses"
+          t.expenses,
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
       ),
-
       body: SingleChildScrollView(
         child: Column(
           children: [
             const SizedBox(height: 10),
 
+            /// 🔷 Main Categories
             MainCategoriesSection(
               selectedIndex: selectedMainIndex,
               onSelect: (i) {
@@ -44,9 +44,22 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
             const SizedBox(height: 18),
 
-            SubCategoriesSection(
-              mainCategoryIndex: selectedMainIndex,
-            ),
+            /// 🔷 Sub Categories تظهر فقط بعد اختيار فئة رئيسية
+            if (selectedMainIndex != -1)
+              SubCategoriesSection(
+                mainCategoryIndex: selectedMainIndex,
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  t.chooseCategoryFirst,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
 
             const SizedBox(height: 40),
           ],

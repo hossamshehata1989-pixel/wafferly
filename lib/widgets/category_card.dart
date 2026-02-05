@@ -1,134 +1,79 @@
 import 'package:flutter/material.dart';
-import '../l10n/app_localizations.dart'; // 👈 إضافة
+import '../l10n/app_localizations.dart';
+import '../utils/category_icons.dart';
+import '../utils/translation_helper.dart';
+import 'add_expense_bottom_sheet.dart';
 
 class CategoryCard extends StatelessWidget {
-  final String title;
+  final String titleKey;
   final bool selected;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   const CategoryCard({
     super.key,
-    required this.title,
+    required this.titleKey,
     required this.selected,
     required this.onTap,
+    required this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!; // 👈 اختصار
+    final t = AppLocalizations.of(context)!;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedScale(
-        scale: selected ? 0.96 : 1,
-        duration: const Duration(milliseconds: 140),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Card(
-            elevation: selected ? 500 : 10,
-            color: selected
-                ? Colors.yellow.withOpacity(0.4)
-                : Colors.white,
-            shape: RoundedRectangleBorder(
+    return AnimatedScale(
+      scale: selected ? 1.05 : 1,
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
+      child: Material(
+        color: selected
+            ? Colors.yellow.withOpacity(0.35)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        elevation: selected ? 6 : 3,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          splashColor: Colors.blue.withOpacity(0.15),
+          onTap: () {
+            onTap();
+            showAddExpenseSheet(context, t.tr(titleKey));
+          },
+          onLongPress: onLongPress,
+          child: Container(
+            decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
+              border: Border.all(
                 color: selected
                     ? Colors.blue
-                    : Colors.black.withOpacity(0.15),
-                width: selected ? 1.8 : 1,
+                    : Colors.black.withOpacity(0.12),
+                width: selected ? 2 : 1,
               ),
             ),
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Align(
-                    alignment: AlignmentDirectional.topStart,
-                    child: Icon(Icons.more_vert,
-                        size: 18, color: Colors.grey.shade600),
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                /// 🔷 الأيقونة في النص
+                Icon(
+                  getMainCategoryIcon(titleKey),
+                  size: 40,
+                  color: selected
+                      ? Colors.blue
+                      : Colors.black87,
+                ),
+                const SizedBox(height: 10),
+
+                /// 🔷 اسم الفئة
+                Text(
+                  t.tr(titleKey),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
                   ),
-
-                  Center(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          t.dailyTransport, // 👈 مترجمة
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontSize: 11, color: Colors.black54),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.directions_car,
-                          size: 20, color: Colors.red),
-                    ],
-                  ),
-
-                  const Spacer(),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            minimumSize: const Size(0, 30),
-                            side:
-                                BorderSide(color: Colors.blue.shade400),
-                            foregroundColor: Colors.blue.shade600,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: () {},
-                          child: Text(
-                            t.sub, // 👈 مترجمة
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            minimumSize: const Size(0, 30),
-                            backgroundColor: Colors.blue.shade400,
-                            foregroundColor: Colors.white,
-                            elevation: 1,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: () {},
-                          child: Text(
-                            t.input, // 👈 مترجمة
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
