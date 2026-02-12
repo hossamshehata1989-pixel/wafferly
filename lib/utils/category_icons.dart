@@ -1,33 +1,44 @@
-import 'package:flutter/material.dart';
+import '../core/app_assets.dart';
 
-IconData getMainCategoryIcon(String key) {
-  switch (key) {
-    case 'transport': return Icons.directions_bus;
-    case 'bills': return Icons.receipt_long;
-    case 'supermarket': return Icons.local_grocery_store;
-    case 'eat_out': return Icons.restaurant;
-    case 'meat_fish': return Icons.set_meal;
-    case 'vegetables': return Icons.eco;
-    case 'fruits': return Icons.apple;
-    case 'smoking': return Icons.smoking_rooms;
-    case 'health': return Icons.local_hospital;
-    case 'entertainment': return Icons.movie;
-    case 'education': return Icons.school;
-    case 'vehicles': return Icons.directions_car;
-    case 'home': return Icons.home;
-    case 'personal_care': return Icons.face;
-    case 'mobile_pc': return Icons.phone_android;
-    case 'financial_commitments': return Icons.account_balance_wallet;
-    case 'government_services': return Icons.account_balance;
-    case 'gifts_occasions': return Icons.card_giftcard;
-    case 'hobbies': return Icons.sports_soccer;
-    case 'baby': return Icons.child_care;
-    case 'clothes': return Icons.checkroom;
-    case 'shoes': return Icons.hiking;
-    default: return Icons.category;
-  }
-}
+/// ===============================
+/// Main Categories Icons
+/// ===============================
+const Map<String, String> categoryIcons = {
+  // Transport & Movement
+  'transport': AppAssets.categoryTransport,
 
-IconData getSubCategoryIcon() {
-  return Icons.circle; // مؤقت للفئات الفرعية
+  // Bills
+  'bills': AppAssets.categoryBills,
+
+  // Food & Daily Needs
+  'supermarket': AppAssets.categorySupermarket,
+  'restaurants': AppAssets.categoryRestaurants,
+  'meatFish': AppAssets.categoryMeatFish,
+  'vegetables': AppAssets.categoryVegetables,
+  'fruits': AppAssets.categoryFruits,
+
+  // Lifestyle
+  'smoking': AppAssets.categorySmoking,
+  'health': AppAssets.categoryHealth,
+  'entertainment': AppAssets.categoryEntertainment,
+  'education': AppAssets.categoryEducation,
+  'hobbies': AppAssets.categoryHobbies,
+
+  // Assets & Home
+  'vehicles': AppAssets.categoryVehicles,
+  'home': AppAssets.categoryHome,
+  'personalCare': AppAssets.categoryPersonalCare,
+
+  // Family
+  'baby': AppAssets.categoryBaby,
+  'clothes': AppAssets.categoryClothes,
+  'shoes': AppAssets.categoryShoes,
+};
+
+/// ===============================
+/// Get Category Icon (Safe)
+/// ===============================
+String getCategoryIcon(String categoryId) {
+  return categoryIcons[categoryId] ??
+      AppAssets.categoryPlaceholder;
 }

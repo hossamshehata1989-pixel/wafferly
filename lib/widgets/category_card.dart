@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/category_icons.dart';
-import '../utils/translation_helper.dart';
 import 'add_expense_bottom_sheet.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class CategoryCard extends StatelessWidget {
-  final String titleKey;
+  final String categoryId;   // id المنطقي (transport, bills, ...)
+  final String titleKey;     // key للترجمة (transport, bills, ...)
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
   const CategoryCard({
     super.key,
+    required this.categoryId,
     required this.titleKey,
     required this.selected,
     required this.onTap,
@@ -27,49 +29,48 @@ class CategoryCard extends StatelessWidget {
       duration: const Duration(milliseconds: 160),
       curve: Curves.easeOut,
       child: Material(
-        color: selected
-            ? Colors.yellow.withOpacity(0.35)
-            : Colors.white,
+        color: selected ? Colors.yellow.withOpacity(0.35) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        elevation: selected ? 6 : 3,
+        elevation: selected ? 100 : 10,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           splashColor: Colors.blue.withOpacity(0.15),
           onTap: () {
             onTap();
-            showAddExpenseSheet(context, t.tr(titleKey));
+            showAddExpenseSheet(
+              context,
+              _resolveTitle(t),
+            );
           },
           onLongPress: onLongPress,
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: selected
-                    ? Colors.blue
-                    : Colors.black.withOpacity(0.12),
+                color: selected ? Colors.blue : Colors.black.withOpacity(0.12),
                 width: selected ? 2 : 1,
               ),
             ),
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(4), // المسافة بين الحافة والمحتوى
+
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                /// 🔷 الأيقونة في النص
-                Icon(
-                  getMainCategoryIcon(titleKey),
-                  size: 40,
-                  color: selected
-                      ? Colors.blue
-                      : Colors.black87,
+                /// 🔷 الأيقونة
+               SvgPicture.asset(
+                getCategoryIcon(categoryId),
+                  width: 50,
+                 height: 50,
                 ),
-                const SizedBox(height: 10),
+
+                const SizedBox(height: 8),
 
                 /// 🔷 اسم الفئة
                 Text(
-                  t.tr(titleKey),
+                  _resolveTitle(t),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 10,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -79,5 +80,35 @@ class CategoryCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// حل gen-l10n للـ dynamic key
+  String _resolveTitle(AppLocalizations t) {
+    switch (titleKey) {
+      case 'transport': return t.transport;
+      case 'bills': return t.bills;
+      case 'supermarket': return t.supermarket;
+      case 'eatOut': return t.eatOut;
+      case 'meatFish': return t.meatFish;
+      case 'vegetables': return t.vegetables;
+      case 'fruits': return t.fruits;
+      case 'smoking': return t.smoking;
+      case 'health': return t.health;
+      case 'entertainment': return t.entertainment;
+      case 'education': return t.education;
+      case 'vehicles': return t.vehicles;
+      case 'home': return t.home;
+      case 'personalCare': return t.personalCare;
+      case 'mobilePc': return t.mobilePc;
+      case 'financialCommitments': return t.financialCommitments;
+      case 'governmentServices': return t.governmentServices;
+      case 'giftsOccasions': return t.giftsOccasions;
+      case 'hobbies': return t.hobbies;
+      case 'baby': return t.baby;
+      case 'clothes': return t.clothes;
+      case 'shoes': return t.shoes;
+      default:
+        return titleKey; // fallback آمن
+    }
   }
 }

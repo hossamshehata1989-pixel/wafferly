@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:reorderables/reorderables.dart';
+import '../l10n/app_localizations.dart';
+import '../categories/category.dart';
 import '../data/categories_data.dart';
 import 'category_card.dart';
 
@@ -20,23 +22,27 @@ class MainCategoriesSection extends StatefulWidget {
 
 class _MainCategoriesSectionState
     extends State<MainCategoriesSection> {
-  late List categoriesList;
+  late List<Category> categoriesList;
 
-  static const double cardHeight = 130;
-  static const int visibleRows = 2;
+  static const double cardHeight = 80;
+  static const int visibleRows = 4;
 
   @override
   void initState() {
     super.initState();
-    categoriesList = List.from(categories);
+    categoriesList = List.from(mainCategories);
   }
 
   /// 🔴 BottomSheet حذف فئة
-  void _showDeleteSheet(BuildContext context, int index) {
+  void _showDeleteSheet(
+      BuildContext context, int index) {
+    final t = AppLocalizations.of(context)!;
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) {
         return Padding(
@@ -44,9 +50,9 @@ class _MainCategoriesSectionState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'حذف الفئة',
-                style: TextStyle(
+              Text(
+                t.deleteCategory,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -57,13 +63,14 @@ class _MainCategoriesSectionState
               ListTile(
                 leading:
                     const Icon(Icons.delete, color: Colors.red),
-                title: const Text(
-                  'حذف',
-                  style: TextStyle(color: Colors.red),
+                title: Text(
+                  t.delete,
+                  style: const TextStyle(color: Colors.red),
                 ),
                 onTap: () {
                   // منع حذف آخر كارت
-                  if (categoriesList.length == 3) {
+                  const minimumCategories = 3;
+if (categoriesList.length <= minimumCategories) {
                     Navigator.pop(context);
                     return;
                   }
@@ -78,7 +85,7 @@ class _MainCategoriesSectionState
               /// إلغاء
               ListTile(
                 leading: const Icon(Icons.close),
-                title: const Text('إلغاء'),
+                title: Text(t.cancel),
                 onTap: () => Navigator.pop(context),
               ),
             ],
@@ -95,19 +102,20 @@ class _MainCategoriesSectionState
         (cardHeight * visibleRows) + 20;
 
     /// 🔹 Responsive columns
-    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenWidth =
+        MediaQuery.of(context).size.width;
 
     int columns;
-    if (screenWidth < 360) {
-      columns = 2; // موبايلات صغيرة
-    } else if (screenWidth < 600) {
-      columns = 3; // موبايل عادي
+    if (screenWidth < 100) {
+      columns = 2;
+    } else if (screenWidth < 100) {
+      columns = 3;
     } else {
-      columns = 4; // تابلت / شاشة كبيرة
+      columns = 4;
     }
 
-    const double outerPadding = 24; // Padding الشاشة
-    const double innerPadding = 16; // Padding الكونتينر
+    const double outerPadding = 24;
+    const double innerPadding = 16;
     const double spacingBetweenCards = 10;
 
     final double horizontalPadding =
@@ -125,14 +133,14 @@ class _MainCategoriesSectionState
         height: containerHeight,
         padding: const EdgeInsets.all(5),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.red.withOpacity(0.05),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: Colors.black.withOpacity(0.15),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.5),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -155,25 +163,29 @@ class _MainCategoriesSectionState
               });
             },
 
-            children: List.generate(categoriesList.length,
-                (index) {
-              final category = categoriesList[index];
+            children: List.generate(
+              categoriesList.length,
+              (index) {
+                final category = categoriesList[index];
 
-              return SizedBox(
-                width: cardWidth,
-                height: cardHeight,
-                child: CategoryCard(
-                  key:
-                      ValueKey('${category.titleKey}_$index'),
-                  titleKey: category.titleKey,
-                  selected:
-                      widget.selectedIndex == index,
-                  onTap: () => widget.onSelect(index),
-                  onLongPress: () =>
-                      _showDeleteSheet(context, index),
-                ),
-              );
-            }),
+                return SizedBox(
+                  width: cardWidth,
+                  height: cardHeight,
+                  child: CategoryCard(
+                    key: ValueKey(
+                        '${category.id}_$index'),
+                    categoryId: category.id,
+                    titleKey: category.titleKey,
+                    selected:
+                        widget.selectedIndex == index,
+                    onTap: () =>
+                        widget.onSelect(index),
+                    onLongPress: () =>
+                        _showDeleteSheet(context, index),
+                  ),
+                );
+              },
+            ),
           ),
         ),
       ),
