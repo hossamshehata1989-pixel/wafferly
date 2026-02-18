@@ -21,10 +21,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
       appBar: AppBar(
         toolbarHeight: 44,
         centerTitle: true,
+        backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
           t.expenses,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -42,11 +46,12 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               },
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 10),
 
-            /// 🔷 Sub Categories تظهر فقط بعد اختيار فئة رئيسية
+            /// 🔷 Sub Categories
             if (selectedMainIndex != -1)
               SubCategoriesSection(
+                key: ValueKey(selectedMainIndex), // مهم لإعادة البناء
                 mainCategoryIndex: selectedMainIndex,
               )
             else
@@ -61,7 +66,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                 ),
               ),
 
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
           ],
         ),
       ),

@@ -1,125 +1,224 @@
+// 📦 استدعاء مكتبة Flutter الأساسية للـ UI
 import 'package:flutter/material.dart';
+
+// 🌍 استدعاء ملفات الترجمة (Arabic / English)
 import '../l10n/app_localizations.dart';
+
+// 📊 ملف البيانات اللي فيه الفئات الرئيسية والفرعية
 import '../data/categories_data.dart';
+
+// 🖼️ ملف تحديد مسار أيقونات SVG حسب الـ id
 import '../utils/category_icons.dart';
+
+// 📌 Bottom Sheet إضافة المصروف
 import 'add_expense_bottom_sheet.dart';
+
+// 🖼️ مكتبة عرض ملفات SVG
 import 'package:flutter_svg/flutter_svg.dart';
 
+
+// ============================================================
+// 🔷 Widget مسؤول عن عرض الفئات الفرعية
+// ============================================================
+
 class SubCategoriesSection extends StatelessWidget {
+
+  // 📍 رقم الفئة الرئيسية المختارة (transport, bills, ...)
   final int mainCategoryIndex;
 
+  // 🏗️ Constructor لاستقبال رقم الفئة
   const SubCategoriesSection({
     super.key,
     required this.mainCategoryIndex,
   });
 
+  // ============================================================
+  // 🎨 BUILD METHOD → هنا بيتبني شكل الواجهة
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
+
+    // 🌍 الحصول على الترجمة الحالية حسب لغة التطبيق
     final t = AppLocalizations.of(context)!;
 
+    // 📂 الفئة الرئيسية المختارة
     final category = mainCategories[mainCategoryIndex];
+
+    // 📂 قائمة الفئات الفرعية التابعة لها
     final subs = category.subCategories;
+
+    // 📐 لو عدد الفئات > 10 نعرضهم في صفين بدل صف واحد
     final bool twoRows = subs.length > 10;
 
+    // ============================================================
+    // 🧱 بداية الـ Layout
+    // ============================================================
+
     return Padding(
+
+      // 🟦 مسافة خارجية يمين وشمال
       padding: const EdgeInsets.symmetric(horizontal: 12),
+
       child: Column(
+
+        // 📌 محاذاة العناصر ناحية البداية (left في LTR)
         crossAxisAlignment: CrossAxisAlignment.start,
+
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+
+          // ====================================================
+          // 🔹 عنوان القسم (Sub Categories)
+          // ====================================================
+
+          Padding(                // مسافة داخلية حول العنوان
+            padding: const EdgeInsets.symmetric(      // مسافة داخلية يمين وشمال
+              horizontal: 4,      // مسافة داخلية فوق وتحت
+              vertical: 10,       // مسافة داخلية فوق وتحت
+            ),
+
             child: Text(
-              t.subCategories,
+              t.subCategories, // 🌍 النص مترجم تلقائيًا
+
               style: const TextStyle(
-                fontSize: 20,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
+
+          // ====================================================
+          // 🔹 الكارت الكبير اللي شايل الـ Grid
+          // ====================================================
+
           Container(
-            height: twoRows ? 260 : 150,
-            padding: const EdgeInsets.only(top: 8, bottom: 8, right: 4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.black.withOpacity(0.15)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+
+            // 📏 ارتفاع ثابت (200 لو صفين - 100 لو صف واحد)
+            height: twoRows ? 200 : 100,
+
+            // 🧩 مسافة داخلية
+            padding: const EdgeInsets.only(
+              top: 5,    // مسافة داخلية فوق
+              bottom: 5,    // مسافة داخلية تحت
+              right: 7,        // مسافة داخلية يمين
             ),
+
+            // 🎨 شكل الكارت (لون - حدود - ظل)
+            decoration: BoxDecoration(
+              color: Colors.yellow.withOpacity(0.07),   // خلفية صفراء فاتحة
+
+              // 🔵 حواف دائرية
+              borderRadius: BorderRadius.circular(18),
+
+              // 🟤 إطار خفيف
+              border: Border.all(
+                color: Colors.black.withOpacity(0.15),
+              ),
+            ),
+
+            // ====================================================
+            // 🔹 Scrollbar + GridView
+            // ====================================================
+
             child: Scrollbar(
-              thumbVisibility: true,
+
+              thumbVisibility: false,   // إظهار مؤشر السكرول دائمًا
               radius: const Radius.circular(10),
               thickness: 4,
+
               child: GridView.builder(
+
+                // ✨ سكرول ناعم
                 physics: const BouncingScrollPhysics(),
+
+                // 👉 السكرول أفقي
                 scrollDirection: Axis.horizontal,
+
                 padding: const EdgeInsets.symmetric(horizontal: 8),
+
+                // 🔢 عدد العناصر
                 itemCount: subs.length,
+
+                // 🧮 طريقة توزيع العناصر داخل الجريد
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+
+                  // 📌 صفين أو صف واحد
                   crossAxisCount: twoRows ? 2 : 1,
+
                   mainAxisSpacing: 10,
                   crossAxisSpacing: 10,
-                  mainAxisExtent: 110,
+
+                  // 📏 عرض كل عنصر
+                  mainAxisExtent: 90,
                 ),
+
+                // ====================================================
+                // 🔹 بناء كل عنصر داخل الجريد
+                // ====================================================
+
                 itemBuilder: (context, index) {
+
                   final sub = subs[index];
 
-                  return GestureDetector(
+                  return GestureDetector(       // 👆 عند الضغط على الفئة
+
+                    // 👆 عند الضغط على الفئة
                     onTap: () {
                       showAddExpenseSheet(
                         context,
                         _resolveSubTitle(t, sub.titleKey),
                       );
                     },
-                    child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
+
+                    child: Card(       // 🎨 شكل الكارت (لون - حدود - ظل)
+
+                      elevation: 5,    // ظل متوسط
+                      shadowColor: Colors.black.withOpacity(0.5),   // لون ظل خفيف
+
+                      shape: RoundedRectangleBorder(      // 🔵 حواف دائرية
                         borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(
-                          color: Colors.black.withOpacity(0.15),
+                        side: BorderSide(                          // 🟤 إطار خفيف
+                          color: Colors.blue.withOpacity(0.25),    // لون الإطار
+                          width: 1,      // سمك الإطار
                         ),
                       ),
+
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 10,
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            /// 🔷 اسم الفئة الفرعية
-                            Text(
-                              _resolveSubTitle(t, sub.titleKey),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
 
-                            /// 🔷 الأيقونة
+                        child: Column(
+
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+
+                          children: [
+
+
+
+                            // 🔷 أيقونة SVG
                             SvgPicture.asset(
                               getCategoryIcon(sub.id),
-                              width: 26,
-                              height: 26,
+                              width: 30,
+                              height: 30,
                             ),
 
-                            /// 🔷 وصف بسيط
+
+                            // 🔷 اسم الفئة الفرعية
                             Text(
-                              t.dailyTransport,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                              _resolveSubTitle(t, sub.titleKey),
+
                               textAlign: TextAlign.center,
+
                               style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.black54,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
                               ),
                             ),
+
+
                           ],
                         ),
                       ),
@@ -134,9 +233,15 @@ class SubCategoriesSection extends StatelessWidget {
     );
   }
 
-  /// حل gen-l10n للـ dynamic sub keys
+  // ============================================================
+  // 🌍 حل مشكلة المفاتيح الديناميكية في gen-l10n
+  // ============================================================
+
   String _resolveSubTitle(AppLocalizations t, String key) {
+
     switch (key) {
+
+      // 🚗 Transport
       case 'tuktuk': return t.tuktuk;
       case 'microbus': return t.microbus;
       case 'taxiUber': return t.taxiUber;
@@ -144,6 +249,7 @@ class SubCategoriesSection extends StatelessWidget {
       case 'metro': return t.metro;
       case 'train': return t.train;
 
+      // 💡 Bills
       case 'electricity': return t.electricity;
       case 'gas': return t.gas;
       case 'water': return t.water;
@@ -155,6 +261,7 @@ class SubCategoriesSection extends StatelessWidget {
       case 'cleaning_fees': return t.cleaning_fees;
       case 'building_security': return t.building_security;
 
+      // 🛒 Groceries
       case 'milk': return t.milk;
       case 'cheese': return t.cheese;
       case 'yogurt': return t.yogurt;
@@ -172,7 +279,7 @@ class SubCategoriesSection extends StatelessWidget {
       case 'snacks_biscuits': return t.snacks_biscuits;
 
       default:
-        return key; // fallback آمن
+        return key; // 🛡️ fallback آمن
     }
   }
 }

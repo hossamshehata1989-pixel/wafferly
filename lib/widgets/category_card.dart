@@ -25,16 +25,17 @@ class CategoryCard extends StatelessWidget {
     final t = AppLocalizations.of(context)!;
 
     return AnimatedScale(
-      scale: selected ? 1.05 : 1,
-      duration: const Duration(milliseconds: 160),
+      scale: selected ? 1.05 : 1,     // تكبير الكارت المحدد
+      duration: const Duration(milliseconds: 160),      // سرعة التحريك
       curve: Curves.easeOut,
-      child: Material(
-        color: selected ? Colors.yellow.withOpacity(0.35) : Colors.white,
+      child: Material(          // تصميم الكارت
+        color: selected ? Colors.yellow.withOpacity(0.35) : Colors.white,         // خلفية مميزة للكارت المحدد
         borderRadius: BorderRadius.circular(16),
-        elevation: selected ? 100 : 10,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          splashColor: Colors.blue.withOpacity(0.15),
+        elevation: selected ? 100 : 10,            // ظل أقوى للكارت المحدد
+         shadowColor: selected ? Colors.yellow.withOpacity(0.5) : Colors.black.withOpacity(0.1),         // لون ظل مميز للكارت المحدد
+        child: InkWell(               // تفاعل اللمس
+          borderRadius: BorderRadius.circular(16),           // تأثير الحواف الدائرية عند اللمس
+          splashColor: Colors.blue.withOpacity(0.15),       // تأثير اللمس
           onTap: () {
             onTap();
             showAddExpenseSheet(
@@ -42,7 +43,7 @@ class CategoryCard extends StatelessWidget {
               _resolveTitle(t),
             );
           },
-          onLongPress: onLongPress,
+          onLongPress: onLongPress,          // تفاعل الضغط المطول
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
@@ -59,19 +60,19 @@ class CategoryCard extends StatelessWidget {
                 /// 🔷 الأيقونة
                SvgPicture.asset(
                 getCategoryIcon(categoryId),
-                  width: 50,
-                 height: 50,
+                  width: 30,
+                 height: 30,
                 ),
 
-                const SizedBox(height: 8),
+                const SizedBox(height: 8),        // المسافة بين الأيقونة والنص
 
                 /// 🔷 اسم الفئة
                 Text(
-                  _resolveTitle(t),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                  _resolveTitle(t),                // ترجمة العنوان بناءً على الـ titleKey
+                  textAlign: TextAlign.center,         // محاذاة النص في الوسط
+                  style: const TextStyle(                // 🔴 نمط النص
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,         // يمكنك تعديل النمط حسب التصميم الذي تريده
                   ),
                 ),
               ],
