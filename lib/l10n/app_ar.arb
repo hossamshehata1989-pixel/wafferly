@@ -15,8 +15,9 @@
   "cancel": "إلغاء",
   "delete": "حذف",
   "chooseCategoryFirst": "اختر فئة أولاً",
+"and":   "و",
 
-  "transport": "مواصلات",
+  "transport": "مواصلات يومية",
   "bills": "فواتير",
   "supermarket": "سوبر ماركت",
   "eatOut": "أكل بره",

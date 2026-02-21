@@ -134,22 +134,22 @@ class SubCategoriesSection extends StatelessWidget {
                 // 👉 السكرول أفقي
                 scrollDirection: Axis.horizontal,
 
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 0),
 
                 // 🔢 عدد العناصر
                 itemCount: subs.length,
 
                 // 🧮 طريقة توزيع العناصر داخل الجريد
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
 
-                  // 📌 صفين أو صف واحد
-                  crossAxisCount: twoRows ? 2 : 1,
+                  
+                    maxCrossAxisExtent: 120, // أقصى عرض للكارت
 
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
+                    mainAxisSpacing: 6,
+                    crossAxisSpacing: 6,
+                    mainAxisExtent: twoRows ? 95 : 95, // ارتفاع ثابت
 
-                  // 📏 عرض كل عنصر
-                  mainAxisExtent: 90,
+                  
                 ),
 
                 // ====================================================
@@ -176,45 +176,50 @@ class SubCategoriesSection extends StatelessWidget {
                       shadowColor: Colors.black.withOpacity(0.5),   // لون ظل خفيف
 
                       shape: RoundedRectangleBorder(      // 🔵 حواف دائرية
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(1),
                         side: BorderSide(                          // 🟤 إطار خفيف
                           color: Colors.blue.withOpacity(0.25),    // لون الإطار
                           width: 1,      // سمك الإطار
                         ),
                       ),
 
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 10,
+                      child: Padding(                             // 🧩 مسافة داخلية حول محتوى الكارت
+                        padding: const EdgeInsets.symmetric(      // مسافة داخلية يمين وشمال
+                          horizontal: 7,            // مسافة داخلية فوق وتحت
+                          vertical: 7,             // مسافة داخلية فوق وتحت
                         ),
 
                         child: Column(
 
-                          mainAxisAlignment:
+                          mainAxisAlignment:                 // 🧱 توزيع العناصر داخل الكارت (أيقونة + نص) مع ترك مسافة بينهم
                               MainAxisAlignment.spaceBetween,
 
                           children: [
 
 
 
-                            // 🔷 أيقونة SVG
+                            // 🔷 أيقونة SVG                 
                             SvgPicture.asset(
-                              getCategoryIcon(sub.id),
-                              width: 30,
-                              height: 30,
+                             getCategoryIcon(sub.id),
+                              width: 45,
+                              height: 45,
+                             placeholderBuilder: (context) =>
+                             const Icon(Icons.image_not_supported, size: 40),
                             ),
 
 
                             // 🔷 اسم الفئة الفرعية
                             Text(
-                              _resolveSubTitle(t, sub.titleKey),
+                              _resolveSubTitle(t, sub.titleKey),       // 🌍 النص مترجم تلقائيًا
 
-                              textAlign: TextAlign.center,
+                              textAlign: TextAlign.center,             // محاذاة النص في الوسط
+                              softWrap: true,                 // السماح بتقسيم النص إلى أكثر من سطر
+                              maxLines: 2,                     // الحد الأقصى لعدد الأسطر (2 أسطر كحد أقصى)
+                              overflow: TextOverflow.ellipsis,       // إذا تجاوز النص الحد الأقصى، يتم إظهار "..." في النهاية
 
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
+                              style: const TextStyle(                  // 🎨 تنسيق النص
+                                fontWeight: FontWeight.bold,           // خط عريض
+                                fontSize: 11,                          // حجم خط صغير
                               ),
                             ),
 

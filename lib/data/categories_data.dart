@@ -4,12 +4,12 @@ const List<Category> mainCategories = [
 
   /// TRANSPORT
   Category(
-    id: 'transport',
+    id: 'daily_transport',
     titleKey: 'transport',
     subCategories: [
       SubCategory(id: 'tuktuk', titleKey: 'tuktuk'),
       SubCategory(id: 'microbus', titleKey: 'microbus'),
-      SubCategory(id: 'taxiUber', titleKey: 'taxiUber'),
+      SubCategory(id: 'taxi_uber', titleKey: 'taxiUber'),
       SubCategory(id: 'bus', titleKey: 'bus'),
       SubCategory(id: 'metro', titleKey: 'metro'),
       SubCategory(id: 'train', titleKey: 'train'),
@@ -59,7 +59,7 @@ const List<Category> mainCategories = [
 
   /// RESTAURANTS
   Category(
-    id: 'restaurants',
+    id: 'fast_food',
     titleKey: 'eatOut',
     subCategories: [
       SubCategory(id: 'meals', titleKey: 'meals'),
@@ -76,7 +76,7 @@ const List<Category> mainCategories = [
 
   /// MEAT & FISH
   Category(
-    id: 'meatFish',
+    id: 'meat_and_fish',
     titleKey: 'meatFish',
     subCategories: [
       SubCategory(id: 'meat', titleKey: 'meat'),
@@ -200,7 +200,7 @@ const List<Category> mainCategories = [
 
   /// PERSONAL CARE
   Category(
-    id: 'personalCare',
+    id: 'personal_care',
     titleKey: 'personalCare',
     subCategories: [
       SubCategory(id: 'cosmetics', titleKey: 'cosmetics'),
@@ -213,7 +213,7 @@ const List<Category> mainCategories = [
 
   /// TECH
   Category(
-    id: 'mobilePc',
+    id: 'mobile_and_pc',
     titleKey: 'mobilePc',
     subCategories: [
       SubCategory(id: 'tech_accessories', titleKey: 'tech_accessories'),
@@ -225,7 +225,7 @@ const List<Category> mainCategories = [
 
   /// FINANCIAL
   Category(
-    id: 'financialCommitments',
+    id: 'financial_commitments',
     titleKey: 'financialCommitments',
     subCategories: [
       SubCategory(id: 'saving_group', titleKey: 'saving_group'),
@@ -241,7 +241,7 @@ const List<Category> mainCategories = [
 
   /// GOVERNMENT
   Category(
-    id: 'governmentServices',
+    id: 'government_services',
     titleKey: 'governmentServices',
     subCategories: [
       SubCategory(id: 'fees', titleKey: 'fees'),
@@ -252,7 +252,7 @@ const List<Category> mainCategories = [
 
   /// GIFTS
   Category(
-    id: 'giftsOccasions',
+    id: 'gifts_occasions',
     titleKey: 'giftsOccasions',
     subCategories: [
       SubCategory(id: 'birthdays', titleKey: 'birthdays'),
