@@ -53,7 +53,7 @@ class _MainCategoriesSectionState // 🔴 StatefulWidget لتمكين إعادة
               Text(              // 🔴 نص العنوان
                 t.deleteCategory,      // "حذف الفئة"
                 style: const TextStyle(          // تصميم العنوان
-                  fontSize: 18,
+                  fontSize: 18,       // حجم الخط
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -108,7 +108,7 @@ if (categoriesList.length <= minimumCategories) {        // 🔴 عرض رسال
     int columns;         // 🔴 عدد الأعمدة الافتراضي (يمكن تعديله حسب الحاجة)
     if (screenWidth < 100) {        // شاشات صغيرة جدًا
       columns = 2;           // شاشات صغيرة
-    } else if (screenWidth < 100) {          // شاشات متوسطة
+    } else if (screenWidth < 200) {          // شاشات متوسطة
       columns = 3;         // شاشات كبيرة
     } else {           // شاشات كبيرة جدًا
       columns = 4;          // يمكنك تعديل هذه القيم حسب التصميم الذي تريده
@@ -178,7 +178,7 @@ if (categoriesList.length <= minimumCategories) {        // 🔴 عرض رسال
                     key: ValueKey(               // 🔴 مفتاح فريد لكل كارت بناءً على الفئة والمؤشر
                         '${category.id}_$index'),           // 🔴 مفتاح فريد يجمع بين معرف الفئة والمؤشر لضمان التفرد حتى مع وجود فئات مكررة
                     categoryId: category.id,        // معرف الفئة
-                    titleKey: category.titleKey,            // مفتاح العنوان للترجمة
+                    title: category.title,            // مفتاح العنوان للترجمة
                     selected:                 // هل هذا الكارت هو المحدد حاليًا
                         widget.selectedIndex == index,     // تمييز الكارت المحدد
                     onTap: () =>                   
