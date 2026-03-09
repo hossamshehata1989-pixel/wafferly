@@ -11,6 +11,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  auto_size_text: ^3.0.0
+
   reorderables: ^0.6.0
 
   flutter_localizations:

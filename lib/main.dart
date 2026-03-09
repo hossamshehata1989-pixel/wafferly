@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart'; // 👈 إضافة
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/expenses_screen.dart';
-import 'l10n/app_localizations.dart'; // 👈 إضافة
+import 'l10n/app_localizations.dart';
 
 void main() {
   runApp(const WafferlyApp());
@@ -16,7 +16,6 @@ class WafferlyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Wafferly',
 
-      // 🌍 تفعيل الترجمة
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
@@ -30,10 +29,12 @@ class WafferlyApp extends StatelessWidget {
       ],
 
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: const Color(0xFFF5F7FA),
+        primaryColor: const Color(0xFF3A7BFF),
+
+        scaffoldBackgroundColor: const Color(0xFF0F1B4C),
+
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.blue,
+          backgroundColor: Color(0xFF0F1B4C),
           foregroundColor: Colors.white,
           elevation: 0,
         ),

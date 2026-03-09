@@ -72,7 +72,7 @@ final List<Category> mainCategories = [
       SubCategory(id: 'hotDrinks', title: (t) => t.hotDrinks),
       SubCategory(id: 'herbalDrinks', title: (t) => t.herbalDrinks),
       SubCategory(id: 'cola', title: (t) => t.cola),
-      SubCategory(id: 'naturalJuice', title: (t) => t.naturalJuice),
+      SubCategory(id: 'juice', title: (t) => t.juice),
       SubCategory(id: 'naturalMilk', title: (t) => t.naturalMilk),
     ],
   ),
@@ -132,7 +132,7 @@ final List<Category> mainCategories = [
     ],
   ),
 
-  /// FRUITSflutter run
+  /// FRUITS
   Category(
     id: 'fruits',
     title: (t) => t.fruits,
@@ -145,7 +145,6 @@ final List<Category> mainCategories = [
       SubCategory(id: 'pear', title: (t) => t.pear),
       SubCategory(id: 'mango', title: (t) => t.mango),
       SubCategory(id: 'strawberry', title: (t) => t.strawberry),
-
       SubCategory(id: 'watermelon', title: (t) => t.watermelon),
     ],
   ),
@@ -304,10 +303,19 @@ final List<Category> mainCategories = [
     id: 'hobbies',
     title: (t) => t.hobbies,
     subCategories: [
-      SubCategory(id: 'clubTools', title: (t) => t.clubTools),
-      SubCategory(id: 'clubMembership', title: (t) => t.clubMembership),
-      SubCategory(id: 'gymMembership', title: (t) => t.gymMembership),
-      SubCategory(id: 'gymTools', title: (t) => t.gymTools),
+      SubCategory(id: 'sportsSubscriptions', title: (t) => t.sportsSubscriptions),
+      SubCategory(id: 'sportsEquipment', title: (t) => t.sportsEquipment),
+      SubCategory(id: 'sportsSupplements', title: (t) => t.sportsSupplements),
+      SubCategory(id: 'pets', title: (t) => t.pets),
+      SubCategory(id: 'videoGames', title: (t) => t.videoGames),
+      SubCategory(id: 'skating', title: (t) => t.skating),
+      SubCategory(id: 'gardeningAndPlants', title: (t) => t.gardeningAndPlants),
+      SubCategory(id: 'reading', title: (t) => t.reading),
+      SubCategory(id: 'music', title: (t) => t.music),
+      SubCategory(id: 'arts', title: (t) => t.arts),
+      SubCategory(id: 'photography', title: (t) => t.photography),
+     SubCategory(id: 'handmade', title: (t) => t.handmade),
+
     ],
   ),
 

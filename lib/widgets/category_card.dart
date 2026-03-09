@@ -3,6 +3,7 @@ import '../l10n/app_localizations.dart';
 import '../utils/category_icons.dart';
 import 'add_expense_bottom_sheet.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:auto_size_text/auto_size_text.dart';
 
 class CategoryCard extends StatelessWidget {
   final String categoryId;
@@ -30,22 +31,17 @@ class CategoryCard extends StatelessWidget {
       curve: Curves.easeOut,
       child: Material(
         color: selected
-            ? Colors.yellow.withOpacity(0.35)
-            : Colors.white,
+            ? const Color(0xFF3A7BFF)
+            : const Color(0xFF1B2A6B),
         borderRadius: BorderRadius.circular(16),
         elevation: selected ? 10 : 4,
-        shadowColor: selected
-            ? Colors.yellow.withOpacity(0.5)
-            : Colors.black.withOpacity(0.1),
+        shadowColor: Colors.black26,
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          splashColor: Colors.blue.withOpacity(0.15),
+          splashColor: const Color(0xFF4FD1FF).withOpacity(.3),
           onTap: () {
             onTap();
-            showAddExpenseSheet(
-              context,
-              title(t), // 🔥 النظام الجديد
-            );
+            showAddExpenseSheet(context, title(t));
           },
           onLongPress: onLongPress,
           child: Container(
@@ -53,33 +49,30 @@ class CategoryCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: selected
-                    ? Colors.blue
-                    : Colors.black.withOpacity(0.12),
-                width: selected ? 2 : 1,
+                    ? const Color(0xFF4FD1FF)
+                    : const Color(0xFF243A8F),
               ),
             ),
             padding: const EdgeInsets.all(6),
             child: Column(
-              mainAxisAlignment:
-                  MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-
-                /// 🔷 Icon
                 SvgPicture.asset(
                   getCategoryIcon(categoryId),
                   width: 25,
                   height: 25,
                 ),
-
                 const SizedBox(height: 8),
-
-                /// 🔷 Title
-                Text(
-                  title(t), // 🔥 بدون switch
+                AutoSizeText(
+                  title(t),
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  minFontSize: 8,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
+                   fontSize: 11,
+                   fontWeight: FontWeight.bold,
+                   color: Colors.white,
                   ),
                 ),
               ],

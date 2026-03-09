@@ -24,7 +24,7 @@ class _MainCategoriesSectionState // 🔴 StatefulWidget لتمكين إعادة
     extends State<MainCategoriesSection> { // 🔴 قائمة الفئات القابلة للتعديل
   late List<Category> categoriesList; // 🔴 ثوابت التصميم
 
-  static const double cardHeight = 80; // ارتفاع كل كارت
+  static const double cardHeight = 65; // ارتفاع كل كارت
   static const double visibleRows = 3.2; // لعرض 3 صفوف + جزء من الصف الرابع
 
   @override    // تهيئة الحالة
@@ -135,20 +135,20 @@ if (categoriesList.length <= minimumCategories) {        // 🔴 عرض رسال
       child: Container(               // الكونتينر الرئيسي
         height: containerHeight,
         padding: const EdgeInsets.all(5),             // البادينغ الداخلي للكونتينر
-        decoration: BoxDecoration(               // تصميم الكونتينر
-          color: Colors.yellow.withOpacity(0.05),        // خلفية خفيفة
-          borderRadius: BorderRadius.circular(18),         // حواف دائرية
-          border: Border.all(                          // حدود خفيفة
-            color: Colors.black.withOpacity(.25),         // حدود خفيفة
-          ),
-          boxShadow: [      // ظل خفيف لإضافة عمق
-            BoxShadow(          // 🔴 ظل خفيف
-              color: Colors.yellow.withOpacity(0.05),      // ظل خفيف جدًا
-              blurRadius: 12,      // تشتت الظل
-              offset: const Offset(0, 20),      // إزاحة الظل (أسفل قليلاً)
-            ),
-          ],
+       decoration: BoxDecoration(
+        color: const Color(0xFF1B2A6B),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+         color: const Color(0xFF243A8F),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.25),
+            blurRadius: 12,
+            offset: const Offset(0, 10),
+          ),
+        ],
+       ),
 
         /// 🔽 Scroll رأسي + Drag & Drop       
         child: SingleChildScrollView(      // تمكين التمرير الرأسي

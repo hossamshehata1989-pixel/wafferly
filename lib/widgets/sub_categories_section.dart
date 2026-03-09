@@ -1,4 +1,3 @@
-// 📦 Flutter
 import 'package:flutter/material.dart';
 
 // 🌍 Localization
@@ -16,58 +15,69 @@ import 'add_expense_bottom_sheet.dart';
 // 🖼️ SVG
 import 'package:flutter_svg/flutter_svg.dart';
 
-class SubCategoriesSection extends StatelessWidget {  
-  final int mainCategoryIndex;      // 🔥 جديد: مؤشر الفئة الرئيسية
+// 🔤 Auto text resize
+import 'package:auto_size_text/auto_size_text.dart';
 
-  const SubCategoriesSection({     
-    super.key,       /// 🔥 جديد: إضافة المفتاح
-    required this.mainCategoryIndex,             /// 🔥 جديد: جعل مؤشر الفئة الرئيسية مطلوبًا
-  });   
+class SubCategoriesSection extends StatelessWidget {
+  final int mainCategoryIndex;
+
+  const SubCategoriesSection({
+    super.key,
+    required this.mainCategoryIndex,
+  });
 
   @override
-  Widget build(BuildContext context) {         // 🔥 جديد: بناء الواجهة
-    final t = AppLocalizations.of(context)!;              // 🔥 جديد: الحصول على الترجمات
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
 
-    final category = mainCategories[mainCategoryIndex];     // 🔥 جديد: الحصول على بيانات الفئة الرئيسية
-    final subs = category.subCategories;        // 🔥 جديد: الحصول على الفئات الفرعية
+    final category = mainCategories[mainCategoryIndex];
+    final subs = category.subCategories;
 
-    final bool twoRows = subs.length > 9;     // 🔥 جديد: تحديد إذا كان هناك أكثر من 10 فئات فرعية لعرض صفين
+    final bool twoRows = subs.length > 9;
 
-    return Padding(                  // 🔥 جديد: إضافة تباعد أفقي
-      padding: const EdgeInsets.symmetric(horizontal: 8),       // 🔥 جديد: تباعد 8 من الجانبين
-      child: Column(                                      // 🔥 جديد: استخدام عمود لعرض العنوان والقائمة
-        crossAxisAlignment: CrossAxisAlignment.start,   // 🔥 جديد: محاذاة العناصر إلى اليسار
-        children: [                // 🔥 جديد: قائمة العناصر
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
 
-          /// 🔹 Title        // 🔥 جديد: إضافة عنوان القسم
+          /// 🔹 Title
           Padding(
-            padding: const EdgeInsets.symmetric(   // 🔥 جديد: تباعد كلمة (التصنيفات الفرعية")
-              horizontal: 15,
-              vertical: 1,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 5,
+              vertical: 2,
             ),
             child: Text(
               t.subCategories,
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
           ),
 
           /// 🔹 Container
           Container(
-            height: twoRows ? 140 : 70,   // 🔥 تعديل الارتفاع بناءً على عدد العناصر
+            height: twoRows ? 160 : 75,
             padding: const EdgeInsets.only(
-              top: 2,
-              bottom: 2,
-              right: 2,
+              top: 1,
+              bottom: 1,
+              right: 1,
             ),
             decoration: BoxDecoration(
-              color: Colors.yellow.withOpacity(0.07),
+              color: const Color(0xFF1B2A6B),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(
-                color: Colors.black.withOpacity(0.15),
+                color: const Color(0xFF243A8F),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
 
             child: Scrollbar(
@@ -80,11 +90,11 @@ class SubCategoriesSection extends StatelessWidget {
 
                 gridDelegate:
                     SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: twoRows ? 2 : 1,
-                      mainAxisSpacing: 6,
-                      crossAxisSpacing: 6,
-                     childAspectRatio: 1,
-                    ),
+                  crossAxisCount: twoRows ? 2 : 1,
+                  mainAxisSpacing: 0,
+                  crossAxisSpacing: 3,
+                  childAspectRatio: 1,
+                ),
 
                 itemBuilder: (context, index) {
                   final sub = subs[index];
@@ -93,63 +103,62 @@ class SubCategoriesSection extends StatelessWidget {
                     onTap: () {
                       showAddExpenseSheet(
                         context,
-                        sub.title(t), // 🔥 الجديد
+                        sub.title(t),
                       );
                     },
 
                     child: Card(
-                      elevation: 5,
-                      shadowColor:
-                          Colors.black.withOpacity(0.5),
+                      elevation: 6,
+                      color: const Color(0xFF243A8F),
+                      shadowColor: Colors.black.withOpacity(.35),
+
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(8),
-                        side: BorderSide(
-                          color: Colors.blue
-                              .withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(10),
+                        side: const BorderSide(
+                          color: Color(0xFF3A7BFF),
                           width: 1,
                         ),
                       ),
 
-                      child: Padding(   // 🔥 جديد: إضافة تباعد داخل البطاقة
-                        padding:
-                            const EdgeInsets.symmetric(
-                          horizontal: 3,
-                          vertical: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 3,
                         ),
 
                         child: Column(
                           mainAxisAlignment:
-                              MainAxisAlignment
-                                  .spaceBetween,
+                              MainAxisAlignment.center,
                           children: [
 
                             /// 🔷 Icon
                             SvgPicture.asset(
                               getCategoryIcon(sub.id),
-                              width: 25,
-                              height: 25,
-                              placeholderBuilder:
-                                  (context) =>
-                                      const Icon(
+                              width: 30,
+                              height: 30,
+                              placeholderBuilder: (context) =>
+                                  const Icon(
                                 Icons.image_not_supported,
                                 size: 25,
+                                color: Colors.white,
                               ),
                             ),
 
-                            /// 🔷 Text                     // 🔥 الجديد: عرض اسم الفئة الفرعية
-                            Text(                      // 🔥 الجديد: عرض اسم الفئة الفرعية
-                              sub.title(t),               // 🔥 الجديد
-                              textAlign: TextAlign.center,
-                              softWrap: true,     // 🔥 الجديد: السماح بالتفاف النص
-                              maxLines: 2,     // 🔥 جديد: الحد الأقصى لعدد الأسطر
-                              overflow:    // 🔥 جديد: التعامل مع النص الطويل
-                                  TextOverflow.ellipsis,   // 🔥 جديد
-                              style:
-                                  const TextStyle(
-                                fontWeight:
-                                    FontWeight.bold,
-                                fontSize: 10,
+                            const SizedBox(height: 4),
+
+                            /// 🔷 Text (Auto resize)
+                            Expanded(
+                              child: AutoSizeText(
+                                sub.title(t),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                minFontSize: 7,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ],

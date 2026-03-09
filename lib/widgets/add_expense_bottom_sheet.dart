@@ -3,50 +3,29 @@ import 'package:flutter/material.dart';
 /// ===============================================================
 /// 🔹 دالة فتح شاشة إضافة مصروف (Bottom Sheet)
 /// ===============================================================
-/// تستقبل:
-/// - context : علشان نعرف نفتح الـ BottomSheet
-/// - categoryName : اسم الفئة اللي المستخدم اختارها
-/// ===============================================================
 void showAddExpenseSheet(BuildContext context, String categoryName) {
   showModalBottomSheet(
     context: context,
-
-    /// يسمح للـ BottomSheet ياخد مساحة كبيرة من الشاشة
     isScrollControlled: true,
-
-    /// نخلي الخلفية شفافة علشان الحواف الدائرية تبان
     backgroundColor: Colors.transparent,
-
-    /// بنستخدم DraggableScrollableSheet علشان المستخدم يقدر
-    /// يسحب الشاشة لفوق وتحت
-    builder: (_) => DraggableScrollableSheet(
-      initialChildSize: 0.6, // يبدأ بـ 60% من الشاشة
-      minChildSize: 0.45,    // أقل حاجة 45%
-      maxChildSize: 0.9,     // أقصى حاجة 90%
-      expand: false,
-      builder: (_, controller) => AddExpenseBottomSheet(
+    builder: (_) =>  SizedBox(
+      height: 295, // 🔹 ارتفاع ثابت
+      child: AddExpenseBottomSheet(
         categoryName: categoryName,
-        scrollController: controller,
       ),
     ),
   );
 }
 
 /// ===============================================================
-/// 🔹 StatefulWidget علشان المبلغ بيتغير مع الضغط على الأزرار
+/// 🔹 StatefulWidget
 /// ===============================================================
 class AddExpenseBottomSheet extends StatefulWidget {
-
-  /// اسم الفئة المختارة
   final String categoryName;
-
-  /// الكنترولر المسؤول عن سحب الشاشة
-  final ScrollController scrollController;
 
   const AddExpenseBottomSheet({
     super.key,
     required this.categoryName,
-    required this.scrollController,
   });
 
   @override
@@ -55,57 +34,40 @@ class AddExpenseBottomSheet extends StatefulWidget {
 }
 
 /// ===============================================================
-/// 🔹 الـ State اللي فيه كل المنطق
+/// 🔹 State
 /// ===============================================================
 class _AddExpenseBottomSheetState
     extends State<AddExpenseBottomSheet> {
 
-  /// المبلغ اللي المستخدم بيكتبه
-  /// استخدمنا String علشان نقدر نضيف أرقام وعلامات رياضية
   String amount = "0";
 
-  /// ===========================================================
-  /// 🔹 دالة إضافة رقم أو رمز
-  /// ===========================================================
+  /// إضافة رقم
   void addNumber(String n) {
     setState(() {
-
-      /// لو المبلغ الحالي صفر → استبدله
       if (amount == "0") {
         amount = n;
       } else {
-
-        /// غير كده → ضيف الرمز في الآخر
         amount += n;
       }
     });
   }
 
-  /// ===========================================================
-  /// 🔹 مسح كل المبلغ
-  /// ===========================================================
+  /// مسح الكل
   void clear() => setState(() => amount = "0");
 
-  /// ===========================================================
-  /// 🔹 حذف آخر حرف (زرار ⌫)
-  /// ===========================================================
+  /// حذف آخر رقم
   void backspace() {
     setState(() {
-
-      /// لو فيه أكتر من حرف → احذف آخر حرف
       if (amount.length > 1) {
-        amount =
-            amount.substring(0, amount.length - 1);
+        amount = amount.substring(0, amount.length - 1);
       } else {
-
-        /// لو حرف واحد بس → رجعه صفر
         amount = "0";
       }
     });
   }
 
   /// ===========================================================
-  /// 🔹 بناء الواجهة
+  /// 🔹 UI
   /// ===========================================================
   @override
   Widget build(BuildContext context) {
@@ -113,78 +75,79 @@ class _AddExpenseBottomSheetState
       child: Container(
         padding: const EdgeInsets.all(16),
 
-        /// شكل الخلفية + الحواف الدائرية
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: Color(0xFF1B2A6B),
           borderRadius:
               BorderRadius.vertical(top: Radius.circular(24)),
         ),
 
-        /// Row علشان نقسم الشاشة عمودين
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
             /// ===================================================
-            /// 🔵 الجزء الشمال (المبلغ + الكيباد)
+            /// 🔵 LEFT SIDE
             /// ===================================================
             Expanded(
-              flex: 4, // ياخد 4/5 العرض تقريبًا
+              flex: 4,
               child: Column(
                 children: [
 
-                  /// 🔹 شريط عرض المبلغ
-                  Container(                                    // تصميم الشريط
-                    padding: const EdgeInsets.symmetric(           
-                        horizontal: 16, vertical: 10),
+                  /// 🔹 Amount Display
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 5),
+
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1F2C44),
-                      borderRadius:
-                          BorderRadius.circular(14),
+                      color: const Color(0xFF0F1B4C),
+                      borderRadius: BorderRadius.circular(14),
                     ),
 
-                    /// صف فيه العملة شمال والمبلغ يمين
                     child: Row(
                       mainAxisAlignment:
                           MainAxisAlignment.spaceBetween,
                       children: [
+
                         const Text(
                           "EGP",
                           style: TextStyle(
-                              color: Colors.white70),
+                            color: Colors.white70,
+                          ),
                         ),
+
                         Text(
                           amount,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 20,
-                            fontWeight:
-                                FontWeight.bold,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 5),
 
-                  /// 🔹 الكيباد
-                  /// بنجبره يبقى LTR علشان الأرقام متتعكسش
+                  /// 🔹 Keypad
                   Directionality(
                     textDirection: TextDirection.ltr,
                     child: GridView.count(
                       shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 5, // 5 أعمدة
-                      mainAxisSpacing: 5,
-                      crossAxisSpacing: 5,
+                      physics:
+                          const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 5,
+                      mainAxisSpacing: 6,
+                      crossAxisSpacing: 6,
                       children: [
+
                         ...[
                           "⌫","1","2","3","/",
                           "C","4","5","6","×",
                           "%","7","8","9","-",
                           "",".","0","=","+",
                         ].map((e) => keypadButton(e)),
+
                       ],
                     ),
                   ),
@@ -195,35 +158,39 @@ class _AddExpenseBottomSheetState
             const SizedBox(width: 14),
 
             /// ===================================================
-            /// 🟡 الجزء اليمين (الفئة + الأزرار)
+            /// 🟡 RIGHT SIDE
             /// ===================================================
             Expanded(
-              flex: 1, // ياخد 1/5 العرض
+              flex: 1,
               child: Column(
                 children: [
 
-                  /// 🔹 كارت الفئة
+                  /// 🔹 Category Card
                   Container(
                     padding: const EdgeInsets.all(12),
+
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF5D7),
+                      color: const Color(0xFF243A8F),
                       borderRadius:
                           BorderRadius.circular(14),
                     ),
-                    child: Column(          // صف أيقونة الفئة واسمها
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
+
+                    child: Column(
                       children: [
+
                         const Icon(
-                          Icons.local_gas_station,       // هيتغير لاحقا ويتربط
+                          Icons.local_gas_station,
                           size: 30,
-                          color: Colors.orange,
+                          color: Color(0xFF4FD1FF),
                         ),
+
                         const SizedBox(height: 4),
+
                         Text(
                           widget.categoryName,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
+                            color: Colors.white,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -231,38 +198,44 @@ class _AddExpenseBottomSheetState
                     ),
                   ),
 
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
 
-                  /// 🔹 زرار Today
+                  /// 🔹 Today Button
                   sideButton(
-                      icon: Icons.calendar_today,
-                      label: "Today"),
+                    icon: Icons.calendar_today,
+                    label: "Today",
+                  ),
 
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
 
-                  /// 🔹 زرار Notes
+                  /// 🔹 Notes Button
                   sideButton(
-                      icon: Icons.note,
-                      label: "Notes"),
+                    icon: Icons.note,
+                    label: "Notes",
+                  ),
 
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
 
-                  /// 🔹 زرار Save
+                  /// 🔹 Save Button
                   Container(
                     width: double.infinity,
                     padding:
-                        const EdgeInsets.symmetric(vertical: 20),
+                        const EdgeInsets.symmetric(
+                            vertical: 20),
+
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2C4A7A),
+                      color: const Color(0xFF3A7BFF),
                       borderRadius:
                           BorderRadius.circular(14),
                     ),
+
                     child: const Center(
                       child: Text(
                         "Save",
                         style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -276,31 +249,34 @@ class _AddExpenseBottomSheetState
   }
 
   /// ===========================================================
-  /// 🔹 تصميم زرار الكيباد
+  /// 🔹 Keypad Button
   /// ===========================================================
   Widget keypadButton(String text) {
     return GestureDetector(
       onTap: () {
 
-        /// لو زرار حذف
         if (text == "⌫") {
           backspace();
-        } else {
-
-          /// غير كده ضيف الرمز
+        } else if (text == "C") {
+          clear();
+        } else if (text.isNotEmpty) {
           addNumber(text);
         }
+
       },
+
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: const Color(0xFF243A8F),
           borderRadius:
               BorderRadius.circular(12),
         ),
+
         child: Center(
           child: Text(
             text,
             style: const TextStyle(
+              color: Colors.white,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -311,7 +287,7 @@ class _AddExpenseBottomSheetState
   }
 
   /// ===========================================================
-  /// 🔹 زرار جانبي (Today / Notes)
+  /// 🔹 Side Button
   /// ===========================================================
   Widget sideButton({
     required IconData icon,
@@ -321,18 +297,32 @@ class _AddExpenseBottomSheetState
       width: double.infinity,
       padding:
           const EdgeInsets.symmetric(vertical: 14),
+
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: const Color(0xFF243A8F),
         borderRadius:
             BorderRadius.circular(12),
       ),
+
       child: Row(
         mainAxisAlignment:
             MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 18),
+
+          Icon(
+            icon,
+            size: 18,
+            color: const Color(0xFF4FD1FF),
+          ),
+
           const SizedBox(width: 6),
-          Text(label),
+
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+            ),
+          ),
         ],
       ),
     );

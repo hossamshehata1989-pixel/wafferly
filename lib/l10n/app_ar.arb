@@ -83,8 +83,8 @@
   "coffee": "قهوة",
   "hotDrinks": "مشروبات ساخنة",
   "herbalDrinks": "أعشاب ساخنه",
-  "cola": "مشروبات غازية",
-  "naturalJuice": "عصير طبيعي",
+  "cola": "حاجة ساقعة ",
+  "juice": "عصير",
   "naturalMilk": "لبن حليب",
 
 
@@ -202,11 +202,19 @@
   "eidMoney": "عيدية",
   "gifts": "هدايا",
 
-  "clubTools": "أدوات نادي",
-  "clubMembership": "اشتراك نادي",
-  "gymMembership": "اشتراك جيم",
-  "gymTools": "أدوات جيم",
-
+  "sportsSubscriptions": "اشتراكات رياضية",
+  "sportsEquipment": "أدوات رياضية",
+  "sportsSupplements": "مكملات رياضية",
+  "pets": "حيوانات أليفة",
+  "videoGames": "ألعاب إلكترونية",
+  "skating": "التزلج",
+  "gardeningAndPlants": "الزراعة والنباتات",
+  "reading": "القراءة",
+  "music": "الموسيقى",
+  "arts": "الفنون",
+  "photography": "التصوير",
+  "handmade": "الأشغال اليدوية",
+  
   "babyMilk": "لبن أطفال",
   "babyFood": "أكل بيبي",
   "diapers": "حفاضات",
