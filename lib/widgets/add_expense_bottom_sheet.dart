@@ -1,31 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../theme/app_colors.dart';
+import '../utils/category_icons.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/expense.dart';
 
-/// ===============================================================
-/// 🔹 دالة فتح شاشة إضافة مصروف (Bottom Sheet)
-/// ===============================================================
-void showAddExpenseSheet(BuildContext context, String categoryName) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) =>  SizedBox(
-      height: 295, // 🔹 ارتفاع ثابت
-      child: AddExpenseBottomSheet(
-        categoryName: categoryName,
-      ),
-    ),
-  );
+class SelectedCategory {
+
+  final String id;
+  final String name;
+
+  SelectedCategory({
+    required this.id,
+    required this.name,
+  });
+
 }
 
-/// ===============================================================
-/// 🔹 StatefulWidget
-/// ===============================================================
+PersistentBottomSheetController? _controller;
+
+void showAddExpenseSheet(
+  BuildContext context,
+  ValueNotifier<SelectedCategory> categoryNotifier,
+) {
+
+  if (_controller != null) return;
+
+  _controller = Scaffold.of(context).showBottomSheet(
+
+    (context) => FractionallySizedBox(
+      heightFactor: 0.4, // 👈 يتحكم في الارتفاع
+      child: AddExpenseBottomSheet(
+        categoryNotifier: categoryNotifier,
+
+      ),
+    ),
+
+  );
+
+  _controller!.closed.then((_) {
+    _controller = null;
+  });
+
+}
+
 class AddExpenseBottomSheet extends StatefulWidget {
-  final String categoryName;
+
+  final ValueNotifier<SelectedCategory> categoryNotifier;
 
   const AddExpenseBottomSheet({
     super.key,
-    required this.categoryName,
+    required this.categoryNotifier,
   });
 
   @override
@@ -33,79 +58,144 @@ class AddExpenseBottomSheet extends StatefulWidget {
       _AddExpenseBottomSheetState();
 }
 
-/// ===============================================================
-/// 🔹 State
-/// ===============================================================
 class _AddExpenseBottomSheetState
     extends State<AddExpenseBottomSheet> {
 
   String amount = "0";
 
-  /// إضافة رقم
   void addNumber(String n) {
+
     setState(() {
+
       if (amount == "0") {
         amount = n;
       } else {
         amount += n;
       }
+
     });
+
   }
 
-  /// مسح الكل
   void clear() => setState(() => amount = "0");
 
-  /// حذف آخر رقم
   void backspace() {
+
     setState(() {
+
       if (amount.length > 1) {
         amount = amount.substring(0, amount.length - 1);
       } else {
         amount = "0";
       }
+
     });
+
   }
 
-  /// ===========================================================
-  /// 🔹 UI
-  /// ===========================================================
   @override
   Widget build(BuildContext context) {
+
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.all(16),
+
+        padding: const EdgeInsets.all(5),
 
         decoration: const BoxDecoration(
-          color: Color(0xFF1B2A6B),
+          color: AppColors.card,
           borderRadius:
-              BorderRadius.vertical(top: Radius.circular(24)),
+              BorderRadius.vertical(top: Radius.circular(22)),
         ),
 
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+
           children: [
 
-            /// ===================================================
-            /// 🔵 LEFT SIDE
-            /// ===================================================
-            Expanded(
-              flex: 4,
+            /// LEFT PANEL
+            SizedBox(
+              width: 75,
+
               child: Column(
+
                 children: [
 
-                  /// 🔹 Amount Display
+                  /// CATEGORY ICON
+
+                  ValueListenableBuilder<SelectedCategory>(
+
+                    valueListenable: widget.categoryNotifier,
+
+                    builder: (context, category, _) {
+
+                      return Container(
+
+                        width: 64,
+                        height: 64,
+                        padding: const EdgeInsets.all(1),
+
+                        decoration: BoxDecoration(
+                          color: AppColors.cardSecondary,
+                          shape: BoxShape.circle,
+                        ),
+
+                        child: SvgPicture.asset(
+                          getCategoryIcon(category.id),
+                          key: ValueKey(category.id),
+                        ),
+
+                      );
+
+                    },
+
+                  ),
+
+                  const SizedBox(height: 3),
+
+                  const Text(
+                    "Category",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70),
+                  ),
+
+                  const SizedBox(height: 1),
+
+                  sideButton("Date"),
+                  const SizedBox(height: 6),
+
+                  sideButton("Note"),
+                  const SizedBox(height: 6),
+
+                  sideButton("Cash"),
+
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 0),
+
+            /// RIGHT PANEL
+            Expanded(
+
+              child: Column(
+
+                children: [
+
+                  /// AMOUNT DISPLAY
+
                   Container(
+
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 5),
+                        horizontal: 16, vertical: 4),
 
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F1B4C),
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(14),
                     ),
 
                     child: Row(
                       mainAxisAlignment:
                           MainAxisAlignment.spaceBetween,
+
                       children: [
 
                         const Text(
@@ -119,126 +209,120 @@ class _AddExpenseBottomSheetState
                           amount,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 22,
+                            fontSize: 26,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+
                       ],
                     ),
                   ),
 
                   const SizedBox(height: 5),
 
-                  /// 🔹 Keypad
+                  /// KEYPAD
+
                   Directionality(
                     textDirection: TextDirection.ltr,
                     child: GridView.count(
+
                       shrinkWrap: true,
                       physics:
                           const NeverScrollableScrollPhysics(),
-                      crossAxisCount: 5,
-                      mainAxisSpacing: 6,
+
+                      crossAxisCount: 4,
+                      mainAxisSpacing: 4,
                       crossAxisSpacing: 6,
+                      childAspectRatio: 1.853, // 👈 ده السحر 🔥
+
                       children: [
 
                         ...[
-                          "⌫","1","2","3","/",
-                          "C","4","5","6","×",
-                          "%","7","8","9","-",
-                          "",".","0","=","+",
+                          "1","2","3","⌫",
+                          "4","5","6","C",
+                          "7","8","9","×",
+                          ".","0","=","+",
                         ].map((e) => keypadButton(e)),
 
                       ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
 
-            const SizedBox(width: 14),
-
-            /// ===================================================
-            /// 🟡 RIGHT SIDE
-            /// ===================================================
-            Expanded(
-              flex: 1,
-              child: Column(
-                children: [
-
-                  /// 🔹 Category Card
-                  Container(
-                    padding: const EdgeInsets.all(12),
-
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF243A8F),
-                      borderRadius:
-                          BorderRadius.circular(14),
-                    ),
-
-                    child: Column(
-                      children: [
-
-                        const Icon(
-                          Icons.local_gas_station,
-                          size: 30,
-                          color: Color(0xFF4FD1FF),
-                        ),
-
-                        const SizedBox(height: 4),
-
-                        Text(
-                          widget.categoryName,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
                     ),
                   ),
 
                   const SizedBox(height: 6),
 
-                  /// 🔹 Today Button
-                  sideButton(
-                    icon: Icons.calendar_today,
-                    label: "Today",
-                  ),
+                  /// SAVE BUTTON
 
-                  const SizedBox(height: 6),
+                  SizedBox(
 
-                  /// 🔹 Notes Button
-                  sideButton(
-                    icon: Icons.note,
-                    label: "Notes",
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  /// 🔹 Save Button
-                  Container(
                     width: double.infinity,
-                    padding:
-                        const EdgeInsets.symmetric(
-                            vertical: 20),
+                    height: 40,
 
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3A7BFF),
-                      borderRadius:
-                          BorderRadius.circular(14),
-                    ),
+                    child: ElevatedButton(
 
-                    child: const Center(
-                      child: Text(
-                        "Save",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(10),
                         ),
                       ),
+
+                      onPressed: () {
+
+                        final value = double.tryParse(amount) ?? 0;
+
+                        // ❌ منع حفظ قيمة صفر
+                        if (value == 0) return;
+
+                        final box = Hive.box<Expense>('expenses');
+
+                        final newExpense = Expense(
+
+                          // -------------------------------------------------
+                          // 🏷 Title (مؤقت لحد ما نضيف input)
+                          // -------------------------------------------------
+                          title: "Expense",
+
+                          // -------------------------------------------------
+                          // 💰 Amount من الكيباد
+                          // -------------------------------------------------
+                          amount: double.tryParse(amount) ?? 0,
+
+                          // -------------------------------------------------
+                          // 📂 Category
+                          // -------------------------------------------------
+                          category: widget.categoryNotifier.value.name,
+
+                          // -------------------------------------------------
+                          // 📅 Date
+                          // -------------------------------------------------
+                          date: DateTime.now(),
+                        );
+
+                          // ---------------------------------------------------
+                          // 🔥 Save to Hive
+                          // ---------------------------------------------------
+                        box.add(newExpense);
+
+                          // ---------------------------------------------------
+                          // ❌ Close BottomSheet
+                          // ---------------------------------------------------
+                        Navigator.pop(context);
+                      },
+
+                      child: const Text(
+                        "Save",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+
                     ),
+
                   ),
+
                 ],
               ),
             ),
@@ -248,26 +332,57 @@ class _AddExpenseBottomSheetState
     );
   }
 
-  /// ===========================================================
-  /// 🔹 Keypad Button
-  /// ===========================================================
+  Widget sideButton(String text) {      // زر جانبي بسيط (التاريخ، الملاحظة، طريقة الدفع، ...)
+
+    return Container(
+
+      width: double.infinity,
+      height: 40,
+
+      decoration: BoxDecoration(
+        color: AppColors.cardSecondary,
+        borderRadius: BorderRadius.circular(8),
+      ),
+
+      child: Center(           // نص الزر
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+          ),
+        ),
+      ),
+
+    );
+
+  }
+
   Widget keypadButton(String text) {
+
     return GestureDetector(
+
       onTap: () {
 
         if (text == "⌫") {
           backspace();
-        } else if (text == "C") {
+        }
+
+        else if (text == "C") {
           clear();
-        } else if (text.isNotEmpty) {
+        }
+
+        else if (text.isNotEmpty) {
           addNumber(text);
         }
 
       },
 
       child: Container(
+        height: 50,   // ← غير الرقم ده
+
         decoration: BoxDecoration(
-          color: const Color(0xFF243A8F),
+          color: AppColors.cardSecondary,
           borderRadius:
               BorderRadius.circular(12),
         ),
@@ -277,53 +392,11 @@ class _AddExpenseBottomSheetState
             text,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  /// ===========================================================
-  /// 🔹 Side Button
-  /// ===========================================================
-  Widget sideButton({
-    required IconData icon,
-    required String label,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding:
-          const EdgeInsets.symmetric(vertical: 14),
-
-      decoration: BoxDecoration(
-        color: const Color(0xFF243A8F),
-        borderRadius:
-            BorderRadius.circular(12),
-      ),
-
-      child: Row(
-        mainAxisAlignment:
-            MainAxisAlignment.center,
-        children: [
-
-          Icon(
-            icon,
-            size: 18,
-            color: const Color(0xFF4FD1FF),
-          ),
-
-          const SizedBox(width: 6),
-
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-            ),
-          ),
-        ],
       ),
     );
   }

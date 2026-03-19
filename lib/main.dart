@@ -1,9 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'screens/expenses_screen.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+/// Screens
+import 'screens/main_navigation.dart';
+
+/// Localization
 import 'l10n/app_localizations.dart';
 
-void main() {
+/// Theme
+import 'theme/app_colors.dart';
+
+/// Models
+import 'models/expense.dart';
+
+void main() async {
+
+  // ---------------------------------------------------
+  // ⚠️ مهم جدًا
+  // ---------------------------------------------------
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // ---------------------------------------------------
+  // 🔥 Init Hive
+  // ---------------------------------------------------
+  await Hive.initFlutter();
+
+  // ---------------------------------------------------
+  // 🧠 Register Adapter
+  // ---------------------------------------------------
+  Hive.registerAdapter(ExpenseAdapter());
+
+  // ---------------------------------------------------
+  // 📦 Open Box
+  // ---------------------------------------------------
+  await Hive.openBox<Expense>('expenses');
+
   runApp(const WafferlyApp());
 }
 
@@ -12,35 +43,20 @@ class WafferlyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
       title: 'Wafferly',
+      debugShowCheckedModeBanner: false,
 
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-
-      supportedLocales: const [
-        Locale('en'),
-        Locale('ar'),
-      ],
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
 
       theme: ThemeData(
-        primaryColor: const Color(0xFF3A7BFF),
-
-        scaffoldBackgroundColor: const Color(0xFF0F1B4C),
-
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0F1B4C),
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
+        scaffoldBackgroundColor: AppColors.background,
+        primaryColor: AppColors.primary,
       ),
 
-      home: const ExpensesScreen(),
+      home: const MainNavigation(),
     );
   }
 }
