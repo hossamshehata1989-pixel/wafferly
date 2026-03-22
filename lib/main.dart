@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-/// Screens
 import 'screens/main_navigation.dart';
-
-/// Localization
-import 'l10n/app_localizations.dart';
-
-/// Theme
-import 'theme/app_colors.dart';
-
-/// Models
 import 'models/expense.dart';
+
+import 'l10n/app_localizations.dart';
+import 'theme/app_colors.dart';
 
 void main() async {
 
@@ -43,7 +37,6 @@ class WafferlyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return MaterialApp(
       title: 'Wafferly',
       debugShowCheckedModeBanner: false,

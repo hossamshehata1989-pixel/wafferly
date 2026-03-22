@@ -34,6 +34,13 @@ class Expense extends HiveObject {
   DateTime date;
 
   // ---------------------------------------------------
+  // 🔁 Is One-Time Expense
+  // ---------------------------------------------------
+  @HiveField(4)
+  bool isOneTime;
+
+
+  // ---------------------------------------------------
   // 🏗 Constructor
   // ---------------------------------------------------
   Expense({
@@ -41,5 +48,6 @@ class Expense extends HiveObject {
     required this.amount,
     required this.category,
     required this.date,
+    required this.isOneTime, // 👈 جديد
   });
 }

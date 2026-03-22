@@ -13,6 +13,8 @@ import '../l10n/app_localizations.dart';
 
 /// Theme
 import '../theme/app_colors.dart';
+import '../data/categories_data.dart';
+
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -189,8 +191,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
           const SizedBox(height: 10),
 
-          if (selectedMainIndex != -1)
-
+          if (selectedMainIndex >= 0 &&
+              selectedMainIndex < mainCategories.length)
             SubCategoriesSection(
               key: ValueKey(selectedMainIndex),
               mainCategoryIndex: selectedMainIndex,

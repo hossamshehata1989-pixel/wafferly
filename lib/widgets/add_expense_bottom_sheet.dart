@@ -6,7 +6,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/expense.dart';
 
 class SelectedCategory {
-
   final String id;
   final String name;
 
@@ -14,7 +13,6 @@ class SelectedCategory {
     required this.id,
     required this.name,
   });
-
 }
 
 PersistentBottomSheetController? _controller;
@@ -23,29 +21,23 @@ void showAddExpenseSheet(
   BuildContext context,
   ValueNotifier<SelectedCategory> categoryNotifier,
 ) {
-
   if (_controller != null) return;
 
   _controller = Scaffold.of(context).showBottomSheet(
-
     (context) => FractionallySizedBox(
-      heightFactor: 0.4, // 👈 يتحكم في الارتفاع
+      heightFactor: 0.4,
       child: AddExpenseBottomSheet(
         categoryNotifier: categoryNotifier,
-
       ),
     ),
-
   );
 
   _controller!.closed.then((_) {
     _controller = null;
   });
-
 }
 
 class AddExpenseBottomSheet extends StatefulWidget {
-
   final ValueNotifier<SelectedCategory> categoryNotifier;
 
   const AddExpenseBottomSheet({
@@ -63,34 +55,162 @@ class _AddExpenseBottomSheetState
 
   String amount = "0";
 
+  DateTime selectedDate = DateTime.now();
+  String note = "";
+  String paymentMethod = "Cash";
+
+  String activeField = "";
+
+  void saveExpense({required bool isOneTime}) {
+
+    final value = double.tryParse(amount) ?? 0;
+    if (value == 0) return;
+
+    final box = Hive.box<Expense>('expenses');
+
+    final newExpense = Expense(
+      title: note.isEmpty ? "Expense" : note,
+      amount: value,
+      category: widget.categoryNotifier.value.name,
+      date: selectedDate,
+      isOneTime: isOneTime,
+    );
+
+    box.add(newExpense);
+
+    Navigator.pop(context);
+  }
+
   void addNumber(String n) {
-
     setState(() {
-
       if (amount == "0") {
         amount = n;
       } else {
         amount += n;
       }
-
     });
-
   }
 
   void clear() => setState(() => amount = "0");
 
   void backspace() {
-
     setState(() {
-
       if (amount.length > 1) {
         amount = amount.substring(0, amount.length - 1);
       } else {
         amount = "0";
       }
-
     });
+  }
 
+  void pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+
+    if (picked != null) {
+      setState(() {
+        selectedDate = picked;
+        activeField = "date";
+      });
+    }
+  }
+
+  void addNote() {
+    final controller = TextEditingController(text: note);
+
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text("Add Note"),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: "Write something...",
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  note = controller.text;
+                  if (note.isNotEmpty) {
+                    activeField = "note";
+                  }
+                });
+                Navigator.pop(context);
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void pickPayment() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+
+            ListTile(
+              title: const Text("Cash"),
+              onTap: () {
+                setState(() {
+                  paymentMethod = "Cash";
+                  activeField = "payment";
+                });
+                Navigator.pop(context);
+              },
+            ),
+
+            ListTile(
+              title: const Text("Card"),
+              onTap: () {
+                setState(() {
+                  paymentMethod = "Card";
+                  activeField = "payment";
+                });
+                Navigator.pop(context);
+              },
+            ),
+
+            ListTile(
+              title: const Text("Wallet"),
+              onTap: () {
+                setState(() {
+                  paymentMethod = "Wallet";
+                  activeField = "payment";
+                });
+                Navigator.pop(context);
+              },
+            ),
+
+          ],
+        );
+      },
+    );
+  }
+
+  String getPaymentIcon() {
+    if (paymentMethod == "Cash") {
+      return "assets/icons/ui/wallet.svg";
+    } else if (paymentMethod == "Card") {
+      return "assets/icons/ui/card.svg";
+    } else {
+      return "assets/icons/ui/wallet.svg";
+    }
   }
 
   @override
@@ -98,9 +218,7 @@ class _AddExpenseBottomSheetState
 
     return SafeArea(
       child: Container(
-
         padding: const EdgeInsets.all(5),
-
         decoration: const BoxDecoration(
           color: AppColors.card,
           borderRadius:
@@ -108,221 +226,146 @@ class _AddExpenseBottomSheetState
         ),
 
         child: Row(
-
           children: [
 
-            /// LEFT PANEL
+            /// LEFT
             SizedBox(
               width: 75,
-
               child: Column(
-
                 children: [
 
-                  /// CATEGORY ICON
-
                   ValueListenableBuilder<SelectedCategory>(
-
                     valueListenable: widget.categoryNotifier,
-
                     builder: (context, category, _) {
-
                       return Container(
-
                         width: 64,
                         height: 64,
-                        padding: const EdgeInsets.all(1),
-
                         decoration: BoxDecoration(
                           color: AppColors.cardSecondary,
                           shape: BoxShape.circle,
                         ),
-
                         child: SvgPicture.asset(
                           getCategoryIcon(category.id),
-                          key: ValueKey(category.id),
                         ),
-
                       );
-
                     },
-
                   ),
 
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 6),
 
-                  const Text(
-                    "Category",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: pickDate,
+                    child: sideButton(
+                      text: "${selectedDate.day}/${selectedDate.month}",
+                      iconPath: "assets/icons/ui/calendar.svg",
+                      isActive: activeField == "date",
+                    ),
                   ),
 
-                  const SizedBox(height: 1),
-
-                  sideButton("Date"),
                   const SizedBox(height: 6),
 
-                  sideButton("Note"),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: addNote,
+                    child: sideButton(
+                      text: note.isEmpty ? "Note" : "Added",
+                      iconPath: "assets/icons/ui/note.svg",
+                      isActive: activeField == "note",
+                    ),
+                  ),
+
                   const SizedBox(height: 6),
 
-                  sideButton("Cash"),
-
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: pickPayment,
+                    child: sideButton(
+                      text: paymentMethod,
+                      iconPath: getPaymentIcon(),
+                      isActive: activeField == "payment",
+                    ),
+                  ),
                 ],
               ),
             ),
 
-            const SizedBox(width: 0),
+            const SizedBox(width: 6),
 
-            /// RIGHT PANEL
+            /// RIGHT
             Expanded(
-
               child: Column(
-
                 children: [
 
-                  /// AMOUNT DISPLAY
-
                   Container(
-
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 4),
-
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(14),
                     ),
-
                     child: Row(
                       mainAxisAlignment:
                           MainAxisAlignment.spaceBetween,
-
                       children: [
-
-                        const Text(
-                          "EGP",
-                          style: TextStyle(
-                            color: Colors.white70,
-                          ),
-                        ),
-
-                        Text(
-                          amount,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-
+                        const Text("EGP",
+                            style: TextStyle(color: Colors.white70)),
+                        Text(amount,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
 
                   const SizedBox(height: 5),
 
-                  /// KEYPAD
-
-                  Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: GridView.count(
-
-                      shrinkWrap: true,
-                      physics:
-                          const NeverScrollableScrollPhysics(),
-
-                      crossAxisCount: 4,
-                      mainAxisSpacing: 4,
-                      crossAxisSpacing: 6,
-                      childAspectRatio: 1.853, // 👈 ده السحر 🔥
-
-                      children: [
-
-                        ...[
-                          "1","2","3","⌫",
-                          "4","5","6","C",
-                          "7","8","9","×",
-                          ".","0","=","+",
-                        ].map((e) => keypadButton(e)),
-
-                      ],
-
-                    ),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 4,
+                    childAspectRatio: 1.8,
+                    children: [
+                      ...[
+                        "1","2","3","⌫",
+                        "4","5","6","C",
+                        "7","8","9","×",
+                        ".","0","=","+",
+                      ].map((e) => keypadButton(e)),
+                    ],
                   ),
 
                   const SizedBox(height: 6),
 
-                  /// SAVE BUTTON
+                  Row(
+                    children: [
 
-                  SizedBox(
-
-                    width: double.infinity,
-                    height: 40,
-
-                    child: ElevatedButton(
-
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(10),
+                      Expanded(
+                        flex: 3,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green),
+                          onPressed: () =>
+                              saveExpense(isOneTime: false),
+                          child: const Text("Save"),
                         ),
                       ),
 
-                      onPressed: () {
+                      const SizedBox(width: 8),
 
-                        final value = double.tryParse(amount) ?? 0;
-
-                        // ❌ منع حفظ قيمة صفر
-                        if (value == 0) return;
-
-                        final box = Hive.box<Expense>('expenses');
-
-                        final newExpense = Expense(
-
-                          // -------------------------------------------------
-                          // 🏷 Title (مؤقت لحد ما نضيف input)
-                          // -------------------------------------------------
-                          title: "Expense",
-
-                          // -------------------------------------------------
-                          // 💰 Amount من الكيباد
-                          // -------------------------------------------------
-                          amount: double.tryParse(amount) ?? 0,
-
-                          // -------------------------------------------------
-                          // 📂 Category
-                          // -------------------------------------------------
-                          category: widget.categoryNotifier.value.name,
-
-                          // -------------------------------------------------
-                          // 📅 Date
-                          // -------------------------------------------------
-                          date: DateTime.now(),
-                        );
-
-                          // ---------------------------------------------------
-                          // 🔥 Save to Hive
-                          // ---------------------------------------------------
-                        box.add(newExpense);
-
-                          // ---------------------------------------------------
-                          // ❌ Close BottomSheet
-                          // ---------------------------------------------------
-                        Navigator.pop(context);
-                      },
-
-                      child: const Text(
-                        "Save",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade300),
+                          onPressed: () =>
+                              saveExpense(isOneTime: true),
+                          child: const Text("One-time"),
                         ),
                       ),
-
-                    ),
-
+                    ],
                   ),
-
                 ],
               ),
             ),
@@ -332,70 +375,84 @@ class _AddExpenseBottomSheetState
     );
   }
 
-  Widget sideButton(String text) {      // زر جانبي بسيط (التاريخ، الملاحظة، طريقة الدفع، ...)
+  Widget sideButton({
+    required String text,
+    required String iconPath,
+    required bool isActive,
+  }) {
 
-    return Container(
-
-      width: double.infinity,
-      height: 40,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      height: 50,
 
       decoration: BoxDecoration(
-        color: AppColors.cardSecondary,
-        borderRadius: BorderRadius.circular(8),
-      ),
-
-      child: Center(           // نص الزر
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-          ),
+        color: isActive
+            ? AppColors.primary.withOpacity(0.2)
+            : AppColors.cardSecondary,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isActive
+              ? AppColors.primary
+              : Colors.transparent,
+          width: 1.2,
         ),
       ),
 
-    );
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
 
+          SvgPicture.asset(
+            iconPath,
+            width: 16,
+            height: 16,
+            color: isActive
+                ? AppColors.primary
+                : Colors.white70,
+          ),
+
+          const SizedBox(width: 6),
+
+          Text(
+            text,
+            style: TextStyle(
+              color: isActive
+                  ? AppColors.primary
+                  : Colors.white,
+              fontWeight:
+                  isActive ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+
+          if (isActive) ...[
+            const SizedBox(width: 6),
+            const Icon(Icons.check,
+                size: 14, color: Colors.green),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget keypadButton(String text) {
-
     return GestureDetector(
-
       onTap: () {
-
-        if (text == "⌫") {
-          backspace();
-        }
-
-        else if (text == "C") {
-          clear();
-        }
-
-        else if (text.isNotEmpty) {
-          addNumber(text);
-        }
-
+        if (text == "⌫") backspace();
+        else if (text == "C") clear();
+        else addNumber(text);
       },
-
       child: Container(
-        height: 50,   // ← غير الرقم ده
-
         decoration: BoxDecoration(
           color: AppColors.cardSecondary,
-          borderRadius:
-              BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(12),
         ),
-
         child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          child: Text(text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 30,
+                fontWeight: FontWeight.bold,
+              )),
         ),
       ),
     );

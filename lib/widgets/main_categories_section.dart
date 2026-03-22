@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:reorderables/reorderables.dart';
+
+/// 🌍 Localization
 import '../l10n/app_localizations.dart';
+
+/// 📊 Data
 import '../categories/category.dart';
 import '../data/categories_data.dart';
+
+/// 🧩 UI
 import 'category_card.dart';
+
+/// 🎨 Colors
 import '../theme/app_colors.dart';
 
 /// BottomSheet model
@@ -43,7 +51,9 @@ class _MainCategoriesSectionState
     categoriesList = List.from(mainCategories);
   }
 
-  /// BottomSheet حذف فئة
+  // =====================================================
+  // 🗑 Delete BottomSheet
+  // =====================================================
   void _showDeleteSheet(BuildContext context, int index) {
 
     final t = AppLocalizations.of(context)!;
@@ -73,7 +83,7 @@ class _MainCategoriesSectionState
 
               const SizedBox(height: 20),
 
-              /// زر الحذف
+              /// 🗑 Delete
               ListTile(
                 leading: const Icon(
                   Icons.delete,
@@ -93,6 +103,11 @@ class _MainCategoriesSectionState
                   }
 
                   setState(() {
+
+                    /// 🔥 حماية من crash
+                    if (index < 0 ||
+                        index >= categoriesList.length) return;
+
                     categoriesList.removeAt(index);
                   });
 
@@ -100,7 +115,7 @@ class _MainCategoriesSectionState
                 },
               ),
 
-              /// إلغاء
+              /// ❌ Cancel
               ListTile(
                 leading: const Icon(Icons.close),
                 title: Text(t.cancel),
@@ -116,6 +131,13 @@ class _MainCategoriesSectionState
 
   @override
   Widget build(BuildContext context) {
+
+    // =====================================================
+    // 🚨 Safety Check (مهم جدًا)
+    // =====================================================
+    if (categoriesList.isEmpty) {
+      return const SizedBox();
+    }
 
     final double containerHeight =
         (cardHeight * visibleRows) + 20;
@@ -180,9 +202,18 @@ class _MainCategoriesSectionState
             runSpacing: spacingBetweenCards,
             needsLongPressDraggable: true,
 
+            // =====================================================
+            // 🔄 Reorder
+            // =====================================================
             onReorder: (oldIndex, newIndex) {
 
               setState(() {
+
+                /// 🔥 حماية
+                if (oldIndex < 0 ||
+                    oldIndex >= categoriesList.length ||
+                    newIndex < 0 ||
+                    newIndex > categoriesList.length) return;
 
                 final item =
                     categoriesList.removeAt(oldIndex);
@@ -209,18 +240,25 @@ class _MainCategoriesSectionState
                     key: ValueKey('${category.id}_$index'),
 
                     categoryId: category.id,
-
                     title: category.title,
 
                     selected:
                         widget.selectedIndex == index,
 
-                    /// مهم
                     selectedCategory:
                         widget.selectedCategory,
 
-                    onTap: () =>
-                        widget.onSelect(index),
+                    // =====================================================
+                    // 👆 Tap
+                    // =====================================================
+                    onTap: () {
+
+                      /// 🔥 حماية
+                      if (index < 0 ||
+                          index >= categoriesList.length) return;
+
+                      widget.onSelect(index);
+                    },
 
                     onLongPress: () =>
                         _showDeleteSheet(context, index),

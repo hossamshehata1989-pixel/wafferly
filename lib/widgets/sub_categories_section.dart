@@ -39,29 +39,33 @@ class SubCategoriesSection extends StatelessWidget {
 
     final t = AppLocalizations.of(context)!;
 
+    // =====================================================
+    // 🚨 FIX: حماية من الـ RangeError
+    // =====================================================
+    if (mainCategoryIndex < 0 ||
+        mainCategoryIndex >= mainCategories.length) {
+      return const SizedBox();
+    }
+
     final category = mainCategories[mainCategoryIndex];
     final subs = category.subCategories;
 
     final bool twoRows = subs.length > 9;
 
     return Padding(
-
       padding: const EdgeInsets.symmetric(horizontal: 2),
 
       child: Column(
-
         crossAxisAlignment: CrossAxisAlignment.start,
 
         children: [
 
           /// Title
           Padding(
-
             padding: const EdgeInsets.symmetric(
               horizontal: 5,
               vertical: 2,
             ),
-
             child: Text(
               t.subCategories,
               style: const TextStyle(
@@ -70,12 +74,10 @@ class SubCategoriesSection extends StatelessWidget {
                 color: Colors.white,
               ),
             ),
-
           ),
 
           /// Container
           Container(
-
             height: twoRows ? 140 : 75,
 
             padding: const EdgeInsets.only(
@@ -102,21 +104,16 @@ class SubCategoriesSection extends StatelessWidget {
             ),
 
             child: Scrollbar(
-
               radius: const Radius.circular(10),
               thickness: 4,
 
               child: GridView.builder(
-
                 physics: const BouncingScrollPhysics(),
-
                 scrollDirection: Axis.horizontal,
-
                 itemCount: subs.length,
 
                 gridDelegate:
                     SliverGridDelegateWithFixedCrossAxisCount(
-
                   crossAxisCount: twoRows ? 2 : 1,
                   mainAxisSpacing: 0,
                   crossAxisSpacing: 3,
@@ -131,7 +128,6 @@ class SubCategoriesSection extends StatelessWidget {
 
                     onTap: () {
 
-                      /// تغيير الفئة المختارة فقط
                       selectedCategory.value = SelectedCategory(
                         id: sub.id,
                         name: sub.title(t),
@@ -141,23 +137,17 @@ class SubCategoriesSection extends StatelessWidget {
                         context,
                         selectedCategory,
                       );
-
                     },
 
                     child: Card(
-
                       elevation: 6,
-
                       color: AppColors.cardSecondary,
-
                       shadowColor:
                           Colors.black.withOpacity(.35),
 
                       shape: RoundedRectangleBorder(
-
                         borderRadius:
                             BorderRadius.circular(10),
-
                         side: const BorderSide(
                           color: AppColors.primary,
                           width: 1,
@@ -165,7 +155,6 @@ class SubCategoriesSection extends StatelessWidget {
                       ),
 
                       child: Padding(
-
                         padding:
                             const EdgeInsets.symmetric(
                           horizontal: 4,
@@ -173,7 +162,6 @@ class SubCategoriesSection extends StatelessWidget {
                         ),
 
                         child: Column(
-
                           mainAxisAlignment:
                               MainAxisAlignment.center,
 
@@ -204,7 +192,6 @@ class SubCategoriesSection extends StatelessWidget {
                                 minFontSize: 7,
                                 overflow:
                                     TextOverflow.ellipsis,
-
                                 style: const TextStyle(
                                   fontWeight:
                                       FontWeight.bold,
@@ -213,13 +200,11 @@ class SubCategoriesSection extends StatelessWidget {
                                 ),
                               ),
                             ),
-
                           ],
                         ),
                       ),
                     ),
                   );
-
                 },
               ),
             ),
