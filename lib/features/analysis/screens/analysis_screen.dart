@@ -1,40 +1,22 @@
-import 'package:flutter/material.dart';
-import '../widgets/custom_donut_chart.dart';
+// ==========================================
+// 📊 ANALYSIS SCREEN (SAFE FINAL)
+// ==========================================
 
-class AnalysisScreen extends StatefulWidget {
+import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+import '../../../models/expense.dart';
+import '../logic/analysis_calculator.dart';
+import '../widgets/custom_donut_chart.dart';
+import '../widgets/category_panel.dart';
+
+class AnalysisScreen extends StatelessWidget {
   const AnalysisScreen({super.key});
 
   @override
-  State<AnalysisScreen> createState() => _AnalysisScreenState();
-}
-
-class _AnalysisScreenState extends State<AnalysisScreen> {
-  int insightIndex = 0;
-
-  final insights = [
-    "You spend more on one-time expenses",
-    "Your recurring expenses are stable",
-    "Food is your top category",
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 4));
-      if (!mounted) return false;
-
-      setState(() {
-        insightIndex = (insightIndex + 1) % insights.length;
-      });
-
-      return true;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final box = Hive.box<Expense>('expenses');
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
 
@@ -44,100 +26,120 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         elevation: 0,
       ),
 
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
+      body: ValueListenableBuilder(
+        valueListenable: box.listenable(),
+        builder: (_, Box<Expense> box, __) {
+          final expenses = box.values.toList();
+          final result = calculateAnalysis(expenses);
 
-            // cards
-            Row(
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
-                _card("Total", 10000),
-                _card("Recurring", 4000),
-                _card("One-time", 6000),
-              ],
-            ),
 
-            const SizedBox(height: 30),
-
-            // charts
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Column(
+                /// 💳 CARDS
+                Row(
                   children: [
-                    CustomDonutChart(
-                      data: [
-                        DonutData("Food", 1500),
-                        DonutData("Transport", 800),
-                        DonutData("Bills", 700),
-                      ],
-                      baseColor: Colors.green,
-                    ),
-                    const SizedBox(height: 10),
-                    const Text("Recurring",
-                        style: TextStyle(color: Colors.green)),
+                    _card("Total", result.total),
+                    _card("Normal", result.normal),
+                    _card("Exceptional", result.exceptional),
                   ],
                 ),
-                Column(
+
+                const SizedBox(height: 30),
+
+                /// 🔥 TOTAL SECTION
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+
+                    /// 🍩 DONUT
                     CustomDonutChart(
-                      data: [
-                        DonutData("Shopping", 2000),
-                        DonutData("Health", 1500),
-                        DonutData("Repair", 1000),
-                      ],
+                      data: _prepareDonutData(result.totalCategories),
                       baseColor: Colors.orange,
                     ),
-                    const SizedBox(height: 10),
-                    const Text("One-time",
-                        style: TextStyle(color: Colors.orange)),
-                  ],
-                ),
-              ],
-            ),
 
-            const SizedBox(height: 30),
+                    const SizedBox(width: 16),
 
-            // animated insight
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              child: Container(
-                key: ValueKey(insights[insightIndex]),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.orange.withOpacity(0.4),
-                      Colors.orange.withOpacity(0.1),
-                    ],
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.lightbulb,
-                        color: Colors.orange),
-                    const SizedBox(width: 10),
+                    /// 📦 PANEL
                     Expanded(
-                      child: Text(
-                        insights[insightIndex],
-                        style:
-                            const TextStyle(color: Colors.white),
+                      child: CategoryPanel(
+                        title: "Total Expenses",
+                        data: result.totalCategories,
                       ),
                     ),
                   ],
                 ),
-              ),
+
+                const SizedBox(height: 30),
+
+                /// 🔥 NORMAL SECTION
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+
+                    /// 🍩 DONUT
+                    CustomDonutChart(
+                      data: _prepareDonutData(result.normalCategories),
+                      baseColor: Colors.green,
+                    ),
+
+                    const SizedBox(width: 16),
+
+                    /// 📦 PANEL
+                    Expanded(
+                      child: CategoryPanel(
+                        title: "Normal Expenses",
+                        data: result.normalCategories,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 }
 
-// card
+////////////////////////////////////////////////////////
+/// 🧠 PREPARE DONUT DATA (TOP 4 + OTHER)
+////////////////////////////////////////////////////////
+
+List<DonutData> _prepareDonutData(
+  Map<String, double> data,
+) {
+  final sorted = data.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+
+  if (sorted.length <= 4) {
+    return sorted
+        .map((e) => DonutData(e.key, e.value))
+        .toList();
+  }
+
+  final top4 = sorted.take(4).toList();
+  final others = sorted.skip(4);
+
+  final otherSum =
+      others.fold(0.0, (sum, e) => sum + e.value);
+
+  final result = [
+    ...top4,
+    MapEntry("Other", otherSum),
+  ];
+
+  return result
+      .map((e) => DonutData(e.key, e.value))
+      .toList();
+}
+
+////////////////////////////////////////////////////////
+/// 💳 CARD
+////////////////////////////////////////////////////////
+
 Widget _card(String title, double value) {
   return Expanded(
     child: Container(
@@ -150,12 +152,18 @@ Widget _card(String title, double value) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: Colors.white54)),
+          Text(
+            title,
+            style: const TextStyle(color: Colors.white54),
+          ),
           const SizedBox(height: 6),
-          Text("$value EGP",
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            "${value.toInt()} EGP",
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     ),

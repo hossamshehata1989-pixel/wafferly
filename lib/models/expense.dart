@@ -1,53 +1,25 @@
-// =====================================================
-// 🧾 Expense Model (Hive)
-// =====================================================
-
 import 'package:hive/hive.dart';
 
 part 'expense.g.dart';
 
 @HiveType(typeId: 0)
 class Expense extends HiveObject {
-
-  // ---------------------------------------------------
-  // 🏷 Title
-  // ---------------------------------------------------
   @HiveField(0)
-  String title;
+  final double amount;
 
-  // ---------------------------------------------------
-  // 💰 Amount
-  // ---------------------------------------------------
   @HiveField(1)
-  double amount;
+  final String category;
 
-  // ---------------------------------------------------
-  // 📂 Category
-  // ---------------------------------------------------
   @HiveField(2)
-  String category;
+  final DateTime date;
 
-  // ---------------------------------------------------
-  // 📅 Date
-  // ---------------------------------------------------
   @HiveField(3)
-  DateTime date;
+  final bool isExceptional; // 🔥 الجديد
 
-  // ---------------------------------------------------
-  // 🔁 Is One-Time Expense
-  // ---------------------------------------------------
-  @HiveField(4)
-  bool isOneTime;
-
-
-  // ---------------------------------------------------
-  // 🏗 Constructor
-  // ---------------------------------------------------
   Expense({
-    required this.title,
     required this.amount,
     required this.category,
     required this.date,
-    required this.isOneTime, // 👈 جديد
+    required this.isExceptional,
   });
 }

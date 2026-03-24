@@ -15,26 +15,24 @@ class SelectedCategory {
   });
 }
 
-PersistentBottomSheetController? _controller;
-
+/// 🔥 FIX: remove persistent controller (كان سبب التهنيج)
 void showAddExpenseSheet(
   BuildContext context,
   ValueNotifier<SelectedCategory> categoryNotifier,
 ) {
-  if (_controller != null) return;
-
-  _controller = Scaffold.of(context).showBottomSheet(
-    (context) => FractionallySizedBox(
-      heightFactor: 0.4,
-      child: AddExpenseBottomSheet(
-        categoryNotifier: categoryNotifier,
-      ),
-    ),
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) {
+      return FractionallySizedBox(
+        heightFactor: 0.4,
+        child: AddExpenseBottomSheet(
+          categoryNotifier: categoryNotifier,
+        ),
+      );
+    },
   );
-
-  _controller!.closed.then((_) {
-    _controller = null;
-  });
 }
 
 class AddExpenseBottomSheet extends StatefulWidget {
@@ -61,19 +59,22 @@ class _AddExpenseBottomSheetState
 
   String activeField = "";
 
-  void saveExpense({required bool isOneTime}) {
+  bool isExceptional = false; // 🔥 الجديد
 
+  /// =========================
+  /// 💾 SAVE
+  /// =========================
+  void saveExpense() {
     final value = double.tryParse(amount) ?? 0;
     if (value == 0) return;
 
     final box = Hive.box<Expense>('expenses');
 
     final newExpense = Expense(
-      title: note.isEmpty ? "Expense" : note,
       amount: value,
       category: widget.categoryNotifier.value.name,
       date: selectedDate,
-      isOneTime: isOneTime,
+      isExceptional: isExceptional,
     );
 
     box.add(newExpense);
@@ -129,9 +130,6 @@ class _AddExpenseBottomSheetState
           title: const Text("Add Note"),
           content: TextField(
             controller: controller,
-            decoration: const InputDecoration(
-              hintText: "Write something...",
-            ),
           ),
           actions: [
             TextButton(
@@ -204,9 +202,7 @@ class _AddExpenseBottomSheetState
   }
 
   String getPaymentIcon() {
-    if (paymentMethod == "Cash") {
-      return "assets/icons/ui/wallet.svg";
-    } else if (paymentMethod == "Card") {
+    if (paymentMethod == "Card") {
       return "assets/icons/ui/card.svg";
     } else {
       return "assets/icons/ui/wallet.svg";
@@ -254,7 +250,6 @@ class _AddExpenseBottomSheetState
                   const SizedBox(height: 6),
 
                   InkWell(
-                    borderRadius: BorderRadius.circular(10),
                     onTap: pickDate,
                     child: sideButton(
                       text: "${selectedDate.day}/${selectedDate.month}",
@@ -266,7 +261,6 @@ class _AddExpenseBottomSheetState
                   const SizedBox(height: 6),
 
                   InkWell(
-                    borderRadius: BorderRadius.circular(10),
                     onTap: addNote,
                     child: sideButton(
                       text: note.isEmpty ? "Note" : "Added",
@@ -278,7 +272,6 @@ class _AddExpenseBottomSheetState
                   const SizedBox(height: 6),
 
                   InkWell(
-                    borderRadius: BorderRadius.circular(10),
                     onTap: pickPayment,
                     child: sideButton(
                       text: paymentMethod,
@@ -321,6 +314,7 @@ class _AddExpenseBottomSheetState
 
                   const SizedBox(height: 5),
 
+                  /// 🔢 KEYPAD
                   GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -330,38 +324,41 @@ class _AddExpenseBottomSheetState
                       ...[
                         "1","2","3","⌫",
                         "4","5","6","C",
-                        "7","8","9","×",
-                        ".","0","=","+",
+                        "7","8","9","",
+                        ".","0","","",
                       ].map((e) => keypadButton(e)),
                     ],
                   ),
 
                   const SizedBox(height: 6),
 
+                  /// 🔥 BUTTONS
                   Row(
                     children: [
 
                       Expanded(
-                        flex: 3,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green),
-                          onPressed: () =>
-                              saveExpense(isOneTime: false),
-                          child: const Text("Save"),
+                          onPressed: () {
+                            isExceptional = false;
+                            saveExpense();
+                          },
+                          child: const Text("Add"),
                         ),
                       ),
 
                       const SizedBox(width: 8),
 
                       Expanded(
-                        flex: 2,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade300),
-                          onPressed: () =>
-                              saveExpense(isOneTime: true),
-                          child: const Text("One-time"),
+                              backgroundColor: Colors.red),
+                          onPressed: () {
+                            isExceptional = true;
+                            saveExpense();
+                          },
+                          child: const Text("Add Exceptional"),
                         ),
                       ),
                     ],
@@ -380,24 +377,14 @@ class _AddExpenseBottomSheetState
     required String iconPath,
     required bool isActive,
   }) {
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+    return Container(
       height: 50,
-
       decoration: BoxDecoration(
         color: isActive
             ? AppColors.primary.withOpacity(0.2)
             : AppColors.cardSecondary,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: isActive
-              ? AppColors.primary
-              : Colors.transparent,
-          width: 1.2,
-        ),
       ),
-
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -406,29 +393,13 @@ class _AddExpenseBottomSheetState
             iconPath,
             width: 16,
             height: 16,
-            color: isActive
-                ? AppColors.primary
-                : Colors.white70,
+            color: Colors.white70,
           ),
 
           const SizedBox(width: 6),
 
-          Text(
-            text,
-            style: TextStyle(
-              color: isActive
-                  ? AppColors.primary
-                  : Colors.white,
-              fontWeight:
-                  isActive ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-
-          if (isActive) ...[
-            const SizedBox(width: 6),
-            const Icon(Icons.check,
-                size: 14, color: Colors.green),
-          ],
+          Text(text,
+              style: const TextStyle(color: Colors.white)),
         ],
       ),
     );
@@ -439,9 +410,10 @@ class _AddExpenseBottomSheetState
       onTap: () {
         if (text == "⌫") backspace();
         else if (text == "C") clear();
-        else addNumber(text);
+        else if (text.isNotEmpty) addNumber(text);
       },
       child: Container(
+        margin: const EdgeInsets.all(3),
         decoration: BoxDecoration(
           color: AppColors.cardSecondary,
           borderRadius: BorderRadius.circular(12),
@@ -450,7 +422,7 @@ class _AddExpenseBottomSheetState
           child: Text(text,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 30,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
               )),
         ),

@@ -1,5 +1,5 @@
 // ==========================================
-// 🔥 ULTRA REALISTIC DONUT CHART
+// 🍩 STABLE DONUT CHART (FIXED ROTATION)
 // ==========================================
 
 import 'dart:math';
@@ -12,7 +12,7 @@ class DonutData {
   DonutData(this.name, this.value);
 }
 
-class CustomDonutChart extends StatefulWidget {
+class CustomDonutChart extends StatelessWidget {
   final List<DonutData> data;
   final Color baseColor;
 
@@ -23,37 +23,10 @@ class CustomDonutChart extends StatefulWidget {
   });
 
   @override
-  State<CustomDonutChart> createState() => _CustomDonutChartState();
-}
-
-class _CustomDonutChartState extends State<CustomDonutChart>
-    with SingleTickerProviderStateMixin {
-  late AnimationController controller;
-
-  @override
-  void initState() {
-    super.initState();
-
-    controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat(); // 🔥 light rotation
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (_, __) {
-        return CustomPaint(
-          painter: _DonutPainter(
-            widget.data,
-            widget.baseColor,
-            controller.value,
-          ),
-          size: const Size(160, 160),
-        );
-      },
+    return CustomPaint(
+      painter: _DonutPainter(data, baseColor),
+      size: const Size(160, 160),
     );
   }
 }
@@ -65,133 +38,63 @@ class _CustomDonutChartState extends State<CustomDonutChart>
 class _DonutPainter extends CustomPainter {
   final List<DonutData> data;
   final Color baseColor;
-  final double rotation;
 
-  _DonutPainter(this.data, this.baseColor, this.rotation);
+  _DonutPainter(this.data, this.baseColor);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final total = data.fold(0.0, (sum, e) => sum + e.value);
+    if (data.isEmpty) return;
 
-    final strokeWidth = 22.0;
+    // 🔥 ترتيب ثابت (أكبر قيمة تبدأ من فوق)
+    final sortedData = [...data]
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final total = sortedData.fold(0.0, (sum, e) => sum + e.value);
+
+    if (total == 0) return;
+
+    const strokeWidth = 22.0;
+    const gap = 0.03; // حجم الفاصل
+
+    final totalGap = gap * sortedData.length;
+    final availableAngle = (2 * pi) - totalGap;
+
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width / 2) - (strokeWidth / 2);
 
     final rect = Rect.fromCircle(center: center, radius: radius);
 
+    // 🔥 ثابت دائمًا (12 o'clock)
     double startAngle = -pi / 2;
 
-    for (int i = 0; i < data.length; i++) {
-      final item = data[i];
-      final sweep = (item.value / total) * 2 * pi;
+    for (int i = 0; i < sortedData.length; i++) {
+      final item = sortedData[i];
 
-      // ==================================
-      // 🌟 BASE ARC
-      // ==================================
-      final basePaint = Paint()
+      final sweep = (item.value / total) * availableAngle;
+
+      final paint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.round
-        ..color = baseColor.withOpacity(1 - (i * 0.2));
+        ..strokeCap = StrokeCap.butt // يمنع التداخل
+        ..color = baseColor.withOpacity(
+          1 - (i * 0.15), // gradient بسيط
+        );
 
-      canvas.drawArc(rect, startAngle, sweep, false, basePaint);
-
-      // ==================================
-      // 🔥 OUTER GLOW
-      // ==================================
-      final glowPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth + 6
-        ..color = baseColor.withOpacity(0.15)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-
-      canvas.drawArc(rect, startAngle, sweep, false, glowPaint);
-
-      // ==================================
-      // ✨ MOVING HIGHLIGHT (Realistic Light)
-      // ==================================
-      final highlightAngle = startAngle + sweep * rotation;
-
-      final highlightPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..shader = SweepGradient(
-          startAngle: highlightAngle,
-          endAngle: highlightAngle + 0.3,
-          colors: [
-            Colors.white.withOpacity(0.0),
-            Colors.white.withOpacity(0.5),
-            Colors.white.withOpacity(0.0),
-          ],
-        ).createShader(rect);
-
-      canvas.drawArc(rect, startAngle, sweep, false, highlightPaint);
-
-      // ==================================
-      // 🌑 INNER SHADOW (Depth)
-      // ==================================
-      final innerShadow = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..color = Colors.black.withOpacity(0.2);
-
-      canvas.drawArc(rect, startAngle, sweep, false, innerShadow);
-
-      // ==================================
-      // 🎯 LINE
-      // ==================================
-      final mid = startAngle + sweep / 2;
-
-      final p1 = Offset(
-        center.dx + cos(mid) * radius,
-        center.dy + sin(mid) * radius,
+      canvas.drawArc(
+        rect,
+        startAngle,
+        sweep,
+        false,
+        paint,
       );
 
-      final p2 = Offset(
-        center.dx + cos(mid) * (radius + 14),
-        center.dy + sin(mid) * (radius + 14),
-      );
-
-      canvas.drawLine(
-        p1,
-        p2,
-        Paint()..color = Colors.white24..strokeWidth = 1,
-      );
-
-      // ==================================
-      // 📝 LABEL
-      // ==================================
-      final percent = ((item.value / total) * 100).toStringAsFixed(0);
-
-      final tp = TextPainter(
-        text: TextSpan(
-          text: "${item.name}\n$percent%",
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-        textAlign: TextAlign.center,
-      );
-
-      tp.layout();
-
-      tp.paint(
-        canvas,
-        Offset(
-          center.dx + cos(mid) * (radius + 28) - tp.width / 2,
-          center.dy + sin(mid) * (radius + 28) - tp.height / 2,
-        ),
-      );
-
-      startAngle += sweep;
+      startAngle += sweep + gap;
     }
 
-    // ==================================
-    // 💰 CENTER TEXT
-    // ==================================
-    final centerPainter = TextPainter(
+    // ======================================
+    // 🧠 CENTER TEXT
+    // ======================================
+    final centerText = TextPainter(
       text: TextSpan(
         text: total.toInt().toString(),
         style: const TextStyle(
@@ -203,13 +106,13 @@ class _DonutPainter extends CustomPainter {
       textDirection: TextDirection.ltr,
     );
 
-    centerPainter.layout();
+    centerText.layout();
 
-    centerPainter.paint(
+    centerText.paint(
       canvas,
       Offset(
-        center.dx - centerPainter.width / 2,
-        center.dy - centerPainter.height / 2,
+        center.dx - centerText.width / 2,
+        center.dy - centerText.height / 2,
       ),
     );
   }

@@ -50,7 +50,7 @@ class ExpensesList extends StatelessWidget {
             return ListTile(
 
               title: Text(
-                e.title,
+                e.category,
                 style: const TextStyle(color: Colors.white),
               ),
 
