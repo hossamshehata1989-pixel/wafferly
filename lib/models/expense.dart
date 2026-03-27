@@ -4,21 +4,26 @@ part 'expense.g.dart';
 
 @HiveType(typeId: 0)
 class Expense extends HiveObject {
+
   @HiveField(0)
   final double amount;
 
   @HiveField(1)
-  final String category;
+  final String mainCategory;
 
   @HiveField(2)
-  final DateTime date;
+  final String subCategory;
 
   @HiveField(3)
-  final bool isExceptional; // 🔥 الجديد
+  final DateTime date;
+
+  @HiveField(4)
+  final bool isExceptional;
 
   Expense({
     required this.amount,
-    required this.category,
+    required this.mainCategory,
+    required this.subCategory,
     required this.date,
     required this.isExceptional,
   });

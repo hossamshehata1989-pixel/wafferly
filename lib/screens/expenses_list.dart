@@ -1,5 +1,5 @@
 // =====================================================
-// 💸 Expenses List (Hive + Live Update)
+// 💸 Expenses List (Hive + Live Update) (FIXED)
 // =====================================================
 
 import 'package:flutter/material.dart';
@@ -16,18 +16,15 @@ class ExpensesList extends StatelessWidget {
 
     return ValueListenableBuilder(
 
-      // -------------------------------------------------
-      // 🔥 Listen to Hive changes
-      // -------------------------------------------------
+      /// 🔥 Listen to Hive changes
       valueListenable: box.listenable(),
 
       builder: (context, Box<Expense> box, _) {
 
-        final expenses = box.values.toList().reversed.toList();
+        final expenses =
+            box.values.toList().reversed.toList();
 
-        // -------------------------------------------------
-        // ❗ لو مفيش بيانات
-        // -------------------------------------------------
+        /// ❗ لو مفيش بيانات
         if (expenses.isEmpty) {
           return const Center(
             child: Text(
@@ -37,9 +34,7 @@ class ExpensesList extends StatelessWidget {
           );
         }
 
-        // -------------------------------------------------
-        // 📋 List
-        // -------------------------------------------------
+        /// 📋 List
         return ListView.builder(
           itemCount: expenses.length,
 
@@ -49,14 +44,17 @@ class ExpensesList extends StatelessWidget {
 
             return ListTile(
 
+              /// 🔥 MAIN + SUB
               title: Text(
-                e.category,
-                style: const TextStyle(color: Colors.white),
+                e.mainCategory,
+                style: const TextStyle(
+                    color: Colors.white),
               ),
 
               subtitle: Text(
-                e.category,
-                style: const TextStyle(color: Colors.white70),
+                e.subCategory,
+                style: const TextStyle(
+                    color: Colors.white70),
               ),
 
               trailing: Text(
@@ -66,7 +64,6 @@ class ExpensesList extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
             );
           },
         );

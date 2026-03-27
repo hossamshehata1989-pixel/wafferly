@@ -1,7 +1,3 @@
-// ==========================================
-// 📊 ANALYSIS CALCULATOR (FINAL)
-// ==========================================
-
 import '../../../models/expense.dart';
 
 class AnalysisResult {
@@ -9,40 +5,41 @@ class AnalysisResult {
   final double normal;
   final double exceptional;
 
-  final Map<String, double> normalCategories;
   final Map<String, double> totalCategories;
+  final Map<String, double> normalCategories;
 
   AnalysisResult({
     required this.total,
     required this.normal,
     required this.exceptional,
-    required this.normalCategories,
     required this.totalCategories,
+    required this.normalCategories,
   });
 }
 
 AnalysisResult calculateAnalysis(List<Expense> expenses) {
+
   double total = 0;
   double normal = 0;
   double exceptional = 0;
 
-  Map<String, double> normalMap = {};
-  Map<String, double> totalMap = {};
+  final totalMap = <String, double>{};
+  final normalMap = <String, double>{};
 
-  for (var e in expenses) {
+  for (final e in expenses) {
+
     total += e.amount;
 
-    /// TOTAL MAP
-    totalMap[e.category] =
-        (totalMap[e.category] ?? 0) + e.amount;
+    totalMap[e.mainCategory] =
+        (totalMap[e.mainCategory] ?? 0) + e.amount;
 
     if (e.isExceptional) {
       exceptional += e.amount;
     } else {
       normal += e.amount;
 
-      normalMap[e.category] =
-          (normalMap[e.category] ?? 0) + e.amount;
+      normalMap[e.mainCategory] =
+          (normalMap[e.mainCategory] ?? 0) + e.amount;
     }
   }
 
@@ -50,28 +47,25 @@ AnalysisResult calculateAnalysis(List<Expense> expenses) {
     total: total,
     normal: normal,
     exceptional: exceptional,
-    normalCategories: normalMap,
     totalCategories: totalMap,
+    normalCategories: normalMap,
   );
 }
 
-////////////////////////////////////////////////////////
-/// 🔥 TOP 4 + OTHER
-////////////////////////////////////////////////////////
-
+/// TOP 4 + OTHER
 List<MapEntry<String, double>> getTopCategories(
-  Map<String, double> data,
-) {
+    Map<String, double> data) {
+
   final sorted = data.entries.toList()
     ..sort((a, b) => b.value.compareTo(a.value));
 
   if (sorted.length <= 4) return sorted;
 
   final top4 = sorted.take(4).toList();
-  final others = sorted.skip(4);
 
-  final otherSum =
-      others.fold(0.0, (sum, e) => sum + e.value);
+  final otherSum = sorted
+      .skip(4)
+      .fold(0.0, (sum, e) => sum + e.value);
 
   top4.add(MapEntry("Other", otherSum));
 

@@ -1,48 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:reorderables/reorderables.dart';
-
-/// 🌍 Localization
 import '../l10n/app_localizations.dart';
-
-/// 📊 Data
 import '../categories/category.dart';
 import '../data/categories_data.dart';
-
-/// 🧩 UI
 import 'category_card.dart';
-
-/// 🎨 Colors
-import '../theme/app_colors.dart';
-
-/// BottomSheet model
-import '../widgets/add_expense_bottom_sheet.dart';
+import 'add_expense_bottom_sheet.dart';
 
 class MainCategoriesSection extends StatefulWidget {
-
   final int selectedIndex;
   final Function(int) onSelect;
-
-  /// notifier للفئة المختارة
-  final ValueNotifier<SelectedCategory> selectedCategory;
+  final ValueNotifier<SelectedCategory>? selectedCategory;
 
   const MainCategoriesSection({
     super.key,
     required this.selectedIndex,
     required this.onSelect,
-    required this.selectedCategory,
+    this.selectedCategory,
   });
 
   @override
-  State<MainCategoriesSection> createState() =>
-      _MainCategoriesSectionState();
+  State<MainCategoriesSection> createState() => _MainCategoriesSectionState();
 }
 
-class _MainCategoriesSectionState
-    extends State<MainCategoriesSection> {
-
-  late List<Category> categoriesList;
-
-  static const double cardHeight = 50;
+class _MainCategoriesSectionState extends State<MainCategoriesSection> {
+  late List<MainCategory> categoriesList;
+  static const double cardHeight = 65;
   static const double visibleRows = 3.2;
 
   @override
@@ -51,222 +33,112 @@ class _MainCategoriesSectionState
     categoriesList = List.from(mainCategories);
   }
 
-  // =====================================================
-  // 🗑 Delete BottomSheet
-  // =====================================================
   void _showDeleteSheet(BuildContext context, int index) {
-
     final t = AppLocalizations.of(context)!;
-
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) {
-
-        return Padding(
-          padding: const EdgeInsets.all(20),
-
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-
-              Text(
-                t.deleteCategory,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              /// 🗑 Delete
-              ListTile(
-                leading: const Icon(
-                  Icons.delete,
-                  color: Colors.red,
-                ),
-                title: Text(
-                  t.delete,
-                  style: const TextStyle(color: Colors.red),
-                ),
-                onTap: () {
-
-                  const minimumCategories = 3;
-
-                  if (categoriesList.length <= minimumCategories) {
-                    Navigator.pop(context);
-                    return;
-                  }
-
-                  setState(() {
-
-                    /// 🔥 حماية من crash
-                    if (index < 0 ||
-                        index >= categoriesList.length) return;
-
-                    categoriesList.removeAt(index);
-                  });
-
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(t.deleteCategory, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: Text(t.delete, style: const TextStyle(color: Colors.red)),
+              onTap: () {
+                const minimumCategories = 3;
+                if (categoriesList.length <= minimumCategories) {
                   Navigator.pop(context);
-                },
-              ),
-
-              /// ❌ Cancel
-              ListTile(
-                leading: const Icon(Icons.close),
-                title: Text(t.cancel),
-                onTap: () => Navigator.pop(context),
-              ),
-
-            ],
-          ),
-        );
-      },
+                  return;
+                }
+                setState(() {
+                  categoriesList.removeAt(index);
+                  if (widget.selectedIndex == index) widget.onSelect(-1);
+                });
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.close, color: Colors.white),
+              title: Text(t.cancel, style: const TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-
-    // =====================================================
-    // 🚨 Safety Check (مهم جدًا)
-    // =====================================================
-    if (categoriesList.isEmpty) {
-      return const SizedBox();
-    }
-
-    final double containerHeight =
-        (cardHeight * visibleRows) + 20;
-
-    final double screenWidth =
-        MediaQuery.of(context).size.width;
+    final t = AppLocalizations.of(context)!;
+    final double containerHeight = (cardHeight * visibleRows) + 20;
+    final double screenWidth = MediaQuery.of(context).size.width;
 
     int columns;
-
-    if (screenWidth < 100) {
-      columns = 2;
-    } else if (screenWidth < 200) {
-      columns = 3;
-    } else {
-      columns = 4;
-    }
+    if (screenWidth < 400) columns = 4;
+    else if (screenWidth < 600) columns = 5;
+    else if (screenWidth < 900) columns = 6;
+    else columns = 6;
 
     const double outerPadding = 12;
     const double innerPadding = 16;
-    const double spacingBetweenCards = 7;
-
-    final double horizontalPadding =
-        outerPadding + innerPadding;
-
-    final double spacing =
-        (columns - 1) * spacingBetweenCards;
-
-    final double cardWidth =
-        (screenWidth - horizontalPadding - spacing) /
-            columns;
+    const double spacingBetweenCards = 3;
+    final double horizontalPadding = outerPadding + innerPadding;
+    final double spacing = (columns - 1) * spacingBetweenCards;
+    final double cardWidth = (screenWidth - horizontalPadding - spacing) / columns;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 5),
-
       child: Container(
-
         height: containerHeight,
         padding: const EdgeInsets.all(5),
-
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: const Color(0xFF1B2A6B),
           borderRadius: BorderRadius.circular(18),
-
-          border: Border.all(
-            color: AppColors.cardSecondary,
-          ),
-
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(.25),
-              blurRadius: 12,
-              offset: const Offset(0, 20),
-            ),
-          ],
+          border: Border.all(color: const Color(0xFF243A8F)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(.25), blurRadius: 12, offset: const Offset(0, 10))],
         ),
-
         child: SingleChildScrollView(
-
           child: ReorderableWrap(
-
             spacing: spacingBetweenCards,
             runSpacing: spacingBetweenCards,
             needsLongPressDraggable: true,
-
-            // =====================================================
-            // 🔄 Reorder
-            // =====================================================
             onReorder: (oldIndex, newIndex) {
-
               setState(() {
-
-                /// 🔥 حماية
-                if (oldIndex < 0 ||
-                    oldIndex >= categoriesList.length ||
-                    newIndex < 0 ||
-                    newIndex > categoriesList.length) return;
-
-                final item =
-                    categoriesList.removeAt(oldIndex);
-
+                if (oldIndex < 0 || oldIndex >= categoriesList.length || newIndex < 0 || newIndex > categoriesList.length) return;
+                final item = categoriesList.removeAt(oldIndex);
                 categoriesList.insert(newIndex, item);
-
               });
             },
-
-            children: List.generate(
-
-              categoriesList.length,
-
-              (index) {
-
-                final category = categoriesList[index];
-
-                return SizedBox(
-                  width: cardWidth,
-                  height: cardHeight,
-
-                  child: CategoryCard(
-
-                    key: ValueKey('${category.id}_$index'),
-
-                    categoryId: category.id,
-                    title: category.title,
-
-                    selected:
-                        widget.selectedIndex == index,
-
-                    selectedCategory:
-                        widget.selectedCategory,
-
-                    // =====================================================
-                    // 👆 Tap
-                    // =====================================================
-                    onTap: () {
-
-                      /// 🔥 حماية
-                      if (index < 0 ||
-                          index >= categoriesList.length) return;
-
-                      widget.onSelect(index);
-                    },
-
-                    onLongPress: () =>
-                        _showDeleteSheet(context, index),
-
-                  ),
-                );
-              },
-            ),
+            children: List.generate(categoriesList.length, (index) {
+              final category = categoriesList[index];
+              return SizedBox(
+                width: cardWidth,
+                height: cardHeight,
+                child: CategoryCard(
+                  key: ValueKey('${category.id}_$index'),
+                  categoryId: category.id,
+                  title: (t) => category.title(t),
+                  selected: widget.selectedIndex == index,
+                  selectedCategory: widget.selectedCategory, // ✅ تمرير الـ ValueNotifier
+                  onTap: () {
+                    // ✅ تحديث الـ SelectedCategory
+                    if (widget.selectedCategory != null) {
+                      widget.selectedCategory!.value = SelectedCategory(
+                        id: category.id,
+                        name: category.title(t),
+                      );
+                    }
+                    widget.onSelect(index);
+                  },
+                  onLongPress: () => _showDeleteSheet(context, index),
+                ),
+              );
+            }),
           ),
         ),
       ),

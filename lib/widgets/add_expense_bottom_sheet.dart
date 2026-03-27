@@ -15,24 +15,30 @@ class SelectedCategory {
   });
 }
 
-/// 🔥 FIX: remove persistent controller (كان سبب التهنيج)
+PersistentBottomSheetController? _controller;
+
 void showAddExpenseSheet(
   BuildContext context,
   ValueNotifier<SelectedCategory> categoryNotifier,
 ) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) {
-      return FractionallySizedBox(
-        heightFactor: 0.4,
-        child: AddExpenseBottomSheet(
-          categoryNotifier: categoryNotifier,
-        ),
-      );
-    },
+  if (_controller != null) return;
+
+  // حساب الارتفاع المناسب بناءً على حجم الشاشة
+  final screenHeight = MediaQuery.of(context).size.height;
+  final bottomSheetHeight = screenHeight * 0.65; // 65% من ارتفاع الشاشة كحد أقصى
+  
+  _controller = Scaffold.of(context).showBottomSheet(
+    (context) => SizedBox(
+      height: bottomSheetHeight.clamp(450.0, screenHeight * 0.8), // بين 450 و 80% من الشاشة
+      child: AddExpenseBottomSheet(
+        categoryNotifier: categoryNotifier,
+      ),
+    ),
   );
+
+  _controller!.closed.then((_) {
+    _controller = null;
+  });
 }
 
 class AddExpenseBottomSheet extends StatefulWidget {
@@ -50,37 +56,9 @@ class AddExpenseBottomSheet extends StatefulWidget {
 
 class _AddExpenseBottomSheetState
     extends State<AddExpenseBottomSheet> {
-
   String amount = "0";
-
   DateTime selectedDate = DateTime.now();
   String note = "";
-  String paymentMethod = "Cash";
-
-  String activeField = "";
-
-  bool isExceptional = false; // 🔥 الجديد
-
-  /// =========================
-  /// 💾 SAVE
-  /// =========================
-  void saveExpense() {
-    final value = double.tryParse(amount) ?? 0;
-    if (value == 0) return;
-
-    final box = Hive.box<Expense>('expenses');
-
-    final newExpense = Expense(
-      amount: value,
-      category: widget.categoryNotifier.value.name,
-      date: selectedDate,
-      isExceptional: isExceptional,
-    );
-
-    box.add(newExpense);
-
-    Navigator.pop(context);
-  }
 
   void addNumber(String n) {
     setState(() {
@@ -104,49 +82,77 @@ class _AddExpenseBottomSheetState
     });
   }
 
-  void pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-    );
-
-    if (picked != null) {
+  void calculatePercentage() {
+    if (amount != "0") {
+      final value = double.tryParse(amount) ?? 0;
+      final percentage = value / 100;
       setState(() {
-        selectedDate = picked;
-        activeField = "date";
+        amount = percentage.toString();
       });
     }
   }
 
-  void addNote() {
-    final controller = TextEditingController(text: note);
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.dark().copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF3A7BFF),
+              surface: Color(0xFF1B2A6B),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != selectedDate) {
+      setState(() {
+        selectedDate = picked;
+      });
+    }
+  }
 
+  void _addNote() {
     showDialog(
       context: context,
-      builder: (_) {
+      builder: (context) {
+        String tempNote = note;
         return AlertDialog(
-          title: const Text("Add Note"),
+          backgroundColor: const Color(0xFF1B2A6B),
+          title: const Text(
+            'إضافة ملاحظة',
+            style: TextStyle(color: Colors.white),
+          ),
           content: TextField(
-            controller: controller,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              hintText: 'اكتب ملاحظتك...',
+              hintStyle: TextStyle(color: Colors.white70),
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 3,
+            onChanged: (value) {
+              tempNote = value;
+            },
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
+              child: const Text('إلغاء', style: TextStyle(color: Colors.white70)),
             ),
-            ElevatedButton(
+            TextButton(
               onPressed: () {
                 setState(() {
-                  note = controller.text;
-                  if (note.isNotEmpty) {
-                    activeField = "note";
-                  }
+                  note = tempNote;
                 });
                 Navigator.pop(context);
               },
-              child: const Text("Save"),
+              child: const Text('حفظ', style: TextStyle(color: Color(0xFF3A7BFF))),
             ),
           ],
         );
@@ -154,214 +160,193 @@ class _AddExpenseBottomSheetState
     );
   }
 
-  void pickPayment() {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+  void saveExpense() {
+    final value = double.tryParse(amount) ?? 0;
+    if (value == 0) return;
 
-            ListTile(
-              title: const Text("Cash"),
-              onTap: () {
-                setState(() {
-                  paymentMethod = "Cash";
-                  activeField = "payment";
-                });
-                Navigator.pop(context);
-              },
-            ),
-
-            ListTile(
-              title: const Text("Card"),
-              onTap: () {
-                setState(() {
-                  paymentMethod = "Card";
-                  activeField = "payment";
-                });
-                Navigator.pop(context);
-              },
-            ),
-
-            ListTile(
-              title: const Text("Wallet"),
-              onTap: () {
-                setState(() {
-                  paymentMethod = "Wallet";
-                  activeField = "payment";
-                });
-                Navigator.pop(context);
-              },
-            ),
-
-          ],
-        );
-      },
+    final box = Hive.box<Expense>('expenses');
+    final newExpense = Expense(
+      amount: value,
+      mainCategory: widget.categoryNotifier.value.name,
+      subCategory: widget.categoryNotifier.value.name,
+      date: selectedDate,
+      isExceptional: false,
     );
-  }
 
-  String getPaymentIcon() {
-    if (paymentMethod == "Card") {
-      return "assets/icons/ui/card.svg";
-    } else {
-      return "assets/icons/ui/wallet.svg";
-    }
+    box.add(newExpense);
+    Navigator.pop(context);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('تم إضافة المصروف بنجاح'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
+    
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.all(5),
+        padding: const EdgeInsets.all(14),
         decoration: const BoxDecoration(
           color: AppColors.card,
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(22)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         ),
-
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            /// LEFT
+            /// LEFT PANEL
             SizedBox(
-              width: 75,
+              width: isSmallScreen ? 85 : 95,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-
+                  /// CATEGORY ICON
                   ValueListenableBuilder<SelectedCategory>(
                     valueListenable: widget.categoryNotifier,
                     builder: (context, category, _) {
                       return Container(
-                        width: 64,
-                        height: 64,
+                        width: isSmallScreen ? 54 : 64,
+                        height: isSmallScreen ? 54 : 64,
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: AppColors.cardSecondary,
                           shape: BoxShape.circle,
                         ),
                         child: SvgPicture.asset(
                           getCategoryIcon(category.id),
+                          key: ValueKey(category.id),
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => Icon(
+                            Icons.category,
+                            color: Colors.white,
+                            size: isSmallScreen ? 28 : 32,
+                          ),
                         ),
                       );
                     },
                   ),
-
                   const SizedBox(height: 6),
-
-                  InkWell(
-                    onTap: pickDate,
-                    child: sideButton(
-                      text: "${selectedDate.day}/${selectedDate.month}",
-                      iconPath: "assets/icons/ui/calendar.svg",
-                      isActive: activeField == "date",
-                    ),
+                  /// SUB CATEGORY NAME
+                  ValueListenableBuilder<SelectedCategory>(
+                    valueListenable: widget.categoryNotifier,
+                    builder: (context, category, _) {
+                      return Text(
+                        category.name.isEmpty ? "Category" : category.name,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: isSmallScreen ? 10 : 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      );
+                    },
                   ),
-
-                  const SizedBox(height: 6),
-
-                  InkWell(
-                    onTap: addNote,
-                    child: sideButton(
-                      text: note.isEmpty ? "Note" : "Added",
-                      iconPath: "assets/icons/ui/note.svg",
-                      isActive: activeField == "note",
-                    ),
+                  const SizedBox(height: 10),
+                  /// DATE BUTTON
+                  sideButton(
+                    text: "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                    onTap: () => _selectDate(context),
+                    isSmallScreen: isSmallScreen,
                   ),
-
                   const SizedBox(height: 6),
-
-                  InkWell(
-                    onTap: pickPayment,
-                    child: sideButton(
-                      text: paymentMethod,
-                      iconPath: getPaymentIcon(),
-                      isActive: activeField == "payment",
-                    ),
+                  /// NOTE BUTTON
+                  sideButton(
+                    text: note.isEmpty ? "Note" : note,
+                    onTap: _addNote,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                  const SizedBox(height: 6),
+                  sideButton(
+                    text: "Cash",
+                    onTap: () {},
+                    isSmallScreen: isSmallScreen,
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(width: 6),
-
-            /// RIGHT
+            const SizedBox(width: 5),
+            /// RIGHT PANEL
             Expanded(
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-
+                  /// AMOUNT DISPLAY
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
+                        horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("EGP",
-                            style: TextStyle(color: Colors.white70)),
-                        Text(amount,
+                        const Text(
+                          "EGP",
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                        Flexible(
+                          child: Text(
+                            amount,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold)),
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 5),
-
-                  /// 🔢 KEYPAD
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 4,
-                    childAspectRatio: 1.8,
-                    children: [
-                      ...[
-                        "1","2","3","⌫",
-                        "4","5","6","C",
-                        "7","8","9","",
-                        ".","0","","",
-                      ].map((e) => keypadButton(e)),
-                    ],
+                  /// KEYPAD
+                  Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 4,
+                      mainAxisSpacing: 2,
+                      crossAxisSpacing: 2,
+                      childAspectRatio: isSmallScreen ? 1.2 : 1.1,
+                      children: [
+                        "1", "2", "3", "⌫",
+                        "4", "5", "6", "C",
+                        "7", "8", "9", "%",
+                        ".", "0", "=", "+",
+                      ].map((e) => keypadButton(e, isSmallScreen: isSmallScreen)).toList(),
+                    ),
                   ),
-
                   const SizedBox(height: 6),
-
-                  /// 🔥 BUTTONS
-                  Row(
-                    children: [
-
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green),
-                          onPressed: () {
-                            isExceptional = false;
-                            saveExpense();
-                          },
-                          child: const Text("Add"),
+                  /// SAVE BUTTON
+                  SizedBox(
+                    width: double.infinity,
+                    height: isSmallScreen ? 36 : 40,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-
-                      const SizedBox(width: 8),
-
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red),
-                          onPressed: () {
-                            isExceptional = true;
-                            saveExpense();
-                          },
-                          child: const Text("Add Exceptional"),
+                      onPressed: saveExpense,
+                      child: Text(
+                        "Save",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: isSmallScreen ? 14 : 16,
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -374,57 +359,62 @@ class _AddExpenseBottomSheetState
 
   Widget sideButton({
     required String text,
-    required String iconPath,
-    required bool isActive,
+    required VoidCallback onTap,
+    bool isSmallScreen = false,
   }) {
-    return Container(
-      height: 50,
-      decoration: BoxDecoration(
-        color: isActive
-            ? AppColors.primary.withOpacity(0.2)
-            : AppColors.cardSecondary,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-
-          SvgPicture.asset(
-            iconPath,
-            width: 16,
-            height: 16,
-            color: Colors.white70,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        height: isSmallScreen ? 28 : 32,
+        decoration: BoxDecoration(
+          color: AppColors.cardSecondary,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: isSmallScreen ? 10 : 12,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
           ),
-
-          const SizedBox(width: 6),
-
-          Text(text,
-              style: const TextStyle(color: Colors.white)),
-        ],
+        ),
       ),
     );
   }
 
-  Widget keypadButton(String text) {
+  Widget keypadButton(String text, {bool isSmallScreen = false}) {
     return GestureDetector(
       onTap: () {
-        if (text == "⌫") backspace();
-        else if (text == "C") clear();
-        else if (text.isNotEmpty) addNumber(text);
+        if (text == "⌫") {
+          backspace();
+        } else if (text == "C") {
+          clear();
+        } else if (text == "%") {
+          calculatePercentage();
+        } else if (text == "=" || text == "+" || text == "-" || text == "×" || text == "/") {
+          // يمكن إضافة عمليات حسابية لاحقاً
+        } else if (text.isNotEmpty) {
+          addNumber(text);
+        }
       },
       child: Container(
-        margin: const EdgeInsets.all(3),
         decoration: BoxDecoration(
           color: AppColors.cardSecondary,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
-          child: Text(text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              )),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: isSmallScreen ? 16 : 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ),
       ),
     );

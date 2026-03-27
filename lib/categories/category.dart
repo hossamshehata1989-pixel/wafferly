@@ -1,11 +1,14 @@
 import '../l10n/app_localizations.dart';
 
-class Category {
+// إضافة اسم مستعار (alias) لتوضيح المعنى
+typedef Category = MainCategory;
+
+class MainCategory {
   final String id;
   final String Function(AppLocalizations) title;
   final List<SubCategory> subCategories;
 
-  const Category({
+  const MainCategory({
     required this.id,
     required this.title,
     required this.subCategories,
