@@ -23,13 +23,12 @@ void showAddExpenseSheet(
 ) {
   if (_controller != null) return;
 
-  // حساب الارتفاع المناسب بناءً على حجم الشاشة
   final screenHeight = MediaQuery.of(context).size.height;
-  final bottomSheetHeight = screenHeight * 0.65; // 65% من ارتفاع الشاشة كحد أقصى
+  final bottomSheetHeight = screenHeight * 0.65;
   
   _controller = Scaffold.of(context).showBottomSheet(
     (context) => SizedBox(
-      height: bottomSheetHeight.clamp(450.0, screenHeight * 0.8), // بين 450 و 80% من الشاشة
+      height: bottomSheetHeight.clamp(450.0, screenHeight * 0.8),
       child: AddExpenseBottomSheet(
         categoryNotifier: categoryNotifier,
       ),
@@ -59,6 +58,7 @@ class _AddExpenseBottomSheetState
   String amount = "0";
   DateTime selectedDate = DateTime.now();
   String note = "";
+  bool _isSaving = false; // ✅ لمنع الضغط المتكرر
 
   void addNumber(String n) {
     setState(() {
@@ -160,9 +160,23 @@ class _AddExpenseBottomSheetState
     );
   }
 
-  void saveExpense() {
+  /// ✅ دالة حفظ المصروف العادي
+  Future<void> _saveExpense({required bool isExceptional}) async {
+    if (_isSaving) return;
+    
     final value = double.tryParse(amount) ?? 0;
-    if (value == 0) return;
+    if (value == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('الرجاء إدخال مبلغ صحيح'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
 
     final box = Hive.box<Expense>('expenses');
     final newExpense = Expense(
@@ -170,19 +184,38 @@ class _AddExpenseBottomSheetState
       mainCategory: widget.categoryNotifier.value.name,
       subCategory: widget.categoryNotifier.value.name,
       date: selectedDate,
-      isExceptional: false,
+      isExceptional: isExceptional, // ✅ استخدام القيمة المرسلة
     );
 
-    box.add(newExpense);
-    Navigator.pop(context);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('تم إضافة المصروف بنجاح'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    try {
+      await box.add(newExpense);
+      
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isExceptional 
+              ? 'تم إضافة المصروف الاستثنائي بنجاح'
+              : 'تم إضافة المصروف المتكرر بنجاح',
+          ),
+          backgroundColor: isExceptional ? Colors.orange : Colors.green,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('حدث خطأ أثناء الحفظ'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -327,26 +360,51 @@ class _AddExpenseBottomSheetState
                     ),
                   ),
                   const SizedBox(height: 6),
-                  /// SAVE BUTTON
-                  SizedBox(
-                    width: double.infinity,
-                    height: isSmallScreen ? 36 : 40,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                  /// ✅ TWO BUTTONS ROW
+                  Row(
+                    children: [
+                      /// 🔵 ADD (Recurring - Normal)
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: _isSaving ? null : () => _saveExpense(isExceptional: false),
+                          child: Text(
+                            "Add",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isSmallScreen ? 14 : 16,
+                            ),
+                          ),
                         ),
                       ),
-                      onPressed: saveExpense,
-                      child: Text(
-                        "Save",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: isSmallScreen ? 14 : 16,
+                      const SizedBox(width: 8),
+                      /// 🟠 ADD EXCEPTIONAL
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: _isSaving ? null : () => _saveExpense(isExceptional: true),
+                          child: Text(
+                            "Add Exceptional",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isSmallScreen ? 12 : 14,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),

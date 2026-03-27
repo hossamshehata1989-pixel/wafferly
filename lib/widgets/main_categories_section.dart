@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:reorderables/reorderables.dart';
 import '../l10n/app_localizations.dart';
-import '../categories/category.dart';
-import '../data/categories_data.dart';
+import '../config/category_config.dart'; // ✅ المسار الصحيح
 import 'category_card.dart';
 import 'add_expense_bottom_sheet.dart';
 
@@ -23,13 +22,14 @@ class MainCategoriesSection extends StatefulWidget {
 }
 
 class _MainCategoriesSectionState extends State<MainCategoriesSection> {
-  late List<MainCategory> categoriesList;
+  late List<CategoryConfig> categoriesList; // ✅ استخدام CategoryConfig
   static const double cardHeight = 65;
   static const double visibleRows = 3.2;
 
   @override
   void initState() {
     super.initState();
+    // ✅ استخدام mainCategories من config
     categoriesList = List.from(mainCategories);
   }
 
@@ -37,13 +37,18 @@ class _MainCategoriesSectionState extends State<MainCategoriesSection> {
     final t = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(t.deleteCategory, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text(
+              t.deleteCategory,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
             const SizedBox(height: 20),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
@@ -79,10 +84,15 @@ class _MainCategoriesSectionState extends State<MainCategoriesSection> {
     final double screenWidth = MediaQuery.of(context).size.width;
 
     int columns;
-    if (screenWidth < 400) columns = 4;
-    else if (screenWidth < 600) columns = 5;
-    else if (screenWidth < 900) columns = 6;
-    else columns = 6;
+    if (screenWidth < 400) {
+      columns = 4;
+    } else if (screenWidth < 600) {
+      columns = 5;
+    } else if (screenWidth < 900) {
+      columns = 6;
+    } else {
+      columns = 6;
+    }
 
     const double outerPadding = 12;
     const double innerPadding = 16;
@@ -100,7 +110,13 @@ class _MainCategoriesSectionState extends State<MainCategoriesSection> {
           color: const Color(0xFF1B2A6B),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0xFF243A8F)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(.25), blurRadius: 12, offset: const Offset(0, 10))],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.25),
+              blurRadius: 12,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
         child: SingleChildScrollView(
           child: ReorderableWrap(
@@ -109,7 +125,12 @@ class _MainCategoriesSectionState extends State<MainCategoriesSection> {
             needsLongPressDraggable: true,
             onReorder: (oldIndex, newIndex) {
               setState(() {
-                if (oldIndex < 0 || oldIndex >= categoriesList.length || newIndex < 0 || newIndex > categoriesList.length) return;
+                if (oldIndex < 0 ||
+                    oldIndex >= categoriesList.length ||
+                    newIndex < 0 ||
+                    newIndex > categoriesList.length) {
+                  return;
+                }
                 final item = categoriesList.removeAt(oldIndex);
                 categoriesList.insert(newIndex, item);
               });
@@ -122,15 +143,14 @@ class _MainCategoriesSectionState extends State<MainCategoriesSection> {
                 child: CategoryCard(
                   key: ValueKey('${category.id}_$index'),
                   categoryId: category.id,
-                  title: (t) => category.title(t),
+                  title: (t) => category.resolveTitle(t), // ✅ استخدام resolveTitle
                   selected: widget.selectedIndex == index,
-                  selectedCategory: widget.selectedCategory, // ✅ تمرير الـ ValueNotifier
+                  selectedCategory: widget.selectedCategory,
                   onTap: () {
-                    // ✅ تحديث الـ SelectedCategory
                     if (widget.selectedCategory != null) {
                       widget.selectedCategory!.value = SelectedCategory(
                         id: category.id,
-                        name: category.title(t),
+                        name: category.resolveTitle(t),
                       );
                     }
                     widget.onSelect(index);

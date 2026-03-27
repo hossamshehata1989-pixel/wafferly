@@ -1,5 +1,5 @@
 // ==========================================
-// 📊 ANALYSIS SCREEN (SAFE FINAL)
+// 📊 ANALYSIS SCREEN (UPDATED)
 // ==========================================
 
 import 'package:flutter/material.dart';
@@ -19,13 +19,11 @@ class AnalysisScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
-
       appBar: AppBar(
         title: const Text("Analysis"),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-
       body: ValueListenableBuilder(
         valueListenable: box.listenable(),
         builder: (_, Box<Expense> box, __) {
@@ -36,8 +34,6 @@ class AnalysisScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-
-                /// 💳 CARDS
                 Row(
                   children: [
                     _card("Total", result.total),
@@ -45,23 +41,15 @@ class AnalysisScreen extends StatelessWidget {
                     _card("Exceptional", result.exceptional),
                   ],
                 ),
-
                 const SizedBox(height: 30),
-
-                /// 🔥 TOTAL SECTION
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
-                    /// 🍩 DONUT
                     CustomDonutChart(
                       data: _prepareDonutData(result.totalCategories),
                       baseColor: Colors.orange,
                     ),
-
                     const SizedBox(width: 16),
-
-                    /// 📦 PANEL
                     Expanded(
                       child: CategoryPanel(
                         title: "Total Expenses",
@@ -70,23 +58,15 @@ class AnalysisScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 30),
-
-                /// 🔥 NORMAL SECTION
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-
-                    /// 🍩 DONUT
                     CustomDonutChart(
                       data: _prepareDonutData(result.normalCategories),
                       baseColor: Colors.green,
                     ),
-
                     const SizedBox(width: 16),
-
-                    /// 📦 PANEL
                     Expanded(
                       child: CategoryPanel(
                         title: "Normal Expenses",
@@ -104,41 +84,21 @@ class AnalysisScreen extends StatelessWidget {
   }
 }
 
-////////////////////////////////////////////////////////
-/// 🧠 PREPARE DONUT DATA (TOP 4 + OTHER)
-////////////////////////////////////////////////////////
-
-List<DonutData> _prepareDonutData(
-  Map<String, double> data,
-) {
+List<DonutData> _prepareDonutData(Map<String, double> data) {
   final sorted = data.entries.toList()
     ..sort((a, b) => b.value.compareTo(a.value));
 
   if (sorted.length <= 4) {
-    return sorted
-        .map((e) => DonutData(e.key, e.value))
-        .toList();
+    return sorted.map((e) => DonutData(e.key, e.value)).toList();
   }
 
   final top4 = sorted.take(4).toList();
   final others = sorted.skip(4);
-
-  final otherSum =
-      others.fold(0.0, (sum, e) => sum + e.value);
-
-  final result = [
-    ...top4,
-    MapEntry("Other", otherSum),
-  ];
-
-  return result
-      .map((e) => DonutData(e.key, e.value))
-      .toList();
+  final otherSum = others.fold(0.0, (sum, e) => sum + e.value);
+  final result = [...top4, MapEntry("Other", otherSum)];
+  
+  return result.map((e) => DonutData(e.key, e.value)).toList();
 }
-
-////////////////////////////////////////////////////////
-/// 💳 CARD
-////////////////////////////////////////////////////////
 
 Widget _card(String title, double value) {
   return Expanded(
@@ -152,10 +112,7 @@ Widget _card(String title, double value) {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(color: Colors.white54),
-          ),
+          Text(title, style: const TextStyle(color: Colors.white54)),
           const SizedBox(height: 6),
           Text(
             "${value.toInt()} EGP",

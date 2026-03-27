@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
-import '../data/categories_data.dart';
+import '../config/category_config.dart'; // ✅ المسار الصحيح
 import '../utils/category_icons.dart';
 import 'add_expense_bottom_sheet.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -9,8 +9,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 class SubCategoriesSection extends StatelessWidget {
   final int mainCategoryIndex;
   final ValueNotifier<SelectedCategory>? selectedCategory;
-  
-  // ارتفاع ثابت للكونتينر لصفين
+
   static const double containerHeightForTwoRows = 150;
   static const double containerHeightForOneRow = 70;
 
@@ -23,11 +22,15 @@ class SubCategoriesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
+
+    if (mainCategoryIndex < 0 || mainCategoryIndex >= mainCategories.length) {
+      return const SizedBox.shrink();
+    }
+
     final category = mainCategories[mainCategoryIndex];
-    final subs = category.subCategories;
+    final subs = category.subCategories ?? []; // ✅ استخدام subCategories
+
     final bool twoRows = subs.length > 9;
-    
-    // تحديد الارتفاع بناءً على عدد الصفوف
     final containerHeight = twoRows ? containerHeightForTwoRows : containerHeightForOneRow;
 
     return Padding(
@@ -38,26 +41,24 @@ class SubCategoriesSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
             child: Text(
-              t.subCategories, 
-              style: const TextStyle(
-                fontSize: 14, 
-                fontWeight: FontWeight.bold, 
-                color: Colors.white
-              ),
+              t.subCategories,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
           Container(
-            height: containerHeight, // ✅ ارتفاع ثابت ومحدد
+            height: containerHeight,
             padding: const EdgeInsets.only(top: 1, bottom: 1, right: 1),
             decoration: BoxDecoration(
               color: const Color(0xFF1B2A6B),
               borderRadius: BorderRadius.circular(18),
               border: Border.all(color: const Color(0xFF243A8F)),
-              boxShadow: [BoxShadow(
-                color: Colors.black.withOpacity(.25), 
-                blurRadius: 12, 
-                offset: const Offset(0, 8)
-              )],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
             child: Scrollbar(
               radius: const Radius.circular(10),
@@ -76,14 +77,12 @@ class SubCategoriesSection extends StatelessWidget {
                   final sub = subs[index];
                   return GestureDetector(
                     onTap: () {
-                      // تحديث الـ SelectedCategory أولاً
                       if (selectedCategory != null) {
                         selectedCategory!.value = SelectedCategory(
                           id: sub.id,
                           name: sub.title(t),
                         );
                       }
-                      // تمرير الـ ValueNotifier
                       if (selectedCategory != null) {
                         showAddExpenseSheet(context, selectedCategory!);
                       }
@@ -106,8 +105,8 @@ class SubCategoriesSection extends StatelessWidget {
                               width: 25,
                               height: 25,
                               fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) => 
-                                const Icon(Icons.category, size: 25, color: Colors.white),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.category, size: 25, color: Colors.white),
                             ),
                             const SizedBox(height: 4),
                             Expanded(
@@ -118,9 +117,9 @@ class SubCategoriesSection extends StatelessWidget {
                                 minFontSize: 7,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.bold, 
-                                  fontSize: 10, 
-                                  color: Colors.white
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),

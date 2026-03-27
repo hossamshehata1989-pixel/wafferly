@@ -11,7 +11,7 @@ class CategoryCard extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
-  final ValueNotifier<SelectedCategory>? selectedCategory; // ✅ إضافة
+  final ValueNotifier<SelectedCategory>? selectedCategory;
 
   const CategoryCard({
     super.key,
@@ -41,7 +41,6 @@ class CategoryCard extends StatelessWidget {
           splashColor: const Color(0xFF4FD1FF).withOpacity(.3),
           onTap: () {
             onTap();
-            // ✅ تمرير الـ ValueNotifier بدلاً من String
             if (selectedCategory != null) {
               showAddExpenseSheet(context, selectedCategory!);
             }
