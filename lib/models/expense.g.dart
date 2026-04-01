@@ -17,28 +17,37 @@ class ExpenseAdapter extends TypeAdapter<Expense> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Expense(
-      amount: fields[0] as double,
-      mainCategory: fields[1] as String,
-      subCategory: fields[2] as String,
-      date: fields[3] as DateTime,
-      isExceptional: fields[4] as bool,
+      id: fields[0] as String?,
+      amount: fields[1] as double,
+      mainCategory: fields[2] as String,
+      subCategory: fields[3] as String,
+      date: fields[4] as DateTime,
+      isExceptional: fields[5] as bool,
+      note: fields[6] as String?,
+      paymentMethod: fields[7] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, Expense obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(8)
       ..writeByte(0)
-      ..write(obj.amount)
+      ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.mainCategory)
+      ..write(obj.amount)
       ..writeByte(2)
-      ..write(obj.subCategory)
+      ..write(obj.mainCategory)
       ..writeByte(3)
-      ..write(obj.date)
+      ..write(obj.subCategory)
       ..writeByte(4)
-      ..write(obj.isExceptional);
+      ..write(obj.date)
+      ..writeByte(5)
+      ..write(obj.isExceptional)
+      ..writeByte(6)
+      ..write(obj.note)
+      ..writeByte(7)
+      ..write(obj.paymentMethod);
   }
 
   @override

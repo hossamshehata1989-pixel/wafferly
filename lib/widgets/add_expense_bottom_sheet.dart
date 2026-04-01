@@ -19,18 +19,22 @@ PersistentBottomSheetController? _controller;
 
 void showAddExpenseSheet(
   BuildContext context,
-  ValueNotifier<SelectedCategory> categoryNotifier,
-) {
+  ValueNotifier<SelectedCategory> categoryNotifier, {
+  Expense? expenseToEdit, // ✅ معامل التعديل
+  int? expenseKey, // ✅ مفتاح المصروف في Hive
+}) {
   if (_controller != null) return;
 
   final screenHeight = MediaQuery.of(context).size.height;
   final bottomSheetHeight = screenHeight * 0.65;
-  
+
   _controller = Scaffold.of(context).showBottomSheet(
     (context) => SizedBox(
       height: bottomSheetHeight.clamp(450.0, screenHeight * 0.8),
       child: AddExpenseBottomSheet(
         categoryNotifier: categoryNotifier,
+        expenseToEdit: expenseToEdit,
+        expenseKey: expenseKey,
       ),
     ),
   );
@@ -42,10 +46,14 @@ void showAddExpenseSheet(
 
 class AddExpenseBottomSheet extends StatefulWidget {
   final ValueNotifier<SelectedCategory> categoryNotifier;
+  final Expense? expenseToEdit; // ✅ للتعديل
+  final int? expenseKey; // ✅ مفتاح المصروف
 
   const AddExpenseBottomSheet({
     super.key,
     required this.categoryNotifier,
+    this.expenseToEdit,
+    this.expenseKey,
   });
 
   @override
@@ -55,10 +63,34 @@ class AddExpenseBottomSheet extends StatefulWidget {
 
 class _AddExpenseBottomSheetState
     extends State<AddExpenseBottomSheet> {
-  String amount = "0";
-  DateTime selectedDate = DateTime.now();
-  String note = "";
-  bool _isSaving = false; // ✅ لمنع الضغط المتكرر
+  late String amount;
+  late DateTime selectedDate;
+  late String note;
+  late String paymentMethod;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ تحميل بيانات التعديل إن وجدت
+    if (widget.expenseToEdit != null) {
+      amount = widget.expenseToEdit!.amount.toString();
+      selectedDate = widget.expenseToEdit!.date;
+      note = widget.expenseToEdit!.note ?? "";
+      paymentMethod = widget.expenseToEdit!.paymentMethod;
+      
+      // ✅ تحديث الـ categoryNotifier بقيم المصروف
+      widget.categoryNotifier.value = SelectedCategory(
+        id: widget.expenseToEdit!.subCategory,
+        name: widget.expenseToEdit!.mainCategory,
+      );
+    } else {
+      amount = "0";
+      selectedDate = DateTime.now();
+      note = "";
+      paymentMethod = "cash";
+    }
+  }
 
   void addNumber(String n) {
     setState(() {
@@ -160,7 +192,6 @@ class _AddExpenseBottomSheetState
     );
   }
 
-  /// ✅ دالة حفظ المصروف العادي
   Future<void> _saveExpense({required bool isExceptional}) async {
     if (_isSaving) return;
     
@@ -179,30 +210,47 @@ class _AddExpenseBottomSheetState
     setState(() => _isSaving = true);
 
     final box = Hive.box<Expense>('expenses');
-    final newExpense = Expense(
+    
+    // ✅ إنشاء المصروف الجديد
+    final expense = Expense(
+      id: widget.expenseToEdit?.id, // ✅ استخدام id الموجود إن وجد
       amount: value,
       mainCategory: widget.categoryNotifier.value.name,
       subCategory: widget.categoryNotifier.value.name,
       date: selectedDate,
-      isExceptional: isExceptional, // ✅ استخدام القيمة المرسلة
+      isExceptional: isExceptional,
+      note: note.isEmpty ? null : note,
+      paymentMethod: paymentMethod,
     );
 
     try {
-      await box.add(newExpense);
-      
-      if (!mounted) return;
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isExceptional 
-              ? 'تم إضافة المصروف الاستثنائي بنجاح'
-              : 'تم إضافة المصروف المتكرر بنجاح',
+      if (widget.expenseToEdit != null && widget.expenseKey != null) {
+        // ✅ تعديل مصروف موجود
+        await box.put(widget.expenseKey!, expense);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم تعديل المصروف بنجاح'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 2),
           ),
-          backgroundColor: isExceptional ? Colors.orange : Colors.green,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+        );
+      } else {
+        // ✅ إضافة مصروف جديد
+        await box.add(expense);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isExceptional 
+                ? 'تم إضافة المصروف الاستثنائي بنجاح'
+                : 'تم إضافة المصروف المتكرر بنجاح',
+            ),
+            backgroundColor: isExceptional ? Colors.orange : Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
       
       Navigator.pop(context);
     } catch (e) {
@@ -222,6 +270,7 @@ class _AddExpenseBottomSheetState
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 400;
+    final isEditing = widget.expenseToEdit != null;
     
     return SafeArea(
       child: Container(
@@ -297,9 +346,14 @@ class _AddExpenseBottomSheetState
                     isSmallScreen: isSmallScreen,
                   ),
                   const SizedBox(height: 6),
+                  /// PAYMENT METHOD BUTTON
                   sideButton(
-                    text: "Cash",
-                    onTap: () {},
+                    text: paymentMethod == "cash" ? "Cash" : "Card",
+                    onTap: () {
+                      setState(() {
+                        paymentMethod = paymentMethod == "cash" ? "card" : "cash";
+                      });
+                    },
                     isSmallScreen: isSmallScreen,
                   ),
                 ],
@@ -363,7 +417,7 @@ class _AddExpenseBottomSheetState
                   /// ✅ TWO BUTTONS ROW
                   Row(
                     children: [
-                      /// 🔵 ADD (Recurring - Normal)
+                      /// 🔵 ADD/UPDATE (Recurring - Normal)
                       Expanded(
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -375,7 +429,7 @@ class _AddExpenseBottomSheetState
                           ),
                           onPressed: _isSaving ? null : () => _saveExpense(isExceptional: false),
                           child: Text(
-                            "Add",
+                            isEditing ? "Update" : "Add",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: isSmallScreen ? 14 : 16,
@@ -384,7 +438,7 @@ class _AddExpenseBottomSheetState
                         ),
                       ),
                       const SizedBox(width: 8),
-                      /// 🟠 ADD EXCEPTIONAL
+                      /// 🟠 ADD/UPDATE EXCEPTIONAL
                       Expanded(
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -396,7 +450,7 @@ class _AddExpenseBottomSheetState
                           ),
                           onPressed: _isSaving ? null : () => _saveExpense(isExceptional: true),
                           child: Text(
-                            "Add Exceptional",
+                            isEditing ? "Update Exceptional" : "Add Exceptional",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: isSmallScreen ? 12 : 14,
