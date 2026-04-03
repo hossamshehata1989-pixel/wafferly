@@ -3,6 +3,7 @@
 /// Single source of truth for all categories
 /// =======================================================
 
+import 'package:flutter/material.dart';
 import '../core/app_assets.dart';
 import '../l10n/app_localizations.dart';
 
@@ -17,8 +18,39 @@ class CategoryConfig {
     this.subCategories,
   });
 
-  /// 🔷 Resolve localized title
+  /// 🔷 Resolve localized title using AppLocalizations (old method)
   String resolveTitle(AppLocalizations t) {
+    switch (id) {
+      case 'dailyTransport': return t.dailyTransport;
+      case 'bills': return t.bills;
+      case 'supermarket': return t.supermarket;
+      case 'drinks': return t.drinks;
+      case 'fastFood': return t.fastFood;
+      case 'meatFish': return t.meatFish;
+      case 'vegetables': return t.vegetables;
+      case 'fruits': return t.fruits;
+      case 'smoking': return t.smoking;
+      case 'health': return t.health;
+      case 'entertainment': return t.entertainment;
+      case 'education': return t.education;
+      case 'vehicles': return t.vehicles;
+      case 'home': return t.home;
+      case 'personalCare': return t.personalCare;
+      case 'mobilePc': return t.mobilePc;
+      case 'financials': return t.financials;
+      case 'governServices': return t.governServices;
+      case 'giftsOccasions': return t.giftsOccasions;
+      case 'hobbies': return t.hobbies;
+      case 'baby': return t.baby;
+      case 'clothes': return t.clothes;
+      case 'shoes': return t.shoes;
+      default: return id;
+    }
+  }
+
+  /// 🔷 Resolve localized title using BuildContext
+  String resolveTitle2(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
     switch (id) {
       case 'dailyTransport': return t.dailyTransport;
       case 'bills': return t.bills;
@@ -67,7 +99,7 @@ final List<CategoryConfig> mainCategories = [
   /// DAILY TRANSPORT
   CategoryConfig(
     id: 'dailyTransport',
-    icon: AppAssets.categoryTransport, // ✅ التصحيح: categoryTransport
+    icon: AppAssets.categoryTransport,
     subCategories: [
       SubCategoryConfig(id: 'tuktuk', title: (t) => t.tuktuk),
       SubCategoryConfig(id: 'microbus', title: (t) => t.microbus),
@@ -126,7 +158,7 @@ final List<CategoryConfig> mainCategories = [
   /// DRINKS
   CategoryConfig(
     id: 'drinks',
-    icon: AppAssets.categoryPlaceholder, // ✅ placeholder
+    icon: AppAssets.categoryPlaceholder,
     subCategories: [
       SubCategoryConfig(id: 'tea', title: (t) => t.tea),
       SubCategoryConfig(id: 'coffee', title: (t) => t.coffee),
@@ -141,7 +173,7 @@ final List<CategoryConfig> mainCategories = [
   /// FAST FOOD
   CategoryConfig(
     id: 'fastFood',
-    icon: AppAssets.categoryRestaurants, // ✅ التصحيح: categoryRestaurants
+    icon: AppAssets.categoryRestaurants,
     subCategories: [
       SubCategoryConfig(id: 'meals', title: (t) => t.meals),
       SubCategoryConfig(id: 'sandwiches', title: (t) => t.sandwiches),

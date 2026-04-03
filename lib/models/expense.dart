@@ -6,34 +6,42 @@ part 'expense.g.dart';
 @HiveType(typeId: 0)
 class Expense extends HiveObject {
   @HiveField(0)
-  final String id; // ✅ إضافة id فريد
+  final String id;
   
   @HiveField(1)
   final double amount;
   
   @HiveField(2)
-  final String mainCategory;
+  final String mainCategoryId;  // ✅ id الفئة الرئيسية (مثلاً 'dailyTransport')
   
   @HiveField(3)
-  final String subCategory;
+  final String mainCategoryName; // ✅ اسم الفئة الرئيسية (للترجمة أو العرض)
   
   @HiveField(4)
-  final DateTime date;
+  final String? subCategoryId;   // ✅ id الفئة الفرعية (اختياري)
   
   @HiveField(5)
-  final bool isExceptional;
+  final String? subCategoryName; // ✅ اسم الفئة الفرعية (اختياري)
   
   @HiveField(6)
-  final String? note;
+  final DateTime date;
   
   @HiveField(7)
+  final bool isExceptional;
+  
+  @HiveField(8)
+  final String? note;
+  
+  @HiveField(9)
   final String paymentMethod;
 
   Expense({
     String? id,
     required this.amount,
-    required this.mainCategory,
-    required this.subCategory,
+    required this.mainCategoryId,
+    required this.mainCategoryName,
+    this.subCategoryId,
+    this.subCategoryName,
     required this.date,
     required this.isExceptional,
     this.note,
@@ -42,19 +50,24 @@ class Expense extends HiveObject {
   
   // ✅ نسخة للتعديل
   Expense copyWith({
+    String? id,
     double? amount,
-    String? mainCategory,
-    String? subCategory,
+    String? mainCategoryId,
+    String? mainCategoryName,
+    String? subCategoryId,
+    String? subCategoryName,
     DateTime? date,
     bool? isExceptional,
     String? note,
     String? paymentMethod,
   }) {
     return Expense(
-      id: this.id,
+      id: id ?? this.id,
       amount: amount ?? this.amount,
-      mainCategory: mainCategory ?? this.mainCategory,
-      subCategory: subCategory ?? this.subCategory,
+      mainCategoryId: mainCategoryId ?? this.mainCategoryId,
+      mainCategoryName: mainCategoryName ?? this.mainCategoryName,
+      subCategoryId: subCategoryId ?? this.subCategoryId,
+      subCategoryName: subCategoryName ?? this.subCategoryName,
       date: date ?? this.date,
       isExceptional: isExceptional ?? this.isExceptional,
       note: note ?? this.note,

@@ -4,6 +4,7 @@ import '../theme/app_colors.dart';
 import '../utils/category_icons.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/expense.dart';
+import '../config/category_config.dart';
 
 class SelectedCategory {
   final String id;
@@ -20,8 +21,8 @@ PersistentBottomSheetController? _controller;
 void showAddExpenseSheet(
   BuildContext context,
   ValueNotifier<SelectedCategory> categoryNotifier, {
-  Expense? expenseToEdit, // ✅ معامل التعديل
-  int? expenseKey, // ✅ مفتاح المصروف في Hive
+  Expense? expenseToEdit,
+  int? expenseKey,
 }) {
   if (_controller != null) return;
 
@@ -46,8 +47,8 @@ void showAddExpenseSheet(
 
 class AddExpenseBottomSheet extends StatefulWidget {
   final ValueNotifier<SelectedCategory> categoryNotifier;
-  final Expense? expenseToEdit; // ✅ للتعديل
-  final int? expenseKey; // ✅ مفتاح المصروف
+  final Expense? expenseToEdit;
+  final int? expenseKey;
 
   const AddExpenseBottomSheet({
     super.key,
@@ -72,17 +73,15 @@ class _AddExpenseBottomSheetState
   @override
   void initState() {
     super.initState();
-    // ✅ تحميل بيانات التعديل إن وجدت
     if (widget.expenseToEdit != null) {
       amount = widget.expenseToEdit!.amount.toString();
       selectedDate = widget.expenseToEdit!.date;
       note = widget.expenseToEdit!.note ?? "";
       paymentMethod = widget.expenseToEdit!.paymentMethod;
       
-      // ✅ تحديث الـ categoryNotifier بقيم المصروف
       widget.categoryNotifier.value = SelectedCategory(
-        id: widget.expenseToEdit!.subCategory,
-        name: widget.expenseToEdit!.mainCategory,
+        id: widget.expenseToEdit!.subCategoryId ?? widget.expenseToEdit!.mainCategoryId,
+        name: widget.expenseToEdit!.subCategoryName ?? widget.expenseToEdit!.mainCategoryName,
       );
     } else {
       amount = "0";
@@ -192,6 +191,54 @@ class _AddExpenseBottomSheetState
     );
   }
 
+  // ✅ دالة لمعرفة الفئة الرئيسية من الفئة الفرعية
+  String _getMainCategoryId(String categoryId) {
+    for (final category in mainCategories) {
+      if (category.id == categoryId) {
+        return category.id;
+      }
+      if (category.subCategories != null) {
+        for (final sub in category.subCategories!) {
+          if (sub.id == categoryId) {
+            return category.id;
+          }
+        }
+      }
+    }
+    return categoryId;
+  }
+
+  // ✅ دالة لمعرفة اسم الفئة الرئيسية
+  String _getMainCategoryName(String categoryId) {
+    for (final category in mainCategories) {
+      if (category.id == categoryId) {
+        return category.resolveTitle2(context);
+      }
+      if (category.subCategories != null) {
+        for (final sub in category.subCategories!) {
+          if (sub.id == categoryId) {
+            return category.resolveTitle2(context);
+          }
+        }
+      }
+    }
+    return categoryId;
+  }
+
+  // ✅ دالة لمعرفة إذا كانت الفئة فرعية أم رئيسية
+  bool _isSubCategory(String categoryId) {
+    for (final category in mainCategories) {
+      if (category.subCategories != null) {
+        for (final sub in category.subCategories!) {
+          if (sub.id == categoryId) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   Future<void> _saveExpense({required bool isExceptional}) async {
     if (_isSaving) return;
     
@@ -211,12 +258,16 @@ class _AddExpenseBottomSheetState
 
     final box = Hive.box<Expense>('expenses');
     
-    // ✅ إنشاء المصروف الجديد
+    final selected = widget.categoryNotifier.value;
+    final isSub = _isSubCategory(selected.id);
+    
     final expense = Expense(
-      id: widget.expenseToEdit?.id, // ✅ استخدام id الموجود إن وجد
+      id: widget.expenseToEdit?.id,
       amount: value,
-      mainCategory: widget.categoryNotifier.value.name,
-      subCategory: widget.categoryNotifier.value.name,
+      mainCategoryId: _getMainCategoryId(selected.id),
+      mainCategoryName: _getMainCategoryName(selected.id),
+      subCategoryId: isSub ? selected.id : null,
+      subCategoryName: isSub ? selected.name : null,
       date: selectedDate,
       isExceptional: isExceptional,
       note: note.isEmpty ? null : note,
@@ -225,7 +276,6 @@ class _AddExpenseBottomSheetState
 
     try {
       if (widget.expenseToEdit != null && widget.expenseKey != null) {
-        // ✅ تعديل مصروف موجود
         await box.put(widget.expenseKey!, expense);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -236,7 +286,6 @@ class _AddExpenseBottomSheetState
           ),
         );
       } else {
-        // ✅ إضافة مصروف جديد
         await box.add(expense);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -288,7 +337,6 @@ class _AddExpenseBottomSheetState
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  /// CATEGORY ICON
                   ValueListenableBuilder<SelectedCategory>(
                     valueListenable: widget.categoryNotifier,
                     builder: (context, category, _) {
@@ -314,7 +362,6 @@ class _AddExpenseBottomSheetState
                     },
                   ),
                   const SizedBox(height: 6),
-                  /// SUB CATEGORY NAME
                   ValueListenableBuilder<SelectedCategory>(
                     valueListenable: widget.categoryNotifier,
                     builder: (context, category, _) {
@@ -332,21 +379,18 @@ class _AddExpenseBottomSheetState
                     },
                   ),
                   const SizedBox(height: 10),
-                  /// DATE BUTTON
                   sideButton(
                     text: "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
                     onTap: () => _selectDate(context),
                     isSmallScreen: isSmallScreen,
                   ),
                   const SizedBox(height: 6),
-                  /// NOTE BUTTON
                   sideButton(
                     text: note.isEmpty ? "Note" : note,
                     onTap: _addNote,
                     isSmallScreen: isSmallScreen,
                   ),
                   const SizedBox(height: 6),
-                  /// PAYMENT METHOD BUTTON
                   sideButton(
                     text: paymentMethod == "cash" ? "Cash" : "Card",
                     onTap: () {
@@ -360,12 +404,10 @@ class _AddExpenseBottomSheetState
               ),
             ),
             const SizedBox(width: 5),
-            /// RIGHT PANEL
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  /// AMOUNT DISPLAY
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 5),
@@ -395,7 +437,6 @@ class _AddExpenseBottomSheetState
                     ),
                   ),
                   const SizedBox(height: 5),
-                  /// KEYPAD
                   Directionality(
                     textDirection: TextDirection.ltr,
                     child: GridView.count(
@@ -414,10 +455,8 @@ class _AddExpenseBottomSheetState
                     ),
                   ),
                   const SizedBox(height: 6),
-                  /// ✅ TWO BUTTONS ROW
                   Row(
                     children: [
-                      /// 🔵 ADD/UPDATE (Recurring - Normal)
                       Expanded(
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -438,7 +477,6 @@ class _AddExpenseBottomSheetState
                         ),
                       ),
                       const SizedBox(width: 8),
-                      /// 🟠 ADD/UPDATE EXCEPTIONAL
                       Expanded(
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -508,7 +546,6 @@ class _AddExpenseBottomSheetState
         } else if (text == "%") {
           calculatePercentage();
         } else if (text == "=" || text == "+" || text == "-" || text == "×" || text == "/") {
-          // يمكن إضافة عمليات حسابية لاحقاً
         } else if (text.isNotEmpty) {
           addNumber(text);
         }

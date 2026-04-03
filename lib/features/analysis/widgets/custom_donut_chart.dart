@@ -56,7 +56,10 @@ class _CustomDonutChartState extends State<CustomDonutChart>
     final total = widget.data.fold(0.0, (sum, e) => sum + e.value);
     final formatter = NumberFormat("#,###");
 
-    if (widget.data.isEmpty) {
+    // ✅ ترتيب البيانات تنازلياً (من الأكبر للأصغر)
+    final sortedData = [...widget.data]..sort((a, b) => b.value.compareTo(a.value));
+
+    if (sortedData.isEmpty) {
       return Container(
         width: widget.size,
         height: widget.size,
@@ -72,6 +75,19 @@ class _CustomDonutChartState extends State<CustomDonutChart>
         ),
       );
     }
+
+    // ✅ ألوان ثابتة للفئات (حسب الترتيب بعد الفرز)
+    final List<Color> fixedColors = [
+      const Color(0xFFFF6B6B), // أحمر
+      const Color(0xFF4ECDC4), // فيروزي
+      const Color(0xFFFFE66D), // أصفر
+      const Color(0xFFA8E6CF), // أخضر فاتح
+      const Color(0xFFFF8B94), // وردي
+      const Color(0xFFAA96DA), // بنفسجي
+      const Color(0xFFFF9F4A), // برتقالي
+      const Color(0xFF6C5CE7), // بنفسجي غامق
+      const Color(0xFF00CEC9), // فيروزي غامق
+    ];
 
     return SizedBox(
       width: widget.size,
@@ -98,8 +114,8 @@ class _CustomDonutChartState extends State<CustomDonutChart>
             builder: (context, child) {
               return CustomPaint(
                 painter: _DonutPainter(
-                  widget.data,
-                  widget.baseColor,
+                  sortedData,
+                  fixedColors,
                   progress: _animation.value,
                 ),
                 size: Size(widget.size, widget.size),
@@ -142,23 +158,21 @@ class _CustomDonutChartState extends State<CustomDonutChart>
 
 class _DonutPainter extends CustomPainter {
   final List<DonutData> data;
-  final Color baseColor;
+  final List<Color> fixedColors;
   final double progress;
 
-  _DonutPainter(this.data, this.baseColor, {this.progress = 1.0});
+  _DonutPainter(this.data, this.fixedColors, {this.progress = 1.0});
 
   @override
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
 
-    final sortedData = [...data]..sort((a, b) => b.value.compareTo(a.value));
-    
-    final total = sortedData.fold(0.0, (sum, e) => sum + e.value);
+    final total = data.fold(0.0, (sum, e) => sum + e.value);
     if (total == 0) return;
 
     final strokeWidth = size.width * 0.22;
-    const gap = 0.04; // ✅ فاصل أكبر بين الأجزاء (4%)
-    final totalGap = gap * sortedData.length;
+    const gap = 0.02; // فاصل صغير بين الأجزاء
+    final totalGap = gap * data.length;
     final availableAngle = (2 * pi) - totalGap;
 
     final center = Offset(size.width / 2, size.height / 2);
@@ -167,35 +181,24 @@ class _DonutPainter extends CustomPainter {
 
     double startAngle = -pi / 2;
 
-    for (int i = 0; i < sortedData.length; i++) {
-      final item = sortedData[i];
+    for (int i = 0; i < data.length; i++) {
+      final item = data[i];
       final sweep = (item.value / total) * availableAngle;
       final drawSweep = sweep * progress;
 
-      final baseColor = item.customColor ?? _getDefaultColor(i);
-      
+      // ✅ استخدام الألوان الثابتة حسب الترتيب
+      final color = item.customColor ?? fixedColors[i % fixedColors.length];
+
       final paint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.butt // ✅ حواف مستقيمة للفاصل
-        ..color = baseColor;
+        ..strokeCap = StrokeCap.butt
+        ..color = color;
 
       canvas.drawArc(rect, startAngle, drawSweep, false, paint);
 
       startAngle += sweep + gap;
     }
-  }
-
-  Color _getDefaultColor(int index) {
-    final colors = [
-      const Color(0xFFFF6B6B), // أحمر
-      const Color(0xFF4ECDC4), // فيروزي
-      const Color(0xFFFFE66D), // أصفر
-      const Color(0xFFA8E6CF), // أخضر فاتح
-      const Color(0xFFFF8B94), // وردي
-      const Color(0xFFAA96DA), // بنفسجي
-    ];
-    return colors[index % colors.length];
   }
 
   @override

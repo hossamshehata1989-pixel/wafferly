@@ -1,6 +1,7 @@
 // lib/features/analysis/widgets/analysis_card.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:wafferly/l10n/app_localizations.dart';
 
 class AnalysisCard extends StatelessWidget {
   final String title;
@@ -10,7 +11,7 @@ class AnalysisCard extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final bool isCompareActive;
-  final VoidCallback? onCompareTap; // ✅ اجعله optional
+  final VoidCallback? onCompareTap;
 
   const AnalysisCard({
     super.key,
@@ -21,12 +22,19 @@ class AnalysisCard extends StatelessWidget {
     this.isSelected = false,
     required this.onTap,
     this.isCompareActive = false,
-    this.onCompareTap, // ✅ optional
+    this.onCompareTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final formatter = NumberFormat("#,###");
+    
+    // تنسيق العملة حسب اللغة
+    final formattedAmount = isArabic
+        ? "${formatter.format(amount.toInt())} ج.م"
+        : "${formatter.format(amount.toInt())} EGP";
 
     return GestureDetector(
       onTap: onTap,
@@ -42,7 +50,6 @@ class AnalysisCard extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            // ✅ محتوى الكارت
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -58,7 +65,7 @@ class AnalysisCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "${formatter.format(amount.toInt())} EGP",
+                  formattedAmount,
                   style: TextStyle(
                     color: isSelected ? Colors.white : Colors.white,
                     fontSize: 18,
@@ -68,17 +75,22 @@ class AnalysisCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(
-                      changePercentage >= 0 ? Icons.trending_up : Icons.trending_down,
-                      size: 12,
-                      color: changePercentage >= 0 ? Colors.red : Colors.green,
-                    ),
-                    const SizedBox(width: 4),
+                    if (changePercentage != 0)
+                      Icon(
+                        changePercentage > 0 ? Icons.trending_up : Icons.trending_down,
+                        size: 12,
+                        color: changePercentage > 0 ? Colors.red : Colors.green,
+                      ),
+                    if (changePercentage != 0) const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        "${changePercentage >= 0 ? '+' : ''}${changePercentage.toStringAsFixed(0)}% Vs Last month",
+                        changePercentage == 0
+                            ? "0% ${t.vsLastPeriod}"
+                            : "${changePercentage > 0 ? '+' : ''}${changePercentage.toStringAsFixed(0)}% ${t.vsLastPeriod}",
                         style: TextStyle(
-                          color: changePercentage >= 0 ? Colors.red : Colors.green,
+                          color: changePercentage > 0
+                              ? Colors.red
+                              : (changePercentage < 0 ? Colors.green : Colors.white54),
                           fontSize: 10,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -88,7 +100,6 @@ class AnalysisCard extends StatelessWidget {
                 ),
               ],
             ),
-            // ✅ زر المقارنة الصغير في أعلى اليمين (يظهر فقط إذا كان onCompareTap موجود)
             if (onCompareTap != null)
               Positioned(
                 top: 4,

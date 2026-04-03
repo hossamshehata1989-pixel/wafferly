@@ -1,11 +1,15 @@
 // lib/features/analysis/screens/analysis_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:intl/intl.dart';
 import '../../../models/expense.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../config/category_config.dart';
 import '../models/time_period.dart';
 import '../widgets/analysis_card.dart';
 import '../widgets/category_details_section.dart';
 import '../widgets/date_range_selector.dart';
+import 'main_category_details_screen.dart';
 
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
@@ -14,20 +18,37 @@ class AnalysisScreen extends StatefulWidget {
   State<AnalysisScreen> createState() => _AnalysisScreenState();
 }
 
-class _AnalysisScreenState extends State<AnalysisScreen> {
+class _AnalysisScreenState extends State<AnalysisScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  
   TimePeriod _selectedPeriod = TimePeriod.monthly;
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
-  int _selectedCard = 0;
-  bool _isCompareMode = false;
-  int _compareCard1 = 0;
-  int _compareCard2 = 1;
-  Map<int, bool> _compareActive = {0: false, 1: false, 2: false};
+  
+  List<Expense> _realExpenses = [];
+  List<Expense> _exceptionalExpenses = [];
+  List<Expense> _totalExpenses = [];
+  
+  double _realTotal = 0;
+  double _exceptionalTotal = 0;
+  double _totalExpensesAmount = 0;
+  
+  double _realChange = 0;
+  double _exceptionalChange = 0;
+  double _totalChange = 0;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _updateDateRange();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   void _updateDateRange() {
@@ -52,7 +73,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       case TimePeriod.custom:
         break;
     }
-    setState(() {});
+    _loadData();
   }
 
   void _onPeriodChanged(TimePeriod period) {
@@ -66,44 +87,10 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     if (_selectedPeriod != TimePeriod.custom) {
       _selectedPeriod = TimePeriod.custom;
     }
-    setState(() {});
+    _loadData();
   }
 
-  void _onCardTap(int cardIndex) {
-    if (_isCompareMode) {
-      setState(() {
-        if (_compareActive[cardIndex] == true) {
-          _compareActive[cardIndex] = false;
-        } else {
-          _compareActive[cardIndex] = true;
-        }
-        final activeCards = _compareActive.entries
-            .where((e) => e.value)
-            .map((e) => e.key)
-            .toList();
-        if (activeCards.length == 2) {
-          _compareCard1 = activeCards[0];
-          _compareCard2 = activeCards[1];
-        }
-      });
-    } else {
-      setState(() {
-        _selectedCard = cardIndex;
-      });
-    }
-  }
-
-  void _toggleCompareMode() {
-    setState(() {
-      _isCompareMode = !_isCompareMode;
-      if (!_isCompareMode) {
-        _compareActive = {0: false, 1: false, 2: false};
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  void _loadData() {
     final box = Hive.box<Expense>('expenses');
     final allExpenses = box.values.toList();
 
@@ -112,12 +99,14 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       e.date.isBefore(_endDate.add(const Duration(days: 1)))
     ).toList();
 
-    final realExpenses = filteredExpenses.where((e) => !e.isExceptional).toList();
-    final exceptionalExpenses = filteredExpenses.where((e) => e.isExceptional).toList();
+    _realExpenses = filteredExpenses.where((e) => !e.isExceptional).toList();
+    _exceptionalExpenses = filteredExpenses.where((e) => e.isExceptional).toList();
+    _totalExpenses = filteredExpenses;
 
-    final realTotal = realExpenses.fold(0.0, (sum, e) => sum + e.amount);
-    final exceptionalTotal = exceptionalExpenses.fold(0.0, (sum, e) => sum + e.amount);
-    final totalExpenses = realTotal + exceptionalTotal;
+    // حساب الإجماليات حسب الفئة الرئيسية
+    _realTotal = _calculateTotalByMainCategory(_realExpenses);
+    _exceptionalTotal = _calculateTotalByMainCategory(_exceptionalExpenses);
+    _totalExpensesAmount = _realTotal + _exceptionalTotal;
 
     final periodDays = _getPeriodDays();
     final previousStart = _startDate.subtract(Duration(days: periodDays));
@@ -128,221 +117,46 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       e.date.isBefore(previousEnd.add(const Duration(days: 1)))
     ).toList();
 
-    final previousReal = previousExpenses.where((e) => !e.isExceptional).fold(0.0, (s, e) => s + e.amount);
-    final previousExceptional = previousExpenses.where((e) => e.isExceptional).fold(0.0, (s, e) => s + e.amount);
+    final previousReal = _calculateTotalByMainCategory(
+      previousExpenses.where((e) => !e.isExceptional).toList()
+    );
+    final previousExceptional = _calculateTotalByMainCategory(
+      previousExpenses.where((e) => e.isExceptional).toList()
+    );
     final previousTotal = previousReal + previousExceptional;
 
-    final realChange = previousReal == 0 ? 0.0 : ((realTotal - previousReal) / previousReal) * 100;
-    final exceptionalChange = previousExceptional == 0 ? 0.0 : ((exceptionalTotal - previousExceptional) / previousExceptional) * 100;
-    final totalChange = previousTotal == 0 ? 0.0 : ((totalExpenses - previousTotal) / previousTotal) * 100;
+    _realChange = previousReal == 0 ? 0 : ((_realTotal - previousReal) / previousReal) * 100;
+    _exceptionalChange = previousExceptional == 0 ? 0 : ((_exceptionalTotal - previousExceptional) / previousExceptional) * 100;
+    _totalChange = previousTotal == 0 ? 0 : ((_totalExpensesAmount - previousTotal) / previousTotal) * 100;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F1115),
-      appBar: AppBar(
-        title: const Text("Analysis", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(_isCompareMode ? Icons.compare_arrows : Icons.compare, 
-                color: _isCompareMode ? Colors.blue : Colors.white70),
-            onPressed: _toggleCompareMode,
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DateRangeSelector(
-              selectedPeriod: _selectedPeriod,
-              startDate: _startDate,
-              endDate: _endDate,
-              onPeriodChanged: _onPeriodChanged,
-              onDateRangeChanged: _onDateRangeChanged,
-            ),
-            const SizedBox(height: 24),
-            
-            if (!_isCompareMode)
-              Row(
-                children: [
-                  _buildCard("Total Expenses", totalExpenses, totalChange, Colors.blue, 0),
-                  const SizedBox(width: 8),
-                  _buildCard("Real Expenses", realTotal, realChange, Colors.green, 1),
-                  const SizedBox(width: 8),
-                  _buildCard("Exceptional Expenses", exceptionalTotal, exceptionalChange, Colors.orange, 2),
-                ],
-              )
-            else
-              Row(
-                children: [
-                  Expanded(
-                    child: AnalysisCard(
-                      title: _getCardTitle(_compareCard1),
-                      amount: _getCardAmount(_compareCard1, realTotal, exceptionalTotal, totalExpenses),
-                      changePercentage: _getCardChange(_compareCard1, realChange, exceptionalChange, totalChange),
-                      color: _getCardColor(_compareCard1),
-                      isSelected: false,
-                      onTap: () {},
-                      isCompareActive: false,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: AnalysisCard(
-                      title: _getCardTitle(_compareCard2),
-                      amount: _getCardAmount(_compareCard2, realTotal, exceptionalTotal, totalExpenses),
-                      changePercentage: _getCardChange(_compareCard2, realChange, exceptionalChange, totalChange),
-                      color: _getCardColor(_compareCard2),
-                      isSelected: false,
-                      onTap: () {},
-                      isCompareActive: false,
-                    ),
-                  ),
-                ],
-              ),
-            
-            const SizedBox(height: 24),
-            
-            if (!_isCompareMode)
-              _buildDetailsSection(
-                cardType: _selectedCard,
-                realExpenses: realExpenses,
-                exceptionalExpenses: exceptionalExpenses,
-                totalExpenses: filteredExpenses,
-              )
-            else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: CategoryDetailsSection(
-                      title: _getCardTitle(_compareCard1),
-                      expenses: _getCardExpenses(_compareCard1, realExpenses, exceptionalExpenses, filteredExpenses),
-                      color: _getCardColor(_compareCard1),
-                      isCompact: true,
-                      onSubCategoryTap: (category) {
-                        _showSubCategoryDetails(category);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: CategoryDetailsSection(
-                      title: _getCardTitle(_compareCard2),
-                      expenses: _getCardExpenses(_compareCard2, realExpenses, exceptionalExpenses, filteredExpenses),
-                      color: _getCardColor(_compareCard2),
-                      isCompact: true,
-                      onSubCategoryTap: (category) {
-                        _showSubCategoryDetails(category);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
-    );
+    setState(() {});
   }
 
-  Widget _buildCard(String title, double amount, double change, Color color, int index) {
-    return Expanded(
-      child: AnalysisCard(
-        title: title,
-        amount: amount,
-        changePercentage: change,
-        color: color,
-        isSelected: _selectedCard == index && !_isCompareMode,
-        onTap: () => _onCardTap(index),
-        isCompareActive: _compareActive[index] ?? false,
-        onCompareTap: () {
-          setState(() {
-            _compareActive[index] = !(_compareActive[index] ?? false);
-          });
-        },
-      ),
-    );
-  }
-
-  Widget _buildDetailsSection({
-    required int cardType,
-    required List<Expense> realExpenses,
-    required List<Expense> exceptionalExpenses,
-    required List<Expense> totalExpenses,
-  }) {
-    switch (cardType) {
-      case 0:
-        return CategoryDetailsSection(
-          title: "Total Expenses",
-          expenses: totalExpenses,
-          color: Colors.blue,
-          onSubCategoryTap: _showSubCategoryDetails,
-        );
-      case 1:
-        return CategoryDetailsSection(
-          title: "Real Expenses",
-          expenses: realExpenses,
-          color: Colors.green,
-          onSubCategoryTap: _showSubCategoryDetails,
-        );
-      case 2:
-        return CategoryDetailsSection(
-          title: "Exceptional Expenses",
-          expenses: exceptionalExpenses,
-          color: Colors.orange,
-          onSubCategoryTap: _showSubCategoryDetails,
-        );
-      default:
-        return const SizedBox.shrink();
+  // دالة لحساب الإجمالي حسب الفئة الرئيسية
+  double _calculateTotalByMainCategory(List<Expense> expenses) {
+    double total = 0;
+    final mainCategoriesMap = <String, double>{};
+    
+    for (final expense in expenses) {
+      mainCategoriesMap[expense.mainCategoryId] = 
+          (mainCategoriesMap[expense.mainCategoryId] ?? 0) + expense.amount;
     }
+    
+    for (final amount in mainCategoriesMap.values) {
+      total += amount;
+    }
+    return total;
   }
 
-  String _getCardTitle(int card) {
-    switch (card) {
-      case 0: return "Total Expenses";
-      case 1: return "Real Expenses";
-      case 2: return "Exceptional Expenses";
-      default: return "";
+  // دالة لتجميع المصروفات حسب الفئة الرئيسية
+  Map<String, double> _groupByMainCategory(List<Expense> expenses) {
+    final Map<String, double> result = {};
+    
+    for (final expense in expenses) {
+      result[expense.mainCategoryId] = 
+          (result[expense.mainCategoryId] ?? 0) + expense.amount;
     }
-  }
-
-  double _getCardAmount(int card, double real, double exceptional, double total) {
-    switch (card) {
-      case 0: return total;
-      case 1: return real;
-      case 2: return exceptional;
-      default: return 0;
-    }
-  }
-
-  double _getCardChange(int card, double realChange, double exceptionalChange, double totalChange) {
-    switch (card) {
-      case 0: return totalChange;
-      case 1: return realChange;
-      case 2: return exceptionalChange;
-      default: return 0;
-    }
-  }
-
-  Color _getCardColor(int card) {
-    switch (card) {
-      case 0: return Colors.blue;
-      case 1: return Colors.green;
-      case 2: return Colors.orange;
-      default: return Colors.white;
-    }
-  }
-
-  List<Expense> _getCardExpenses(int card, List<Expense> real, List<Expense> exceptional, List<Expense> total) {
-    switch (card) {
-      case 0: return total;
-      case 1: return real;
-      case 2: return exceptional;
-      default: return [];
-    }
+    return result;
   }
 
   int _getPeriodDays() {
@@ -355,23 +169,224 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     }
   }
 
-  void _showSubCategoryDetails(String mainCategory) {
+  String _formatCurrency(double amount) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final formatter = NumberFormat("#,###");
+    if (isArabic) {
+      return "${formatter.format(amount.toInt())} ج.م";
+    } else {
+      return "${formatter.format(amount.toInt())} EGP";
+    }
+  }
+
+  // دالة للحصول على اسم الفئة الرئيسية المترجم
+  String _getMainCategoryName(String categoryId, BuildContext context) {
+    final category = mainCategories.firstWhere(
+      (c) => c.id == categoryId,
+      orElse: () => CategoryConfig(id: categoryId, icon: ''),
+    );
+    return category.resolveTitle2(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F1115),
+      appBar: AppBar(
+        title: Text(t.analysis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(100),
+          child: Column(
+            children: [
+              DateRangeSelector(
+                selectedPeriod: _selectedPeriod,
+                startDate: _startDate,
+                endDate: _endDate,
+                onPeriodChanged: _onPeriodChanged,
+                onDateRangeChanged: _onDateRangeChanged,
+              ),
+              const SizedBox(height: 8),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A2A2A),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white54,
+                  indicator: BoxDecoration(
+                    color: Colors.blue,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+                  tabs: [
+                    Tab(text: t.totalExpenses),
+                    Tab(text: t.realExpenses),
+                    Tab(text: t.exceptionalExpenses),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildTabContent(
+            title: t.totalExpenses,
+            amount: _totalExpensesAmount,
+            change: _totalChange,
+            color: Colors.blue,
+            expenses: _totalExpenses,
+          ),
+          _buildTabContent(
+            title: t.realExpenses,
+            amount: _realTotal,
+            change: _realChange,
+            color: Colors.green,
+            expenses: _realExpenses,
+          ),
+          _buildTabContent(
+            title: t.exceptionalExpenses,
+            amount: _exceptionalTotal,
+            change: _exceptionalChange,
+            color: Colors.orange,
+            expenses: _exceptionalExpenses,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabContent({
+    required String title,
+    required double amount,
+    required double change,
+    required Color color,
+    required List<Expense> expenses,
+  }) {
+    final mainCategoryData = _groupByMainCategory(expenses);
+    
+    // ✅ تحويل البيانات إلى الشكل المطلوب لـ MainCategoryData
+    final List<MainCategoryData> categoryList = [];
+    for (final entry in mainCategoryData.entries) {
+      categoryList.add(MainCategoryData(
+        id: entry.key,
+        name: _getMainCategoryName(entry.key, context),
+        total: entry.value,
+      ));
+    }
+    
+    // ✅ ترتيب تنازلي (من الأكبر للأصغر)
+    categoryList.sort((a, b) => b.total.compareTo(a.total));
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // كارت الملخص
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  color.withOpacity(0.3),
+                  color.withOpacity(0.1),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: color.withOpacity(0.5),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _formatCurrency(amount),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (change != 0)
+                      Icon(
+                        change > 0 ? Icons.trending_up : Icons.trending_down,
+                        size: 16,
+                        color: change > 0 ? Colors.red : Colors.green,
+                      ),
+                    if (change != 0) const SizedBox(width: 4),
+                    Text(
+                      change == 0
+                          ? "0% ${AppLocalizations.of(context)!.vsLastPeriod}"
+                          : "${change > 0 ? '+' : ''}${change.toStringAsFixed(0)}% ${AppLocalizations.of(context)!.vsLastPeriod}",
+                      style: TextStyle(
+                        color: change > 0
+                            ? Colors.red
+                            : (change < 0 ? Colors.green : Colors.white54),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          // ✅ عرض الفئات الرئيسية فقط في الدائرة والقائمة (مع البيانات المرتبة)
+          CategoryDetailsSection(
+            title: title,
+            mainCategoriesData: categoryList,
+            color: color,
+            onSubCategoryTap: (categoryId, categoryName) {
+              _showMainCategoryDetails(categoryId, categoryName, expenses);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMainCategoryDetails(String categoryId, String categoryName, List<Expense> allExpenses) {
+    // تصفية المصروفات الخاصة بهذه الفئة الرئيسية فقط
+    final filteredExpenses = allExpenses.where((e) => e.mainCategoryId == categoryId).toList();
+    
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          backgroundColor: const Color(0xFF0F1115),
-          appBar: AppBar(
-            title: Text(mainCategory, style: const TextStyle(color: Colors.white)),
-            backgroundColor: Colors.transparent,
-          ),
-          body: Center(
-            child: Text(
-              "Subcategory details for $mainCategory\nPeriod: ${_startDate.day}/${_startDate.month} - ${_endDate.day}/${_endDate.month} ${_endDate.year}",
-              style: const TextStyle(color: Colors.white),
-              textAlign: TextAlign.center,
-            ),
-          ),
+        builder: (context) => MainCategoryDetailsScreen(
+          mainCategoryId: categoryId,
+          mainCategoryName: categoryName,
+          expenses: filteredExpenses,
+          startDate: _startDate,
+          endDate: _endDate,
         ),
       ),
     );
