@@ -5,6 +5,8 @@ import '../utils/category_icons.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/expense.dart';
 import '../config/category_config.dart';
+import '../l10n/app_localizations.dart';
+import '../utils/category_helper.dart';
 
 class SelectedCategory {
   final String id;
@@ -27,7 +29,7 @@ void showAddExpenseSheet(
   if (_controller != null) return;
 
   final screenHeight = MediaQuery.of(context).size.height;
-  final bottomSheetHeight = screenHeight * 0.65;
+  final bottomSheetHeight = screenHeight * 0.3;
 
   _controller = Scaffold.of(context).showBottomSheet(
     (context) => SizedBox(
@@ -81,7 +83,7 @@ class _AddExpenseBottomSheetState
       
       widget.categoryNotifier.value = SelectedCategory(
         id: widget.expenseToEdit!.subCategoryId ?? widget.expenseToEdit!.mainCategoryId,
-        name: widget.expenseToEdit!.subCategoryName ?? widget.expenseToEdit!.mainCategoryName,
+        name: widget.expenseToEdit!.subCategoryId ?? widget.expenseToEdit!.mainCategoryId,
       );
     } else {
       amount = "0";
@@ -155,9 +157,9 @@ class _AddExpenseBottomSheetState
         String tempNote = note;
         return AlertDialog(
           backgroundColor: const Color(0xFF1B2A6B),
-          title: const Text(
-            'إضافة ملاحظة',
-            style: TextStyle(color: Colors.white),
+           title: Text(
+            AppLocalizations.of(context)!.addNote,
+            style: const TextStyle(color: Colors.white),
           ),
           content: TextField(
             style: const TextStyle(color: Colors.white),
@@ -208,22 +210,7 @@ class _AddExpenseBottomSheetState
     return categoryId;
   }
 
-  // ✅ دالة لمعرفة اسم الفئة الرئيسية
-  String _getMainCategoryName(String categoryId) {
-    for (final category in mainCategories) {
-      if (category.id == categoryId) {
-        return category.resolveTitle2(context);
-      }
-      if (category.subCategories != null) {
-        for (final sub in category.subCategories!) {
-          if (sub.id == categoryId) {
-            return category.resolveTitle2(context);
-          }
-        }
-      }
-    }
-    return categoryId;
-  }
+
 
   // ✅ دالة لمعرفة إذا كانت الفئة فرعية أم رئيسية
   bool _isSubCategory(String categoryId) {
@@ -245,12 +232,12 @@ class _AddExpenseBottomSheetState
     final value = double.tryParse(amount) ?? 0;
     if (value == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('الرجاء إدخال مبلغ صحيح'),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 2),
-        ),
-      );
+  SnackBar(
+    content: Text(AppLocalizations.of(context)!.pleaseEnterValidAmount),
+    backgroundColor: Colors.orange,
+    duration: const Duration(seconds: 2),
+  ),
+);
       return;
     }
 
@@ -265,9 +252,8 @@ class _AddExpenseBottomSheetState
       id: widget.expenseToEdit?.id,
       amount: value,
       mainCategoryId: _getMainCategoryId(selected.id),
-      mainCategoryName: _getMainCategoryName(selected.id),
+    
       subCategoryId: isSub ? selected.id : null,
-      subCategoryName: isSub ? selected.name : null,
       date: selectedDate,
       isExceptional: isExceptional,
       note: note.isEmpty ? null : note,
@@ -279,26 +265,26 @@ class _AddExpenseBottomSheetState
         await box.put(widget.expenseKey!, expense);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم تعديل المصروف بنجاح'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 2),
-          ),
-        );
+  SnackBar(
+    content: Text(AppLocalizations.of(context)!.expenseUpdatedSuccessfully),
+    backgroundColor: Colors.orange,
+    duration: const Duration(seconds: 2),
+  ),
+);
       } else {
         await box.add(expense);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isExceptional 
-                ? 'تم إضافة المصروف الاستثنائي بنجاح'
-                : 'تم إضافة المصروف المتكرر بنجاح',
-            ),
-            backgroundColor: isExceptional ? Colors.orange : Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+  SnackBar(
+    content: Text(
+      isExceptional 
+        ? AppLocalizations.of(context)!.exceptionalExpenseAddedSuccessfully
+        : AppLocalizations.of(context)!.recurringExpenseAddedSuccessfully,
+    ),
+    backgroundColor: isExceptional ? Colors.orange : Colors.green,
+    duration: const Duration(seconds: 2),
+  ),
+);
       }
       
       Navigator.pop(context);

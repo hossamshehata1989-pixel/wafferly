@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../logic/analysis_calculator.dart';
 import '../../../utils/category_icons.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:wafferly/l10n/app_localizations.dart';
+import '../../../utils/category_helper.dart';
 
 class CategoryPanel extends StatelessWidget {
   final String title;
@@ -20,6 +22,7 @@ class CategoryPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final categories = getTopCategories(data);
+    final t = AppLocalizations.of(context)!;  // ✅ هنا صح
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -43,15 +46,14 @@ class CategoryPanel extends StatelessWidget {
           const SizedBox(height: 10),
 
           /// 🔥 HEADER (اسم + عملة)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text("الفئة",
-                  style: TextStyle(color: Colors.white54)),
-              Text("EGP",
-                  style: TextStyle(color: Colors.white54)),
-            ],
-          ),
+
+Row(
+  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  children: [
+    Text(t.category, style: const TextStyle(color: Colors.white54)),
+    Text(t.currency, style: const TextStyle(color: Colors.white54)),
+  ],
+),
 
           const SizedBox(height: 10),
 
@@ -81,11 +83,11 @@ class CategoryPanel extends StatelessWidget {
                       /// NAME
                       Expanded(
                         child: Text(
-                          e.key,
+                          getMainCategoryName(e.key, t),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textDirection:
-                              TextDirection.rtl,
+                              Directionality.of(context),
                           style: const TextStyle(
                               color: Colors.white),
                         ),

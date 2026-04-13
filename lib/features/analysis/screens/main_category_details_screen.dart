@@ -7,6 +7,8 @@ import '../../../config/category_config.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../utils/category_icons.dart';
 import '../widgets/custom_donut_chart.dart';
+import '../../../utils/category_helper.dart';
+import '../../../l10n/app_localizations.dart';
 
 class MainCategoryDetailsScreen extends StatelessWidget {
   final String mainCategoryId;
@@ -260,8 +262,10 @@ class MainCategoryDetailsScreen extends StatelessWidget {
     final Map<String, SubCategoryData> subCategoriesMap = {};
     for (final expense in expenses) {
       final subId = expense.subCategoryId ?? expense.mainCategoryId;
-      final subName = expense.subCategoryName ?? expense.mainCategoryName;
-      
+
+final subName = expense.subCategoryId != null
+    ? getSubCategoryName(expense.subCategoryId!, t)
+    : getMainCategoryName(expense.mainCategoryId, t);
       if (subCategoriesMap.containsKey(subId)) {
         subCategoriesMap[subId] = SubCategoryData(
           id: subId,

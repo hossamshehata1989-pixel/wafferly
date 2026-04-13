@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/expense.dart';
+import '../l10n/app_localizations.dart';
+import '../utils/category_helper.dart';
 import '../widgets/add_expense_bottom_sheet.dart';
 
 class ExpensesList extends StatelessWidget {
@@ -12,6 +14,7 @@ class ExpensesList extends StatelessWidget {
   Widget build(BuildContext context) {
     final formatter = NumberFormat("#,###");
     final box = Hive.box<Expense>('expenses');
+    final t = AppLocalizations.of(context)!; // ✅ إضافة
 
     return ValueListenableBuilder(
       valueListenable: box.listenable(),
@@ -19,10 +22,10 @@ class ExpensesList extends StatelessWidget {
         final expenses = box.values.toList().reversed.toList();
 
         if (expenses.isEmpty) {
-          return const Center(
+          return Center(
             child: Text(
-              "No expenses yet",
-              style: TextStyle(color: Colors.white70),
+              t.noExpensesYet,
+              style: const TextStyle(color: Colors.white70),
             ),
           );
         }
@@ -71,10 +74,10 @@ class ExpensesList extends StatelessWidget {
                 await box.delete(expenseKey);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('تم حذف المصروف بنجاح'),
+                    SnackBar(
+                      content: Text(t.expenseDeletedSuccessfully),
                       backgroundColor: Colors.red,
-                      duration: Duration(seconds: 2),
+                      duration: const Duration(seconds: 2),
                     ),
                   );
                 }
@@ -99,14 +102,16 @@ class ExpensesList extends StatelessWidget {
                     ),
                   ),
                   title: Text(
-                    e.mainCategory,
+                    getMainCategoryName(e.mainCategoryId, t), // ✅
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   subtitle: Text(
-                    "${e.subCategory} • ${e.date.day}/${e.date.month}/${e.date.year}",
+                    "${e.subCategoryId != null 
+                        ? getSubCategoryName(e.subCategoryId!, t) 
+                        : getMainCategoryName(e.mainCategoryId, t)} • ${e.date.day}/${e.date.month}/${e.date.year}", // ✅
                     style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 12,
@@ -134,8 +139,8 @@ class ExpensesList extends StatelessWidget {
                           onPressed: () {
                             final categoryNotifier = ValueNotifier(
                               SelectedCategory(
-                                id: e.subCategory,
-                                name: e.mainCategory,
+                                id: e.subCategoryId ?? e.mainCategoryId, // ✅
+                                name: getMainCategoryName(e.mainCategoryId, t), // ✅
                               ),
                             );
                             showAddExpenseSheet(

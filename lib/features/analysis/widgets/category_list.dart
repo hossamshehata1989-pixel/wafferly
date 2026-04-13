@@ -1,6 +1,8 @@
 // lib/features/analysis/widgets/category_list.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../utils/category_helper.dart';
+import '../../../l10n/app_localizations.dart';
 
 class CategoryList extends StatelessWidget {
   final Map<String, double> data;
@@ -17,6 +19,8 @@ class CategoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat("#,###");
+    final t = AppLocalizations.of(context)!; // ✅ إضافة
+
     final sorted = data.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
@@ -43,7 +47,7 @@ class CategoryList extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  e.key,
+                  getMainCategoryName(e.key, t), // ✅ بدل e.key
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,

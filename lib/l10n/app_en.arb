@@ -230,5 +230,16 @@
   "sneakers": "Sneakers",
   "sandal": "Sandal",
   "slipper": "Slipper",
-  "crocs": "Crocs"
+  "crocs": "Crocs",
+    "statistics": "Statistics",
+  "settings": "Settings",
+  "addNote": "Add Note",
+  "expenseUpdatedSuccessfully": "Expense updated successfully",
+  "exceptionalExpenseAddedSuccessfully": "Exceptional expense added successfully",
+  "recurringExpenseAddedSuccessfully": "Recurring expense added successfully",
+  "noExpensesYet": "No expenses yet",
+  "expenseDeletedSuccessfully": "Expense deleted successfully",
+  "category": "Category",
+  "currency": "EGP",
+  "pleaseEnterValidAmount": "Please enter a valid amount"
 }

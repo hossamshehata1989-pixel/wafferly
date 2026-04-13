@@ -14,14 +14,10 @@ class Expense extends HiveObject {
   @HiveField(2)
   final String mainCategoryId;  // ✅ id الفئة الرئيسية (مثلاً 'dailyTransport')
   
-  @HiveField(3)
-  final String mainCategoryName; // ✅ اسم الفئة الرئيسية (للترجمة أو العرض)
   
   @HiveField(4)
   final String? subCategoryId;   // ✅ id الفئة الفرعية (اختياري)
   
-  @HiveField(5)
-  final String? subCategoryName; // ✅ اسم الفئة الفرعية (اختياري)
   
   @HiveField(6)
   final DateTime date;
@@ -39,9 +35,9 @@ class Expense extends HiveObject {
     String? id,
     required this.amount,
     required this.mainCategoryId,
-    required this.mainCategoryName,
+   
     this.subCategoryId,
-    this.subCategoryName,
+   
     required this.date,
     required this.isExceptional,
     this.note,
@@ -49,29 +45,25 @@ class Expense extends HiveObject {
   }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
   
   // ✅ نسخة للتعديل
-  Expense copyWith({
-    String? id,
-    double? amount,
-    String? mainCategoryId,
-    String? mainCategoryName,
-    String? subCategoryId,
-    String? subCategoryName,
-    DateTime? date,
-    bool? isExceptional,
-    String? note,
-    String? paymentMethod,
-  }) {
-    return Expense(
-      id: id ?? this.id,
-      amount: amount ?? this.amount,
-      mainCategoryId: mainCategoryId ?? this.mainCategoryId,
-      mainCategoryName: mainCategoryName ?? this.mainCategoryName,
-      subCategoryId: subCategoryId ?? this.subCategoryId,
-      subCategoryName: subCategoryName ?? this.subCategoryName,
-      date: date ?? this.date,
-      isExceptional: isExceptional ?? this.isExceptional,
-      note: note ?? this.note,
-      paymentMethod: paymentMethod ?? this.paymentMethod,
-    );
-  }
+ Expense copyWith({
+  String? id,
+  double? amount,
+  String? mainCategoryId,
+  String? subCategoryId,
+  DateTime? date,
+  bool? isExceptional,
+  String? note,
+  String? paymentMethod,
+}) {
+  return Expense(
+    id: id ?? this.id,
+    amount: amount ?? this.amount,
+    mainCategoryId: mainCategoryId ?? this.mainCategoryId,
+    subCategoryId: subCategoryId ?? this.subCategoryId,
+    date: date ?? this.date,
+    isExceptional: isExceptional ?? this.isExceptional,
+    note: note ?? this.note,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
+  );
+}
 }

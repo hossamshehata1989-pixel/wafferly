@@ -10,6 +10,7 @@ import '../widgets/analysis_card.dart';
 import '../widgets/category_details_section.dart';
 import '../widgets/date_range_selector.dart';
 import 'main_category_details_screen.dart';
+import '../../../utils/category_helper.dart';
 
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
@@ -179,14 +180,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     }
   }
 
-  // دالة للحصول على اسم الفئة الرئيسية المترجم
-  String _getMainCategoryName(String categoryId, BuildContext context) {
-    final category = mainCategories.firstWhere(
-      (c) => c.id == categoryId,
-      orElse: () => CategoryConfig(id: categoryId, icon: ''),
-    );
-    return category.resolveTitle2(context);
-  }
+ 
 
   @override
   Widget build(BuildContext context) {
@@ -276,6 +270,9 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     required Color color,
     required List<Expense> expenses,
   }) {
+    
+    final t = AppLocalizations.of(context)!; // ✅ أضف ده
+
     final mainCategoryData = _groupByMainCategory(expenses);
     
     // ✅ تحويل البيانات إلى الشكل المطلوب لـ MainCategoryData
@@ -283,8 +280,8 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     for (final entry in mainCategoryData.entries) {
       categoryList.add(MainCategoryData(
         id: entry.key,
-        name: _getMainCategoryName(entry.key, context),
-        total: entry.value,
+        name: getMainCategoryName(entry.key, t),
+        total: entry.value, // ✅ لازم تضيف دي
       ));
     }
     
