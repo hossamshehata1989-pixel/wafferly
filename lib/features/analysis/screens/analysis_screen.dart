@@ -27,6 +27,17 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
   
+  // ==============================
+  // 🔥 CACHE
+  // ==============================
+
+  Map<String, double>? _cachedTotal;
+  Map<String, double>? _cachedReal;
+  Map<String, double>? _cachedExceptional;
+
+  DateTime? _lastStartDate;
+  DateTime? _lastEndDate;
+
   List<Expense> _realExpenses = [];
   List<Expense> _exceptionalExpenses = [];
   List<Expense> _totalExpenses = [];
@@ -39,6 +50,12 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   double _exceptionalChange = 0;
   double _totalChange = 0;
 
+  ValueNotifier<bool> _refreshNotifier = ValueNotifier(false);
+
+  List<MainCategoryData>? _cachedRealList;
+  List<MainCategoryData>? _cachedExceptionalList;
+  List<MainCategoryData>? _cachedTotalList; 
+  
   @override
   void initState() {
     super.initState();
@@ -47,10 +64,11 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   }
 
   @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+void dispose() {
+  _tabController.dispose();
+  _refreshNotifier.dispose();
+  super.dispose();
+}
 
   void _updateDateRange() {
     final now = DateTime.now();
@@ -104,16 +122,43 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     _exceptionalExpenses = filteredExpenses.where((e) => e.isExceptional).toList();
     _totalExpenses = filteredExpenses;
 
-    // حساب الإجماليات حسب الفئة الرئيسية
-    _realTotal = _calculateTotalByMainCategory(_realExpenses);
-    _exceptionalTotal = _calculateTotalByMainCategory(_exceptionalExpenses);
-    _totalExpensesAmount = _realTotal + _exceptionalTotal;
+    final isSameRange =
+       _lastStartDate == _startDate &&
+       _lastEndDate == _endDate;
 
-    final periodDays = _getPeriodDays();
-    final previousStart = _startDate.subtract(Duration(days: periodDays));
-    final previousEnd = _endDate.subtract(Duration(days: periodDays));
+       if (!isSameRange || _cachedReal == null) {
+     
+       _cachedReal = _groupByMainCategory(_realExpenses);
+_cachedExceptional = _groupByMainCategory(_exceptionalExpenses);
+_cachedTotal = _groupByMainCategory(_totalExpenses);
 
-    final previousExpenses = allExpenses.where((e) =>
+WidgetsBinding.instance.addPostFrameCallback((_) {
+  final t = AppLocalizations.of(context)!;
+
+  _cachedRealList = _buildCategoryList(_cachedReal ?? {}, t);
+  _cachedExceptionalList = _buildCategoryList(_cachedExceptional ?? {}, t);
+  _cachedTotalList = _buildCategoryList(_cachedTotal ?? {}, t);
+
+  _exceptionalTotal =
+      (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b);
+
+  _refreshNotifier.value = !_refreshNotifier.value;
+});
+
+_lastStartDate = _startDate;
+_lastEndDate = _endDate;
+      }
+
+      // ✅ السطر المُعدل هنا
+      _realTotal = (_cachedReal ?? {}).values.fold<double>(0.0, (a, b) => a + b);
+_exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b);     
+ _totalExpensesAmount = _realTotal + _exceptionalTotal;
+
+     final periodDays = _getPeriodDays();
+     final previousStart = _startDate.subtract(Duration(days: periodDays));
+     final previousEnd = _endDate.subtract(Duration(days: periodDays));
+
+     final previousExpenses = allExpenses.where((e) =>
       e.date.isAfter(previousStart.subtract(const Duration(days: 1))) &&
       e.date.isBefore(previousEnd.add(const Duration(days: 1)))
     ).toList();
@@ -130,10 +175,8 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     _exceptionalChange = previousExceptional == 0 ? 0 : ((_exceptionalTotal - previousExceptional) / previousExceptional) * 100;
     _totalChange = previousTotal == 0 ? 0 : ((_totalExpensesAmount - previousTotal) / previousTotal) * 100;
 
-    setState(() {});
   }
 
-  // دالة لحساب الإجمالي حسب الفئة الرئيسية
   double _calculateTotalByMainCategory(List<Expense> expenses) {
     double total = 0;
     final mainCategoriesMap = <String, double>{};
@@ -149,7 +192,6 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     return total;
   }
 
-  // دالة لتجميع المصروفات حسب الفئة الرئيسية
   Map<String, double> _groupByMainCategory(List<Expense> expenses) {
     final Map<String, double> result = {};
     
@@ -180,14 +222,40 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     }
   }
 
- 
+ List<MainCategoryData> _buildCategoryList(
+  Map<String, double> data,
+  AppLocalizations t,
+) {
+  final list = data.entries.map((entry) {
+    return MainCategoryData(
+      id: entry.key,
+      name: getMainCategoryName(entry.key, t),
+      total: entry.value,
+    );
+  }).toList();
+
+  list.sort((a, b) => b.total.compareTo(a.total));
+
+  return list;
+}
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+  
+  if (_cachedReal == null ||
+      _cachedExceptional == null ||
+      _cachedTotal == null) {
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+    return ValueListenableBuilder(
+       valueListenable: _refreshNotifier,
+       builder: (context, _, __) {
+            final t = AppLocalizations.of(context)!;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F1115),
+         return Scaffold(
+         backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
         title: Text(t.analysis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
         backgroundColor: Colors.transparent,
@@ -213,20 +281,20 @@ class _AnalysisScreenState extends State<AnalysisScreen>
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: TabBar(
-                  controller: _tabController,
-                  labelColor: Colors.white,
-                  unselectedLabelColor: Colors.white54,
-                  indicator: BoxDecoration(
-                    color: Colors.blue,
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                  unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
-                  tabs: [
-                    Tab(text: t.totalExpenses),
-                    Tab(text: t.realExpenses),
-                    Tab(text: t.exceptionalExpenses),
-                  ],
+                   controller: _tabController,
+                   labelColor: Colors.white,
+                   unselectedLabelColor: Colors.white54,
+                   indicator: BoxDecoration(
+                     color: Colors.blue,
+                     borderRadius: BorderRadius.circular(30),
+                   ),
+                   labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                   unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+                   tabs: [
+                     Tab(text: t.totalExpenses),
+                     Tab(text: t.realExpenses),
+                     Tab(text: t.exceptionalExpenses),
+                   ],
                 ),
               ),
               const SizedBox(height: 8),
@@ -261,6 +329,8 @@ class _AnalysisScreenState extends State<AnalysisScreen>
         ],
       ),
     );
+  },
+);
   }
 
   Widget _buildTabContent({
@@ -271,93 +341,36 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     required List<Expense> expenses,
   }) {
     
-    final t = AppLocalizations.of(context)!; // ✅ أضف ده
+    final t = AppLocalizations.of(context)!;
 
-    final mainCategoryData = _groupByMainCategory(expenses);
-    
-    // ✅ تحويل البيانات إلى الشكل المطلوب لـ MainCategoryData
-    final List<MainCategoryData> categoryList = [];
-    for (final entry in mainCategoryData.entries) {
-      categoryList.add(MainCategoryData(
-        id: entry.key,
-        name: getMainCategoryName(entry.key, t),
-        total: entry.value, // ✅ لازم تضيف دي
-      ));
-    }
-    
-    // ✅ ترتيب تنازلي (من الأكبر للأصغر)
-    categoryList.sort((a, b) => b.total.compareTo(a.total));
+  Map<String, double> mainCategoryData;
+
+   if (expenses == _realExpenses) {
+    mainCategoryData = _cachedReal ?? {};
+   } else if (expenses == _exceptionalExpenses) {
+mainCategoryData = _cachedExceptional ?? {};   } else {
+    mainCategoryData = _cachedTotal ?? {};
+  } 
+    List<MainCategoryData> categoryList;
+
+if (expenses == _realExpenses) {
+  categoryList = _cachedRealList ?? [];
+} else if (expenses == _exceptionalExpenses) {
+categoryList = _cachedExceptionalList ?? [];} else {
+categoryList = _cachedTotalList ?? [];}
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // كارت الملخص
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  color.withOpacity(0.3),
-                  color.withOpacity(0.1),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: color.withOpacity(0.5),
-                width: 1,
-              ),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _formatCurrency(amount),
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (change != 0)
-                      Icon(
-                        change > 0 ? Icons.trending_up : Icons.trending_down,
-                        size: 16,
-                        color: change > 0 ? Colors.red : Colors.green,
-                      ),
-                    if (change != 0) const SizedBox(width: 4),
-                    Text(
-                      change == 0
-                          ? "0% ${AppLocalizations.of(context)!.vsLastPeriod}"
-                          : "${change > 0 ? '+' : ''}${change.toStringAsFixed(0)}% ${AppLocalizations.of(context)!.vsLastPeriod}",
-                      style: TextStyle(
-                        color: change > 0
-                            ? Colors.red
-                            : (change < 0 ? Colors.green : Colors.white54),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          _SummaryCard(
+  title: title,
+  amount: amount,
+  change: change,
+  color: color,
+  formattedAmount: _formatCurrency(amount),
+),
           const SizedBox(height: 24),
-          // ✅ عرض الفئات الرئيسية فقط في الدائرة والقائمة (مع البيانات المرتبة)
           CategoryDetailsSection(
             title: title,
             mainCategoriesData: categoryList,
@@ -372,7 +385,6 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   }
 
   void _showMainCategoryDetails(String categoryId, String categoryName, List<Expense> allExpenses) {
-    // تصفية المصروفات الخاصة بهذه الفئة الرئيسية فقط
     final filteredExpenses = allExpenses.where((e) => e.mainCategoryId == categoryId).toList();
     
     Navigator.push(
@@ -385,6 +397,80 @@ class _AnalysisScreenState extends State<AnalysisScreen>
           startDate: _startDate,
           endDate: _endDate,
         ),
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final String title;
+  final double amount;
+  final double change;
+  final Color color;
+  final String formattedAmount;
+
+  const _SummaryCard({
+    required this.title,
+    required this.amount,
+    required this.change,
+    required this.color,
+    required this.formattedAmount,
+  });
+
+  @override
+  Widget build(BuildContext context) {     
+    final t = AppLocalizations.of(context)!;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.3),
+            color.withOpacity(0.1),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Column(
+        children: [
+          Text(title, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+          const SizedBox(height: 8),
+          Text(
+            formattedAmount,
+            style: TextStyle(
+              color: color,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (change != 0)
+                Icon(
+                  change > 0 ? Icons.trending_up : Icons.trending_down,
+                  size: 16,
+                  color: change > 0 ? Colors.red : Colors.green,
+                ),
+              if (change != 0) const SizedBox(width: 4),
+              Text(
+                change == 0
+                    ? "0% ${t.vsLastPeriod}"
+                    : "${change > 0 ? '+' : ''}${change.toStringAsFixed(0)}% ${t.vsLastPeriod}",
+                style: TextStyle(
+                  color: change > 0
+                      ? Colors.red
+                      : (change < 0 ? Colors.green : Colors.white54),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
