@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-
+import 'models/account.dart';
 import 'screens/main_navigation.dart';
 import 'models/expense.dart';
 
@@ -18,6 +18,17 @@ void main() async {
   // 🔥 Init Hive
   // ---------------------------------------------------
   await Hive.initFlutter();
+  await Hive.openBox<Account>('accounts');
+final accountsBox = Hive.box<Account>('accounts');
+
+if (accountsBox.isEmpty) {
+  accountsBox.addAll([
+    Account(name: 'Cash', type: 'cash', currency: 'EGP'),
+    Account(name: 'Bank', type: 'bank', currency: 'EGP'),
+    Account(name: 'Wallet', type: 'wallet', currency: 'EGP'),
+    Account(name: 'Credit Card', type: 'credit', currency: 'EGP'),
+  ]);
+}
 
   // ---------------------------------------------------
   // 🧠 Register Adapter

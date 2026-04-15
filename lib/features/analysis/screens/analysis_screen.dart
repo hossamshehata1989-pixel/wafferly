@@ -11,6 +11,8 @@ import '../widgets/category_details_section.dart';
 import '../widgets/date_range_selector.dart';
 import 'main_category_details_screen.dart';
 import '../../../utils/category_helper.dart';
+import '../../../utils/expense_to_transaction.dart';
+import '../../../models/transaction.dart';
 
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
@@ -64,11 +66,11 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   }
 
   @override
-void dispose() {
-  _tabController.dispose();
-  _refreshNotifier.dispose();
-  super.dispose();
-}
+  void dispose() {
+    _tabController.dispose();
+    _refreshNotifier.dispose();
+    super.dispose();
+  }
 
   void _updateDateRange() {
     final now = DateTime.now();
@@ -109,9 +111,28 @@ void dispose() {
     _loadData();
   }
 
+  // ✅ دالة تجميع المعاملات حسب الفئة
+  Map<String, double> _groupTransactionsByCategory(List<Transaction> list) {
+    final result = <String, double>{};
+
+    for (final t in list) {
+      result[t.categoryId] = (result[t.categoryId] ?? 0) + t.amount;
+    }
+
+    return result;
+  }
+
   void _loadData() {
     final box = Hive.box<Expense>('expenses');
     final allExpenses = box.values.toList();
+    final allTransactions = allExpenses.map((e) => convertExpenseToTransaction(e)).toList();
+
+final filteredTransactions = allTransactions.where((t) =>
+  t.date.isAfter(_startDate.subtract(const Duration(days: 1))) &&
+  t.date.isBefore(_endDate.add(const Duration(days: 1)))
+).toList();
+
+print("transactions count: ${filteredTransactions.length}");
 
     final filteredExpenses = allExpenses.where((e) =>
       e.date.isAfter(_startDate.subtract(const Duration(days: 1))) &&
@@ -122,43 +143,45 @@ void dispose() {
     _exceptionalExpenses = filteredExpenses.where((e) => e.isExceptional).toList();
     _totalExpenses = filteredExpenses;
 
-    final isSameRange =
-       _lastStartDate == _startDate &&
-       _lastEndDate == _endDate;
+    final isSameRange = _lastStartDate == _startDate && _lastEndDate == _endDate;
 
-       if (!isSameRange || _cachedReal == null) {
-     
-       _cachedReal = _groupByMainCategory(_realExpenses);
-_cachedExceptional = _groupByMainCategory(_exceptionalExpenses);
-_cachedTotal = _groupByMainCategory(_totalExpenses);
+    if (!isSameRange || _cachedReal == null) {
+      _cachedReal = _groupTransactionsByCategory(
+  filteredTransactions.where((t) => !t.isExceptional).toList()
+);
 
-WidgetsBinding.instance.addPostFrameCallback((_) {
-  final t = AppLocalizations.of(context)!;
+_cachedExceptional = _groupTransactionsByCategory(
+  filteredTransactions.where((t) => t.isExceptional).toList()
+);
 
-  _cachedRealList = _buildCategoryList(_cachedReal ?? {}, t);
-  _cachedExceptionalList = _buildCategoryList(_cachedExceptional ?? {}, t);
-  _cachedTotalList = _buildCategoryList(_cachedTotal ?? {}, t);
+_cachedTotal = _groupTransactionsByCategory(filteredTransactions);
 
-  _exceptionalTotal =
-      (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final t = AppLocalizations.of(context)!;
 
-  _refreshNotifier.value = !_refreshNotifier.value;
-});
+        _cachedRealList = _buildCategoryList(_cachedReal ?? {}, t);
+        _cachedExceptionalList = _buildCategoryList(_cachedExceptional ?? {}, t);
+        _cachedTotalList = _buildCategoryList(_cachedTotal ?? {}, t);
 
-_lastStartDate = _startDate;
-_lastEndDate = _endDate;
-      }
+        _exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b);
 
-      // ✅ السطر المُعدل هنا
-      _realTotal = (_cachedReal ?? {}).values.fold<double>(0.0, (a, b) => a + b);
-_exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b);     
- _totalExpensesAmount = _realTotal + _exceptionalTotal;
+        _refreshNotifier.value = !_refreshNotifier.value;
+      });
 
-     final periodDays = _getPeriodDays();
-     final previousStart = _startDate.subtract(Duration(days: periodDays));
-     final previousEnd = _endDate.subtract(Duration(days: periodDays));
+      _lastStartDate = _startDate;
+      _lastEndDate = _endDate;
+    }
 
-     final previousExpenses = allExpenses.where((e) =>
+    // ✅ حساب الإجماليات
+    _realTotal = (_cachedReal ?? {}).values.fold<double>(0.0, (a, b) => a + b);
+    _exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b);     
+    _totalExpensesAmount = _realTotal + _exceptionalTotal;
+
+    final periodDays = _getPeriodDays();
+    final previousStart = _startDate.subtract(Duration(days: periodDays));
+    final previousEnd = _endDate.subtract(Duration(days: periodDays));
+
+    final previousExpenses = allExpenses.where((e) =>
       e.date.isAfter(previousStart.subtract(const Duration(days: 1))) &&
       e.date.isBefore(previousEnd.add(const Duration(days: 1)))
     ).toList();
@@ -174,7 +197,6 @@ _exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b)
     _realChange = previousReal == 0 ? 0 : ((_realTotal - previousReal) / previousReal) * 100;
     _exceptionalChange = previousExceptional == 0 ? 0 : ((_exceptionalTotal - previousExceptional) / previousExceptional) * 100;
     _totalChange = previousTotal == 0 ? 0 : ((_totalExpensesAmount - previousTotal) / previousTotal) * 100;
-
   }
 
   double _calculateTotalByMainCategory(List<Expense> expenses) {
@@ -222,115 +244,115 @@ _exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b)
     }
   }
 
- List<MainCategoryData> _buildCategoryList(
-  Map<String, double> data,
-  AppLocalizations t,
-) {
-  final list = data.entries.map((entry) {
-    return MainCategoryData(
-      id: entry.key,
-      name: getMainCategoryName(entry.key, t),
-      total: entry.value,
-    );
-  }).toList();
+  List<MainCategoryData> _buildCategoryList(
+    Map<String, double> data,
+    AppLocalizations t,
+  ) {
+    final list = data.entries.map((entry) {
+      return MainCategoryData(
+        id: entry.key,
+        name: getMainCategoryName(entry.key, t),
+        total: entry.value,
+      );
+    }).toList();
 
-  list.sort((a, b) => b.total.compareTo(a.total));
+    list.sort((a, b) => b.total.compareTo(a.total));
 
-  return list;
-}
+    return list;
+  }
 
   @override
   Widget build(BuildContext context) {
-  
-  if (_cachedReal == null ||
-      _cachedExceptional == null ||
-      _cachedTotal == null) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
-  }
+    if (_cachedReal == null ||
+        _cachedExceptional == null ||
+        _cachedTotal == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
     return ValueListenableBuilder(
-       valueListenable: _refreshNotifier,
-       builder: (context, _, __) {
-            final t = AppLocalizations.of(context)!;
+      valueListenable: _refreshNotifier,
+      builder: (context, _, __) {
+        final t = AppLocalizations.of(context)!;
 
-         return Scaffold(
-         backgroundColor: const Color(0xFF0F1115),
-      appBar: AppBar(
-        title: Text(t.analysis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(100),
-          child: Column(
+        return Scaffold(
+          backgroundColor: const Color(0xFF0F1115),
+          appBar: AppBar(
+            title: Text(t.analysis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: true,
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(100),
+              child: Column(
+                children: [
+                  DateRangeSelector(
+                    selectedPeriod: _selectedPeriod,
+                    startDate: _startDate,
+                    endDate: _endDate,
+                    onPeriodChanged: _onPeriodChanged,
+                    onDateRangeChanged: _onDateRangeChanged,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16),
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2A2A2A),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: TabBar(
+                      controller: _tabController,
+                      labelColor: Colors.white,
+                      unselectedLabelColor: Colors.white54,
+                      indicator: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+                      tabs: [
+                        Tab(text: t.totalExpenses),
+                        Tab(text: t.realExpenses),
+                        Tab(text: t.exceptionalExpenses),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ),
+          body: TabBarView(
+            controller: _tabController,
             children: [
-              DateRangeSelector(
-                selectedPeriod: _selectedPeriod,
-                startDate: _startDate,
-                endDate: _endDate,
-                onPeriodChanged: _onPeriodChanged,
-                onDateRangeChanged: _onDateRangeChanged,
+              _buildTabContent(
+                title: t.totalExpenses,
+                amount: _totalExpensesAmount,
+                change: _totalChange,
+                color: Colors.blue,
+                expenses: _totalExpenses,
               ),
-              const SizedBox(height: 8),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A2A2A),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: TabBar(
-                   controller: _tabController,
-                   labelColor: Colors.white,
-                   unselectedLabelColor: Colors.white54,
-                   indicator: BoxDecoration(
-                     color: Colors.blue,
-                     borderRadius: BorderRadius.circular(30),
-                   ),
-                   labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                   unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
-                   tabs: [
-                     Tab(text: t.totalExpenses),
-                     Tab(text: t.realExpenses),
-                     Tab(text: t.exceptionalExpenses),
-                   ],
-                ),
+              _buildTabContent(
+                title: t.realExpenses,
+                amount: _realTotal,
+                change: _realChange,
+                color: Colors.green,
+                expenses: _realExpenses,
               ),
-              const SizedBox(height: 8),
+              _buildTabContent(
+                title: t.exceptionalExpenses,
+                amount: _exceptionalTotal,
+                change: _exceptionalChange,
+                color: Colors.orange,
+                expenses: _exceptionalExpenses,
+              ),
             ],
           ),
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildTabContent(
-            title: t.totalExpenses,
-            amount: _totalExpensesAmount,
-            change: _totalChange,
-            color: Colors.blue,
-            expenses: _totalExpenses,
-          ),
-          _buildTabContent(
-            title: t.realExpenses,
-            amount: _realTotal,
-            change: _realChange,
-            color: Colors.green,
-            expenses: _realExpenses,
-          ),
-          _buildTabContent(
-            title: t.exceptionalExpenses,
-            amount: _exceptionalTotal,
-            change: _exceptionalChange,
-            color: Colors.orange,
-            expenses: _exceptionalExpenses,
-          ),
-        ],
-      ),
+        );
+      },
     );
-  },
-);
   }
 
   Widget _buildTabContent({
@@ -340,36 +362,39 @@ _exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b)
     required Color color,
     required List<Expense> expenses,
   }) {
-    
     final t = AppLocalizations.of(context)!;
 
-  Map<String, double> mainCategoryData;
+    Map<String, double> mainCategoryData;
 
-   if (expenses == _realExpenses) {
-    mainCategoryData = _cachedReal ?? {};
-   } else if (expenses == _exceptionalExpenses) {
-mainCategoryData = _cachedExceptional ?? {};   } else {
-    mainCategoryData = _cachedTotal ?? {};
-  } 
+    if (expenses == _realExpenses) {
+      mainCategoryData = _cachedReal ?? {};
+    } else if (expenses == _exceptionalExpenses) {
+      mainCategoryData = _cachedExceptional ?? {};
+    } else {
+      mainCategoryData = _cachedTotal ?? {};
+    }
+    
     List<MainCategoryData> categoryList;
 
-if (expenses == _realExpenses) {
-  categoryList = _cachedRealList ?? [];
-} else if (expenses == _exceptionalExpenses) {
-categoryList = _cachedExceptionalList ?? [];} else {
-categoryList = _cachedTotalList ?? [];}
+    if (expenses == _realExpenses) {
+      categoryList = _cachedRealList ?? [];
+    } else if (expenses == _exceptionalExpenses) {
+      categoryList = _cachedExceptionalList ?? [];
+    } else {
+      categoryList = _cachedTotalList ?? [];
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           _SummaryCard(
-  title: title,
-  amount: amount,
-  change: change,
-  color: color,
-  formattedAmount: _formatCurrency(amount),
-),
+            title: title,
+            amount: amount,
+            change: change,
+            color: color,
+            formattedAmount: _formatCurrency(amount),
+          ),
           const SizedBox(height: 24),
           CategoryDetailsSection(
             title: title,
