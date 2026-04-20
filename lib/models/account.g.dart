@@ -8,7 +8,7 @@ part of 'account.dart';
 
 class AccountAdapter extends TypeAdapter<Account> {
   @override
-  final int typeId = 11;
+  final int typeId = 1;
 
   @override
   Account read(BinaryReader reader) {
@@ -17,28 +17,49 @@ class AccountAdapter extends TypeAdapter<Account> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return Account(
-      id: fields[0] as String?,
-      name: fields[1] as String,
-      type: fields[2] as String,
-      currency: fields[3] as String,
-      balance: fields[4] as double,
+      id: fields[0] as String,
+      bookId: fields[1] as String,
+      name: fields[2] as String,
+      type: fields[3] as String,
+      nature: fields[4] as String,
+      currency: fields[5] as String,
+      provider: fields[6] as String?,
+      accountNumber: fields[7] as String?,
+      color: fields[8] as String?,
+      icon: fields[9] as String?,
+      notes: fields[10] as String?,
+      createdAt: fields[11] as DateTime,
     );
   }
 
   @override
   void write(BinaryWriter writer, Account obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.name)
+      ..write(obj.bookId)
       ..writeByte(2)
-      ..write(obj.type)
+      ..write(obj.name)
       ..writeByte(3)
-      ..write(obj.currency)
+      ..write(obj.type)
       ..writeByte(4)
-      ..write(obj.balance);
+      ..write(obj.nature)
+      ..writeByte(5)
+      ..write(obj.currency)
+      ..writeByte(6)
+      ..write(obj.provider)
+      ..writeByte(7)
+      ..write(obj.accountNumber)
+      ..writeByte(8)
+      ..write(obj.color)
+      ..writeByte(9)
+      ..write(obj.icon)
+      ..writeByte(10)
+      ..write(obj.notes)
+      ..writeByte(11)
+      ..write(obj.createdAt);
   }
 
   @override

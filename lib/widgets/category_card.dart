@@ -41,8 +41,11 @@ class CategoryCard extends StatelessWidget {
           splashColor: const Color(0xFF4FD1FF).withOpacity(.3),
           onTap: () {
             onTap();
+
             if (selectedCategory != null) {
-              showAddExpenseSheet(context, selectedCategory!);
+              Future.microtask(() {
+                showAddExpenseSheet(context, selectedCategory!);
+              });
             }
           },
           onLongPress: onLongPress,

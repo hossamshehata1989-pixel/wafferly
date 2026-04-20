@@ -1,48 +1,44 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+
 import 'models/account.dart';
-import 'screens/main_navigation.dart';
 import 'models/expense.dart';
+import 'models/transaction.dart';
+import 'screens/main_navigation.dart';
 
 import 'l10n/app_localizations.dart';
 import 'theme/app_colors.dart';
 
 void main() async {
-
-  // ---------------------------------------------------
-  // ⚠️ مهم جدًا
-  // ---------------------------------------------------
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ---------------------------------------------------
   // 🔥 Init Hive
-  // ---------------------------------------------------
   await Hive.initFlutter();
+
+  // 🔥 Register Adapters safely
+  if (!Hive.isAdapterRegistered(0)) {
+    Hive.registerAdapter(ExpenseAdapter());
+  }
+  if (!Hive.isAdapterRegistered(1)) {
+    Hive.registerAdapter(AccountAdapter());
+  }
+  if (!Hive.isAdapterRegistered(10)) {
+    Hive.registerAdapter(TransactionAdapter());
+  }
+
+  // 🔥 Open Boxes
   await Hive.openBox<Account>('accounts');
-final accountsBox = Hive.box<Account>('accounts');
-
-if (accountsBox.isEmpty) {
-  accountsBox.addAll([
-    Account(name: 'Cash', type: 'cash', currency: 'EGP'),
-    Account(name: 'Bank', type: 'bank', currency: 'EGP'),
-    Account(name: 'Wallet', type: 'wallet', currency: 'EGP'),
-    Account(name: 'Credit Card', type: 'credit', currency: 'EGP'),
-  ]);
-}
-
-  // ---------------------------------------------------
-  // 🧠 Register Adapter
-  // ---------------------------------------------------
-  Hive.registerAdapter(ExpenseAdapter());
-
-  // ---------------------------------------------------
-  // 📦 Open Box
-  // ---------------------------------------------------
   await Hive.openBox<Expense>('expenses');
+  await Hive.openBox<Transaction>('transactions');
+
+  // 🔥 لا نقوم بإنشاء حسابات افتراضية
+  // المستخدم سيضيف حسابه الأول بنفسه
 
   runApp(const WafferlyApp());
 }
 
+// 🎯 App Root
 class WafferlyApp extends StatelessWidget {
   const WafferlyApp({super.key});
 
@@ -52,9 +48,11 @@ class WafferlyApp extends StatelessWidget {
       title: 'Wafferly',
       debugShowCheckedModeBanner: false,
 
+      // 🌍 Localization
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
 
+      // 🎨 Theme
       theme: ThemeData(
         scaffoldBackgroundColor: AppColors.background,
         primaryColor: AppColors.primary,

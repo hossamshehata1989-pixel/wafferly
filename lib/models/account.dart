@@ -1,28 +1,57 @@
 import 'package:hive/hive.dart';
+
 part 'account.g.dart';
 
-@HiveType(typeId: 11)
+@HiveType(typeId: 1)
 class Account extends HiveObject {
   @HiveField(0)
-  final String id;
+  String id;
 
   @HiveField(1)
-  final String name;
+  String bookId;
 
   @HiveField(2)
-  final String type; // cash / bank / credit / loan / asset
+  String name;
 
   @HiveField(3)
-  final String currency;
+  String type;
 
   @HiveField(4)
-  final double balance;
+  String nature;
+
+  @HiveField(5)
+  String currency;
+
+  @HiveField(6)
+  String? provider;
+
+  @HiveField(7)
+  String? accountNumber;
+
+  @HiveField(8)
+  String? color;
+
+  @HiveField(9)
+  String? icon;
+
+  @HiveField(10)
+  String? notes;
+
+  @HiveField(11)
+  DateTime createdAt;
 
   Account({
-    String? id,
+    required this.id,
+    required this.bookId,
     required this.name,
     required this.type,
+    required this.nature,
     required this.currency,
-    this.balance = 0,
-  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+    this.provider,
+    this.accountNumber,
+    this.color,
+    this.icon,
+    this.notes,
+    required this.createdAt,
+  });
 }

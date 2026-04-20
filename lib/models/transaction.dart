@@ -14,7 +14,7 @@ class Transaction extends HiveObject {
   final String type; // income / expense / transfer / debt
 
   @HiveField(3)
-  final String fromAccountId;
+  final String? fromAccountId;
 
   @HiveField(4)
   final String? toAccountId;
@@ -32,18 +32,22 @@ class Transaction extends HiveObject {
   final String paymentMethod;
 
   @HiveField(9)
-final bool isExceptional;
+  final bool isExceptional;
+
+  @HiveField(10)  // ✅ أضف هذا
+  final String? subCategoryId;
 
   Transaction({
-  String? id,
-  required this.amount,
-  required this.type,
-  required this.fromAccountId,
-  this.toAccountId,
-  required this.categoryId,
-  required this.date,
-  this.note,
-  this.paymentMethod = 'cash',
-  this.isExceptional = false,
-}) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+    String? id,
+    required this.amount,
+    required this.type,
+    required this.fromAccountId,
+    this.toAccountId,
+    required this.categoryId,
+    required this.date,
+    this.note,
+    this.paymentMethod = 'cash',
+    this.isExceptional = false,
+    this.subCategoryId,  // ✅ أضف هذا
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
 }

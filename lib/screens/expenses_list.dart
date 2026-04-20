@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/expense.dart';
+import '../models/transaction.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/category_helper.dart';
 import '../widgets/add_expense_bottom_sheet.dart';
@@ -13,15 +13,19 @@ class ExpensesList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat("#,###");
-    final box = Hive.box<Expense>('expenses');
-    final t = AppLocalizations.of(context)!; // ✅ إضافة
+    final box = Hive.box<Transaction>('transactions');  // ✅ changed
+    final t = AppLocalizations.of(context)!;
 
     return ValueListenableBuilder(
       valueListenable: box.listenable(),
-      builder: (context, Box<Expense> box, _) {
-        final expenses = box.values.toList().reversed.toList();
+      builder: (context, Box<Transaction> box, _) {
+        final transactions = box.values
+            .where((t) => t.type == 'expense')  // ✅ فقط المصروفات
+            .toList()
+            .reversed
+            .toList();
 
-        if (expenses.isEmpty) {
+        if (transactions.isEmpty) {
           return Center(
             child: Text(
               t.noExpensesYet,
@@ -31,13 +35,13 @@ class ExpensesList extends StatelessWidget {
         }
 
         return ListView.builder(
-          itemCount: expenses.length,
+          itemCount: transactions.length,
           itemBuilder: (context, index) {
-            final e = expenses[index];
-            final expenseKey = box.keyAt(box.values.toList().indexOf(e));
+            final txn = transactions[index];
+            final txnKey = box.keyAt(box.values.toList().indexOf(txn));
 
             return Dismissible(
-              key: Key(e.id),
+              key: Key(txn.id),
               background: Container(
                 color: Colors.red,
                 alignment: Alignment.centerRight,
@@ -71,7 +75,7 @@ class ExpensesList extends StatelessWidget {
                 );
               },
               onDismissed: (direction) async {
-                await box.delete(expenseKey);
+                await box.delete(txnKey);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -88,30 +92,30 @@ class ExpensesList extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(
-                    color: e.isExceptional ? Colors.orange.withOpacity(0.3) : Colors.green.withOpacity(0.3),
+                    color: txn.isExceptional ? Colors.orange.withOpacity(0.3) : Colors.green.withOpacity(0.3),
                     width: 1,
                   ),
                 ),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: e.isExceptional ? Colors.orange.withOpacity(0.2) : Colors.green.withOpacity(0.2),
+                    backgroundColor: txn.isExceptional ? Colors.orange.withOpacity(0.2) : Colors.green.withOpacity(0.2),
                     child: Icon(
-                      e.isExceptional ? Icons.warning_rounded : Icons.repeat,
-                      color: e.isExceptional ? Colors.orange : Colors.green,
+                      txn.isExceptional ? Icons.warning_rounded : Icons.repeat,
+                      color: txn.isExceptional ? Colors.orange : Colors.green,
                       size: 20,
                     ),
                   ),
                   title: Text(
-                    getMainCategoryName(e.mainCategoryId, t), // ✅
+                    getMainCategoryName(txn.categoryId, t),
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   subtitle: Text(
-                    "${e.subCategoryId != null 
-                        ? getSubCategoryName(e.subCategoryId!, t) 
-                        : getMainCategoryName(e.mainCategoryId, t)} • ${e.date.day}/${e.date.month}/${e.date.year}", // ✅
+                    "${txn.subCategoryId != null 
+                        ? getSubCategoryName(txn.subCategoryId!, t) 
+                        : getMainCategoryName(txn.categoryId, t)} • ${txn.date.day}/${txn.date.month}/${txn.date.year}",
                     style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 12,
@@ -121,9 +125,9 @@ class ExpensesList extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        "${formatter.format(e.amount.toInt())} EGP",
+                        "${formatter.format(txn.amount.toInt())} EGP",
                         style: TextStyle(
-                          color: e.isExceptional ? Colors.orange : Colors.green,
+                          color: txn.isExceptional ? Colors.orange : Colors.green,
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -139,15 +143,15 @@ class ExpensesList extends StatelessWidget {
                           onPressed: () {
                             final categoryNotifier = ValueNotifier(
                               SelectedCategory(
-                                id: e.subCategoryId ?? e.mainCategoryId, // ✅
-                                name: getMainCategoryName(e.mainCategoryId, t), // ✅
+                                id: txn.subCategoryId ?? txn.categoryId,
+                                name: getMainCategoryName(txn.categoryId, t),
                               ),
                             );
                             showAddExpenseSheet(
                               context,
                               categoryNotifier,
-                              expenseToEdit: e,
-                              expenseKey: expenseKey,
+                              expenseToEdit: txn,
+                              expenseKey: txnKey,
                             );
                           },
                         ),

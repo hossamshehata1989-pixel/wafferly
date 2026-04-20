@@ -3,10 +3,12 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../theme/app_colors.dart';
 import '../utils/category_icons.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../models/expense.dart';
+import '../models/transaction.dart';
+import '../models/account.dart';
 import '../config/category_config.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/category_helper.dart';
+import '../services/balance_service.dart';
 
 class SelectedCategory {
   final String id;
@@ -23,7 +25,7 @@ PersistentBottomSheetController? _controller;
 void showAddExpenseSheet(
   BuildContext context,
   ValueNotifier<SelectedCategory> categoryNotifier, {
-  Expense? expenseToEdit,
+  Transaction? expenseToEdit,
   int? expenseKey,
 }) {
   if (_controller != null) return;
@@ -49,7 +51,7 @@ void showAddExpenseSheet(
 
 class AddExpenseBottomSheet extends StatefulWidget {
   final ValueNotifier<SelectedCategory> categoryNotifier;
-  final Expense? expenseToEdit;
+  final Transaction? expenseToEdit;
   final int? expenseKey;
 
   const AddExpenseBottomSheet({
@@ -60,16 +62,16 @@ class AddExpenseBottomSheet extends StatefulWidget {
   });
 
   @override
-  State<AddExpenseBottomSheet> createState() =>
-      _AddExpenseBottomSheetState();
+  State<AddExpenseBottomSheet> createState() => _AddExpenseBottomSheetState();
 }
 
-class _AddExpenseBottomSheetState
-    extends State<AddExpenseBottomSheet> {
+class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   late String amount;
   late DateTime selectedDate;
   late String note;
   late String paymentMethod;
+  late String selectedAccountId;
+  late String selectedAccountName;
   bool _isSaving = false;
 
   @override
@@ -80,17 +82,31 @@ class _AddExpenseBottomSheetState
       selectedDate = widget.expenseToEdit!.date;
       note = widget.expenseToEdit!.note ?? "";
       paymentMethod = widget.expenseToEdit!.paymentMethod;
+      selectedAccountId = widget.expenseToEdit!.fromAccountId ?? "cash";
+      selectedAccountName = _getAccountName(selectedAccountId);
       
       widget.categoryNotifier.value = SelectedCategory(
-        id: widget.expenseToEdit!.subCategoryId ?? widget.expenseToEdit!.mainCategoryId,
-        name: widget.expenseToEdit!.subCategoryId ?? widget.expenseToEdit!.mainCategoryId,
+        id: widget.expenseToEdit!.categoryId,
+        name: widget.expenseToEdit!.categoryId,
       );
     } else {
       amount = "0";
       selectedDate = DateTime.now();
       note = "";
       paymentMethod = "cash";
+      selectedAccountId = "cash";
+      selectedAccountName = "Cash";
     }
+  }
+
+  String _getAccountName(String accountId) {
+    final accountsBox = Hive.box<Account>('accounts');
+    for (final acc in accountsBox.values) {
+      if (acc.id == accountId) {
+        return acc.name;
+      }
+    }
+    return accountId;
   }
 
   void addNumber(String n) {
@@ -157,7 +173,7 @@ class _AddExpenseBottomSheetState
         String tempNote = note;
         return AlertDialog(
           backgroundColor: const Color(0xFF1B2A6B),
-           title: Text(
+          title: Text(
             AppLocalizations.of(context)!.addNote,
             style: const TextStyle(color: Colors.white),
           ),
@@ -193,7 +209,83 @@ class _AddExpenseBottomSheetState
     );
   }
 
-  // ✅ دالة لمعرفة الفئة الرئيسية من الفئة الفرعية
+  void _selectAccount() {
+    final accountsBox = Hive.box<Account>('accounts');
+    
+    final spendableAccounts = accountsBox.values.where((acc) =>
+      acc.nature == 'asset' &&
+      acc.type != 'investment' &&
+      acc.type != 'lent'
+    ).toList();
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'اختر الحساب',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ...spendableAccounts.map((acc) {
+              return ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _getAccountColor(acc.type).withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(_getAccountIcon(acc.type), color: _getAccountColor(acc.type), size: 24),
+                ),
+                title: Text(acc.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                subtitle: Text(acc.type, style: const TextStyle(color: Colors.white54)),
+                trailing: selectedAccountId == acc.id
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : null,
+                onTap: () {
+                  setState(() {
+                    selectedAccountId = acc.id;
+                    selectedAccountName = acc.name;
+                  });
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getAccountColor(String type) {
+    switch (type) {
+      case 'cash': return Colors.green;
+      case 'bank': return Colors.blue;
+      case 'wallet': return Colors.orange;
+      case 'creditCard': return Colors.red;
+      case 'loan': return Colors.purple;
+      default: return Colors.grey;
+    }
+  }
+
+  IconData _getAccountIcon(String type) {
+    switch (type) {
+      case 'cash': return Icons.attach_money;
+      case 'bank': return Icons.account_balance;
+      case 'wallet': return Icons.account_balance_wallet;
+      case 'creditCard': return Icons.credit_card;
+      case 'loan': return Icons.money_off;
+      default: return Icons.account_balance_wallet;
+    }
+  }
+
   String _getMainCategoryId(String categoryId) {
     for (final category in mainCategories) {
       if (category.id == categoryId) {
@@ -210,9 +302,6 @@ class _AddExpenseBottomSheetState
     return categoryId;
   }
 
-
-
-  // ✅ دالة لمعرفة إذا كانت الفئة فرعية أم رئيسية
   bool _isSubCategory(String categoryId) {
     for (final category in mainCategories) {
       if (category.subCategories != null) {
@@ -226,67 +315,289 @@ class _AddExpenseBottomSheetState
     return false;
   }
 
+  Future<String> _showInsufficientBalanceDialog(double neededAmount, double currentBalance) async {
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1B2A6B),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 8),
+            Text(
+              "⚠️ رصيد غير كافٍ",
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "ليس لديك رصيد كافٍ في حساب '$selectedAccountName'",
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("الرصيد الحالي:", style: TextStyle(color: Colors.white54)),
+                      Text(
+                        "${currentBalance.toStringAsFixed(0)} EGP",
+                        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("المبلغ المطلوب:", style: TextStyle(color: Colors.white54)),
+                      Text(
+                        "${neededAmount.toStringAsFixed(0)} EGP",
+                        style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Colors.white24, height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("العجز:", style: TextStyle(color: Colors.white54)),
+                      Text(
+                        "${(neededAmount - currentBalance).toStringAsFixed(0)} EGP",
+                        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "ماذا تريد أن تفعل؟",
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'cancel'),
+            child: const Text("إلغاء", style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'add_balance'),
+            child: const Text("➕ إضافة رصيد", style: TextStyle(color: Colors.green)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'create_debt'),
+            child: const Text("📝 تسجيل كدين", style: TextStyle(color: Colors.orange)),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? 'cancel';
+  }
+
+  Future<void> _addBalanceToAccount(String accountId, double amountToAdd) async {
+    final transactionsBox = Hive.box<Transaction>('transactions');
+    await transactionsBox.add(
+      Transaction(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: "income",
+        amount: amountToAdd,
+        fromAccountId: null,
+        toAccountId: accountId,
+        categoryId: "balance_addition",
+        date: DateTime.now(),
+        note: "إضافة رصيد تلقائي لعجز المصروف",
+        isExceptional: false,
+        paymentMethod: paymentMethod,
+      ),
+    );
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("✅ تم إضافة ${amountToAdd.toStringAsFixed(0)} EGP لتغطية العجز"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+
+  Future<void> _createDebtAccountAndSaveExpense(double expenseAmount, bool isExceptional) async {
+    final accountsBox = Hive.box<Account>('accounts');
+    final debtAccountId = DateTime.now().millisecondsSinceEpoch.toString();
+    
+    final debtAccount = Account(
+      id: debtAccountId,
+      bookId: "personal",
+      name: "دين مستحق (${DateTime.now().day}/${DateTime.now().month})",
+      type: "loan",
+      nature: "liability",
+      currency: "EGP",
+      createdAt: DateTime.now(),
+    );
+    
+    await accountsBox.put(debtAccountId, debtAccount);
+    
+    setState(() {
+      selectedAccountId = debtAccountId;
+      selectedAccountName = debtAccount.name;
+    });
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("📝 تم إنشاء حساب دين جديد: ${debtAccount.name}"),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+    
+    await _saveExpenseDirectly(expenseAmount, isExceptional);
+  }
+
+  Future<void> _saveExpenseDirectly(double value, bool isExceptional) async {
+    final box = Hive.box<Transaction>('transactions');
+    final selected = widget.categoryNotifier.value;
+    final isSub = _isSubCategory(selected.id);
+    final mainCategoryId = _getMainCategoryId(selected.id);
+    final subCategoryId = isSub ? selected.id : null;
+
+    final transaction = Transaction(
+      id: widget.expenseToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      type: "expense",
+      amount: value,
+      fromAccountId: selectedAccountId,
+      toAccountId: null,
+      categoryId: mainCategoryId,
+      subCategoryId: subCategoryId,
+      date: selectedDate,
+      note: note.isEmpty ? null : note,
+      isExceptional: isExceptional,
+      paymentMethod: paymentMethod,
+    );
+
+    if (widget.expenseToEdit != null && widget.expenseKey != null) {
+      await box.putAt(widget.expenseKey!, transaction);
+    } else {
+      await box.add(transaction);
+    }
+  }
+
   Future<void> _saveExpense({required bool isExceptional}) async {
     if (_isSaving) return;
-    
+
     final value = double.tryParse(amount) ?? 0;
+
     if (value == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-  SnackBar(
-    content: Text(AppLocalizations.of(context)!.pleaseEnterValidAmount),
-    backgroundColor: Colors.orange,
-    duration: const Duration(seconds: 2),
-  ),
-);
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.pleaseEnterValidAmount),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
+    }
+
+    // ✅ التحقق من الرصيد (للمصروفات الجديدة فقط)
+    if (widget.expenseToEdit == null) {
+      final currentBalance = BalanceService().getBalance(selectedAccountId);
+      
+      if (currentBalance < value) {
+        final action = await _showInsufficientBalanceDialog(value, currentBalance);
+        
+        if (action == 'add_balance') {
+          // ✅ حساب العجز المطلوب فقط
+          final shortage = value - currentBalance;
+          
+          // ✅ إضافة الرصيد الناقص فقط
+          await _addBalanceToAccount(selectedAccountId, shortage);
+          
+          if (!mounted) return;
+          
+          // ✅ حفظ المصروف تلقائياً بعد إضافة الرصيد
+          await _saveExpense(isExceptional: isExceptional);
+          return;
+        }
+        
+        if (action == 'create_debt') {
+          await _createDebtAccountAndSaveExpense(value, isExceptional);
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  isExceptional
+                      ? "✅ تم تسجيل المصروف الاستثنائي كدين"
+                      : "✅ تم تسجيل المصروف كدين",
+                ),
+                backgroundColor: isExceptional ? Colors.orange : Colors.green,
+              ),
+            );
+            Navigator.pop(context);
+          }
+        }
+        return;
+      }
     }
 
     setState(() => _isSaving = true);
 
-    final box = Hive.box<Expense>('expenses');
-    
+    final box = Hive.box<Transaction>('transactions');
     final selected = widget.categoryNotifier.value;
     final isSub = _isSubCategory(selected.id);
-    
-    final expense = Expense(
-      id: widget.expenseToEdit?.id,
+    final mainCategoryId = _getMainCategoryId(selected.id);
+    final subCategoryId = isSub ? selected.id : null;
+
+    final transaction = Transaction(
+      id: widget.expenseToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      type: "expense",
       amount: value,
-      mainCategoryId: _getMainCategoryId(selected.id),
-    
-      subCategoryId: isSub ? selected.id : null,
+      fromAccountId: selectedAccountId,
+      toAccountId: null,
+      categoryId: mainCategoryId,
+      subCategoryId: subCategoryId,
       date: selectedDate,
-      isExceptional: isExceptional,
       note: note.isEmpty ? null : note,
+      isExceptional: isExceptional,
       paymentMethod: paymentMethod,
     );
 
     try {
       if (widget.expenseToEdit != null && widget.expenseKey != null) {
-        await box.put(widget.expenseKey!, expense);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-  SnackBar(
-    content: Text(AppLocalizations.of(context)!.expenseUpdatedSuccessfully),
-    backgroundColor: Colors.orange,
-    duration: const Duration(seconds: 2),
-  ),
-);
+        await box.putAt(widget.expenseKey!, transaction);
       } else {
-        await box.add(expense);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-  SnackBar(
-    content: Text(
-      isExceptional 
-        ? AppLocalizations.of(context)!.exceptionalExpenseAddedSuccessfully
-        : AppLocalizations.of(context)!.recurringExpenseAddedSuccessfully,
-    ),
-    backgroundColor: isExceptional ? Colors.orange : Colors.green,
-    duration: const Duration(seconds: 2),
-  ),
-);
+        await box.add(transaction);
       }
-      
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isExceptional
+                ? AppLocalizations.of(context)!.exceptionalExpenseAddedSuccessfully
+                : AppLocalizations.of(context)!.recurringExpenseAddedSuccessfully,
+          ),
+          backgroundColor: isExceptional ? Colors.orange : Colors.green,
+        ),
+      );
+
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
@@ -386,6 +697,12 @@ class _AddExpenseBottomSheetState
                     },
                     isSmallScreen: isSmallScreen,
                   ),
+                  const SizedBox(height: 6),
+                  sideButton(
+                    text: selectedAccountName,
+                    onTap: _selectAccount,
+                    isSmallScreen: isSmallScreen,
+                  ),
                 ],
               ),
             ),
@@ -395,8 +712,7 @@ class _AddExpenseBottomSheetState
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(14),
@@ -532,6 +848,7 @@ class _AddExpenseBottomSheetState
         } else if (text == "%") {
           calculatePercentage();
         } else if (text == "=" || text == "+" || text == "-" || text == "×" || text == "/") {
+          // عمليات حسابية مستقبلية
         } else if (text.isNotEmpty) {
           addNumber(text);
         }

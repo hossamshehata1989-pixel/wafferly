@@ -241,5 +241,10 @@
   "expenseDeletedSuccessfully": "Expense deleted successfully",
   "category": "Category",
   "currency": "EGP",
-  "pleaseEnterValidAmount": "Please enter a valid amount"
+  "pleaseEnterValidAmount": "Please enter a valid amount",
+  "accounts": "Accounts",
+  "moneyYouHave": "Money You Have",
+  "investments": "Investments",
+  "moneyYouOwe": "Money You Owe",
+  "moneyYouWillGet": "Money You Will Get"
 }

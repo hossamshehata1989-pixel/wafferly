@@ -241,5 +241,10 @@
   "expenseDeletedSuccessfully": "Expense deleted successfully",
   "category": "Category",
   "currency": "EGP",
-  "pleaseEnterValidAmount": "Please enter a valid amount"
+  "pleaseEnterValidAmount": "Please enter a valid amount",
+  "accounts": "الحسابات",
+  "moneyYouHave": "الفلوس اللي معاك",
+  "investments": "الاستثمارات",
+  "moneyYouOwe": "الفلوس اللي عليك",
+  "moneyYouWillGet": "الفلوس اللي ليك"
 }

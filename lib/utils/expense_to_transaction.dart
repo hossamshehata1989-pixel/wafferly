@@ -9,7 +9,7 @@ Transaction convertExpenseToTransaction(Expense e) {
     type: 'expense',
     fromAccountId: _mapPaymentToAccount(e.paymentMethod),
     toAccountId: null,
-    categoryId: e.mainCategoryId,
+    categoryId: e.subCategoryId ?? e.mainCategoryId,
     date: e.date,
     note: e.note,
     isExceptional: e.isExceptional, // 🔥 هنا بالظبط
