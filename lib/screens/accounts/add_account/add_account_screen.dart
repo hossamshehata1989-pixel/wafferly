@@ -1,9 +1,9 @@
 // lib/screens/accounts/add_account_screen.dart
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import '../../models/account.dart';  // ✅ صح: ../../ مو ../../../
-import '../../models/transaction.dart';
-import '../../services/account_service.dart';
+import '../../../models/account.dart';
+import '../../../models/transaction.dart';
+import '../../../services/account_service.dart';
 
 class AddAccountScreen extends StatefulWidget {
   const AddAccountScreen({super.key});
@@ -49,7 +49,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: balanceController,
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.red),
               decoration: const InputDecoration(
                 labelText: "Initial Balance (EGP)",
                 labelStyle: TextStyle(color: Colors.white70),
