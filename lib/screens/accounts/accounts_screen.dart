@@ -7,9 +7,7 @@ import '../../models/transaction.dart';
 import '../../services/account_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/balance_service.dart';
-
-// ✅ معلق مؤقتاً لأن الملف مش موجود
-// import 'add_account_screen.dart';
+import 'add_account/add_account_screen.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -21,9 +19,58 @@ class AccountsScreen extends StatefulWidget {
 class _AccountsScreenState extends State<AccountsScreen> {
   final AccountService _accountService = AccountService();
 
-  @override
-  void initState() {
-    super.initState();
+  // ✅ دالة مساعدة لتحويل String إلى SectionType
+  SectionType _getSectionTypeFromString(String sectionType) {
+    switch (sectionType) {
+      case 'asset': return SectionType.asset;
+      case 'liability': return SectionType.liability;
+      case 'investment': return SectionType.investment;
+      case 'receivable': return SectionType.receivable;
+      default: return SectionType.asset;
+    }
+  }
+
+  // ✅ دالة مساعدة لتحديد SectionType من Account
+  SectionType _getSectionTypeFromAccount(Account account) {
+    if (account.nature == 'asset') {
+      if (account.type == 'investment') {
+        return SectionType.investment;
+      }
+      return SectionType.asset;
+    } else if (account.nature == 'liability') {
+      return SectionType.liability;
+    } else {
+      return SectionType.receivable;
+    }
+  }
+
+  // ✅ 2. فتح شاشة إنشاء حساب جديد
+  void _addAccount(String sectionType) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddAccountScreen(
+          sectionType: _getSectionTypeFromString(sectionType),
+        ),
+      ),
+    ).then((_) {
+      if (mounted) setState(() {}); // ✅ 4. refresh بعد الرجوع
+    });
+  }
+
+  // ✅ 3. فتح شاشة تعديل حساب موجود
+  void _editAccount(Account account) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddAccountScreen(
+          sectionType: _getSectionTypeFromAccount(account),
+          accountToEdit: account,
+        ),
+      ),
+    ).then((_) {
+      if (mounted) setState(() {}); // ✅ 4. refresh بعد الرجوع
+    });
   }
 
   // ==========================================
@@ -88,7 +135,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
         builder: (context, Box<Account> box, _) {
           final accounts = _accountService.getAllAccounts();
           
-          // ✅ إذا لم يكن هناك حسابات، اعرض رسالة للمستخدم
           if (accounts.isEmpty) {
             return Center(
               child: Column(
@@ -139,7 +185,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 color: Colors.green,
                 isTablet: isTablet,
                 isLargeTablet: isLargeTablet,
-                onAddTap: () => _addAccount(context, 'asset'),
+                onAddTap: () => _addAccount('asset'), // ✅ 2. يفتح الشاشة
               ),
               _buildResponsiveSection(
                 title: t.investments,
@@ -149,7 +195,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 color: Colors.orange,
                 isTablet: isTablet,
                 isLargeTablet: isLargeTablet,
-                onAddTap: () => _addAccount(context, 'investment'),
+                onAddTap: () => _addAccount('investment'), // ✅ 2. يفتح الشاشة
               ),
               _buildResponsiveSection(
                 title: t.moneyYouOwe,
@@ -159,7 +205,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 color: Colors.red,
                 isTablet: isTablet,
                 isLargeTablet: isLargeTablet,
-                onAddTap: () => _addAccount(context, 'liability'),
+                onAddTap: () => _addAccount('liability'), // ✅ 2. يفتح الشاشة
               ),
               _buildResponsiveSection(
                 title: t.moneyYouWillGet,
@@ -169,7 +215,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 color: Colors.blue,
                 isTablet: isTablet,
                 isLargeTablet: isLargeTablet,
-                onAddTap: () => _addAccount(context, 'receivable'),
+                onAddTap: () => _addAccount('receivable'), // ✅ 2. يفتح الشاشة
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
@@ -391,7 +437,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: onAddTap,
+                  onTap: onAddTap, // ✅ يفتح الشاشة
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
@@ -425,6 +471,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   percentage: percentage,
                   color: color,
                   isTablet: isTablet,
+                  onTap: () => _editAccount(account), // ✅ 3. يفتح التعديل
                 );
               },
             ),
@@ -440,238 +487,86 @@ class _AccountsScreenState extends State<AccountsScreen> {
     required double percentage,
     required Color color,
     required bool isTablet,
+    required VoidCallback onTap, // ✅ إضافة onTap
   }) {
     final formatter = NumberFormat("#,###");
     final isLiability = account.nature == 'liability';
     final displayBalance = isLiability ? balance.abs() : balance;
     final balanceColor = isLiability ? Colors.redAccent : (balance < 0 ? Colors.redAccent : color);
     
-    return Container(
-      padding: EdgeInsets.all(isTablet ? 12 : 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.2), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(
-                _getAccountIcon(account.type),
-                color: color,
-                size: isTablet ? 28 : 22,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  account.name,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isTablet ? 14 : 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+    return GestureDetector(
+      onTap: onTap, // ✅ 3. الضغط يفتح التعديل
+      child: Container(
+        padding: EdgeInsets.all(isTablet ? 12 : 8),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.2), width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  _getAccountIcon(account.type),
+                  color: color,
+                  size: isTablet ? 28 : 22,
                 ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    account.name,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: isTablet ? 14 : 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${formatter.format(displayBalance.toInt())} ${account.currency}',
+              style: TextStyle(
+                color: balanceColor,
+                fontSize: isTablet ? 18 : 14,
+                fontWeight: FontWeight.bold,
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${formatter.format(displayBalance.toInt())} ${account.currency}',
-            style: TextStyle(
-              color: balanceColor,
-              fontSize: isTablet ? 18 : 14,
-              fontWeight: FontWeight.bold,
             ),
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: percentage / 100,
-              backgroundColor: Colors.white.withOpacity(0.1),
-              color: color,
-              minHeight: 4,
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: percentage / 100,
+                backgroundColor: Colors.white.withOpacity(0.1),
+                color: color,
+                minHeight: 4,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${percentage.toStringAsFixed(0)}% of section',
-            style: TextStyle(
-              color: Colors.white54,
-              fontSize: isTablet ? 10 : 8,
+            const SizedBox(height: 4),
+            Text(
+              '${percentage.toStringAsFixed(0)}% of section',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: isTablet ? 10 : 8,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
   
-  // ✅ زر الإضافة - استخدم الـ Quick Dialog
+  // ✅ زر الإضافة - يفتح شاشة AddAccountScreen
   Widget _buildFAB(AppLocalizations t) {
     return FloatingActionButton(
-      onPressed: () {
-        _showAddAccountDialog(context);
-      },
+      onPressed: () => _addAccount('asset'), // ✅ يفتح الشاشة
       backgroundColor: Colors.blue,
       child: const Icon(Icons.add, color: Colors.white),
-    );
-  }
-  
-  void _addAccount(BuildContext context, String sectionType) {
-    _showQuickAddDialog(context, sectionType);
-  }
-  
-  void _showQuickAddDialog(BuildContext context, String sectionType) {
-    final nameController = TextEditingController();
-    String selectedType = _getDefaultTypeForSection(sectionType);
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Add Account', style: TextStyle(color: Colors.white)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              style: const TextStyle(color: Colors.white),
-              decoration: const InputDecoration(
-                labelText: 'Account Name',
-                labelStyle: TextStyle(color: Colors.white70),
-              ),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: selectedType,
-              dropdownColor: const Color(0xFF2E2E2E),
-              style: const TextStyle(color: Colors.white),
-              items: _getTypeOptionsForSection(sectionType).map((type) {
-                return DropdownMenuItem(value: type, child: Text(type));
-              }).toList(),
-              onChanged: (value) {
-                selectedType = value!;
-              },
-              decoration: const InputDecoration(
-                labelText: 'Account Type',
-                labelStyle: TextStyle(color: Colors.white70),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
-          ),
-          TextButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              if (name.isNotEmpty) {
-                _saveAccountQuick(name, selectedType, sectionType);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Save', style: TextStyle(color: Colors.blue)),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  String _getDefaultTypeForSection(String sectionType) {
-    switch (sectionType) {
-      case 'asset': return 'Cash';
-      case 'investment': return 'Investment';
-      case 'liability': return 'Credit Card';
-      case 'receivable': return 'Money Lent';
-      default: return 'Cash';
-    }
-  }
-  
-  List<String> _getTypeOptionsForSection(String sectionType) {
-    switch (sectionType) {
-      case 'asset':
-        return ['Cash', 'Bank', 'Wallet'];
-      case 'investment':
-        return ['Investment', 'Gold', 'Stocks'];
-      case 'liability':
-        return ['Credit Card', 'Loan'];
-      case 'receivable':
-        return ['Money Lent', 'ROSCA'];
-      default:
-        return ['Cash'];
-    }
-  }
-  
-  void _saveAccountQuick(String name, String typeDisplay, String sectionType) {
-    String type = typeDisplay.toLowerCase().replaceAll(' ', '');
-    String nature = 'asset';
-    
-    if (sectionType == 'liability') {
-      nature = 'liability';
-    } else if (sectionType == 'investment') {
-      type = 'investment';
-    } else if (sectionType == 'receivable') {
-      type = 'lent';
-    }
-    
-    final account = Account(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      bookId: "personal",
-      name: name,
-      type: type,
-      nature: nature,
-      currency: "EGP",
-      createdAt: DateTime.now(),
-    );
-    
-    AccountService().addAccount(account);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$name added'), backgroundColor: Colors.green),
-    );
-  }
-  
-  void _showAddAccountDialog(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Add New Account', style: TextStyle(color: Colors.white, fontSize: 18)),
-            const SizedBox(height: 20),
-            _buildAccountTypeTile('Cash', Icons.attach_money, Colors.green, 'cash', 'asset'),
-            _buildAccountTypeTile('Bank', Icons.account_balance, Colors.blue, 'bank', 'asset'),
-            _buildAccountTypeTile('Wallet', Icons.account_balance_wallet, Colors.orange, 'wallet', 'asset'),
-            _buildAccountTypeTile('Credit Card', Icons.credit_card, Colors.red, 'creditCard', 'liability'),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildAccountTypeTile(String name, IconData icon, Color color, String type, String nature) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: color.withOpacity(0.2), shape: BoxShape.circle),
-        child: Icon(icon, color: color),
-      ),
-      title: Text(name, style: const TextStyle(color: Colors.white)),
-      onTap: () {
-        Navigator.pop(context);
-        _saveAccountQuick(name, type, nature == 'asset' ? 'asset' : 'liability');
-      },
     );
   }
   

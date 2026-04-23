@@ -30,7 +30,15 @@ void showAddExpenseSheet(
   Transaction? expenseToEdit,
   int? expenseKey,
 }) {
-  if (_controller != null) return;
+  // ✅ إغلاق الـ Bottom Sheet القديم إذا كان مفتوحاً
+  if (_controller != null) {
+    try {
+      _controller!.close();
+    } catch (e) {
+      // ignore
+    }
+    _controller = null;
+  }
 
   final screenHeight = MediaQuery.of(context).size.height;
   final bottomSheetHeight = screenHeight * 0.3;
@@ -100,7 +108,6 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
       selectedDate = DateTime.now();
       note = "";
       paymentMethod = "cash";
-      // ✅ إزالة الـ cash الافتراضي - المستخدم يختار حساب بنفسه
       selectedAccountId = "";
       selectedAccountName = "اختر حساب";
     }
@@ -119,7 +126,6 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   // ✅ دوال الحسابات القابلة للصرف
   // ==========================================
 
-  /// هل يوجد حسابات قابلة للصرف (asset فقط، وليس دين مؤقت)
   bool _hasSpendableAccounts() {
     final accountsBox = Hive.box<Account>('accounts');
     return accountsBox.values.any((acc) =>
@@ -129,7 +135,6 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
         acc.id != TEMP_DEBT_ACCOUNT_ID);
   }
 
-  /// الحصول على قائمة الحسابات القابلة للصرف
   List<Account> _getSpendableAccounts() {
     final accountsBox = Hive.box<Account>('accounts');
     return accountsBox.values.where((acc) =>
@@ -143,11 +148,9 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   Future<String> _ensureTempDebtAccount() async {
     final accountsBox = Hive.box<Account>('accounts');
 
-    // ✅ هل الحساب موجود بالفعل؟
     var existing = accountsBox.get(TEMP_DEBT_ACCOUNT_ID);
     if (existing != null) return TEMP_DEBT_ACCOUNT_ID;
 
-    // ✅ إنشاء حساب الدين المؤقت (أول استخدام فقط)
     final debtAccount = Account(
       id: TEMP_DEBT_ACCOUNT_ID,
       bookId: "personal",
@@ -163,7 +166,7 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   }
 
   // ==========================================
-  // ✅ Dialog: لا توجد حسابات
+  // ✅ Dialog: لا توجد حسابات (محسّن)
   // ==========================================
 
   Future<String?> _showNoAccountsDialog() async {
@@ -199,7 +202,7 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   }
 
   // ==========================================
-  // ✅ Dialog: الرصيد غير كافٍ
+  // ✅ Dialog: الرصيد غير كافٍ (محسّن)
   // ==========================================
 
   Future<String?> _showInsufficientBalanceDialog(double neededAmount, double currentBalance) async {
@@ -261,7 +264,6 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   // ==========================================
 
   Future<void> _saveAsTempDebt(double value, bool isExceptional) async {
-    // ✅ إنشاء حساب الدين المؤقت (مرة واحدة فقط)
     final debtAccountId = await _ensureTempDebtAccount();
 
     setState(() {
@@ -283,7 +285,9 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
           duration: const Duration(seconds: 2),
         ),
       );
-      Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -320,21 +324,85 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   }
 
   // ==========================================
-  // ✅ إضافة رصيد (مؤقت - تفتح AddAccountScreen)
+  // ✅ إضافة رصيد (تعديل الرصيد الحالي)
   // ==========================================
 
-  Future<void> _addBalanceToAccount(String accountId, double shortage) async {
-    // مؤقتاً نفتح AddAccountScreen
-    // لاحقاً سيتم استبداله بشاشة إضافة رصيد منفصلة
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("➕ افتح شاشة الحسابات ثم عدّل رصيد الحساب الحالي"),
-          backgroundColor: Colors.blue,
-          duration: Duration(seconds: 2),
+  Future<void> _addBalanceToAccount(String accountId, double neededAmount) async {
+    final TextEditingController amountController = TextEditingController();
+    amountController.text = neededAmount.toStringAsFixed(0);
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1B2A6B),
+        title: const Text(
+          "➕ إضافة رصيد",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-      );
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const AddAccountScreen()));
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              "حساب: ${_getAccountName(accountId)}",
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: amountController,
+              style: const TextStyle(color: Colors.white),
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: "المبلغ المطلوب إضافته (EGP)",
+                labelStyle: TextStyle(color: Colors.white70),
+                enabledBorder: UnderlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white30),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("إلغاء", style: TextStyle(color: Colors.white70)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("تأكيد", style: TextStyle(color: Colors.green)),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      final addAmount = double.tryParse(amountController.text) ?? 0;
+      if (addAmount > 0) {
+        final transactionsBox = Hive.box<Transaction>('transactions');
+        await transactionsBox.add(
+          Transaction(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            type: "income",
+            amount: addAmount,
+            fromAccountId: null,
+            toAccountId: accountId,
+            categoryId: "balance_addition",
+            date: DateTime.now(),
+            note: "إضافة رصيد يدوي",
+            isExceptional: false,
+            paymentMethod: "cash",
+          ),
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("✅ تم إضافة ${addAmount.toStringAsFixed(0)} EGP"),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -403,7 +471,26 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
         final action = await _showInsufficientBalanceDialog(value, currentBalance);
 
         if (action == 'add_balance') {
-          await _addBalanceToAccount(selectedAccountId, value - currentBalance);
+          final shortage = value - currentBalance;
+          await _addBalanceToAccount(selectedAccountId, shortage);
+          
+          // ✅ بعد إضافة الرصيد، نحاول الحفظ مرة أخرى
+          if (mounted) {
+            final newBalance = BalanceService().getBalance(selectedAccountId);
+            if (newBalance >= value) {
+              await _saveExpenseDirectly(value, isExceptional);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(isExceptional ? "✅ تم تسجيل المصروف الاستثنائي" : "✅ تم تسجيل المصروف"),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+                Navigator.pop(context);
+              }
+            }
+          }
           return;
         }
 
@@ -434,13 +521,12 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   }
 
   // ==========================================
-  // ✅ اختيار الحساب (يعرض فقط الحسابات القابلة للصرف)
+  // ✅ اختيار الحساب
   // ==========================================
 
   void _selectAccount() {
     final spendableAccounts = _getSpendableAccounts();
 
-    // ✅ لو مفيش حسابات، نفتح الـ Dialog مباشرة
     if (spendableAccounts.isEmpty) {
       _showNoAccountsDialog();
       return;
@@ -493,7 +579,7 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   }
 
   // ==========================================
-  // ✅ دوال مساعدة (موجودة بالفعل)
+  // ✅ دوال مساعدة
   // ==========================================
 
   void addNumber(String n) {
@@ -598,27 +684,19 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
 
   Color _getAccountColor(String type) {
     switch (type) {
-      case 'cash':
-        return Colors.green;
-      case 'bank':
-        return Colors.blue;
-      case 'debt':
-        return Colors.orange;
-      default:
-        return Colors.grey;
+      case 'cash': return Colors.green;
+      case 'bank': return Colors.blue;
+      case 'debt': return Colors.orange;
+      default: return Colors.grey;
     }
   }
 
   IconData _getAccountIcon(String type) {
     switch (type) {
-      case 'cash':
-        return Icons.attach_money;
-      case 'bank':
-        return Icons.account_balance;
-      case 'debt':
-        return Icons.receipt_long;
-      default:
-        return Icons.account_balance_wallet;
+      case 'cash': return Icons.attach_money;
+      case 'bank': return Icons.account_balance;
+      case 'debt': return Icons.receipt_long;
+      default: return Icons.account_balance_wallet;
     }
   }
 
@@ -890,8 +968,6 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
           clear();
         } else if (text == "%") {
           calculatePercentage();
-        } else if (text == "=" || text == "+" || text == "-" || text == "×" || text == "/") {
-          // عمليات حسابية مستقبلية
         } else if (text.isNotEmpty) {
           addNumber(text);
         }
