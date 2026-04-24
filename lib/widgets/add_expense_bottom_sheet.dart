@@ -11,6 +11,8 @@ import '../l10n/app_localizations.dart';
 import '../utils/category_helper.dart';
 import '../services/balance_service.dart';
 import '../screens/accounts/add_account/add_account_screen.dart';
+import '../constants/transaction_constants.dart';
+
 
 class SelectedCategory {
   final String id;
@@ -264,64 +266,86 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   // ==========================================
 
   Future<void> _saveAsTempDebt(double value, bool isExceptional) async {
-    final debtAccountId = await _ensureTempDebtAccount();
+  final debtAccountId = await _ensureTempDebtAccount();
 
-    setState(() {
-      selectedAccountId = debtAccountId;
-      selectedAccountName = TEMP_DEBT_ACCOUNT_NAME;
-    });
+  setState(() {
+    selectedAccountId = debtAccountId;
+    selectedAccountName = TEMP_DEBT_ACCOUNT_NAME;
+  });
 
-    await _saveExpenseDirectly(value, isExceptional);
+  final selected = widget.categoryNotifier.value;
+  final isSub = _isSubCategory(selected.id);
+  final mainCategoryId = _getMainCategoryId(selected.id);
+  final subCategoryId = isSub ? selected.id : null;
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isExceptional
-                ? "📝 تم تسجيل المصروف الاستثنائي كدين مؤقت"
-                : "📝 تم تسجيل المصروف كدين مؤقت",
-          ),
-          backgroundColor: Colors.orange,
-          duration: const Duration(seconds: 2),
+  final transaction = Transaction.create(
+    amount: value,
+    type: TransactionType.expense,  // ✅ استخدم constant
+    fromAccountId: debtAccountId,
+    toAccountId: null,
+    categoryId: mainCategoryId,
+    date: selectedDate,
+    note: note.isEmpty ? null : note,
+    paymentMethod: paymentMethod,
+    isExceptional: isExceptional,
+    subCategoryId: subCategoryId,
+    currencyCode: 'EGP',
+    source: TransactionSource.tempDebt,
+  );
+
+  final box = Hive.box<Transaction>('transactions');
+  
+  // ✅ استخدام put فقط (بدون add)
+  await box.put(transaction.id, transaction);
+
+  if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isExceptional
+              ? "📝 تم تسجيل المصروف الاستثنائي كدين مؤقت"
+              : "📝 تم تسجيل المصروف كدين مؤقت",
         ),
-      );
-      if (mounted) {
-        Navigator.pop(context);
-      }
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+    if (mounted) {
+      Navigator.pop(context);
     }
   }
+}
 
   // ==========================================
   // ✅ حفظ المصروف مباشرة
   // ==========================================
 
   Future<void> _saveExpenseDirectly(double value, bool isExceptional) async {
-    final box = Hive.box<Transaction>('transactions');
-    final selected = widget.categoryNotifier.value;
-    final isSub = _isSubCategory(selected.id);
-    final mainCategoryId = _getMainCategoryId(selected.id);
-    final subCategoryId = isSub ? selected.id : null;
+  final box = Hive.box<Transaction>('transactions');
+  final selected = widget.categoryNotifier.value;
+  final isSub = _isSubCategory(selected.id);
+  final mainCategoryId = _getMainCategoryId(selected.id);
+  final subCategoryId = isSub ? selected.id : null;
 
-    final transaction = Transaction(
-      id: widget.expenseToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      type: "expense",
-      amount: value,
-      fromAccountId: selectedAccountId,
-      toAccountId: null,
-      categoryId: mainCategoryId,
-      subCategoryId: subCategoryId,
-      date: selectedDate,
-      note: note.isEmpty ? null : note,
-      isExceptional: isExceptional,
-      paymentMethod: paymentMethod,
-    );
+  final transaction = Transaction.create(
+    id: widget.expenseToEdit?.id,
+    amount: value,
+    type: TransactionType.expense,  // ✅ استخدم constant
+    fromAccountId: selectedAccountId,
+    toAccountId: null,
+    categoryId: mainCategoryId,
+    date: selectedDate,
+    note: note.isEmpty ? null : note,
+    paymentMethod: paymentMethod,
+    isExceptional: isExceptional,
+    subCategoryId: subCategoryId,
+    currencyCode: 'EGP',
+    source: TransactionSource.manual,
+  );
 
-    if (widget.expenseToEdit != null && widget.expenseKey != null) {
-      await box.putAt(widget.expenseKey!, transaction);
-    } else {
-      await box.add(transaction);
-    }
-  }
+  // ✅ استخدام put في كل الحالات
+  await box.put(transaction.id, transaction);
+}
 
   // ==========================================
   // ✅ إضافة رصيد (تعديل الرصيد الحالي)
@@ -376,22 +400,24 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
 
     if (result == true) {
       final addAmount = double.tryParse(amountController.text) ?? 0;
-      if (addAmount > 0) {
+       if (addAmount > 0) {
         final transactionsBox = Hive.box<Transaction>('transactions');
-        await transactionsBox.add(
-          Transaction(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            type: "income",
-            amount: addAmount,
-            fromAccountId: null,
-            toAccountId: accountId,
-            categoryId: "balance_addition",
-            date: DateTime.now(),
-            note: "إضافة رصيد يدوي",
-            isExceptional: false,
-            paymentMethod: "cash",
-          ),
-        );
+
+final tx = Transaction.create(
+  amount: addAmount,
+  type: TransactionType.income,
+  fromAccountId: null,
+  toAccountId: accountId,
+  categoryId: "balance_addition",
+  date: DateTime.now(),
+  note: "إضافة رصيد يدوي",
+  paymentMethod: "cash",
+  isExceptional: false,
+  currencyCode: 'EGP',
+  source: TransactionSource.balanceAdjustment,
+);
+
+await transactionsBox.put(tx.id, tx);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
