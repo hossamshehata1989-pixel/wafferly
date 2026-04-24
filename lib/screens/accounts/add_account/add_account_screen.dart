@@ -6,6 +6,7 @@ import '../../../models/account.dart';
 import '../../../models/transaction.dart';
 import '../../../services/account_service.dart';
 import '../../../services/balance_service.dart';
+import '../../../constants/transaction_constants.dart';  // ✅ Added
 
 enum SectionType {
   asset,      // Money You Have
@@ -593,6 +594,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     return "personal";
   }
 
+  // ✅ Updated: استخدام Transaction.create()
   Future<void> _updateBalance(String accountId, double newBalance) async {
     final difference = newBalance - _oldBalance;
     
@@ -600,22 +602,24 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     
     final transactionsBox = Hive.box<Transaction>('transactions');
     
-    await transactionsBox.add(
-      Transaction(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        type: "balance_adjustment",
-        amount: difference.abs(),
-        fromAccountId: difference < 0 ? accountId : null,
-        toAccountId: difference > 0 ? accountId : null,
-        categoryId: "balance_adjustment",
-        date: DateTime.now(),
-        note: "Manual balance adjustment",
-        isExceptional: false,
-        paymentMethod: _selectedType,
-      ),
+    final adjustmentTransaction = Transaction.create(
+      amount: difference.abs(),
+      type: TransactionType.balanceAdjustment,
+      fromAccountId: difference < 0 ? accountId : null,
+      toAccountId: difference > 0 ? accountId : null,
+      categoryId: "balance_adjustment",
+      date: DateTime.now(),
+      note: "Manual balance adjustment",
+      isExceptional: false,
+      paymentMethod: _selectedType,
+      currencyCode: _selectedCurrency,
+      source: TransactionSource.balanceAdjustment,
     );
+    
+    await transactionsBox.put(adjustmentTransaction.id, adjustmentTransaction);
   }
 
+  // ✅ Updated: استخدام Transaction.create()
   Future<void> _saveAccount() async {
     if (!_formKey.currentState!.validate()) return;
     
@@ -684,20 +688,22 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       
       if (balanceToSave != 0) {
         final transactionsBox = Hive.box<Transaction>('transactions');
-        await transactionsBox.add(
-          Transaction(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            type: "initial_balance",
-            amount: balanceToSave.abs(),
-            fromAccountId: balanceToSave < 0 ? accountId : null,
-            toAccountId: balanceToSave > 0 ? accountId : null,
-            categoryId: "initial_balance",
-            date: DateTime.now(),
-            note: "Initial balance",
-            isExceptional: false,
-            paymentMethod: _selectedType,
-          ),
+        
+        final initialTransaction = Transaction.create(
+          amount: balanceToSave.abs(),
+          type: TransactionType.initialBalance,
+          fromAccountId: balanceToSave < 0 ? accountId : null,
+          toAccountId: balanceToSave > 0 ? accountId : null,
+          categoryId: "initial_balance",
+          date: DateTime.now(),
+          note: "Initial balance",
+          isExceptional: false,
+          paymentMethod: _selectedType,
+          currencyCode: _selectedCurrency,
+          source: TransactionSource.accountCreation,
         );
+        
+        await transactionsBox.put(initialTransaction.id, initialTransaction);
       }
       
       if (mounted) {
