@@ -19,6 +19,42 @@ class AccountsScreen extends StatefulWidget {
 class _AccountsScreenState extends State<AccountsScreen> {
   final AccountService _accountService = AccountService();
 
+  // ✅ حساب الدين المؤقت - ثابت النظام
+  static const String TEMP_DEBT_ACCOUNT_ID = 'temp_debt_account';
+
+
+void _showSimpleTempDebtDialog() {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('📋 تسوية الدين المؤقت'),
+      content: const Text(
+        'هذا الحساب يمثل دينًا مؤقتًا ناتجًا عن تغطية مصروفات سابقة.\n\nيمكن تسويته بإضافة دخل.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('إغلاق'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('سيتم ربط إضافة الدخل قريبًا'),
+              ),
+            );
+          },
+          child: const Text('تسوية الآن'),
+        ),
+      ],
+    ),
+  );
+}
+
+
+
   // ✅ دالة مساعدة لتحويل String إلى SectionType
   SectionType _getSectionTypeFromString(String sectionType) {
     switch (sectionType) {
@@ -44,7 +80,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
     }
   }
 
-  // ✅ 2. فتح شاشة إنشاء حساب جديد
+  // ✅ فتح شاشة إنشاء حساب جديد
   void _addAccount(String sectionType) {
     Navigator.push(
       context,
@@ -54,12 +90,18 @@ class _AccountsScreenState extends State<AccountsScreen> {
         ),
       ),
     ).then((_) {
-      if (mounted) setState(() {}); // ✅ 4. refresh بعد الرجوع
+      if (mounted) setState(() {});
     });
   }
 
-  // ✅ 3. فتح شاشة تعديل حساب موجود
+  // ✅ تعديل حساب - مع منع حساب الدين المؤقت
   void _editAccount(Account account) {
+    // 🔒 منع تعديل حساب الدين المؤقت
+    if (account.id == TEMP_DEBT_ACCOUNT_ID) {
+  _showSimpleTempDebtDialog();
+  return;
+}
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -69,7 +111,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
         ),
       ),
     ).then((_) {
-      if (mounted) setState(() {}); // ✅ 4. refresh بعد الرجوع
+      if (mounted) setState(() {});
     });
   }
 
@@ -185,7 +227,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 color: Colors.green,
                 isTablet: isTablet,
                 isLargeTablet: isLargeTablet,
-                onAddTap: () => _addAccount('asset'), // ✅ 2. يفتح الشاشة
+                onAddTap: () => _addAccount('asset'),
               ),
               _buildResponsiveSection(
                 title: t.investments,
@@ -195,7 +237,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 color: Colors.orange,
                 isTablet: isTablet,
                 isLargeTablet: isLargeTablet,
-                onAddTap: () => _addAccount('investment'), // ✅ 2. يفتح الشاشة
+                onAddTap: () => _addAccount('investment'),
               ),
               _buildResponsiveSection(
                 title: t.moneyYouOwe,
@@ -205,7 +247,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 color: Colors.red,
                 isTablet: isTablet,
                 isLargeTablet: isLargeTablet,
-                onAddTap: () => _addAccount('liability'), // ✅ 2. يفتح الشاشة
+                onAddTap: () => _addAccount('liability'),
               ),
               _buildResponsiveSection(
                 title: t.moneyYouWillGet,
@@ -215,7 +257,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 color: Colors.blue,
                 isTablet: isTablet,
                 isLargeTablet: isLargeTablet,
-                onAddTap: () => _addAccount('receivable'), // ✅ 2. يفتح الشاشة
+                onAddTap: () => _addAccount('receivable'),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
@@ -437,7 +479,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 ),
                 const SizedBox(width: 8),
                 GestureDetector(
-                  onTap: onAddTap, // ✅ يفتح الشاشة
+                  onTap: onAddTap,
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
@@ -471,7 +513,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   percentage: percentage,
                   color: color,
                   isTablet: isTablet,
-                  onTap: () => _editAccount(account), // ✅ 3. يفتح التعديل
+                  onTap: () => _editAccount(account), // ✅ هنا يتم استدعاء التعديل مع المنع
                 );
               },
             ),
@@ -487,21 +529,31 @@ class _AccountsScreenState extends State<AccountsScreen> {
     required double percentage,
     required Color color,
     required bool isTablet,
-    required VoidCallback onTap, // ✅ إضافة onTap
+    required VoidCallback onTap,
   }) {
     final formatter = NumberFormat("#,###");
     final isLiability = account.nature == 'liability';
     final displayBalance = isLiability ? balance.abs() : balance;
     final balanceColor = isLiability ? Colors.redAccent : (balance < 0 ? Colors.redAccent : color);
     
+    // ✅ التحقق من أن هذا هو حساب الدين المؤقت
+    final isTempDebtAccount = account.id == TEMP_DEBT_ACCOUNT_ID;
+    
     return GestureDetector(
-      onTap: onTap, // ✅ 3. الضغط يفتح التعديل
+      onTap: onTap, // ✅ المنطق داخل _editAccount()
       child: Container(
         padding: EdgeInsets.all(isTablet ? 12 : 8),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.4),
+          color: isTempDebtAccount
+              ? Colors.grey.shade900.withOpacity(0.6)
+              : Colors.black.withOpacity(0.4),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2), width: 1),
+          border: Border.all(
+            color: isTempDebtAccount
+                ? Colors.grey.withOpacity(0.5)
+                : color.withOpacity(0.2),
+            width: 1,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -511,7 +563,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
               children: [
                 Icon(
                   _getAccountIcon(account.type),
-                  color: color,
+                  color: isTempDebtAccount ? Colors.grey.shade500 : color,
                   size: isTablet ? 28 : 22,
                 ),
                 const SizedBox(width: 8),
@@ -519,13 +571,16 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   child: Text(
                     account.name,
                     style: TextStyle(
-                      color: Colors.white,
+                      color: isTempDebtAccount ? Colors.grey.shade400 : Colors.white,
                       fontSize: isTablet ? 14 : 12,
                       fontWeight: FontWeight.w500,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                // 🔒 أيقونة القفل للحساب المؤقت
+                if (isTempDebtAccount)
+                  Icon(Icons.lock_outline, size: 14, color: Colors.grey.shade500),
               ],
             ),
             const SizedBox(height: 8),
@@ -538,33 +593,35 @@ class _AccountsScreenState extends State<AccountsScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: percentage / 100,
-                backgroundColor: Colors.white.withOpacity(0.1),
-                color: color,
-                minHeight: 4,
+            // ✅ إخفاء شريط النسبة للحساب المؤقت
+            if (!isTempDebtAccount) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: percentage / 100,
+                  backgroundColor: Colors.white.withOpacity(0.1),
+                  color: color,
+                  minHeight: 4,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${percentage.toStringAsFixed(0)}% of section',
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: isTablet ? 10 : 8,
+              const SizedBox(height: 4),
+              Text(
+                '${percentage.toStringAsFixed(0)}% of section',
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: isTablet ? 10 : 8,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
     );
   }
   
-  // ✅ زر الإضافة - يفتح شاشة AddAccountScreen
   Widget _buildFAB(AppLocalizations t) {
     return FloatingActionButton(
-      onPressed: () => _addAccount('asset'), // ✅ يفتح الشاشة
+      onPressed: () => _addAccount('asset'),
       backgroundColor: Colors.blue,
       child: const Icon(Icons.add, color: Colors.white),
     );
