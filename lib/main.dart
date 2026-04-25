@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/account.dart';
-import 'models/expense.dart';
 import 'models/transaction.dart';
 import 'screens/main_navigation.dart';
 
@@ -16,10 +15,7 @@ void main() async {
   // 🔥 Init Hive
   await Hive.initFlutter();
 
-  // 🔥 Register Adapters safely
-  if (!Hive.isAdapterRegistered(0)) {
-    Hive.registerAdapter(ExpenseAdapter());
-  }
+
   if (!Hive.isAdapterRegistered(1)) {
     Hive.registerAdapter(AccountAdapter());
   }
@@ -29,7 +25,6 @@ void main() async {
 
   // 🔥 Open Boxes
   await Hive.openBox<Account>('accounts');
-  await Hive.openBox<Expense>('expenses');
   await Hive.openBox<Transaction>('transactions');
 
   // 🔥 لا نقوم بإنشاء حسابات افتراضية
