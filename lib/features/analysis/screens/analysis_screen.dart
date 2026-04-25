@@ -1,8 +1,8 @@
 // lib/features/analysis/screens/analysis_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-import '../../../models/expense.dart';
+import '../../../models/transaction.dart';  // ✅ Changed from Expense
 import '../../../l10n/app_localizations.dart';
 import '../../../config/category_config.dart';
 import '../models/time_period.dart';
@@ -11,8 +11,8 @@ import '../widgets/category_details_section.dart';
 import '../widgets/date_range_selector.dart';
 import 'main_category_details_screen.dart';
 import '../../../utils/category_helper.dart';
-import '../../../utils/expense_to_transaction.dart';
-import '../../../models/transaction.dart';
+import '../../../services/transaction_service.dart';  // ✅ ADDED
+import '../../../constants/transaction_constants.dart';  // ✅ ADDED
 
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
@@ -29,10 +29,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
   
-  // ==============================
-  // 🔥 CACHE
-  // ==============================
-
+  // Cache for analyzed data
   Map<String, double>? _cachedTotal;
   Map<String, double>? _cachedReal;
   Map<String, double>? _cachedExceptional;
@@ -40,9 +37,9 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   DateTime? _lastStartDate;
   DateTime? _lastEndDate;
 
-  List<Expense> _realExpenses = [];
-  List<Expense> _exceptionalExpenses = [];
-  List<Expense> _totalExpenses = [];
+  List<Transaction> _realExpenses = [];
+  List<Transaction> _exceptionalExpenses = [];
+  List<Transaction> _totalExpenses = [];
   
   double _realTotal = 0;
   double _exceptionalTotal = 0;
@@ -56,7 +53,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
 
   List<MainCategoryData>? _cachedRealList;
   List<MainCategoryData>? _cachedExceptionalList;
-  List<MainCategoryData>? _cachedTotalList; 
+  List<MainCategoryData>? _cachedTotalList;
   
   @override
   void initState() {
@@ -111,7 +108,6 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     _loadData();
   }
 
-  // ✅ دالة تجميع المعاملات حسب الفئة
   Map<String, double> _groupTransactionsByCategory(List<Transaction> list) {
     final result = <String, double>{};
 
@@ -123,38 +119,24 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   }
 
   void _loadData() {
-    final box = Hive.box<Expense>('expenses');
-    final allExpenses = box.values.toList();
-    final allTransactions = allExpenses.map((e) => convertExpenseToTransaction(e)).toList();
+    final ts = TransactionService.instance;
+    
+    // ✅ Get all expense transactions in date range
+    final allTransactions = ts.getByDateRange(_startDate, _endDate);
+    final filteredTransactions = allTransactions
+        .where((t) => t.type == TransactionType.expense)
+        .toList();
 
-final filteredTransactions = allTransactions.where((t) =>
-  t.date.isAfter(_startDate.subtract(const Duration(days: 1))) &&
-  t.date.isBefore(_endDate.add(const Duration(days: 1)))
-).toList();
-
-print("transactions count: ${filteredTransactions.length}");
-
-    final filteredExpenses = allExpenses.where((e) =>
-      e.date.isAfter(_startDate.subtract(const Duration(days: 1))) &&
-      e.date.isBefore(_endDate.add(const Duration(days: 1)))
-    ).toList();
-
-    _realExpenses = filteredExpenses.where((e) => !e.isExceptional).toList();
-    _exceptionalExpenses = filteredExpenses.where((e) => e.isExceptional).toList();
-    _totalExpenses = filteredExpenses;
+    _realExpenses = filteredTransactions.where((t) => !t.isExceptional).toList();
+    _exceptionalExpenses = filteredTransactions.where((t) => t.isExceptional).toList();
+    _totalExpenses = filteredTransactions;
 
     final isSameRange = _lastStartDate == _startDate && _lastEndDate == _endDate;
 
     if (!isSameRange || _cachedReal == null) {
-      _cachedReal = _groupTransactionsByCategory(
-  filteredTransactions.where((t) => !t.isExceptional).toList()
-);
-
-_cachedExceptional = _groupTransactionsByCategory(
-  filteredTransactions.where((t) => t.isExceptional).toList()
-);
-
-_cachedTotal = _groupTransactionsByCategory(filteredTransactions);
+      _cachedReal = _groupTransactionsByCategory(_realExpenses);
+      _cachedExceptional = _groupTransactionsByCategory(_exceptionalExpenses);
+      _cachedTotal = _groupTransactionsByCategory(_totalExpenses);
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final t = AppLocalizations.of(context)!;
@@ -163,8 +145,6 @@ _cachedTotal = _groupTransactionsByCategory(filteredTransactions);
         _cachedExceptionalList = _buildCategoryList(_cachedExceptional ?? {}, t);
         _cachedTotalList = _buildCategoryList(_cachedTotal ?? {}, t);
 
-        _exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b);
-
         _refreshNotifier.value = !_refreshNotifier.value;
       });
 
@@ -172,56 +152,32 @@ _cachedTotal = _groupTransactionsByCategory(filteredTransactions);
       _lastEndDate = _endDate;
     }
 
-    // ✅ حساب الإجماليات
+    // Calculate totals
     _realTotal = (_cachedReal ?? {}).values.fold<double>(0.0, (a, b) => a + b);
-    _exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b);     
+    _exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b);
     _totalExpensesAmount = _realTotal + _exceptionalTotal;
 
+    // Calculate changes compared to previous period
     final periodDays = _getPeriodDays();
     final previousStart = _startDate.subtract(Duration(days: periodDays));
     final previousEnd = _endDate.subtract(Duration(days: periodDays));
 
-    final previousExpenses = allExpenses.where((e) =>
-      e.date.isAfter(previousStart.subtract(const Duration(days: 1))) &&
-      e.date.isBefore(previousEnd.add(const Duration(days: 1)))
-    ).toList();
+    final previousTransactions = ts.getByDateRange(previousStart, previousEnd);
+    final previousExpenses = previousTransactions
+        .where((t) => t.type == TransactionType.expense)
+        .toList();
 
-    final previousReal = _calculateTotalByMainCategory(
-      previousExpenses.where((e) => !e.isExceptional).toList()
-    );
-    final previousExceptional = _calculateTotalByMainCategory(
-      previousExpenses.where((e) => e.isExceptional).toList()
-    );
+    final previousReal = previousExpenses
+        .where((t) => !t.isExceptional)
+        .fold(0.0, (sum, t) => sum + t.amount);
+    final previousExceptional = previousExpenses
+        .where((t) => t.isExceptional)
+        .fold(0.0, (sum, t) => sum + t.amount);
     final previousTotal = previousReal + previousExceptional;
 
     _realChange = previousReal == 0 ? 0 : ((_realTotal - previousReal) / previousReal) * 100;
     _exceptionalChange = previousExceptional == 0 ? 0 : ((_exceptionalTotal - previousExceptional) / previousExceptional) * 100;
     _totalChange = previousTotal == 0 ? 0 : ((_totalExpensesAmount - previousTotal) / previousTotal) * 100;
-  }
-
-  double _calculateTotalByMainCategory(List<Expense> expenses) {
-    double total = 0;
-    final mainCategoriesMap = <String, double>{};
-    
-    for (final expense in expenses) {
-      mainCategoriesMap[expense.mainCategoryId] = 
-          (mainCategoriesMap[expense.mainCategoryId] ?? 0) + expense.amount;
-    }
-    
-    for (final amount in mainCategoriesMap.values) {
-      total += amount;
-    }
-    return total;
-  }
-
-  Map<String, double> _groupByMainCategory(List<Expense> expenses) {
-    final Map<String, double> result = {};
-    
-    for (final expense in expenses) {
-      result[expense.mainCategoryId] = 
-          (result[expense.mainCategoryId] ?? 0) + expense.amount;
-    }
-    return result;
   }
 
   int _getPeriodDays() {
@@ -360,7 +316,7 @@ _cachedTotal = _groupTransactionsByCategory(filteredTransactions);
     required double amount,
     required double change,
     required Color color,
-    required List<Expense> expenses,
+    required List<Transaction> expenses,
   }) {
     final t = AppLocalizations.of(context)!;
 
@@ -409,8 +365,8 @@ _cachedTotal = _groupTransactionsByCategory(filteredTransactions);
     );
   }
 
-  void _showMainCategoryDetails(String categoryId, String categoryName, List<Expense> allExpenses) {
-    final filteredExpenses = allExpenses.where((e) => e.mainCategoryId == categoryId).toList();
+  void _showMainCategoryDetails(String categoryId, String categoryName, List<Transaction> allExpenses) {
+    final filteredExpenses = allExpenses.where((e) => e.categoryId == categoryId).toList();
     
     Navigator.push(
       context,
@@ -418,7 +374,7 @@ _cachedTotal = _groupTransactionsByCategory(filteredTransactions);
         builder: (context) => MainCategoryDetailsScreen(
           mainCategoryId: categoryId,
           mainCategoryName: categoryName,
-          expenses: filteredExpenses,
+          expenses: filteredExpenses,  // ✅ Changed from expenses to transactions
           startDate: _startDate,
           endDate: _endDate,
         ),
@@ -427,6 +383,7 @@ _cachedTotal = _groupTransactionsByCategory(filteredTransactions);
   }
 }
 
+// ✅ Updated SummaryCard (no changes needed, works with any data)
 class _SummaryCard extends StatelessWidget {
   final String title;
   final double amount;
@@ -443,7 +400,7 @@ class _SummaryCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {     
+  Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
 
     return Container(

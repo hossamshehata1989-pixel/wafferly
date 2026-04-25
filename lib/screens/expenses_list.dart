@@ -1,4 +1,5 @@
 // lib/screens/expenses_list.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -6,6 +7,8 @@ import '../models/transaction.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/category_helper.dart';
 import '../widgets/add_expense_bottom_sheet.dart';
+import '../services/transaction_service.dart';
+import '../constants/transaction_constants.dart';  // ✅ ADDED for TransactionType
 
 class ExpensesList extends StatelessWidget {
   const ExpensesList({super.key});
@@ -13,14 +16,15 @@ class ExpensesList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat("#,###");
-    final box = Hive.box<Transaction>('transactions');  // ✅ changed
+    final box = Hive.box<Transaction>('transactions');
     final t = AppLocalizations.of(context)!;
 
     return ValueListenableBuilder(
       valueListenable: box.listenable(),
       builder: (context, Box<Transaction> box, _) {
+        // ✅ استفاده از TransactionType.expense
         final transactions = box.values
-            .where((t) => t.type == 'expense')  // ✅ فقط المصروفات
+            .where((t) => t.type == TransactionType.expense)
             .toList()
             .reversed
             .toList();
@@ -75,7 +79,7 @@ class ExpensesList extends StatelessWidget {
                 );
               },
               onDismissed: (direction) async {
-                await box.delete(txnKey);
+                await TransactionService.instance.deleteTransaction(txn.id);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(

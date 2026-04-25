@@ -2,18 +2,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../../../models/expense.dart';
+import '../../../models/transaction.dart';
 import '../../../config/category_config.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../utils/category_icons.dart';
 import '../widgets/custom_donut_chart.dart';
 import '../../../utils/category_helper.dart';
-import '../../../l10n/app_localizations.dart';
 
 class MainCategoryDetailsScreen extends StatelessWidget {
   final String mainCategoryId;
   final String mainCategoryName;
-  final List<Expense> expenses;
+  final List<Transaction> expenses;
   final DateTime startDate;
   final DateTime endDate;
 
@@ -261,11 +260,11 @@ class MainCategoryDetailsScreen extends StatelessWidget {
     // ✅ تجميع المصروفات حسب الفئة الفرعية
     final Map<String, SubCategoryData> subCategoriesMap = {};
     for (final expense in expenses) {
-      final subId = expense.subCategoryId ?? expense.mainCategoryId;
+      final subId = expense.subCategoryId ?? expense.categoryId;
 
 final subName = expense.subCategoryId != null
     ? getSubCategoryName(expense.subCategoryId!, t)
-    : getMainCategoryName(expense.mainCategoryId, t);
+    : getMainCategoryName(expense.categoryId, t);
       if (subCategoriesMap.containsKey(subId)) {
         subCategoriesMap[subId] = SubCategoryData(
           id: subId,
