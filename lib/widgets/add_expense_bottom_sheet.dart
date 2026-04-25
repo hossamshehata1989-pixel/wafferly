@@ -12,7 +12,7 @@ import '../utils/category_helper.dart';
 import '../services/balance_service.dart';
 import '../screens/accounts/add_account/add_account_screen.dart';
 import '../constants/transaction_constants.dart';
-
+import '../services/transaction_service.dart';
 
 class SelectedCategory {
   final String id;
@@ -32,7 +32,6 @@ void showAddExpenseSheet(
   Transaction? expenseToEdit,
   int? expenseKey,
 }) {
-  // ✅ إغلاق الـ Bottom Sheet القديم إذا كان مفتوحاً
   if (_controller != null) {
     try {
       _controller!.close();
@@ -86,7 +85,6 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   late String selectedAccountName;
   bool _isSaving = false;
 
-  // ✅ حساب الدين المؤقت الثابت
   static const String TEMP_DEBT_ACCOUNT_ID = 'temp_debt_account';
   static const String TEMP_DEBT_ACCOUNT_NAME = 'دين مؤقت';
 
@@ -124,10 +122,6 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
     return account?.name ?? accountId;
   }
 
-  // ==========================================
-  // ✅ دوال الحسابات القابلة للصرف
-  // ==========================================
-
   bool _hasSpendableAccounts() {
     final accountsBox = Hive.box<Account>('accounts');
     return accountsBox.values.any((acc) =>
@@ -146,7 +140,6 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
         acc.id != TEMP_DEBT_ACCOUNT_ID).toList();
   }
 
-  /// إنشاء حساب الدين المؤقت (مرة واحدة فقط عند الحاجة)
   Future<String> _ensureTempDebtAccount() async {
     final accountsBox = Hive.box<Account>('accounts');
 
@@ -166,10 +159,6 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
     await accountsBox.put(TEMP_DEBT_ACCOUNT_ID, debtAccount);
     return TEMP_DEBT_ACCOUNT_ID;
   }
-
-  // ==========================================
-  // ✅ Dialog: لا توجد حسابات (محسّن)
-  // ==========================================
 
   Future<String?> _showNoAccountsDialog() async {
     return showDialog<String>(
@@ -202,10 +191,6 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
       ),
     );
   }
-
-  // ==========================================
-  // ✅ Dialog: الرصيد غير كافٍ (محسّن)
-  // ==========================================
 
   Future<String?> _showInsufficientBalanceDialog(double neededAmount, double currentBalance) async {
     return showDialog<String>(
@@ -261,95 +246,78 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
     );
   }
 
-  // ==========================================
-  // ✅ حفظ كدين مؤقت
-  // ==========================================
-
   Future<void> _saveAsTempDebt(double value, bool isExceptional) async {
-  final debtAccountId = await _ensureTempDebtAccount();
+    final debtAccountId = await _ensureTempDebtAccount();
 
-  setState(() {
-    selectedAccountId = debtAccountId;
-    selectedAccountName = TEMP_DEBT_ACCOUNT_NAME;
-  });
+    setState(() {
+      selectedAccountId = debtAccountId;
+      selectedAccountName = TEMP_DEBT_ACCOUNT_NAME;
+    });
 
-  final selected = widget.categoryNotifier.value;
-  final isSub = _isSubCategory(selected.id);
-  final mainCategoryId = _getMainCategoryId(selected.id);
-  final subCategoryId = isSub ? selected.id : null;
+    final selected = widget.categoryNotifier.value;
+    final isSub = _isSubCategory(selected.id);
+    final mainCategoryId = _getMainCategoryId(selected.id);
+    final subCategoryId = isSub ? selected.id : null;
 
-  final transaction = Transaction.create(
-    amount: value,
-    type: TransactionType.expense,  // ✅ استخدم constant
-    fromAccountId: debtAccountId,
-    toAccountId: null,
-    categoryId: mainCategoryId,
-    date: selectedDate,
-    note: note.isEmpty ? null : note,
-    paymentMethod: paymentMethod,
-    isExceptional: isExceptional,
-    subCategoryId: subCategoryId,
-    currencyCode: 'EGP',
-    source: TransactionSource.tempDebt,
-  );
-
-  final box = Hive.box<Transaction>('transactions');
-  
-  // ✅ استخدام put فقط (بدون add)
-  await box.put(transaction.id, transaction);
-
-  if (mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isExceptional
-              ? "📝 تم تسجيل المصروف الاستثنائي كدين مؤقت"
-              : "📝 تم تسجيل المصروف كدين مؤقت",
-        ),
-        backgroundColor: Colors.orange,
-        duration: const Duration(seconds: 2),
-      ),
+    final transaction = Transaction.create(
+      amount: value,
+      type: TransactionType.expense,
+      fromAccountId: debtAccountId,
+      toAccountId: null,
+      categoryId: mainCategoryId,
+      date: selectedDate,
+      note: note.isEmpty ? null : note,
+      paymentMethod: paymentMethod,
+      isExceptional: isExceptional,
+      subCategoryId: subCategoryId,
+      currencyCode: 'EGP',
+      source: TransactionSource.tempDebt,
     );
+
+    await TransactionService.instance.addTransaction(transaction);
+
     if (mounted) {
-      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isExceptional
+                ? "📝 تم تسجيل المصروف الاستثنائي كدين مؤقت"
+                : "📝 تم تسجيل المصروف كدين مؤقت",
+          ),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      if (mounted) {
+        Navigator.pop(context);
+      }
     }
   }
-}
-
-  // ==========================================
-  // ✅ حفظ المصروف مباشرة
-  // ==========================================
 
   Future<void> _saveExpenseDirectly(double value, bool isExceptional) async {
-  final box = Hive.box<Transaction>('transactions');
-  final selected = widget.categoryNotifier.value;
-  final isSub = _isSubCategory(selected.id);
-  final mainCategoryId = _getMainCategoryId(selected.id);
-  final subCategoryId = isSub ? selected.id : null;
+    final selected = widget.categoryNotifier.value;
+    final isSub = _isSubCategory(selected.id);
+    final mainCategoryId = _getMainCategoryId(selected.id);
+    final subCategoryId = isSub ? selected.id : null;
 
-  final transaction = Transaction.create(
-    id: widget.expenseToEdit?.id,
-    amount: value,
-    type: TransactionType.expense,  // ✅ استخدم constant
-    fromAccountId: selectedAccountId,
-    toAccountId: null,
-    categoryId: mainCategoryId,
-    date: selectedDate,
-    note: note.isEmpty ? null : note,
-    paymentMethod: paymentMethod,
-    isExceptional: isExceptional,
-    subCategoryId: subCategoryId,
-    currencyCode: 'EGP',
-    source: TransactionSource.manual,
-  );
+    final transaction = Transaction.create(
+      id: widget.expenseToEdit?.id,
+      amount: value,
+      type: TransactionType.expense,
+      fromAccountId: selectedAccountId,
+      toAccountId: null,
+      categoryId: mainCategoryId,
+      date: selectedDate,
+      note: note.isEmpty ? null : note,
+      paymentMethod: paymentMethod,
+      isExceptional: isExceptional,
+      subCategoryId: subCategoryId,
+      currencyCode: 'EGP',
+      source: TransactionSource.manual,
+    );
 
-  // ✅ استخدام put في كل الحالات
-  await box.put(transaction.id, transaction);
-}
-
-  // ==========================================
-  // ✅ إضافة رصيد (تعديل الرصيد الحالي)
-  // ==========================================
+    await TransactionService.instance.addTransaction(transaction);
+  }
 
   Future<void> _addBalanceToAccount(String accountId, double neededAmount) async {
     final TextEditingController amountController = TextEditingController();
@@ -400,24 +368,22 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
 
     if (result == true) {
       final addAmount = double.tryParse(amountController.text) ?? 0;
-       if (addAmount > 0) {
-        final transactionsBox = Hive.box<Transaction>('transactions');
+      if (addAmount > 0) {
+        final tx = Transaction.create(
+          amount: addAmount,
+          type: TransactionType.income,
+          fromAccountId: null,
+          toAccountId: accountId,
+          categoryId: "balance_addition",
+          date: DateTime.now(),
+          note: "إضافة رصيد يدوي",
+          paymentMethod: "cash",
+          isExceptional: false,
+          currencyCode: 'EGP',
+          source: TransactionSource.balanceAdjustment,
+        );
 
-final tx = Transaction.create(
-  amount: addAmount,
-  type: TransactionType.income,
-  fromAccountId: null,
-  toAccountId: accountId,
-  categoryId: "balance_addition",
-  date: DateTime.now(),
-  note: "إضافة رصيد يدوي",
-  paymentMethod: "cash",
-  isExceptional: false,
-  currencyCode: 'EGP',
-  source: TransactionSource.balanceAdjustment,
-);
-
-await transactionsBox.put(tx.id, tx);
+        await TransactionService.instance.addTransaction(tx);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -432,10 +398,6 @@ await transactionsBox.put(tx.id, tx);
     }
   }
 
-  // ==========================================
-  // ✅ حفظ المصروف (المنطق الرئيسي)
-  // ==========================================
-
   Future<void> _saveExpense({required bool isExceptional}) async {
     if (_isSaving) return;
 
@@ -447,7 +409,6 @@ await transactionsBox.put(tx.id, tx);
       return;
     }
 
-    // ✅ 1. التحقق من وجود حسابات قابلة للصرف
     if (!_hasSpendableAccounts() && widget.expenseToEdit == null) {
       final action = await _showNoAccountsDialog();
 
@@ -477,7 +438,6 @@ await transactionsBox.put(tx.id, tx);
       return;
     }
 
-    // ✅ 2. التأكد من اختيار حساب
     if (selectedAccountId.isEmpty && widget.expenseToEdit == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -489,7 +449,6 @@ await transactionsBox.put(tx.id, tx);
       return;
     }
 
-    // ✅ 3. التحقق من الرصيد (للمصروفات الجديدة فقط)
     if (widget.expenseToEdit == null && selectedAccountId.isNotEmpty) {
       final currentBalance = BalanceService().getBalance(selectedAccountId);
 
@@ -500,7 +459,6 @@ await transactionsBox.put(tx.id, tx);
           final shortage = value - currentBalance;
           await _addBalanceToAccount(selectedAccountId, shortage);
           
-          // ✅ بعد إضافة الرصيد، نحاول الحفظ مرة أخرى
           if (mounted) {
             final newBalance = BalanceService().getBalance(selectedAccountId);
             if (newBalance >= value) {
@@ -531,7 +489,6 @@ await transactionsBox.put(tx.id, tx);
       }
     }
 
-    // ✅ 4. حفظ المصروف عادي
     await _saveExpenseDirectly(value, isExceptional);
 
     if (mounted) {
@@ -545,10 +502,6 @@ await transactionsBox.put(tx.id, tx);
       Navigator.pop(context);
     }
   }
-
-  // ==========================================
-  // ✅ اختيار الحساب
-  // ==========================================
 
   void _selectAccount() {
     final spendableAccounts = _getSpendableAccounts();
@@ -603,10 +556,6 @@ await transactionsBox.put(tx.id, tx);
       ),
     );
   }
-
-  // ==========================================
-  // ✅ دوال مساعدة
-  // ==========================================
 
   void addNumber(String n) {
     setState(() {
@@ -755,10 +704,6 @@ await transactionsBox.put(tx.id, tx);
     return false;
   }
 
-  // ==========================================
-  // ✅ build
-  // ==========================================
-
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -775,7 +720,6 @@ await transactionsBox.put(tx.id, tx);
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// LEFT PANEL
             SizedBox(
               width: isSmallScreen ? 85 : 95,
               child: Column(
