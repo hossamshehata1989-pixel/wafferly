@@ -1,58 +1,75 @@
+// lib/screens/expenses_screen.dart
 import 'package:flutter/material.dart';
-import '../widgets/main_categories_section.dart';
-import '../widgets/sub_categories_section.dart';
-import '../widgets/add_expense_bottom_sheet.dart';
+import 'package:provider/provider.dart';
+import '../controllers/transaction_entry_controller.dart';
+import '../widgets/expense_entry/expense_entry_tabs.dart';
+import '../widgets/expense_entry/main_categories_grid.dart';
+import '../widgets/expense_entry/sub_categories_grid.dart';
+import '../widgets/expense_entry/amount_input_panel.dart';
+import '../widgets/expense_entry/quick_actions_row.dart';
+import '../widgets/expense_entry/action_buttons_row.dart';
+import '../widgets/expense_entry/advanced_options_panel.dart';
 import '../l10n/app_localizations.dart';
 
-class ExpensesScreen extends StatefulWidget {
+class ExpensesScreen extends StatelessWidget {
   const ExpensesScreen({super.key});
 
   @override
-  State<ExpensesScreen> createState() => _ExpensesScreenState();
-}
-
-class _ExpensesScreenState extends State<ExpensesScreen> {
-  int selectedMainIndex = -1;
-  final ValueNotifier<SelectedCategory> selectedCategory = ValueNotifier(
-    SelectedCategory(id: "", name: "")
-  );
-
-  @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(t.expenses), 
-        backgroundColor: const Color(0xFF0A0A0A),
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  MainCategoriesSection(
-                    selectedIndex: selectedMainIndex,
-                    selectedCategory: selectedCategory,
-                    onSelect: (index) => setState(() => selectedMainIndex = index),
-                  ),
-                  const SizedBox(height: 10),
-                  if (selectedMainIndex >= 0)
-                    SubCategoriesSection(
-                      mainCategoryIndex: selectedMainIndex,
-                      selectedCategory: selectedCategory,
-                    ),
-                  // إضافة مساحة إضافية أسفل المحتوى
-                  const SizedBox(height: 20),
-                ],
+    return ChangeNotifierProvider(
+      create: (_) => TransactionEntryController(),
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        appBar: AppBar(
+          title: Text(AppLocalizations.of(context)!.expenses),
+          backgroundColor: const Color(0xFF0A0A0A),
+        ),
+        body: Consumer<TransactionEntryController>(
+          builder: (context, controller, _) {
+            return SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+                  final isKeyboardOpen = keyboardHeight > 0;
+                  
+                  return Column(
+                    children: [
+                      ExpenseEntryTabs(controller: controller),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        flex: isKeyboardOpen ? 2 : 4,
+                        child: MainCategoriesGrid(
+                          selectedCategoryId: controller.selectedCategoryId,
+                          onCategorySelected: controller.selectCategory,
+                          availableHeight: constraints.maxHeight * (isKeyboardOpen ? 0.25 : 0.4),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (controller.hasSubCategories && !isKeyboardOpen)
+                        SubCategoriesGrid(
+                          subCategories: controller.currentSubCategories,
+                          selectedSubCategoryId: controller.selectedCategoryId,
+                          onSubCategorySelected: controller.selectCategory,
+                        ),
+                      Flexible(
+                        flex: isKeyboardOpen ? 2 : 3,
+                        child: AmountInputPanel(controller: controller),
+                      ),
+                      if (!isKeyboardOpen) ...[
+                        QuickActionsRow(controller: controller),
+                        const SizedBox(height: 8),
+                        ActionButtonsRow(controller: controller),
+                        const SizedBox(height: 8),
+                        AdvancedOptionsPanel(controller: controller),
+                        const SizedBox(height: 12),
+                      ],
+                    ],
+                  );
+                },
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

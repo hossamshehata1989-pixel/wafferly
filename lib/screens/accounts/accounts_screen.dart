@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../models/account.dart';
-import '../../models/transaction.dart';
 import '../../services/account_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/balance_service.dart';
@@ -19,43 +18,34 @@ class AccountsScreen extends StatefulWidget {
 class _AccountsScreenState extends State<AccountsScreen> {
   final AccountService _accountService = AccountService();
 
-  // ✅ حساب الدين المؤقت - ثابت النظام
   static const String TEMP_DEBT_ACCOUNT_ID = 'temp_debt_account';
 
-
-void _showSimpleTempDebtDialog() {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('📋 تسوية الدين المؤقت'),
-      content: const Text(
-        'هذا الحساب يمثل دينًا مؤقتًا ناتجًا عن تغطية مصروفات سابقة.\n\nيمكن تسويته بإضافة دخل.',
+  void _showSimpleTempDebtDialog() {
+    final t = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(t.tempDebtTitle),
+        content: Text(t.tempDebtDescription),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(t.close),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(t.incomeLinkingComingSoon)),
+              );
+            },
+            child: Text(t.settleNow),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('إغلاق'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context);
+    );
+  }
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('سيتم ربط إضافة الدخل قريبًا'),
-              ),
-            );
-          },
-          child: const Text('تسوية الآن'),
-        ),
-      ],
-    ),
-  );
-}
-
-
-
-  // ✅ دالة مساعدة لتحويل String إلى SectionType
   SectionType _getSectionTypeFromString(String sectionType) {
     switch (sectionType) {
       case 'asset': return SectionType.asset;
@@ -66,7 +56,6 @@ void _showSimpleTempDebtDialog() {
     }
   }
 
-  // ✅ دالة مساعدة لتحديد SectionType من Account
   SectionType _getSectionTypeFromAccount(Account account) {
     if (account.nature == 'asset') {
       if (account.type == 'investment') {
@@ -80,7 +69,6 @@ void _showSimpleTempDebtDialog() {
     }
   }
 
-  // ✅ فتح شاشة إنشاء حساب جديد
   void _addAccount(String sectionType) {
     Navigator.push(
       context,
@@ -94,13 +82,11 @@ void _showSimpleTempDebtDialog() {
     });
   }
 
-  // ✅ تعديل حساب - مع منع حساب الدين المؤقت
   void _editAccount(Account account) {
-    // 🔒 منع تعديل حساب الدين المؤقت
     if (account.id == TEMP_DEBT_ACCOUNT_ID) {
-  _showSimpleTempDebtDialog();
-  return;
-}
+      _showSimpleTempDebtDialog();
+      return;
+    }
 
     Navigator.push(
       context,
@@ -115,10 +101,6 @@ void _showSimpleTempDebtDialog() {
     });
   }
 
-  // ==========================================
-  // ✅ دوال الحسابات
-  // ==========================================
-  
   double _calculateNetWorth(List<Account> accounts, BalanceService balanceService) {
     double assets = 0;
     double liabilities = 0;
@@ -185,12 +167,12 @@ void _showSimpleTempDebtDialog() {
                   const Icon(Icons.account_balance_wallet, size: 80, color: Colors.white54),
                   const SizedBox(height: 16),
                   Text(
-                    "No accounts yet",
+                    t.noAccountsYet,
                     style: TextStyle(color: Colors.white54, fontSize: 18),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Tap the + button to add your first account",
+                    t.tapToAddAccount,
                     style: TextStyle(color: Colors.white38, fontSize: 14),
                   ),
                 ],
@@ -296,6 +278,7 @@ void _showSimpleTempDebtDialog() {
     required double totalLiabilities,
     required bool isTablet,
   }) {
+    final t = AppLocalizations.of(context)!;
     final formatter = NumberFormat("#,###");
     final isNegative = netWorth < 0;
     
@@ -327,7 +310,7 @@ void _showSimpleTempDebtDialog() {
               const Icon(Icons.account_balance, color: Colors.white70, size: 20),
               const SizedBox(width: 8),
               Text(
-                'NET WORTH',
+                t.netWorth,
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: isTablet ? 14 : 12,
@@ -342,8 +325,8 @@ void _showSimpleTempDebtDialog() {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    'Last 30 days: +8%',
+                  child: Text(
+                    t.last30DaysGrowth,
                     style: TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ),
@@ -351,7 +334,7 @@ void _showSimpleTempDebtDialog() {
           ),
           const SizedBox(height: 16),
           Text(
-            '${formatter.format(netWorth.abs().toInt())} EGP',
+            '${formatter.format(netWorth.abs().toInt())} ${t.currency}',
             style: TextStyle(
               color: Colors.white,
               fontSize: isTablet ? 42 : 32,
@@ -361,9 +344,9 @@ void _showSimpleTempDebtDialog() {
           const SizedBox(height: 12),
           Row(
             children: [
-              _buildNetWorthDetail('Assets', totalAssets, Colors.green, isTablet),
+              _buildNetWorthDetail(t.moneyYouHave, totalAssets, Colors.green, isTablet),
               const SizedBox(width: 16),
-              _buildNetWorthDetail('Debts', totalLiabilities, Colors.red, isTablet),
+              _buildNetWorthDetail(t.moneyYouOwe, totalLiabilities, Colors.red, isTablet),
             ],
           ),
         ],
@@ -372,6 +355,7 @@ void _showSimpleTempDebtDialog() {
   }
   
   Widget _buildNetWorthDetail(String label, double amount, Color color, bool isTablet) {
+    final t = AppLocalizations.of(context)!;
     final formatter = NumberFormat("#,###");
     return Expanded(
       child: Container(
@@ -389,7 +373,7 @@ void _showSimpleTempDebtDialog() {
             ),
             const SizedBox(height: 4),
             Text(
-              '${formatter.format(amount.toInt())} EGP',
+              '${formatter.format(amount.toInt())} ${t.currency}',
               style: TextStyle(
                 color: color,
                 fontSize: isTablet ? 16 : 14,
@@ -412,6 +396,7 @@ void _showSimpleTempDebtDialog() {
     required bool isLargeTablet,
     required VoidCallback onAddTap,
   }) {
+    final t = AppLocalizations.of(context)!;
     if (accounts.isEmpty) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
@@ -470,7 +455,7 @@ void _showSimpleTempDebtDialog() {
                   ),
                 ),
                 Text(
-                  '${formatter.format(sectionTotal.toInt())} EGP',
+                  '${formatter.format(sectionTotal.toInt())} ${t.currency}',
                   style: TextStyle(
                     color: color,
                     fontSize: isTablet ? 16 : 14,
@@ -513,7 +498,7 @@ void _showSimpleTempDebtDialog() {
                   percentage: percentage,
                   color: color,
                   isTablet: isTablet,
-                  onTap: () => _editAccount(account), // ✅ هنا يتم استدعاء التعديل مع المنع
+                  onTap: () => _editAccount(account),
                 );
               },
             ),
@@ -531,16 +516,16 @@ void _showSimpleTempDebtDialog() {
     required bool isTablet,
     required VoidCallback onTap,
   }) {
+    final t = AppLocalizations.of(context)!;
     final formatter = NumberFormat("#,###");
     final isLiability = account.nature == 'liability';
     final displayBalance = isLiability ? balance.abs() : balance;
     final balanceColor = isLiability ? Colors.redAccent : (balance < 0 ? Colors.redAccent : color);
     
-    // ✅ التحقق من أن هذا هو حساب الدين المؤقت
     final isTempDebtAccount = account.id == TEMP_DEBT_ACCOUNT_ID;
     
     return GestureDetector(
-      onTap: onTap, // ✅ المنطق داخل _editAccount()
+      onTap: onTap,
       child: Container(
         padding: EdgeInsets.all(isTablet ? 12 : 8),
         decoration: BoxDecoration(
@@ -578,7 +563,6 @@ void _showSimpleTempDebtDialog() {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                // 🔒 أيقونة القفل للحساب المؤقت
                 if (isTempDebtAccount)
                   Icon(Icons.lock_outline, size: 14, color: Colors.grey.shade500),
               ],
@@ -593,7 +577,6 @@ void _showSimpleTempDebtDialog() {
               ),
             ),
             const SizedBox(height: 6),
-            // ✅ إخفاء شريط النسبة للحساب المؤقت
             if (!isTempDebtAccount) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
@@ -606,7 +589,7 @@ void _showSimpleTempDebtDialog() {
               ),
               const SizedBox(height: 4),
               Text(
-                '${percentage.toStringAsFixed(0)}% of section',
+                '${percentage.toStringAsFixed(0)}% ${t.ofSection}',
                 style: TextStyle(
                   color: Colors.white54,
                   fontSize: isTablet ? 10 : 8,
