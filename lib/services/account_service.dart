@@ -1,5 +1,9 @@
 import 'package:hive/hive.dart';
+import 'package:uuid/uuid.dart';
+
 import '../models/account.dart';
+import '../models/account_enums.dart';
+import '../utils/account_mapper.dart';
 
 class AccountService {
   static final AccountService _instance = AccountService._internal();
@@ -8,23 +12,77 @@ class AccountService {
 
   final Box<Account> box = Hive.box<Account>('accounts');
 
-  List<Account> getAllAccounts() {
-    return box.values.toList();
+  final _uuid = const Uuid();
+
+  Account _buildAccount({
+    required String name,
+    required String type,
+    required String currency,
+    String? notes,
+  }) {
+    final natureEnum = resolveNature(type);
+    final group = resolveGroup(type);
+
+    return Account(
+      id: _uuid.v4(),
+      bookId: 'default',
+      memberId: 'owner',
+      name: name,
+      type: type,
+      nature: natureEnum == AccountNature.asset ? 'asset' : 'liability',
+      currency: currency,
+      createdAt: DateTime.now(),
+      natureEnum: natureEnum,
+      group: group,
+      isArchived: false,
+      notes: notes,
+    );
   }
 
-  Future<void> addAccount(Account account) async {
-    await box.put(account.id, account);
+  Future<Account?> createAccount({
+    required String name,
+    required String type,
+    required String currency,
+    String? notes,
+  }) async {
+    try {
+      final account = _buildAccount(
+        name: name,
+        type: type,
+        currency: currency,
+        notes: notes,
+      );
+
+      await box.put(account.id, account);
+      return account;
+    } catch (e) {
+      print("❌ Error creating account: $e");
+      return null;
+    }
   }
 
-  Future<void> deleteAccount(String id) async {
-    await box.delete(id);
-  }
+  List<Account> getAllAccounts() => box.values.toList();
+
+  List<Account> getAllActiveAccounts() =>
+      box.values.where((acc) => !acc.isArchived).toList();
 
   Future<void> updateAccount(Account account) async {
     await box.put(account.id, account);
   }
 
-  Account? getById(String id) {
-    return box.get(id);
+  Future<void> archiveAccount(String id) async {
+    final acc = box.get(id);
+    if (acc != null) {
+      acc.isArchived = true;
+      await acc.save();
+    }
   }
 }
+
+
+
+
+
+
+
+

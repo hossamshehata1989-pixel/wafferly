@@ -19,23 +19,27 @@ class AccountAdapter extends TypeAdapter<Account> {
     return Account(
       id: fields[0] as String,
       bookId: fields[1] as String,
+      memberId: fields[12] as String,
       name: fields[2] as String,
       type: fields[3] as String,
       nature: fields[4] as String,
       currency: fields[5] as String,
+      createdAt: fields[11] as DateTime,
+      natureEnum: fields[13] as AccountNature,
+      group: fields[14] as AccountGroup,
+      isArchived: fields[15] as bool,
       provider: fields[6] as String?,
       accountNumber: fields[7] as String?,
       color: fields[8] as String?,
       icon: fields[9] as String?,
       notes: fields[10] as String?,
-      createdAt: fields[11] as DateTime,
     );
   }
 
   @override
   void write(BinaryWriter writer, Account obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +63,15 @@ class AccountAdapter extends TypeAdapter<Account> {
       ..writeByte(10)
       ..write(obj.notes)
       ..writeByte(11)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(12)
+      ..write(obj.memberId)
+      ..writeByte(13)
+      ..write(obj.natureEnum)
+      ..writeByte(14)
+      ..write(obj.group)
+      ..writeByte(15)
+      ..write(obj.isArchived);
   }
 
   @override

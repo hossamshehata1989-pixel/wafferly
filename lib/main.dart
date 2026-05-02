@@ -1,8 +1,8 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/account.dart';
+import 'models/account_enums.dart';
 import 'models/transaction.dart';
 import 'screens/main_navigation.dart';
 
@@ -15,10 +15,22 @@ void main() async {
   // 🔥 Init Hive
   await Hive.initFlutter();
 
+  // 🧹 (اختياري للـ debug)
+  await Hive.deleteBoxFromDisk('accounts');
 
+  // 🔥 Register Adapters (الصح)
   if (!Hive.isAdapterRegistered(1)) {
     Hive.registerAdapter(AccountAdapter());
   }
+
+  if (!Hive.isAdapterRegistered(2)) {
+    Hive.registerAdapter(AccountNatureAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(3)) {
+    Hive.registerAdapter(AccountGroupAdapter());
+  }
+
   if (!Hive.isAdapterRegistered(10)) {
     Hive.registerAdapter(TransactionAdapter());
   }
@@ -27,13 +39,9 @@ void main() async {
   await Hive.openBox<Account>('accounts');
   await Hive.openBox<Transaction>('transactions');
 
-  // 🔥 لا نقوم بإنشاء حسابات افتراضية
-  // المستخدم سيضيف حسابه الأول بنفسه
-
   runApp(const WafferlyApp());
 }
 
-// 🎯 App Root
 class WafferlyApp extends StatelessWidget {
   const WafferlyApp({super.key});
 

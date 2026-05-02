@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'account_enums.dart';
 
 part 'account.g.dart';
 
@@ -17,7 +18,7 @@ class Account extends HiveObject {
   String type;
 
   @HiveField(4)
-  String nature;
+  String nature; // legacy
 
   @HiveField(5)
   String currency;
@@ -40,18 +41,34 @@ class Account extends HiveObject {
   @HiveField(11)
   DateTime createdAt;
 
+  @HiveField(12)
+  String memberId;
+
+  @HiveField(13)
+  AccountNature natureEnum;
+
+  @HiveField(14)
+  AccountGroup group;
+
+  @HiveField(15)
+  bool isArchived;
+
   Account({
     required this.id,
     required this.bookId,
+    required this.memberId,
     required this.name,
     required this.type,
     required this.nature,
     required this.currency,
+    required this.createdAt,
+    required this.natureEnum,
+    required this.group,
+    this.isArchived = false,
     this.provider,
     this.accountNumber,
     this.color,
     this.icon,
     this.notes,
-    required this.createdAt,
   });
 }
