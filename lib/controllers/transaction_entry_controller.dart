@@ -167,7 +167,6 @@ class TransactionEntryController extends ChangeNotifier {
   // ==============================
 
   Future<SaveResult> validateAndSave({required bool isExceptional}) async {
-
     if (_saveStatus == SaveStatus.saving) {
       return const SaveResult(success: false);
     }
@@ -189,6 +188,7 @@ class TransactionEntryController extends ChangeNotifier {
       return _fail(SaveAction.noCategorySelected);
     }
 
+    // فحص الرصيد فقط في حالة المصروف
     if (isExpense) {
       final balance = BalanceService().getBalance(_selectedAccountId);
       if (amountValue > balance) {
@@ -217,13 +217,16 @@ class TransactionEntryController extends ChangeNotifier {
     return SaveResult(success: false, action: action, data: data);
   }
 
+  // ✅ تم التصحيح: الآن يعتمد على نوع المعاملة (دخل/مصروف)
   Future<bool> _saveTransaction(double amount, bool isExceptional) async {
     final tx = Transaction.create(
       amount: amount,
-      type: _selectedTransactionType, // 🔥 ثابت مؤقت
-      fromAccountId: _selectedAccountId,
-      toAccountId: null,
-      categoryId: _selectedCategoryId,
+      type: _selectedTransactionType,
+      // اتجاه الحسابات حسب النوع
+      fromAccountId: isIncome ? null : _selectedAccountId,
+      toAccountId: isIncome ? _selectedAccountId : null,
+      // الفئة: للدخل ثابتة "income"، للمصروف من الاختيار
+      categoryId: isIncome ? "income" : _selectedCategoryId,
       date: _selectedDate,
       note: _note.isEmpty ? null : _note,
       paymentMethod: _paymentMethod,
@@ -237,10 +240,12 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   // ==============================
-  // 🔥 TEMP DEBT
+  // 🔥 TEMP DEBT (خاص بالمصروف)
   // ==============================
 
-  Future<void> saveAsTempDebt(double shortage) async {}
+  Future<void> saveAsTempDebt(double shortage) async {
+    // (يمكن تنفيذ منطق إضافي لاحقاً)
+  }
 
   Future<void> addBalanceAndRetry(double shortage) async {
     try {
@@ -249,6 +254,7 @@ class TransactionEntryController extends ChangeNotifier {
 
       final tempAccount = await _getOrCreateTempDebtAccount();
 
+      // تحويل العجز من حساب الدين إلى الحساب المختار
       await TransactionService.instance.addTransaction(
         Transaction.create(
           amount: shortage,
@@ -263,10 +269,10 @@ class TransactionEntryController extends ChangeNotifier {
         ),
       );
 
+      // تسجيل المصروف بعد توفر الرصيد
       await _saveTransaction(amountValue, false);
 
       _resetForm();
-
     } catch (e) {
       print("❌ Error: $e");
     } finally {
