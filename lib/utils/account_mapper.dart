@@ -1,53 +1,44 @@
 import '../models/account_enums.dart';
 
+/// ==============================
+/// 🧠 Resolve Account Nature
+/// ==============================
 AccountNature resolveNature(String type) {
   switch (type) {
-    case 'cash':
-    case 'bank':
-    case 'wallet':
-    case 'debitCard':
-    case 'investment':
-    case 'gold':
-    case 'stocks':
-    case 'certificates':
-    case 'lent':
-    case 'rosca':
-      return AccountNature.asset;
-    case 'credit':
-    case 'debt':
-    case 'loan':
-    case 'creditCard':
-    case 'installment':
+    case 'liability':
       return AccountNature.liability;
+
     default:
       return AccountNature.asset;
   }
 }
 
+/// ==============================
+/// 🧠 Resolve Account Group
+/// ==============================
 AccountGroup resolveGroup(String type) {
   switch (type) {
+    // 💰 فلوس معاك
     case 'cash':
     case 'bank':
     case 'wallet':
-    case 'debitCard':
       return AccountGroup.moneyYouHave;
+
+    // 📈 استثمارات
     case 'investment':
-    case 'gold':
-    case 'stocks':
-    case 'certificates':
       return AccountGroup.investments;
-    case 'credit':
+
+    // 💳 ديون عليك
+    case 'liability':
     case 'debt':
-    case 'loan':
-    case 'creditCard':
-    case 'installment':
       return AccountGroup.moneyYouOwe;
-    case 'lent':
-    case 'rosca':
+
+    // 🧾 فلوس ليك
+    case 'receivable':
       return AccountGroup.moneyYouWillGet;
+
+    // 🔒 fallback (احتياطي)
     default:
-      return resolveNature(type) == AccountNature.asset
-          ? AccountGroup.moneyYouHave
-          : AccountGroup.moneyYouOwe;
+      return AccountGroup.moneyYouHave;
   }
 }

@@ -1,28 +1,55 @@
 // lib/services/balance_service.dart
+
 import 'package:hive/hive.dart';
 import '../models/transaction.dart';
+import '../models/account.dart';
+import '../constants/transaction_constants.dart';
 
 class BalanceService {
-  final Box<Transaction> box = Hive.box<Transaction>('transactions');
+
+  final Box<Transaction> txBox = Hive.box<Transaction>('transactions');
 
   double getBalance(String accountId) {
     double balance = 0;
 
-    for (final tx in box.values) {
-      // 🟥 خرج فلوس
-      if (tx.fromAccountId == accountId) {
-        balance -= tx.amount;
-        print("💰 [$accountId] OUT: -${tx.amount} = $balance");
+    for (final tx in txBox.values) {
+
+      // 🟦 INITIAL BALANCE
+      if (tx.type == TransactionType.initialBalance) {
+        if (tx.toAccountId == accountId) {
+          balance += tx.amount;
+        }
+        continue;
       }
 
-      // 🟩 دخل فلوس
-      if (tx.toAccountId == accountId) {
-        balance += tx.amount;
-        print("💰 [$accountId] IN: +${tx.amount} = $balance");
+      // 🟨 TRANSFER
+      if (tx.type == TransactionType.transfer) {
+        if (tx.fromAccountId == accountId) {
+          balance -= tx.amount;
+        }
+        if (tx.toAccountId == accountId) {
+          balance += tx.amount;
+        }
+        continue;
+      }
+
+      // 🟥 EXPENSE
+      if (tx.type == TransactionType.expense) {
+        if (tx.fromAccountId == accountId) {
+          balance -= tx.amount;
+        }
+        continue;
+      }
+
+      // 🟩 INCOME
+      if (tx.type == TransactionType.income) {
+        if (tx.toAccountId == accountId) {
+          balance += tx.amount;
+        }
+        continue;
       }
     }
 
-    print("💰 [$accountId] FINAL BALANCE: $balance");
     return balance;
   }
 }

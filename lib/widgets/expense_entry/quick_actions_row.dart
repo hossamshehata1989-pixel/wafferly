@@ -105,7 +105,7 @@ class QuickActionsRow extends StatelessWidget {
   }
 
   void _showAccountPicker(BuildContext context) {
-    final accounts = controller.spendableAccounts;
+    final accounts = controller.availableAccounts;
     if (accounts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context)!.noAccountsAvailable)),

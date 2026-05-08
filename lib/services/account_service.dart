@@ -29,7 +29,7 @@ class AccountService {
       memberId: 'owner',
       name: name,
       type: type,
-      nature: natureEnum == AccountNature.asset ? 'asset' : 'liability',
+      nature: natureEnum.name,
       currency: currency,
       createdAt: DateTime.now(),
       natureEnum: natureEnum,
@@ -39,7 +39,7 @@ class AccountService {
     );
   }
 
-  Future<Account?> createAccount({
+  Future<Account> createAccount({
     required String name,
     required String type,
     required String currency,
@@ -57,7 +57,7 @@ class AccountService {
       return account;
     } catch (e) {
       print("❌ Error creating account: $e");
-      return null;
+      throw Exception("Failed to create account");
     }
   }
 
@@ -78,11 +78,3 @@ class AccountService {
     }
   }
 }
-
-
-
-
-
-
-
-

@@ -12,11 +12,16 @@ import 'theme/app_colors.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔥 Init Hive
-  await Hive.initFlutter();
+// 🔥 Init Hive
+await Hive.initFlutter();
 
-  // 🧹 (اختياري للـ debug)
+// 🔥 Debug reset (controlled)
+bool RESET_DB = true; // ⚠️ خليها false قبل release
+
+if (RESET_DB) {
   await Hive.deleteBoxFromDisk('accounts');
+  await Hive.deleteBoxFromDisk('transactions');
+}
 
   // 🔥 Register Adapters (الصح)
   if (!Hive.isAdapterRegistered(1)) {

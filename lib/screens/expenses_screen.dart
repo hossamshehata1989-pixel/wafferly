@@ -10,18 +10,33 @@ import '../widgets/expense_entry/quick_actions_row.dart';
 import '../widgets/expense_entry/action_buttons_row.dart';
 import '../widgets/expense_entry/advanced_options_panel.dart';
 import '../l10n/app_localizations.dart';
+import '../constants/transaction_constants.dart';
 
 class ExpensesScreen extends StatelessWidget {
-  const ExpensesScreen({super.key});
+
+  final String initialType;
+
+  const ExpensesScreen({
+    super.key,
+    this.initialType = TransactionType.expense,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => TransactionEntryController(),
+      create: (_) {
+  final controller = TransactionEntryController();
+  controller.setTransactionType(initialType);
+  return controller;
+},
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.expenses),
+          title: Text(
+            initialType == TransactionType.income
+                ? AppLocalizations.of(context)!.income
+                : AppLocalizations.of(context)!.expenses,
+          ),
           backgroundColor: const Color(0xFF0A0A0A),
         ),
         body: Consumer<TransactionEntryController>(
