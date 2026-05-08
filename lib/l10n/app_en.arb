@@ -260,7 +260,7 @@
   "tempDebt": "Temp Debt",
   "insufficientBalanceTitle": "Insufficient Balance",
   "insufficientBalanceMessage": "Insufficient balance. Amount needed to add:",
-  "addBalance": "Add Balance",
+  "addBalance": "Add Income",
   "expenseAddedSuccessfully": "Expense added successfully",
   "tempDebtSavedSuccessfully": "Expense saved as temporary debt",
   "expenseAddedAfterBalance": "Expense added after adding balance",

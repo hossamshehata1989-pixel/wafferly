@@ -283,6 +283,14 @@ class TransactionEntryController extends ChangeNotifier {
     }
   }
 
+  void switchToIncomeMode() {
+    _saveStatus = SaveStatus.idle;
+
+    setTransactionType(TransactionType.income);
+
+    notifyListeners();
+  }
+
   Future<Account> _getOrCreateTempDebtAccount() async {
     final box = Hive.box<Account>('accounts');
     try {

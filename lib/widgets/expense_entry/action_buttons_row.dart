@@ -166,7 +166,7 @@ onPressed: () => Navigator.pop(context, 'cancel'),
 child: Text(t.cancel),
 ),
 TextButton(
-onPressed: () => Navigator.pop(context, 'add_balance'),
+onPressed: () => Navigator.pop(context, 'add_income'),
 child: Text(
 t.addBalance,
 style: const TextStyle(color: Colors.green),
@@ -184,7 +184,7 @@ style: const TextStyle(color: Colors.orange),
 );
 
 
-if (action == 'add_balance') {
+if (action == 'add_income') {
   controller.setTransactionType(TransactionType.income);
   controller.setAmount(shortage.toString());
 

@@ -260,7 +260,7 @@
   "tempDebt": "دين مؤقت",
   "insufficientBalanceTitle": "الرصيد غير كافٍ",
   "insufficientBalanceMessage": "الرصيد غير كافٍ. المبلغ المطلوب إضافته:",
-  "addBalance": "إضافة رصيد",
+  "addBalance": "إضافة دخل",
   "expenseAddedSuccessfully": "تم تسجيل المصروف بنجاح",
   "tempDebtSavedSuccessfully": "تم تسجيل المصروف كدين مؤقت",
   "expenseAddedAfterBalance": "تم تسجيل المصروف بعد إضافة الرصيد",

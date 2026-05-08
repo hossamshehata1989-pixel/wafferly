@@ -71,14 +71,15 @@ class ExpensesScreen extends StatelessWidget {
                         flex: isKeyboardOpen ? 2 : 3,
                         child: AmountInputPanel(controller: controller),
                       ),
-                      if (!isKeyboardOpen) ...[
+                      if (!isKeyboardOpen && !controller.isIncome) ...[
                         QuickActionsRow(controller: controller),
                         const SizedBox(height: 8),
-                        ActionButtonsRow(controller: controller),
-                        const SizedBox(height: 8),
                         AdvancedOptionsPanel(controller: controller),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                       ],
+
+                      // زر الحفظ يظهر دايمًا
+                      ActionButtonsRow(controller: controller),
                     ],
                   );
                 },
