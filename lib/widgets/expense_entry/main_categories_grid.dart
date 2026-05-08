@@ -1,7 +1,9 @@
 // lib/widgets/expense_entry/main_categories_grid.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../config/category_config.dart';
+import '../../config/category_type.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/app_colors.dart';
 
@@ -9,17 +11,20 @@ class MainCategoriesGrid extends StatelessWidget {
   final String selectedCategoryId;
   final Function(String) onCategorySelected;
   final double availableHeight;
+  final CategoryType categoryType; // ✅ New parameter
 
   const MainCategoriesGrid({
     super.key,
     required this.selectedCategoryId,
     required this.onCategorySelected,
     required this.availableHeight,
+    required this.categoryType,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
+    final categories = getCategories(categoryType); // ✅ Use unified getter
     final screenWidth = MediaQuery.of(context).size.width;
     
     int crossAxisCount;
@@ -36,7 +41,7 @@ class MainCategoriesGrid extends StatelessWidget {
     final double cardWidth = (screenWidth - 32 - (crossAxisCount - 1) * 6) / crossAxisCount;
     final double cardHeight = cardWidth * 0.9;
     
-    final int totalItems = mainCategories.length;
+    final int totalItems = categories.length;
     final int requiredRows = (totalItems / crossAxisCount).ceil();
     final double totalGridHeight = requiredRows * (cardHeight + 6);
     final bool needsScroll = totalGridHeight > availableHeight;
@@ -58,7 +63,7 @@ class MainCategoriesGrid extends StatelessWidget {
           ),
           itemCount: totalItems,
           itemBuilder: (context, index) {
-            final category = mainCategories[index];
+            final category = categories[index];
             final isSelected = selectedCategoryId == category.id ||
                 (category.subCategories?.any((s) => s.id == selectedCategoryId) ?? false);
             

@@ -293,5 +293,10 @@
   "settleNow": "سدد الآن",
   "last30DaysGrowth": "نمو آخر 30 يوم",
   "incomeLinkingComingSoon": "ربط الدخل قريباً",
-  "close": "إغلاق"
+  "close": "إغلاق",
+  "salary": "مرتب",
+  "dailyIncome": "دخل يومي",
+  "bonus": "حوافز",
+  "rewards": "مكافآت",
+  "freelance": "فريلانس"
 }

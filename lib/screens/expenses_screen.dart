@@ -1,4 +1,5 @@
 // lib/screens/expenses_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/transaction_entry_controller.dart';
@@ -13,7 +14,6 @@ import '../l10n/app_localizations.dart';
 import '../constants/transaction_constants.dart';
 
 class ExpensesScreen extends StatelessWidget {
-
   final String initialType;
 
   const ExpensesScreen({
@@ -25,10 +25,10 @@ class ExpensesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) {
-  final controller = TransactionEntryController();
-  controller.setTransactionType(initialType);
-  return controller;
-},
+        final controller = TransactionEntryController();
+        controller.setTransactionType(initialType);
+        return controller;
+      },
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         appBar: AppBar(
@@ -57,6 +57,7 @@ class ExpensesScreen extends StatelessWidget {
                           selectedCategoryId: controller.selectedCategoryId,
                           onCategorySelected: controller.selectCategory,
                           availableHeight: constraints.maxHeight * (isKeyboardOpen ? 0.25 : 0.4),
+                          categoryType: controller.categoryType, // ✅ Pass category type
                         ),
                       ),
                       const SizedBox(height: 8),

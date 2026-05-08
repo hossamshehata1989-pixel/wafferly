@@ -9,6 +9,7 @@ import '../services/transaction_service.dart';
 import '../services/account_service.dart';
 import '../constants/transaction_constants.dart';
 import '../config/category_config.dart';
+import '../config/category_type.dart';
 
 enum SaveStatus { idle, saving }
 
@@ -49,7 +50,7 @@ class TransactionEntryController extends ChangeNotifier {
   static const String tempDebtAccountName = 'دين مؤقت';
 
   // ==============================
-  // 🧠 Getters
+  // Getters
   // ==============================
 
   String get amount => _amount;
@@ -66,6 +67,13 @@ class TransactionEntryController extends ChangeNotifier {
   bool get isIncome => _selectedTransactionType == TransactionType.income;
   bool get isExpense => _selectedTransactionType == TransactionType.expense;
 
+  /// نوع الفئة بناءً على نوع المعاملة
+  CategoryType get categoryType =>
+      isIncome ? CategoryType.income : CategoryType.expense;
+
+  /// قائمة الفئات الرئيسية حسب النوع
+  List<CategoryConfig> get currentCategories => getCategories(categoryType);
+
   String get currentCurrency {
     if (_selectedAccountId.isEmpty) return "EGP";
     final box = Hive.box<Account>('accounts');
@@ -74,7 +82,7 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   // ==============================
-  // 💰 Accounts
+  // Accounts
   // ==============================
 
   List<Account> get availableAccounts {
@@ -85,29 +93,29 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   // ==============================
-  // 🧾 Categories
+  // SubCategories
   // ==============================
 
   bool get hasSubCategories {
     final mainId = _getMainCategoryId(_selectedCategoryId);
-    final category = mainCategories.firstWhere(
+    final category = currentCategories.firstWhere(
       (c) => c.id == mainId,
-      orElse: () => mainCategories.first,
+      orElse: () => currentCategories.first,
     );
     return category.subCategories?.isNotEmpty ?? false;
   }
 
   List<SubCategoryConfig> get currentSubCategories {
     final mainId = _getMainCategoryId(_selectedCategoryId);
-    final category = mainCategories.firstWhere(
+    final category = currentCategories.firstWhere(
       (c) => c.id == mainId,
-      orElse: () => mainCategories.first,
+      orElse: () => currentCategories.first,
     );
     return category.subCategories ?? [];
   }
 
   // ==============================
-  // ⚙️ Setters
+  // Setters
   // ==============================
 
   void setAmount(String v) { _amount = v; notifyListeners(); }
@@ -129,11 +137,12 @@ class TransactionEntryController extends ChangeNotifier {
 
   void setTransactionType(String type) {
     _selectedTransactionType = type;
+    _selectedCategoryId = ""; // Reset category when type changes
     notifyListeners();
   }
 
   // ==============================
-  // 🧮 Calculator
+  // Calculator
   // ==============================
 
   void onCalculatorTap(String value) {
@@ -158,12 +167,11 @@ class TransactionEntryController extends ChangeNotifier {
         _amount += value;
       }
     }
-
     notifyListeners();
   }
 
   // ==============================
-  // 💾 Save
+  // Save Logic
   // ==============================
 
   Future<SaveResult> validateAndSave({required bool isExceptional}) async {
@@ -184,11 +192,11 @@ class TransactionEntryController extends ChangeNotifier {
       return _fail(SaveAction.noAccountSelected);
     }
 
-    if (isExpense && _selectedCategoryId.isEmpty) {
+    // ✅ Category is mandatory for all transaction types
+    if (_selectedCategoryId.isEmpty) {
       return _fail(SaveAction.noCategorySelected);
     }
 
-    // فحص الرصيد فقط في حالة المصروف
     if (isExpense) {
       final balance = BalanceService().getBalance(_selectedAccountId);
       if (amountValue > balance) {
@@ -217,16 +225,13 @@ class TransactionEntryController extends ChangeNotifier {
     return SaveResult(success: false, action: action, data: data);
   }
 
-  // ✅ تم التصحيح: الآن يعتمد على نوع المعاملة (دخل/مصروف)
   Future<bool> _saveTransaction(double amount, bool isExceptional) async {
     final tx = Transaction.create(
       amount: amount,
       type: _selectedTransactionType,
-      // اتجاه الحسابات حسب النوع
       fromAccountId: isIncome ? null : _selectedAccountId,
       toAccountId: isIncome ? _selectedAccountId : null,
-      // الفئة: للدخل ثابتة "income"، للمصروف من الاختيار
-      categoryId: isIncome ? "income" : _selectedCategoryId,
+      categoryId: _selectedCategoryId, // Always use selected category
       date: _selectedDate,
       note: _note.isEmpty ? null : _note,
       paymentMethod: _paymentMethod,
@@ -240,11 +245,11 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   // ==============================
-  // 🔥 TEMP DEBT (خاص بالمصروف)
+  // Temp Debt Helpers
   // ==============================
 
   Future<void> saveAsTempDebt(double shortage) async {
-    // (يمكن تنفيذ منطق إضافي لاحقاً)
+    // TODO: Implement temp debt logic when needed
   }
 
   Future<void> addBalanceAndRetry(double shortage) async {
@@ -254,7 +259,6 @@ class TransactionEntryController extends ChangeNotifier {
 
       final tempAccount = await _getOrCreateTempDebtAccount();
 
-      // تحويل العجز من حساب الدين إلى الحساب المختار
       await TransactionService.instance.addTransaction(
         Transaction.create(
           amount: shortage,
@@ -269,9 +273,7 @@ class TransactionEntryController extends ChangeNotifier {
         ),
       );
 
-      // تسجيل المصروف بعد توفر الرصيد
       await _saveTransaction(amountValue, false);
-
       _resetForm();
     } catch (e) {
       print("❌ Error: $e");
@@ -283,7 +285,6 @@ class TransactionEntryController extends ChangeNotifier {
 
   Future<Account> _getOrCreateTempDebtAccount() async {
     final box = Hive.box<Account>('accounts');
-
     try {
       return box.values.firstWhere(
         (a) => a.name == tempDebtAccountName && !a.isArchived,
@@ -298,7 +299,7 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   // ==============================
-  // 🔁 Reset
+  // Reset
   // ==============================
 
   void _resetForm() {
@@ -311,13 +312,12 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   // ==============================
-  // 🧩 Helpers
+  // Helper
   // ==============================
 
   String _getMainCategoryId(String categoryId) {
-    for (final category in mainCategories) {
+    for (final category in currentCategories) {
       if (category.id == categoryId) return category.id;
-
       for (final sub in category.subCategories ?? []) {
         if (sub.id == categoryId) return category.id;
       }

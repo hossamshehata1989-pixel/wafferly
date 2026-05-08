@@ -1,11 +1,9 @@
-/// =======================================================
-/// Wafferly - Category Configuration
-/// Single source of truth for all categories
-/// =======================================================
+// lib/config/category_config.dart
 
 import 'package:flutter/material.dart';
 import '../core/app_assets.dart';
 import '../l10n/app_localizations.dart';
+import 'category_type.dart';
 
 class CategoryConfig {
   final String id;
@@ -18,9 +16,10 @@ class CategoryConfig {
     this.subCategories,
   });
 
-  /// 🔷 Resolve localized title using AppLocalizations (old method)
+  /// Resolve localized title using AppLocalizations
   String resolveTitle(AppLocalizations t) {
     switch (id) {
+      // Expense categories
       case 'dailyTransport': return t.dailyTransport;
       case 'bills': return t.bills;
       case 'supermarket': return t.supermarket;
@@ -44,12 +43,17 @@ class CategoryConfig {
       case 'baby': return t.baby;
       case 'clothes': return t.clothes;
       case 'shoes': return t.shoes;
+      
+      // Income categories
+      case 'salary': return t.salary;
+      case 'dailyIncome': return t.dailyIncome;
+      case 'bonus': return t.bonus;
+      case 'rewards': return t.rewards;
+      case 'freelance': return t.freelance;
+      
       default: return id;
     }
   }
-
-  
-  
 }
 
 class SubCategoryConfig {
@@ -62,13 +66,11 @@ class SubCategoryConfig {
   });
 }
 
-/// =======================================================
-/// 🔷 Main Categories with SubCategories
-/// Using correct asset names from AppAssets
-/// =======================================================
+// =======================================================
+// 🟢 Expense Categories (previously mainCategories)
+// =======================================================
 
-final List<CategoryConfig> mainCategories = [
-  /// DAILY TRANSPORT
+final List<CategoryConfig> expenseCategories = [
   CategoryConfig(
     id: 'dailyTransport',
     icon: AppAssets.categoryTransport,
@@ -81,8 +83,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'train', title: (t) => t.train),
     ],
   ),
-
-  /// BILLS
   CategoryConfig(
     id: 'bills',
     icon: AppAssets.categoryBills,
@@ -99,8 +99,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'buildSecurity', title: (t) => t.buildSecurity),
     ],
   ),
-
-  /// SUPERMARKET
   CategoryConfig(
     id: 'supermarket',
     icon: AppAssets.categorySupermarket,
@@ -126,8 +124,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'biscuits', title: (t) => t.biscuits),
     ],
   ),
-
-  /// DRINKS
   CategoryConfig(
     id: 'drinks',
     icon: AppAssets.categoryPlaceholder,
@@ -141,8 +137,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'naturalMilk', title: (t) => t.naturalMilk),
     ],
   ),
-
-  /// FAST FOOD
   CategoryConfig(
     id: 'fastFood',
     icon: AppAssets.categoryRestaurants,
@@ -158,8 +152,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'grill', title: (t) => t.grill),
     ],
   ),
-
-  /// MEAT & FISH
   CategoryConfig(
     id: 'meatFish',
     icon: AppAssets.categoryMeatFish,
@@ -173,8 +165,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'saltedFish', title: (t) => t.saltedFish),
     ],
   ),
-
-  /// VEGETABLES
   CategoryConfig(
     id: 'vegetables',
     icon: AppAssets.categoryVegetables,
@@ -195,8 +185,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'parsley', title: (t) => t.parsley),
     ],
   ),
-
-  /// FRUITS
   CategoryConfig(
     id: 'fruits',
     icon: AppAssets.categoryFruits,
@@ -212,8 +200,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'watermelon', title: (t) => t.watermelon),
     ],
   ),
-
-  /// SMOKING
   CategoryConfig(
     id: 'smoking',
     icon: AppAssets.categorySmoking,
@@ -224,8 +210,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'iqos', title: (t) => t.iqos),
     ],
   ),
-
-  /// HEALTH
   CategoryConfig(
     id: 'health',
     icon: AppAssets.categoryHealth,
@@ -238,8 +222,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'operations', title: (t) => t.operations),
     ],
   ),
-
-  /// ENTERTAINMENT
   CategoryConfig(
     id: 'entertainment',
     icon: AppAssets.categoryEntertainment,
@@ -252,8 +234,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'amusement', title: (t) => t.amusement),
     ],
   ),
-
-  /// EDUCATION
   CategoryConfig(
     id: 'education',
     icon: AppAssets.categoryEducation,
@@ -267,8 +247,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'universityFees', title: (t) => t.universityFees),
     ],
   ),
-
-  /// VEHICLES
   CategoryConfig(
     id: 'vehicles',
     icon: AppAssets.categoryVehicles,
@@ -280,8 +258,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'spareParts', title: (t) => t.spareParts),
     ],
   ),
-
-  /// HOME
   CategoryConfig(
     id: 'home',
     icon: AppAssets.categoryHome,
@@ -295,8 +271,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'sets', title: (t) => t.sets),
     ],
   ),
-
-  /// PERSONAL CARE
   CategoryConfig(
     id: 'personalCare',
     icon: AppAssets.categoryPersonalCare,
@@ -308,8 +282,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'personalDevices', title: (t) => t.personalDevices),
     ],
   ),
-
-  /// MOBILE & PC
   CategoryConfig(
     id: 'mobilePc',
     icon: AppAssets.categoryMobilePc,
@@ -320,8 +292,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'headphones', title: (t) => t.headphones),
     ],
   ),
-
-  /// FINANCIALS
   CategoryConfig(
     id: 'financials',
     icon: AppAssets.categoryFinancialCommitments,
@@ -336,8 +306,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'debts', title: (t) => t.debts),
     ],
   ),
-
-  /// GOVERNMENT SERVICES
   CategoryConfig(
     id: 'governServices',
     icon: AppAssets.categoryGovernmentServices,
@@ -347,8 +315,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'violations', title: (t) => t.violations),
     ],
   ),
-
-  /// GIFTS & OCCASIONS
   CategoryConfig(
     id: 'giftsOccasions',
     icon: AppAssets.categoryGiftsOccasions,
@@ -361,8 +327,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'gifts', title: (t) => t.gifts),
     ],
   ),
-
-  /// HOBBIES
   CategoryConfig(
     id: 'hobbies',
     icon: AppAssets.categoryHobbies,
@@ -381,8 +345,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'handmade', title: (t) => t.handmade),
     ],
   ),
-
-  /// BABY
   CategoryConfig(
     id: 'baby',
     icon: AppAssets.categoryBaby,
@@ -395,8 +357,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'babyToys', title: (t) => t.babyToys),
     ],
   ),
-
-  /// CLOTHES
   CategoryConfig(
     id: 'clothes',
     icon: AppAssets.categoryClothes,
@@ -412,8 +372,6 @@ final List<CategoryConfig> mainCategories = [
       SubCategoryConfig(id: 'socks', title: (t) => t.socks),
     ],
   ),
-
-  /// SHOES
   CategoryConfig(
     id: 'shoes',
     icon: AppAssets.categoryShoes,
@@ -426,3 +384,43 @@ final List<CategoryConfig> mainCategories = [
     ],
   ),
 ];
+
+// =======================================================
+// 🟡 Income Categories
+// =======================================================
+final List<CategoryConfig> incomeCategories = [
+  CategoryConfig(
+    id: 'salary',
+    icon: AppAssets.categoryPlaceholder,
+  ),
+  CategoryConfig(
+    id: 'dailyIncome',
+    icon: AppAssets.categoryPlaceholder,
+  ),
+  CategoryConfig(
+    id: 'bonus',
+    icon: AppAssets.categoryPlaceholder,
+  ),
+  CategoryConfig(
+    id: 'rewards',
+    icon: AppAssets.categoryPlaceholder,
+  ),
+  CategoryConfig(
+    id: 'freelance',
+    icon: AppAssets.categoryPlaceholder,
+  ),
+];
+
+List<CategoryConfig> getCategories(CategoryType type) {
+  switch (type) {
+    case CategoryType.expense:
+      return expenseCategories;
+    case CategoryType.income:
+      return incomeCategories;
+  }
+}
+
+
+// 🔹 For backward compatibility (legacy code)
+@Deprecated('Use getCategories(CategoryType.expense) instead')
+final List<CategoryConfig> mainCategories = expenseCategories;

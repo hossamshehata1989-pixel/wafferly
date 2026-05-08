@@ -293,5 +293,10 @@
   "settleNow": "Settle Now",
   "last30DaysGrowth": "Last 30 days growth",
   "incomeLinkingComingSoon": "Income linking coming soon",
-  "close": "Close"
+  "close": "Close",
+  "salary": "Salary",
+  "dailyIncome": "Daily Income",
+  "bonus": "Bonus",
+  "rewards": "Rewards",
+ "freelance": "Freelance"
 }
