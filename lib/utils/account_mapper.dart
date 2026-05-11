@@ -1,4 +1,4 @@
-import '../models/account_enums.dart';
+import '../models/enums/account_enums.dart';
 
 /// ==============================
 /// 🧠 Resolve Account Nature

@@ -1,13 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
-import '../../../models/account.dart';
-import '../../../models/transaction.dart';
-import '../../../services/account_service.dart';
-import '../../../services/balance_service.dart';
-import '../../../constants/transaction_constants.dart';
+import 'package:wafferly/models/account.dart';
+import 'package:wafferly/models/transaction.dart';
+import 'package:wafferly/services/account_service.dart';
+import 'package:wafferly/services/balance_service.dart';
+import 'package:wafferly/constants/transaction_constants.dart';
+import 'package:wafferly/models/enums/section_type.dart';
 
-enum SectionType { asset, liability, investment, receivable }
+enum AccountTypeOption {
+  cash('cash', 'Cash', Icons.attach_money, Colors.green),
+  bank('bank', 'Bank', Icons.account_balance, Colors.blue),
+  wallet('wallet', 'Wallet', Icons.account_balance_wallet, Colors.orange),
+  debitCard('debitCard', 'Debit Card', Icons.credit_card, Colors.teal),
+  debt('debt', 'Debt', Icons.money_off, Colors.red),
+  loan('loan', 'Loan', Icons.request_page, Colors.deepOrange),
+  creditCard('creditCard', 'Credit Card Due', Icons.credit_card, Colors.pink),
+  installment('installment', 'Installments', Icons.calendar_month, Colors.purple),
+  investment('investment', 'Investment', Icons.trending_up, Colors.teal),
+  gold('gold', 'Gold', Icons.workspace_premium, Colors.amber),
+  stocks('stocks', 'Stocks', Icons.show_chart, Colors.green),
+  certificates('certificates', 'Certificates', Icons.description, Colors.blue),
+  lent('lent', 'Money Lent', Icons.handshake, Colors.cyan),
+  rosca('rosca', 'ROSCA', Icons.group, Colors.indigo);
+
+  final String id;
+  final String name;
+  final IconData icon;
+  final Color color;
+  const AccountTypeOption(this.id, this.name, this.icon, this.color);
+}
 
 class AddAccountScreen extends StatefulWidget {
   final SectionType? sectionType;
@@ -32,31 +54,13 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     final section = widget.sectionType ?? SectionType.asset;
     switch (section) {
       case SectionType.asset:
-        return const [
-          AccountTypeOption(id: 'cash', name: 'Cash', icon: Icons.attach_money, color: Colors.green),
-          AccountTypeOption(id: 'bank', name: 'Bank', icon: Icons.account_balance, color: Colors.blue),
-          AccountTypeOption(id: 'wallet', name: 'Wallet', icon: Icons.account_balance_wallet, color: Colors.orange),
-          AccountTypeOption(id: 'debitCard', name: 'Debit Card', icon: Icons.credit_card, color: Colors.teal),
-        ];
+        return [AccountTypeOption.cash, AccountTypeOption.bank, AccountTypeOption.wallet, AccountTypeOption.debitCard];
       case SectionType.liability:
-        return const [
-          AccountTypeOption(id: 'debt', name: 'Debt', icon: Icons.money_off, color: Colors.red),
-          AccountTypeOption(id: 'loan', name: 'Loan', icon: Icons.request_page, color: Colors.deepOrange),
-          AccountTypeOption(id: 'creditCard', name: 'Credit Card Due', icon: Icons.credit_card, color: Colors.pink),
-          AccountTypeOption(id: 'installment', name: 'Installments', icon: Icons.calendar_month, color: Colors.purple),
-        ];
+        return [AccountTypeOption.debt, AccountTypeOption.loan, AccountTypeOption.creditCard, AccountTypeOption.installment];
       case SectionType.investment:
-        return const [
-          AccountTypeOption(id: 'investment', name: 'Investment', icon: Icons.trending_up, color: Colors.teal),
-          AccountTypeOption(id: 'gold', name: 'Gold', icon: Icons.workspace_premium, color: Colors.amber),
-          AccountTypeOption(id: 'stocks', name: 'Stocks', icon: Icons.show_chart, color: Colors.green),
-          AccountTypeOption(id: 'certificates', name: 'Certificates', icon: Icons.description, color: Colors.blue),
-        ];
+        return [AccountTypeOption.investment, AccountTypeOption.gold, AccountTypeOption.stocks, AccountTypeOption.certificates];
       case SectionType.receivable:
-        return const [
-          AccountTypeOption(id: 'lent', name: 'Money Lent', icon: Icons.handshake, color: Colors.cyan),
-          AccountTypeOption(id: 'rosca', name: 'ROSCA', icon: Icons.group, color: Colors.indigo),
-        ];
+        return [AccountTypeOption.lent, AccountTypeOption.rosca];
     }
   }
 
@@ -359,13 +363,12 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         memberId: widget.accountToEdit!.memberId,
         name: name,
         type: _selectedType,
-        nature: widget.accountToEdit!.nature,
         currency: _selectedCurrency,
         createdAt: widget.accountToEdit!.createdAt,
-        natureEnum: widget.accountToEdit!.natureEnum,
         group: widget.accountToEdit!.group,
         isArchived: widget.accountToEdit!.isArchived,
         notes: notes,
+        nature: widget.accountToEdit!.nature,
       );
       await AccountService().updateAccount(updatedAccount);
       await _updateBalance(widget.accountToEdit!.id, balanceValue);
@@ -417,12 +420,4 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     }
     setState(() => _isSaving = false);
   }
-}
-
-class AccountTypeOption {
-  final String id;
-  final String name;
-  final IconData icon;
-  final Color color;
-  const AccountTypeOption({required this.id, required this.name, required this.icon, required this.color});
 }

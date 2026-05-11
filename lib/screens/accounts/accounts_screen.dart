@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
 import '../../models/account.dart';
-import '../../models/account_enums.dart';
+import 'package:wafferly/models/enums/account_enums.dart';
 import '../../services/account_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/balance_service.dart';
 import 'add_account/add_account_screen.dart';
+import '../../models/enums/section_type.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -50,16 +51,25 @@ class _AccountsScreenState extends State<AccountsScreen> {
   }
 
   SectionType _getSectionTypeFromAccount(Account account) {
-    if (account.natureEnum == AccountNature.asset) {
-      if (account.group == AccountGroup.investments) return SectionType.investment;
+    if (account.nature == AccountNature.asset) {
+      if (account.type == 'investment') return SectionType.investment;
       return SectionType.asset;
-    } else {
+    } else if (account.nature == AccountNature.liability) {
       return SectionType.liability;
+    } else {
+      return SectionType.receivable;
     }
   }
 
   void _addAccount(String sectionType) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => AddAccountScreen(sectionType: _getSectionTypeFromString(sectionType)))).then((_) { if (mounted) setState(() {}); });
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddAccountScreen(
+          sectionType: _getSectionTypeFromString(sectionType),
+        ),
+      ),
+    ).then((_) { if (mounted) setState(() {}); });
   }
 
   void _editAccount(Account account) {
@@ -67,25 +77,39 @@ class _AccountsScreenState extends State<AccountsScreen> {
       _showSimpleTempDebtDialog();
       return;
     }
-    Navigator.push(context, MaterialPageRoute(builder: (_) => AddAccountScreen(sectionType: _getSectionTypeFromAccount(account), accountToEdit: account))).then((_) { if (mounted) setState(() {}); });
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddAccountScreen(
+          sectionType: _getSectionTypeFromAccount(account),
+          accountToEdit: account,
+        ),
+      ),
+    ).then((_) { if (mounted) setState(() {}); });
   }
 
   double _calculateNetWorth(List<Account> accounts, BalanceService balanceService) {
     double assets = 0, liabilities = 0;
     for (final acc in accounts) {
       final balance = balanceService.getBalance(acc.id);
-      if (acc.natureEnum == AccountNature.asset) assets += balance;
-      else liabilities += balance.abs();
+      if (acc.nature == AccountNature.asset) {
+        assets += balance;
+      } else if (acc.nature == AccountNature.liability) {
+        liabilities += balance.abs();
+      }
     }
     return assets - liabilities;
   }
 
   double _calculateTotalByNature(List<Account> accounts, BalanceService balanceService, AccountNature nature) {
     double total = 0;
-    for (final acc in accounts.where((a) => a.natureEnum == nature)) {
+    for (final acc in accounts.where((a) => a.nature == nature)) {
       final balance = balanceService.getBalance(acc.id);
-      if (nature == AccountNature.liability) total += balance.abs();
-      else total += balance;
+      if (nature == AccountNature.liability) {
+        total += balance.abs();
+      } else {
+        total += balance;
+      }
     }
     return total;
   }
@@ -94,8 +118,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
     double total = 0;
     for (final acc in accounts) {
       final balance = balanceService.getBalance(acc.id);
-      if (acc.natureEnum == AccountNature.liability) total += balance.abs();
-      else total += balance;
+      if (acc.nature == AccountNature.liability) {
+        total += balance.abs();
+      } else {
+        total += balance;
+      }
     }
     return total;
   }
@@ -267,7 +294,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
   Widget _buildAccountCard(Account account, double balance, double percentage, Color color, bool isTablet, VoidCallback onTap) {
     final t = AppLocalizations.of(context)!;
     final formatter = NumberFormat("#,###");
-    final isLiability = account.natureEnum == AccountNature.liability;
+    final isLiability = account.nature == AccountNature.liability;
     final displayBalance = isLiability ? balance.abs() : balance;
     final balanceColor = isLiability ? Colors.redAccent : (balance < 0 ? Colors.redAccent : color);
     final isTempDebtAccount = account.name == TEMP_DEBT_ACCOUNT_NAME;

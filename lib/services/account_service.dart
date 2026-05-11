@@ -1,8 +1,7 @@
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
-
 import '../models/account.dart';
-import '../models/account_enums.dart';
+import '../models/enums/account_enums.dart';
 import '../utils/account_mapper.dart';
 
 class AccountService {
@@ -11,7 +10,6 @@ class AccountService {
   AccountService._internal();
 
   final Box<Account> box = Hive.box<Account>('accounts');
-
   final _uuid = const Uuid();
 
   Account _buildAccount({
@@ -29,10 +27,9 @@ class AccountService {
       memberId: 'owner',
       name: name,
       type: type,
-      nature: natureEnum.name,
+      nature: natureEnum,
       currency: currency,
       createdAt: DateTime.now(),
-      natureEnum: natureEnum,
       group: group,
       isArchived: false,
       notes: notes,
@@ -52,7 +49,6 @@ class AccountService {
         currency: currency,
         notes: notes,
       );
-
       await box.put(account.id, account);
       return account;
     } catch (e) {
@@ -62,9 +58,7 @@ class AccountService {
   }
 
   List<Account> getAllAccounts() => box.values.toList();
-
-  List<Account> getAllActiveAccounts() =>
-      box.values.where((acc) => !acc.isArchived).toList();
+  List<Account> getAllActiveAccounts() => box.values.where((acc) => !acc.isArchived).toList();
 
   Future<void> updateAccount(Account account) async {
     await box.put(account.id, account);
@@ -74,7 +68,7 @@ class AccountService {
     final acc = box.get(id);
     if (acc != null) {
       acc.isArchived = true;
-      await acc.save();
+      await updateAccount(acc);
     }
   }
 }
