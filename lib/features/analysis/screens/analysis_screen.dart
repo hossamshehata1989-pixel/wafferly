@@ -119,66 +119,174 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   }
 
   void _loadData() {
-    final ts = TransactionService.instance;
-    
-    // ✅ Get all expense transactions in date range
-    final allTransactions = ts.getByDateRange(_startDate, _endDate);
-    final filteredTransactions = allTransactions
-        .where((t) => t.type == TransactionType.expense)
-        .toList();
-
-    _realExpenses = filteredTransactions.where((t) => !t.isExceptional).toList();
-    _exceptionalExpenses = filteredTransactions.where((t) => t.isExceptional).toList();
-    _totalExpenses = filteredTransactions;
-
-    final isSameRange = _lastStartDate == _startDate && _lastEndDate == _endDate;
-
-    if (!isSameRange || _cachedReal == null) {
-      _cachedReal = _groupTransactionsByCategory(_realExpenses);
-      _cachedExceptional = _groupTransactionsByCategory(_exceptionalExpenses);
-      _cachedTotal = _groupTransactionsByCategory(_totalExpenses);
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final t = AppLocalizations.of(context)!;
-
-        _cachedRealList = _buildCategoryList(_cachedReal ?? {}, t);
-        _cachedExceptionalList = _buildCategoryList(_cachedExceptional ?? {}, t);
-        _cachedTotalList = _buildCategoryList(_cachedTotal ?? {}, t);
-
-        _refreshNotifier.value = !_refreshNotifier.value;
-      });
-
-      _lastStartDate = _startDate;
-      _lastEndDate = _endDate;
+  // ========== DEBUG TRACING START ==========
+  print("\n" + "█" * 70);
+  print("🔍 ANALYSIS SCREEN DEBUG TRACE");
+  print("█" * 70);
+  
+  final ts = TransactionService.instance;
+  
+  // Get all transactions in date range
+  final allTransactions = ts.getByDateRange(_startDate, _endDate);
+  
+  print("\n📅 DATE RANGE:");
+  print("   Start: ${_startDate.toLocal()}");
+  print("   End: ${_endDate.toLocal()}");
+  
+  print("\n📊 allTransactions:");
+  print("   count = ${allTransactions.length}");
+  print("   runtimeType = ${allTransactions.runtimeType}");
+  
+  if (allTransactions.isNotEmpty) {
+    final sample = allTransactions.take(5).toList();
+    print("   sample (first 5):");
+    for (int i = 0; i < sample.length; i++) {
+      final tx = sample[i];
+      print("      [$i]");
+      print("         type = '${tx.type}' (${tx.type.runtimeType})");
+      print("         categoryId = '${tx.categoryId}' (${tx.categoryId.runtimeType})");
+      print("         amount = ${tx.amount}");
+      print("         isExceptional = ${tx.isExceptional}");
     }
-
-    // Calculate totals
-    _realTotal = (_cachedReal ?? {}).values.fold<double>(0.0, (a, b) => a + b);
-    _exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b);
-    _totalExpensesAmount = _realTotal + _exceptionalTotal;
-
-    // Calculate changes compared to previous period
-    final periodDays = _getPeriodDays();
-    final previousStart = _startDate.subtract(Duration(days: periodDays));
-    final previousEnd = _endDate.subtract(Duration(days: periodDays));
-
-    final previousTransactions = ts.getByDateRange(previousStart, previousEnd);
-    final previousExpenses = previousTransactions
-        .where((t) => t.type == TransactionType.expense)
-        .toList();
-
-    final previousReal = previousExpenses
-        .where((t) => !t.isExceptional)
-        .fold(0.0, (sum, t) => sum + t.amount);
-    final previousExceptional = previousExpenses
-        .where((t) => t.isExceptional)
-        .fold(0.0, (sum, t) => sum + t.amount);
-    final previousTotal = previousReal + previousExceptional;
-
-    _realChange = previousReal == 0 ? 0 : ((_realTotal - previousReal) / previousReal) * 100;
-    _exceptionalChange = previousExceptional == 0 ? 0 : ((_exceptionalTotal - previousExceptional) / previousExceptional) * 100;
-    _totalChange = previousTotal == 0 ? 0 : ((_totalExpensesAmount - previousTotal) / previousTotal) * 100;
+    if (allTransactions.length > 5) {
+      print("      ... and ${allTransactions.length - 5} more");
+    }
   }
+  
+  // Filter by expense type
+  final filteredTransactions = allTransactions
+      .where((t) => t.type == TransactionType.expense)
+      .toList();
+  
+  print("\n📊 filteredTransactions (where type == 'expense'):");
+  print("   count = ${filteredTransactions.length}");
+  print("   runtimeType = ${filteredTransactions.runtimeType}");
+  
+  final nonExpenseCount = allTransactions.length - filteredTransactions.length;
+  if (nonExpenseCount > 0) {
+    print("   ⚠️ Non-expense transactions: $nonExpenseCount");
+    final otherTypes = allTransactions
+        .where((t) => t.type != TransactionType.expense)
+        .map((t) => "${t.type} (${t.type.runtimeType})")
+        .toSet();
+    print("   Types found: ${otherTypes.join(', ')}");
+  }
+  
+  // Check categoryIds in filtered transactions
+  final categoryIds = filteredTransactions.map((t) => t.categoryId).toSet();
+  print("\n📊 categoryId analysis:");
+  print("   unique categoryIds count = ${categoryIds.length}");
+  print("   categoryIds = [${categoryIds.join(', ')}]");
+  if (categoryIds.isNotEmpty) {
+    print("   sample categoryId runtimeType = ${categoryIds.first.runtimeType}");
+  }
+  
+  // ========== EXISTING CODE - SPLIT ==========
+  _realExpenses = filteredTransactions.where((t) => !t.isExceptional).toList();
+  _exceptionalExpenses = filteredTransactions.where((t) => t.isExceptional).toList();
+  _totalExpenses = filteredTransactions;
+  
+  print("\n📊 Split by isExceptional:");
+  print("   _realExpenses count = ${_realExpenses.length}");
+  print("   _exceptionalExpenses count = ${_exceptionalExpenses.length}");
+  print("   _totalExpenses count = ${_totalExpenses.length}");
+  
+  // ========== EXISTING CODE - GROUPING ==========
+  final isSameRange = _lastStartDate == _startDate && _lastEndDate == _endDate;
+  
+  if (!isSameRange || _cachedReal == null) {
+    _cachedReal = _groupTransactionsByCategory(_realExpenses);
+    _cachedExceptional = _groupTransactionsByCategory(_exceptionalExpenses);
+    _cachedTotal = _groupTransactionsByCategory(_totalExpenses);
+    
+    print("\n📊 GROUPING RESULTS (cache updated):");
+    print("   _cachedReal:");
+    print("      runtimeType = ${_cachedReal.runtimeType}");
+    print("      entries count = ${_cachedReal?.length ?? 0}");
+    if (_cachedReal != null && _cachedReal!.isNotEmpty) {
+      print("      sample entries:");
+      _cachedReal!.entries.take(5).forEach((entry) {
+        print("         ${entry.key}: ${entry.value}");
+      });
+    } else {
+      print("      ⚠️ _cachedReal is EMPTY or NULL");
+    }
+    
+    print("   _cachedExceptional:");
+    print("      runtimeType = ${_cachedExceptional.runtimeType}");
+    print("      entries count = ${_cachedExceptional?.length ?? 0}");
+    
+    print("   _cachedTotal:");
+    print("      runtimeType = ${_cachedTotal.runtimeType}");
+    print("      entries count = ${_cachedTotal?.length ?? 0}");
+    
+    // Existing post-frame callback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final t = AppLocalizations.of(context)!;
+      
+      _cachedRealList = _buildCategoryList(_cachedReal ?? {}, t);
+      _cachedExceptionalList = _buildCategoryList(_cachedExceptional ?? {}, t);
+      _cachedTotalList = _buildCategoryList(_cachedTotal ?? {}, t);
+      
+      print("\n📊 POST-FRAME CALLBACK:");
+      print("   _cachedRealList count = ${_cachedRealList?.length ?? 0}");
+      print("   _cachedExceptionalList count = ${_cachedExceptionalList?.length ?? 0}");
+      print("   _cachedTotalList count = ${_cachedTotalList?.length ?? 0}");
+      
+      _refreshNotifier.value = !_refreshNotifier.value;
+      print("   _refreshNotifier toggled");
+    });
+    
+    _lastStartDate = _startDate;
+    _lastEndDate = _endDate;
+  } else {
+    print("\n📊 CACHE HIT (using existing cache)");
+    print("   _cachedReal entries = ${_cachedReal?.length ?? 0}");
+    print("   _cachedExceptional entries = ${_cachedExceptional?.length ?? 0}");
+    print("   _cachedTotal entries = ${_cachedTotal?.length ?? 0}");
+  }
+  
+  // ========== EXISTING CODE - TOTALS ==========
+  _realTotal = (_cachedReal ?? {}).values.fold<double>(0.0, (a, b) => a + b);
+  _exceptionalTotal = (_cachedExceptional ?? {}).values.fold(0.0, (a, b) => a + b);
+  _totalExpensesAmount = _realTotal + _exceptionalTotal;
+  
+  print("\n💰 TOTALS:");
+  print("   _realTotal = $_realTotal");
+  print("   _exceptionalTotal = $_exceptionalTotal");
+  print("   _totalExpensesAmount = $_totalExpensesAmount");
+  
+  // ========== EXISTING CODE - CHANGE CALCULATION (kept as is) ==========
+  final periodDays = _getPeriodDays();
+  final previousStart = _startDate.subtract(Duration(days: periodDays));
+  final previousEnd = _endDate.subtract(Duration(days: periodDays));
+  
+  final previousTransactions = ts.getByDateRange(previousStart, previousEnd);
+  final previousExpenses = previousTransactions
+      .where((t) => t.type == TransactionType.expense)
+      .toList();
+  
+  final previousReal = previousExpenses
+      .where((t) => !t.isExceptional)
+      .fold(0.0, (sum, t) => sum + t.amount);
+  final previousExceptional = previousExpenses
+      .where((t) => t.isExceptional)
+      .fold(0.0, (sum, t) => sum + t.amount);
+  final previousTotal = previousReal + previousExceptional;
+  
+  _realChange = previousReal == 0 ? 0 : ((_realTotal - previousReal) / previousReal) * 100;
+  _exceptionalChange = previousExceptional == 0 ? 0 : ((_exceptionalTotal - previousExceptional) / previousExceptional) * 100;
+  _totalChange = previousTotal == 0 ? 0 : ((_totalExpensesAmount - previousTotal) / previousTotal) * 100;
+  
+  print("\n📈 CHANGES:");
+  print("   _realChange = $_realChange%");
+  print("   _exceptionalChange = $_exceptionalChange%");
+  print("   _totalChange = $_totalChange%");
+  print("█" * 70 + "\n");
+  
+  // ========== EXISTING CODE CONTINUES NORMALLY ==========
+  // باقي الكود الأصلي بعد هذا لا يتغير
+}
 
   int _getPeriodDays() {
     switch (_selectedPeriod) {

@@ -1,17 +1,14 @@
-// lib/services/transaction_ledger_builder.dart
+// Sprint 3C — Category Ledger Mapping
+// Updated to accept real ledgerAccountId instead of categoryId placeholder
+
 import 'package:uuid/uuid.dart';
 import '../models/ledger_entry.dart';
 import '../models/enums/entry_type.dart';
 import '../models/enums/ledger_purpose.dart';
 
-/// مسئول عن تحويل intent المعاملة إلى قيود دفترية (LedgerEntries).
-/// لا يقوم بحفظ أي شيء في Hive، فقط يُنشئ القيود ككائنات.
 class TransactionLedgerBuilder {
   final Uuid _uuid = const Uuid();
 
-  // ==================== Private Helpers ====================
-
-  /// إنشاء قيد واحد (يُستخدم داخلياً)
   LedgerEntry _createEntry({
     required String transactionId,
     required String accountId,
@@ -31,22 +28,18 @@ class TransactionLedgerBuilder {
     );
   }
 
-  // ==================== Public Builders ====================
-
-  /// إنشاء قيود لمصروف (Expense)
-  /// - القيد الأول: حساب المصروف (مدين)
-  /// - القيد الثاني: الحساب المصدر (دائن)
+  // ✅ Updated: accepts real expense ledger account ID
   List<LedgerEntry> buildExpenseEntries({
     required String transactionId,
-    required String expenseAccountId,   // الحساب الذي يتم تحميل المصروف عليه (مدين)
-    required String sourceAccountId,    // الحساب الذي يدفع (دائن) – مثل النقدية أو البنك
+    required String expenseLedgerAccountId,  // real LedgerAccount.id
+    required String sourceAccountId,         // real Account.id (cash/bank)
     required double amount,
     required DateTime date,
   }) {
     return [
       _createEntry(
         transactionId: transactionId,
-        accountId: expenseAccountId,
+        accountId: expenseLedgerAccountId,
         entryType: EntryType.debit,
         amount: amount,
         date: date,
@@ -63,13 +56,11 @@ class TransactionLedgerBuilder {
     ];
   }
 
-  /// إنشاء قيود لدخل (Income)
-  /// - القيد الأول: الحساب الوجهة (مدين) – الذي يستلم الأموال
-  /// - القيد الثاني: حساب الإيرادات (دائن)
+  // ✅ Updated: accepts real income ledger account ID
   List<LedgerEntry> buildIncomeEntries({
     required String transactionId,
-    required String destinationAccountId,  // الحساب الذي يستلم الأموال (مدين)
-    required String incomeAccountId,       // حساب الإيرادات (دائن)
+    required String destinationAccountId,    // real Account.id (cash/bank)
+    required String incomeLedgerAccountId,   // real LedgerAccount.id
     required double amount,
     required DateTime date,
   }) {
@@ -84,7 +75,7 @@ class TransactionLedgerBuilder {
       ),
       _createEntry(
         transactionId: transactionId,
-        accountId: incomeAccountId,
+        accountId: incomeLedgerAccountId,
         entryType: EntryType.credit,
         amount: amount,
         date: date,
@@ -93,13 +84,11 @@ class TransactionLedgerBuilder {
     ];
   }
 
-  /// إنشاء قيود لتحويل (Transfer بين حسابين)
-  /// - القيد الأول: حساب الوجهة (مدين)
-  /// - القيد الثاني: حساب المصدر (دائن)
+  // ✅ Transfer remains unchanged (uses real accounts)
   List<LedgerEntry> buildTransferEntries({
     required String transactionId,
-    required String fromAccountId,   // حساب المصدر (دائن)
-    required String toAccountId,     // حساب الوجهة (مدين)
+    required String fromAccountId,
+    required String toAccountId,
     required double amount,
     required DateTime date,
   }) {

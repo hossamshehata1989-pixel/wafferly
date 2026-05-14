@@ -1,10 +1,25 @@
 // lib/features/analysis/widgets/category_details_section.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'custom_donut_chart.dart';
 import '../../../utils/category_icons.dart';
 import '../../../config/category_config.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../utils/category_helper.dart';
+
+class MainCategoryData {
+  final String id;
+  final String name;
+  final double total;
+
+  const MainCategoryData({
+    required this.id,
+    required this.name,
+    required this.total,
+  });
+}
 
 class CategoryDetailsSection extends StatelessWidget {
   final String title;
@@ -22,16 +37,17 @@ class CategoryDetailsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final formatter = NumberFormat("#,###");
-    
-    // ✅ ترتيب تنازلي (من الأكبر للأصغر)
-    final sortedCategories = [...mainCategoriesData]..sort((a, b) => b.total.compareTo(a.total));
-    
+
+    final sortedCategories = [...mainCategoriesData]
+      ..sort((a, b) => b.total.compareTo(a.total));
+
     final total = sortedCategories.fold(0.0, (sum, e) => sum + e.total);
-    
-    // ✅ استخدام البيانات المرتبة في الدائرة
-    final donutData = sortedCategories.map((e) => DonutData(e.name, e.total)).toList();
+    final donutData = sortedCategories
+        .map((e) => DonutData(e.name, e.total))
+        .toList();
 
     String formatCurrency(double amount) {
       if (isArabic) {
@@ -87,10 +103,9 @@ class CategoryDetailsSection extends StatelessWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 24),
-          
-          // ✅ الدائرة (بتستخدم البيانات المرتبة)
+
           if (donutData.isNotEmpty)
             Center(
               child: CustomDonutChart(
@@ -99,18 +114,17 @@ class CategoryDetailsSection extends StatelessWidget {
                 size: 160,
               ),
             ),
-          
+
           const SizedBox(height: 24),
-          
-          // ✅ القائمة (بتستخدم البيانات المرتبة sortedCategories)
+
           ...sortedCategories.map((category) {
             final percentage = total > 0 ? (category.total / total) * 100 : 0.0;
             final categoryColor = _getCategoryColor(category.id);
+
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
                 children: [
-                  // ✅ أيقونة الفئة
                   Container(
                     width: 32,
                     height: 32,
@@ -124,15 +138,11 @@ class CategoryDetailsSection extends StatelessWidget {
                       width: 20,
                       height: 20,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.category,
-                        size: 20,
-                        color: categoryColor,
-                      ),
+                      errorBuilder: (context, error, stackTrace) =>
+                          Icon(Icons.category, size: 20, color: categoryColor),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // ✅ اسم الفئة والنسبة
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,7 +167,6 @@ class CategoryDetailsSection extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // ✅ المبلغ
                   Text(
                     formatCurrency(category.total),
                     style: const TextStyle(
@@ -167,29 +176,31 @@ class CategoryDetailsSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // ✅ زر التفاصيل
                   GestureDetector(
                     onTap: () => onSubCategoryTap(category.id, category.name),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: categoryColor.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Text(
                             "تفاصيل",
                             style: TextStyle(
-                              color: Colors.white,
+                              color: categoryColor,
                               fontSize: 10,
                             ),
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Icon(
                             Icons.arrow_forward_ios,
                             size: 10,
-                            color: Colors.white,
+                            color: categoryColor,
                           ),
                         ],
                       ),
@@ -209,6 +220,7 @@ class CategoryDetailsSection extends StatelessWidget {
       'dailyTransport': const Color(0xFF4ECDC4),
       'bills': const Color(0xFFAA96DA),
       'supermarket': const Color(0xFFFF6B6B),
+      'drinks': const Color(0xFFA8E6CF),
       'fastFood': const Color(0xFFFF6B6B),
       'meatFish': const Color(0xFFFF6B6B),
       'vegetables': const Color(0xFFA8E6CF),
@@ -231,17 +243,4 @@ class CategoryDetailsSection extends StatelessWidget {
     };
     return colors[categoryId] ?? const Color(0xFFA8E6CF);
   }
-}
-
-// ✅ كلاس MainCategoryData
-class MainCategoryData {
-  final String id;
-  final String name;
-  final double total;
-  
-  MainCategoryData({
-    required this.id,
-    required this.name,
-    required this.total,
-  });
 }

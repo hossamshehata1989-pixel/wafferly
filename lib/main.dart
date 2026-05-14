@@ -5,13 +5,16 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'models/account.dart';
 import 'models/enums/account_enums.dart';
 import 'models/transaction.dart';
-import 'models/ledger_entry.dart';               // ✅ LedgerEntry model
-import 'models/enums/entry_type.dart';           // ✅ EntryType enum
-import 'models/enums/ledger_purpose.dart';       // ✅ LedgerPurpose enum
+import 'models/ledger_entry.dart'; // ✅ LedgerEntry model
+import 'models/enums/entry_type.dart'; // ✅ EntryType enum
+import 'models/enums/ledger_purpose.dart'; // ✅ LedgerPurpose enum
+import 'models/ledger_account.dart'; // ✅ Sprint 3B - LedgerAccount model
+import 'models/enums/ledger_account_type.dart'; // ✅ Sprint 3B - LedgerAccountType enum
 import 'adapters/account_migration_adapter.dart';
 import 'screens/main_navigation.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/app_colors.dart';
+import 'services/ledger_stress_test_service.dart'; // TEMP for stress testing
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,16 +22,19 @@ void main() async {
   await Hive.initFlutter();
 
   // Optional: reset for debugging
-  bool RESET_DB = false;
+  bool RESET_DB = true;
   if (RESET_DB) {
     await Hive.deleteBoxFromDisk('accounts');
     await Hive.deleteBoxFromDisk('transactions');
-    await Hive.deleteBoxFromDisk('ledger_entries'); // ✅ also reset ledger if needed
+    await Hive.deleteBoxFromDisk('ledger_entries');
+    await Hive.deleteBoxFromDisk('ledger_accounts');
   }
 
   // ========== Account & Transaction Adapters (existing) ==========
   if (!Hive.isAdapterRegistered(1)) {
-    Hive.registerAdapter(AccountMigrationAdapter()); // TEMPORARY migration adapter
+    Hive.registerAdapter(
+      AccountMigrationAdapter(),
+    ); // TEMPORARY migration adapter
   }
 
   if (!Hive.isAdapterRegistered(2)) {
@@ -56,10 +62,32 @@ void main() async {
     Hive.registerAdapter(LedgerEntryAdapter());
   }
 
+  // ========== LedgerAccount Foundation (Sprint 3B) ==========
+  if (!Hive.isAdapterRegistered(30)) {
+    Hive.registerAdapter(LedgerAccountTypeAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(31)) {
+    Hive.registerAdapter(LedgerAccountAdapter());
+  }
+
   // ========== Open Boxes ==========
   await Hive.openBox<Account>('accounts');
   await Hive.openBox<Transaction>('transactions');
-  await Hive.openBox<LedgerEntry>('ledger_entries'); // ✅ Ledger box opened
+  await Hive.openBox<LedgerEntry>('ledger_entries');
+  await Hive.openBox<LedgerAccount>('ledger_accounts');
+
+  // ========== TEMP TEST ONLY (Stress Test) ==========
+  // ⚠️ هذا السطر مؤقت للاختبار فقط – سيتم إزالته بعد Sprint 4B
+  try {
+    await LedgerStressTestService().runStressTest(
+      transactionCount: 3000,
+      verbose: true,
+    );
+  } catch (e) {
+    print("⚠️ Stress test failed: $e");
+  }
+  // ===================================================
 
   runApp(const WafferlyApp());
 }

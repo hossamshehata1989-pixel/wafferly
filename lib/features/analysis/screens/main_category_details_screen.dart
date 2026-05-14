@@ -25,7 +25,7 @@ class MainCategoryDetailsScreen extends StatelessWidget {
     required this.endDate,
   });
 
-  // ✅ ألوان ثابتة للفئات الفرعية (زي ما عملنا في الفئات الرئيسية)
+  // ✅ ألوان ثابتة للفئات الفرعية
   Color _getSubCategoryColor(String subCategoryId) {
     final colors = {
       // مواصلات يومية - فرعية
@@ -261,10 +261,24 @@ class MainCategoryDetailsScreen extends StatelessWidget {
     final Map<String, SubCategoryData> subCategoriesMap = {};
     for (final expense in expenses) {
       final subId = expense.subCategoryId ?? expense.categoryId;
+      
+      // ========== DEBUG TRACE ==========
+      print("\n🔍 [MainCategoryDetailsScreen] Processing expense:");
+      print("   expense.id: ${expense.id}");
+      print("   subId (from subCategoryId ?? categoryId): '$subId'");
+      print("   expense.subCategoryId: '${expense.subCategoryId}'");
+      print("   expense.categoryId: '${expense.categoryId}'");
+      print("   amount: ${expense.amount}");
+      // =================================
 
-final subName = expense.subCategoryId != null
-    ? getSubCategoryName(expense.subCategoryId!, t)
-    : getMainCategoryName(expense.categoryId, t);
+      final subName = expense.subCategoryId != null
+          ? getSubCategoryName(expense.subCategoryId!, t)
+          : getMainCategoryName(expense.categoryId, t);
+          
+      // ========== DEBUG TRACE ==========
+      print("   resolved subName: '$subName'");
+      // =================================
+      
       if (subCategoriesMap.containsKey(subId)) {
         subCategoriesMap[subId] = SubCategoryData(
           id: subId,

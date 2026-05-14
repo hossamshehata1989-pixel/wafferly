@@ -1,8 +1,11 @@
 // lib/services/transaction_service.dart
-
 import 'package:hive_flutter/hive_flutter.dart';
+import '../models/ledger_entry.dart';
 import '../constants/transaction_constants.dart';
 import '../models/transaction.dart';
+import 'transaction_ledger_builder.dart';     // ✅ Sprint 3A
+import 'ledger_service.dart';                 // ✅ Sprint 3A
+import 'category_ledger_mapper.dart';         // ✅ Sprint 3C
 
 /// خدمة موحدة للتعامل مع المعاملات المالية
 /// جميع عمليات CRUD تمر من هنا
@@ -19,6 +22,9 @@ class TransactionService {
   
   /// الوصول إلى Box (للقراءة المباشرة فقط عند الحاجة)
   Box<Transaction> get _box => Hive.box<Transaction>(_boxName);
+  
+  // ========== Sprint 3C: Category → LedgerAccount Mapping ==========
+  final CategoryLedgerMapper _categoryMapper = CategoryLedgerMapper();
   
   // ==========================================
   // 📥 Basic CRUD Operations
@@ -40,18 +46,123 @@ class TransactionService {
   /// 📌 تستخدم put() لضمان استخدام الـ id كـ key
   Future<void> addTransaction(Transaction transaction) async {
     await _box.put(transaction.id, transaction);
+    
+    // ========== Passive Ledger Integration (Sprint 3A) ==========
+    // لا يؤثر فشل الـ Ledger على نجاح المعاملة الأساسية.
+    try {
+      await _createLedgerEntriesForTransaction(transaction);
+    } catch (e, stack) {
+      // فقط طباعة تحذير في console – لا نعطل التطبيق
+      print("⚠️ Passive Ledger integration failed for transaction ${transaction.id}: $e");
+      print(stack);
+    }
+    // ============================================================
+  }
+  
+  /// إنشاء وحفظ LedgerEntries بناءً على نوع المعاملة (passive side‑effect)
+  Future<void> _createLedgerEntriesForTransaction(Transaction transaction) async {
+    final builder = TransactionLedgerBuilder();
+    final ledgerService = LedgerService();
+    
+    // ========== Sprint 3D: Idempotency check ==========
+    // منع إنشاء duplicate entries لنفس المعاملة
+    final existingEntries = await ledgerService.getEntriesByTransactionId(transaction.id);
+    if (existingEntries.isNotEmpty) {
+      print("ℹ️ Ledger entries already exist for transaction ${transaction.id} – skipping duplicate creation");
+      return;
+    }
+    // ==================================================
+    
+    List<LedgerEntry> entries = [];
+    
+    switch (transaction.type) {
+      // ========== Sprint 3A: Transfer only (safe integration) ==========
+      // Transfer uses real fromAccountId and toAccountId (valid ledger accounts)
+      case TransactionType.transfer:
+        if (transaction.fromAccountId != null && transaction.toAccountId != null) {
+          entries = builder.buildTransferEntries(
+            transactionId: transaction.id,
+            fromAccountId: transaction.fromAccountId!,
+            toAccountId: transaction.toAccountId!,
+            amount: transaction.amount,
+            date: transaction.date,
+          );
+        } else {
+          throw Exception("Transfer transaction missing fromAccountId or toAccountId");
+        }
+        break;
+      
+      // ========== Sprint 3C: Expense with real LedgerAccount ==========
+      case TransactionType.expense:
+        if (transaction.fromAccountId == null) {
+          throw Exception("Expense transaction missing fromAccountId");
+        }
+        final expenseLedgerId = _categoryMapper.getLedgerAccountIdForCategory(transaction.categoryId);
+        if (expenseLedgerId == null) {
+          // Missing mapping: transaction succeeds, ledger entry skipped
+          print("⚠️ Missing LedgerAccount mapping for category: ${transaction.categoryId}");
+          return;
+        }
+        entries = builder.buildExpenseEntries(
+          transactionId: transaction.id,
+          expenseLedgerAccountId: expenseLedgerId,
+          sourceAccountId: transaction.fromAccountId!,
+          amount: transaction.amount,
+          date: transaction.date,
+        );
+        break;
+      
+      // ========== Sprint 3C: Income with real LedgerAccount ==========
+      case TransactionType.income:
+        if (transaction.toAccountId == null) {
+          throw Exception("Income transaction missing toAccountId");
+        }
+        final incomeLedgerId = _categoryMapper.getLedgerAccountIdForCategory(transaction.categoryId);
+        if (incomeLedgerId == null) {
+          // Missing mapping: transaction succeeds, ledger entry skipped
+          print("⚠️ Missing LedgerAccount mapping for category: ${transaction.categoryId}");
+          return;
+        }
+        entries = builder.buildIncomeEntries(
+          transactionId: transaction.id,
+          destinationAccountId: transaction.toAccountId!,
+          incomeLedgerAccountId: incomeLedgerId,
+          amount: transaction.amount,
+          date: transaction.date,
+        );
+        break;
+        
+      default:
+        // Other types (debt, initialBalance, balanceAdjustment) not in scope for Sprint 3C
+        print("ℹ️ Ledger entries not created for transaction type: ${transaction.type}");
+        return;
+    }
+    
+    if (entries.isNotEmpty) {
+      await ledgerService.createEntries(entries);
+    }
   }
   
   /// تحديث معاملة موجودة
   /// 📌 تقوم بتحديث updatedAt تلقائياً
+  /// ⚠️ Sprint 3D: ملاحظة – التحديث لا يحذف entries القديمة حالياً (سيتم في Sprint 5)
   Future<void> updateTransaction(Transaction transaction) async {
     final updated = transaction.touch();
     await _box.put(updated.id, updated);
+    
+    // ========== Sprint 3D: Warning for future improvement ==========
+    print("ℹ️ Transaction ${transaction.id} updated – Ledger entries not automatically updated (will be handled in Sprint 5)");
+    // ================================================================
   }
   
   /// حذف معاملة
+  /// ⚠️ Sprint 3D: ملاحظة – الحذف لا يحذف entries المرتبطة حالياً (سيتم في Sprint 5)
   Future<void> deleteTransaction(String id) async {
     await _box.delete(id);
+    
+    // ========== Sprint 3D: Warning for future improvement ==========
+    print("ℹ️ Transaction $id deleted – Ledger entries not automatically deleted (will be handled in Sprint 5)");
+    // ================================================================
   }
   
   /// حذف جميع المعاملات (للاختبار أو إعادة تعيين البيانات)
