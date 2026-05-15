@@ -22,7 +22,7 @@ void main() async {
   await Hive.initFlutter();
 
   // Optional: reset for debugging
-  bool RESET_DB = true;
+  bool RESET_DB = false;
   if (RESET_DB) {
     await Hive.deleteBoxFromDisk('accounts');
     await Hive.deleteBoxFromDisk('transactions');

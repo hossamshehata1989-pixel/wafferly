@@ -298,5 +298,16 @@
   "dailyIncome": "Daily Income",
   "bonus": "Bonus",
   "rewards": "Rewards",
- "freelance": "Freelance"
+  "freelance": "Freelance",
+  "total": "Total",
+  "normal": "Normal",
+  "exceptional": "Exceptional",
+  "totalOf": "Total of {name}",
+  "subCategoriesDetails": "Subcategories Details",
+  "subCategoriesList": "Subcategories List",
+  "noSubCategoriesIn": "No subcategories in {name}",
+  "noComparisonData": "No comparison data available",
+  "categories": "Categories",
+  "totalLabel": "Total:"
+
 }

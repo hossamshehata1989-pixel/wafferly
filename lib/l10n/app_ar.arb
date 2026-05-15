@@ -298,5 +298,15 @@
   "dailyIncome": "دخل يومي",
   "bonus": "حوافز",
   "rewards": "مكافآت",
-  "freelance": "فريلانس"
+  "freelance": "فريلانس",
+  "total": "الإجمالي",
+  "normal": "العادية",
+  "exceptional": "الاستثنائية",
+  "totalOf": "إجمالي {name}",
+  "subCategoriesDetails": "تفاصيل الفئات الفرعية",
+  "subCategoriesList": "قائمة الفئات الفرعية",
+  "noSubCategoriesIn": "لا توجد فئات فرعية في {name}",
+  "noComparisonData": "لا توجد بيانات للمقارنة",
+  "categories": "الفئات",
+  "totalLabel": "الإجمالي:"
 }

@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'category_detail_row.dart';
-import '../../../l10n/app_localizations.dart';
 
 /// Pure UI widget - displays a list of categories
 /// Receives pre-sorted data from parent
@@ -20,13 +19,14 @@ class CategoriesList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
-
     if (categories.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
-          child: Text(t.noData, style: const TextStyle(color: Colors.white54)),
+          child: Text(
+            'لا توجد بيانات',
+            style: TextStyle(color: Colors.white54),
+          ),
         ),
       );
     }

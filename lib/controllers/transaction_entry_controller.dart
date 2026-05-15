@@ -10,6 +10,7 @@ import '../services/account_service.dart';
 import '../constants/transaction_constants.dart';
 import '../config/category_config.dart';
 import '../config/category_type.dart';
+import '../features/analysis/registry/category_registry.dart';
 
 enum SaveStatus { idle, saving }
 
@@ -98,31 +99,42 @@ class TransactionEntryController extends ChangeNotifier {
 
   bool get hasSubCategories {
     final mainId = _getMainCategoryId(_selectedCategoryId);
-    final category = currentCategories.firstWhere(
-      (c) => c.id == mainId,
-      orElse: () => currentCategories.first,
-    );
-    return category.subCategories?.isNotEmpty ?? false;
+    return CategoryRegistry.getSubCategories(mainId).isNotEmpty;
   }
 
   List<SubCategoryConfig> get currentSubCategories {
     final mainId = _getMainCategoryId(_selectedCategoryId);
-    final category = currentCategories.firstWhere(
-      (c) => c.id == mainId,
-      orElse: () => currentCategories.first,
-    );
-    return category.subCategories ?? [];
+    return CategoryRegistry.getSubCategories(mainId);
   }
 
   // ==============================
   // Setters
   // ==============================
 
-  void setAmount(String v) { _amount = v; notifyListeners(); }
-  void setExpression(String v) { _expression = v; notifyListeners(); }
-  void setSelectedDate(DateTime v) { _selectedDate = v; notifyListeners(); }
-  void setNote(String v) { _note = v; notifyListeners(); }
-  void setPaymentMethod(String v) { _paymentMethod = v; notifyListeners(); }
+  void setAmount(String v) {
+    _amount = v;
+    notifyListeners();
+  }
+
+  void setExpression(String v) {
+    _expression = v;
+    notifyListeners();
+  }
+
+  void setSelectedDate(DateTime v) {
+    _selectedDate = v;
+    notifyListeners();
+  }
+
+  void setNote(String v) {
+    _note = v;
+    notifyListeners();
+  }
+
+  void setPaymentMethod(String v) {
+    _paymentMethod = v;
+    notifyListeners();
+  }
 
   void selectAccount(String id, String name) {
     _selectedAccountId = id;
@@ -192,7 +204,6 @@ class TransactionEntryController extends ChangeNotifier {
       return _fail(SaveAction.noAccountSelected);
     }
 
-    // ✅ Category is mandatory for all transaction types
     if (_selectedCategoryId.isEmpty) {
       return _fail(SaveAction.noCategorySelected);
     }
@@ -201,7 +212,7 @@ class TransactionEntryController extends ChangeNotifier {
       final balance = BalanceService().getBalance(_selectedAccountId);
       if (amountValue > balance) {
         return _fail(SaveAction.insufficientBalance, {
-          "shortage": amountValue - balance
+          "shortage": amountValue - balance,
         });
       }
     }
@@ -213,7 +224,10 @@ class TransactionEntryController extends ChangeNotifier {
 
     if (success) {
       _resetForm();
-      return const SaveResult(success: true, action: SaveAction.showNormalSuccess);
+      return const SaveResult(
+        success: true,
+        action: SaveAction.showNormalSuccess,
+      );
     }
 
     return const SaveResult(success: false);
@@ -225,13 +239,49 @@ class TransactionEntryController extends ChangeNotifier {
     return SaveResult(success: false, action: action, data: data);
   }
 
+  // ==============================
+  // 🏷️ Category Helpers (Sprint 4 - New Structure)
+  // Uses CategoryRegistry as single source of truth
+  // ==============================
+
+  /// Returns the MAIN category ID from any selected ID
+  String _getMainCategoryId(String selectedId) {
+    if (CategoryRegistry.isMainCategory(selectedId)) {
+      return selectedId;
+    }
+
+    if (CategoryRegistry.isSubCategory(selectedId)) {
+      final parentId = CategoryRegistry.getParentMainId(selectedId);
+      if (parentId != null) {
+        return parentId;
+      }
+    }
+
+    return selectedId;
+  }
+
+  /// Returns true if the selected ID is a sub category
+  bool _isSubCategory(String selectedId) {
+    return CategoryRegistry.isSubCategory(selectedId);
+  }
+
+  // ==============================
+  // Save Transaction
+  // ==============================
+
   Future<bool> _saveTransaction(double amount, bool isExceptional) async {
+    final mainCategoryId = _getMainCategoryId(_selectedCategoryId);
+    final subCategoryId = _isSubCategory(_selectedCategoryId)
+        ? _selectedCategoryId
+        : null;
+
     final tx = Transaction.create(
       amount: amount,
       type: _selectedTransactionType,
       fromAccountId: isIncome ? null : _selectedAccountId,
       toAccountId: isIncome ? _selectedAccountId : null,
-      categoryId: _selectedCategoryId, // Always use selected category
+      categoryId: mainCategoryId,
+      subCategoryId: subCategoryId,
       date: _selectedDate,
       note: _note.isEmpty ? null : _note,
       paymentMethod: _paymentMethod,
@@ -276,7 +326,7 @@ class TransactionEntryController extends ChangeNotifier {
       await _saveTransaction(amountValue, false);
       _resetForm();
     } catch (e) {
-      print("❌ Error: $e");
+      debugPrint("❌ Error: $e");
     } finally {
       _saveStatus = SaveStatus.idle;
       notifyListeners();
@@ -285,9 +335,7 @@ class TransactionEntryController extends ChangeNotifier {
 
   void switchToIncomeMode() {
     _saveStatus = SaveStatus.idle;
-
     setTransactionType(TransactionType.income);
-
     notifyListeners();
   }
 
@@ -317,19 +365,5 @@ class TransactionEntryController extends ChangeNotifier {
     _selectedCategoryId = "";
     _paymentMethod = "cash";
     notifyListeners();
-  }
-
-  // ==============================
-  // Helper
-  // ==============================
-
-  String _getMainCategoryId(String categoryId) {
-    for (final category in currentCategories) {
-      if (category.id == categoryId) return category.id;
-      for (final sub in category.subCategories ?? []) {
-        if (sub.id == categoryId) return category.id;
-      }
-    }
-    return categoryId;
   }
 }
