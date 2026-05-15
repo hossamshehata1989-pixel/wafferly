@@ -158,7 +158,6 @@ class CategoryRegistry {
       return main.resolveTitle(t);
     }
 
-    // Safe fallback - no Exception, no guessing
     debugPrint('⚠️ CategoryRegistry: Main category not found: $id');
     return id;
   }

@@ -1,20 +1,22 @@
 // main.dart
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/account.dart';
 import 'models/enums/account_enums.dart';
 import 'models/transaction.dart';
-import 'models/ledger_entry.dart'; // ✅ LedgerEntry model
-import 'models/enums/entry_type.dart'; // ✅ EntryType enum
-import 'models/enums/ledger_purpose.dart'; // ✅ LedgerPurpose enum
-import 'models/ledger_account.dart'; // ✅ Sprint 3B - LedgerAccount model
-import 'models/enums/ledger_account_type.dart'; // ✅ Sprint 3B - LedgerAccountType enum
+import 'models/ledger_entry.dart';
+import 'models/enums/entry_type.dart';
+import 'models/enums/ledger_purpose.dart';
+import 'models/ledger_account.dart';
+import 'models/enums/ledger_account_type.dart';
 import 'adapters/account_migration_adapter.dart';
 import 'screens/main_navigation.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/app_colors.dart';
-import 'services/ledger_stress_test_service.dart'; // TEMP for stress testing
+import 'services/ledger_stress_test_service.dart';
+import 'features/analysis/registry/category_registry.dart'; // ✅ IMPORT
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,15 +81,18 @@ void main() async {
 
   // ========== TEMP TEST ONLY (Stress Test) ==========
   // ⚠️ هذا السطر مؤقت للاختبار فقط – سيتم إزالته بعد Sprint 4B
-  try {
-    await LedgerStressTestService().runStressTest(
-      transactionCount: 3000,
-      verbose: true,
-    );
-  } catch (e) {
-    print("⚠️ Stress test failed: $e");
-  }
+  // try {
+  //   await LedgerStressTestService().runStressTest(
+  //     transactionCount: 10,
+  //     verbose: false,
+  //   );
+  // } catch (e) {
+  //   print("⚠️ Stress test failed: $e");
+  // }
   // ===================================================
+
+  // ✅✅✅ IMPORTANT: Initialize CategoryRegistry BEFORE runApp ✅✅✅
+  CategoryRegistry.initialize();
 
   runApp(const WafferlyApp());
 }

@@ -16,10 +16,7 @@ import '../constants/transaction_constants.dart';
 class ExpensesScreen extends StatelessWidget {
   final String initialType;
 
-  const ExpensesScreen({
-    super.key,
-    this.initialType = TransactionType.expense,
-  });
+  const ExpensesScreen({super.key, this.initialType = TransactionType.expense});
 
   @override
   Widget build(BuildContext context) {
@@ -44,9 +41,11 @@ class ExpensesScreen extends StatelessWidget {
             return SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+                  final keyboardHeight = MediaQuery.of(
+                    context,
+                  ).viewInsets.bottom;
                   final isKeyboardOpen = keyboardHeight > 0;
-                  
+
                   return Column(
                     children: [
                       ExpenseEntryTabs(controller: controller),
@@ -56,8 +55,10 @@ class ExpensesScreen extends StatelessWidget {
                         child: MainCategoriesGrid(
                           selectedCategoryId: controller.selectedCategoryId,
                           onCategorySelected: controller.selectCategory,
-                          availableHeight: constraints.maxHeight * (isKeyboardOpen ? 0.25 : 0.4),
-                          categoryType: controller.categoryType, // ✅ Pass category type
+                          availableHeight:
+                              constraints.maxHeight *
+                              (isKeyboardOpen ? 0.25 : 0.4),
+                          categoryType: controller.categoryType,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -77,8 +78,6 @@ class ExpensesScreen extends StatelessWidget {
                         AdvancedOptionsPanel(controller: controller),
                         const SizedBox(height: 8),
                       ],
-
-                      // زر الحفظ يظهر دايمًا
                       ActionButtonsRow(controller: controller),
                     ],
                   );
