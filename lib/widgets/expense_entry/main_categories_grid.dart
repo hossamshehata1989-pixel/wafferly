@@ -5,78 +5,65 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../config/category_config.dart';
 import '../../config/category_type.dart';
 import '../../l10n/app_localizations.dart';
-import '../../theme/app_colors.dart';
 
 class MainCategoriesGrid extends StatelessWidget {
   final String selectedCategoryId;
   final Function(String) onCategorySelected;
-  final double availableHeight;
-  final CategoryType categoryType; // ✅ New parameter
+  final CategoryType categoryType;
 
   const MainCategoriesGrid({
     super.key,
     required this.selectedCategoryId,
     required this.onCategorySelected,
-    required this.availableHeight,
     required this.categoryType,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    final categories = getCategories(categoryType); // ✅ Use unified getter
+    final categories = getCategories(categoryType);
     final screenWidth = MediaQuery.of(context).size.width;
-    
+
     int crossAxisCount;
-    if (screenWidth < 600) {
+    if (screenWidth < 400) {
+      crossAxisCount = 4;
+    } else if (screenWidth < 600) {
       crossAxisCount = 5;
     } else if (screenWidth < 900) {
       crossAxisCount = 6;
-    } else if (screenWidth < 1200) {
-      crossAxisCount = 7;
     } else {
-      crossAxisCount = 8;
+      crossAxisCount = 7;
     }
-    
-    final double cardWidth = (screenWidth - 32 - (crossAxisCount - 1) * 6) / crossAxisCount;
+
+    final double cardWidth =
+        (screenWidth - 32 - (crossAxisCount - 1) * 6) / crossAxisCount;
     final double cardHeight = cardWidth * 0.9;
-    
-    final int totalItems = categories.length;
-    final int requiredRows = (totalItems / crossAxisCount).ceil();
-    final double totalGridHeight = requiredRows * (cardHeight + 6);
-    final bool needsScroll = totalGridHeight > availableHeight;
-    
-    return RepaintBoundary(
-      child: SizedBox(
-        height: needsScroll ? availableHeight : totalGridHeight,
-        child: GridView.builder(
-          padding: EdgeInsets.zero,
-          shrinkWrap: true,
-          physics: needsScroll 
-              ? const ClampingScrollPhysics()
-              : const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 6,
-            mainAxisSpacing: 6,
-            childAspectRatio: cardWidth / cardHeight,
-          ),
-          itemCount: totalItems,
-          itemBuilder: (context, index) {
-            final category = categories[index];
-            final isSelected = selectedCategoryId == category.id ||
-                (category.subCategories?.any((s) => s.id == selectedCategoryId) ?? false);
-            
-            return _buildCategoryCard(
-              title: category.resolveTitle(t),
-              iconPath: category.icon,
-              isSelected: isSelected,
-              cardWidth: cardWidth,
-              onTap: () => onCategorySelected(category.id),
-            );
-          },
-        ),
+
+    return GridView.builder(
+      padding: EdgeInsets.zero,
+      physics: const BouncingScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: 6,
+        mainAxisSpacing: 6,
+        childAspectRatio: cardWidth / cardHeight,
       ),
+      itemCount: categories.length,
+      itemBuilder: (context, index) {
+        final category = categories[index];
+        final isSelected =
+            selectedCategoryId == category.id ||
+            (category.subCategories?.any((s) => s.id == selectedCategoryId) ??
+                false);
+
+        return _buildCategoryCard(
+          title: category.resolveTitle(t),
+          iconPath: category.icon,
+          isSelected: isSelected,
+          cardWidth: cardWidth,
+          onTap: () => onCategorySelected(category.id),
+        );
+      },
     );
   }
 
@@ -89,7 +76,7 @@ class MainCategoriesGrid extends StatelessWidget {
   }) {
     final double iconSize = cardWidth * 0.4;
     final double fontSize = cardWidth * 0.11;
-    
+
     return Material(
       color: Colors.transparent,
       child: AnimatedContainer(
@@ -99,7 +86,9 @@ class MainCategoriesGrid extends StatelessWidget {
           color: isSelected ? const Color(0xFF3A7BFF) : const Color(0xFF1B2A6B),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF4FD1FF) : const Color(0xFF243A8F),
+            color: isSelected
+                ? const Color(0xFF4FD1FF)
+                : const Color(0xFF243A8F),
             width: isSelected ? 1.5 : 1,
           ),
           boxShadow: isSelected
@@ -140,7 +129,9 @@ class MainCategoriesGrid extends StatelessWidget {
                   const SizedBox(height: 6),
                   Flexible(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: cardWidth * 0.05),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: cardWidth * 0.05,
+                      ),
                       child: Text(
                         title,
                         textAlign: TextAlign.center,
@@ -149,7 +140,9 @@ class MainCategoriesGrid extends StatelessWidget {
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.white70,
                           fontSize: fontSize.clamp(9.0, 14.0),
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                           height: 1.2,
                         ),
                       ),

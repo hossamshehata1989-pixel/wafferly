@@ -48,6 +48,12 @@ class TransactionEntryController extends ChangeNotifier {
   String _selectedTransactionType = TransactionType.expense;
   SaveStatus _saveStatus = SaveStatus.idle;
 
+  // Transfer specific fields
+  String _selectedFromAccountId = "";
+  String _selectedFromAccountName = "اختر حساب المصدر";
+  String _selectedToAccountId = "";
+  String _selectedToAccountName = "اختر حساب الوجهة";
+
   static const String tempDebtAccountName = 'دين مؤقت';
 
   // ==============================
@@ -65,20 +71,30 @@ class TransactionEntryController extends ChangeNotifier {
   String get selectedTransactionType => _selectedTransactionType;
   SaveStatus get saveStatus => _saveStatus;
 
+  String get selectedFromAccountId => _selectedFromAccountId;
+  String get selectedFromAccountName => _selectedFromAccountName;
+  String get selectedToAccountId => _selectedToAccountId;
+  String get selectedToAccountName => _selectedToAccountName;
+
   bool get isIncome => _selectedTransactionType == TransactionType.income;
   bool get isExpense => _selectedTransactionType == TransactionType.expense;
 
-  /// نوع الفئة بناءً على نوع المعاملة
   CategoryType get categoryType =>
       isIncome ? CategoryType.income : CategoryType.expense;
 
-  /// قائمة الفئات الرئيسية حسب النوع
   List<CategoryConfig> get currentCategories => getCategories(categoryType);
 
   String get currentCurrency {
     if (_selectedAccountId.isEmpty) return "EGP";
     final box = Hive.box<Account>('accounts');
     final acc = box.get(_selectedAccountId);
+    return acc?.currency ?? "EGP";
+  }
+
+  String get transferCurrency {
+    if (_selectedFromAccountId.isEmpty) return "EGP";
+    final box = Hive.box<Account>('accounts');
+    final acc = box.get(_selectedFromAccountId);
     return acc?.currency ?? "EGP";
   }
 
@@ -142,6 +158,18 @@ class TransactionEntryController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void selectFromAccount(String id, String name) {
+    _selectedFromAccountId = id;
+    _selectedFromAccountName = name;
+    notifyListeners();
+  }
+
+  void selectToAccount(String id, String name) {
+    _selectedToAccountId = id;
+    _selectedToAccountName = name;
+    notifyListeners();
+  }
+
   void selectCategory(String id) {
     _selectedCategoryId = id;
     notifyListeners();
@@ -149,7 +177,7 @@ class TransactionEntryController extends ChangeNotifier {
 
   void setTransactionType(String type) {
     _selectedTransactionType = type;
-    _selectedCategoryId = ""; // Reset category when type changes
+    _selectedCategoryId = "";
     notifyListeners();
   }
 
@@ -197,54 +225,64 @@ class TransactionEntryController extends ChangeNotifier {
     final amountValue = double.tryParse(_amount) ?? 0;
 
     if (amountValue == 0) {
-      return _fail(SaveAction.invalidAmount);
+      _saveStatus = SaveStatus.idle;
+      notifyListeners();
+      return const SaveResult(success: false, action: SaveAction.invalidAmount);
     }
 
     if (_selectedAccountId.isEmpty) {
-      return _fail(SaveAction.noAccountSelected);
+      _saveStatus = SaveStatus.idle;
+      notifyListeners();
+      return const SaveResult(
+        success: false,
+        action: SaveAction.noAccountSelected,
+      );
     }
 
     if (_selectedCategoryId.isEmpty) {
-      return _fail(SaveAction.noCategorySelected);
+      _saveStatus = SaveStatus.idle;
+      notifyListeners();
+      return const SaveResult(
+        success: false,
+        action: SaveAction.noCategorySelected,
+      );
     }
 
     if (isExpense) {
       final balance = BalanceService().getBalance(_selectedAccountId);
       if (amountValue > balance) {
-        return _fail(SaveAction.insufficientBalance, {
-          "shortage": amountValue - balance,
-        });
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+        return SaveResult(
+          success: false,
+          action: SaveAction.insufficientBalance,
+          data: {"shortage": amountValue - balance},
+        );
       }
     }
 
     final success = await _saveTransaction(amountValue, isExceptional);
 
-    _saveStatus = SaveStatus.idle;
-    notifyListeners();
-
     if (success) {
-      _resetForm();
+      _saveStatus = SaveStatus.idle;
+      _resetExpenseForm();
+
       return const SaveResult(
         success: true,
         action: SaveAction.showNormalSuccess,
       );
     }
 
+    _saveStatus = SaveStatus.idle;
+    notifyListeners();
+
     return const SaveResult(success: false);
   }
 
-  SaveResult _fail(SaveAction action, [Map<String, dynamic>? data]) {
-    _saveStatus = SaveStatus.idle;
-    notifyListeners();
-    return SaveResult(success: false, action: action, data: data);
-  }
-
   // ==============================
-  // 🏷️ Category Helpers (Sprint 4 - New Structure)
-  // Uses CategoryRegistry as single source of truth
+  // Category Helpers
   // ==============================
 
-  /// Returns the MAIN category ID from any selected ID
   String _getMainCategoryId(String selectedId) {
     if (CategoryRegistry.isMainCategory(selectedId)) {
       return selectedId;
@@ -260,7 +298,6 @@ class TransactionEntryController extends ChangeNotifier {
     return selectedId;
   }
 
-  /// Returns true if the selected ID is a sub category
   bool _isSubCategory(String selectedId) {
     return CategoryRegistry.isSubCategory(selectedId);
   }
@@ -295,6 +332,82 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   // ==============================
+  // Transfer Support
+  // ==============================
+
+  Future<bool> saveTransfer() async {
+    if (_saveStatus == SaveStatus.saving) return false;
+
+    _saveStatus = SaveStatus.saving;
+    notifyListeners();
+
+    final amountValue = double.tryParse(_amount) ?? 0;
+
+    try {
+      if (amountValue <= 0 ||
+          _selectedFromAccountId.isEmpty ||
+          _selectedToAccountId.isEmpty ||
+          _selectedFromAccountId == _selectedToAccountId) {
+        return false;
+      }
+
+      final fromBalance = BalanceService().getBalance(_selectedFromAccountId);
+      if (amountValue > fromBalance) {
+        return false;
+      }
+
+      final tx = Transaction.create(
+        amount: amountValue,
+        type: TransactionType.transfer,
+        fromAccountId: _selectedFromAccountId,
+        toAccountId: _selectedToAccountId,
+        categoryId: "",
+        date: _selectedDate,
+        note: _note.isEmpty ? null : _note,
+        paymentMethod: _paymentMethod,
+        isExceptional: false,
+        currencyCode: transferCurrency,
+        source: TransactionSource.manual,
+      );
+
+      await TransactionService.instance.addTransaction(tx);
+      _resetTransferForm();
+      return true;
+    } catch (e) {
+      debugPrint("❌ Transfer save failed: $e");
+      return false;
+    } finally {
+      _saveStatus = SaveStatus.idle;
+      notifyListeners();
+    }
+  }
+
+  // ==============================
+  // Reset Forms
+  // ==============================
+
+  void _resetExpenseForm() {
+    _amount = "0";
+    _expression = "";
+    _note = "";
+    _selectedCategoryId = "";
+    _paymentMethod = "cash";
+    notifyListeners();
+  }
+
+  void _resetTransferForm() {
+    _amount = "0";
+    _expression = "";
+    _note = "";
+    _selectedFromAccountId = "";
+    _selectedFromAccountName = "اختر حساب المصدر";
+    _selectedToAccountId = "";
+    _selectedToAccountName = "اختر حساب الوجهة";
+    _paymentMethod = "cash";
+    notifyListeners();
+  }
+
+  // ==============================
   // Temp Debt Helpers
   // ==============================
 
@@ -324,7 +437,7 @@ class TransactionEntryController extends ChangeNotifier {
       );
 
       await _saveTransaction(amountValue, false);
-      _resetForm();
+      _resetExpenseForm();
     } catch (e) {
       debugPrint("❌ Error: $e");
     } finally {
@@ -352,18 +465,5 @@ class TransactionEntryController extends ChangeNotifier {
         currency: currentCurrency,
       );
     }
-  }
-
-  // ==============================
-  // Reset
-  // ==============================
-
-  void _resetForm() {
-    _amount = "0";
-    _expression = "";
-    _note = "";
-    _selectedCategoryId = "";
-    _paymentMethod = "cash";
-    notifyListeners();
   }
 }

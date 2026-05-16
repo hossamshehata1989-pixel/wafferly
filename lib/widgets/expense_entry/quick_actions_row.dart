@@ -1,4 +1,5 @@
 // lib/widgets/expense_entry/quick_actions_row.dart
+
 import 'package:flutter/material.dart';
 import '../../controllers/transaction_entry_controller.dart';
 import '../../theme/app_colors.dart';
@@ -12,7 +13,7 @@ class QuickActionsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -87,20 +88,20 @@ class QuickActionsRow extends StatelessWidget {
   String _getDateLabel(BuildContext context) {
     final today = DateTime.now();
     final selected = controller.selectedDate;
-    
+
     if (selected.year == today.year &&
         selected.month == today.month &&
         selected.day == today.day) {
       return AppLocalizations.of(context)!.today;
     }
-    
+
     final yesterday = today.subtract(const Duration(days: 1));
     if (selected.year == yesterday.year &&
         selected.month == yesterday.month &&
         selected.day == yesterday.day) {
       return AppLocalizations.of(context)!.yesterday;
     }
-    
+
     return "${selected.day}/${selected.month}";
   }
 
@@ -108,7 +109,9 @@ class QuickActionsRow extends StatelessWidget {
     final accounts = controller.availableAccounts;
     if (accounts.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppLocalizations.of(context)!.noAccountsAvailable)),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.noAccountsAvailable),
+        ),
       );
       return;
     }
@@ -129,21 +132,38 @@ class QuickActionsRow extends StatelessWidget {
           children: [
             Text(
               AppLocalizations.of(context)!.selectAccount,
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             Flexible(
               child: ListView(
                 shrinkWrap: true,
-                children: accounts.map((acc) => ListTile(
-                  leading: Icon(_getAccountIcon(acc.type), color: _getAccountColor(acc.type)),
-                  title: Text(acc.name, style: const TextStyle(color: Colors.white)),
-                  subtitle: Text(acc.type, style: const TextStyle(color: Colors.white54)),
-                  onTap: () {
-                    controller.selectAccount(acc.id, acc.name);
-                    Navigator.pop(context);
-                  },
-                )).toList(),
+                children: accounts
+                    .map(
+                      (acc) => ListTile(
+                        leading: Icon(
+                          _getAccountIcon(acc.type),
+                          color: _getAccountColor(acc.type),
+                        ),
+                        title: Text(
+                          acc.name,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        subtitle: Text(
+                          acc.type,
+                          style: const TextStyle(color: Colors.white54),
+                        ),
+                        onTap: () {
+                          controller.selectAccount(acc.id, acc.name);
+                          Navigator.pop(context);
+                        },
+                      ),
+                    )
+                    .toList(),
               ),
             ),
           ],
@@ -173,25 +193,36 @@ class QuickActionsRow extends StatelessWidget {
 
   void _showMembersMessage(BuildContext context, AppLocalizations t) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(t.membersFeatureComingSoon), backgroundColor: Colors.blue),
+      SnackBar(
+        content: Text(t.membersFeatureComingSoon),
+        backgroundColor: Colors.blue,
+      ),
     );
   }
 
   Color _getAccountColor(String type) {
     switch (type) {
-      case 'cash': return Colors.green;
-      case 'bank': return Colors.blue;
-      case 'debt': return Colors.orange;
-      default: return Colors.grey;
+      case 'cash':
+        return Colors.green;
+      case 'bank':
+        return Colors.blue;
+      case 'debt':
+        return Colors.orange;
+      default:
+        return Colors.grey;
     }
   }
 
   IconData _getAccountIcon(String type) {
     switch (type) {
-      case 'cash': return Icons.attach_money;
-      case 'bank': return Icons.account_balance;
-      case 'debt': return Icons.receipt_long;
-      default: return Icons.account_balance_wallet;
+      case 'cash':
+        return Icons.attach_money;
+      case 'bank':
+        return Icons.account_balance;
+      case 'debt':
+        return Icons.receipt_long;
+      default:
+        return Icons.account_balance_wallet;
     }
   }
 }

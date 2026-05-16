@@ -308,6 +308,17 @@
   "noSubCategoriesIn": "No subcategories in {name}",
   "noComparisonData": "No comparison data available",
   "categories": "Categories",
-  "totalLabel": "Total:"
+  "totalLabel": "Total:",
+  "saveIncome": "Add Income",
+  "incomeAddedSuccessfully": "Income added successfully",
+  "fromAccount": "From Account",
+  "toAccount": "To Account",
+  "selectSourceAccount": "Select Source Account",
+  "selectDestinationAccount": "Select Destination Account",
+  "selectBothAccounts": "Please select both accounts",
+  "sameAccountError": "Cannot transfer to the same account",
+  "transferSuccess": "Transfer completed successfully",
+  "transferFailed": "Transfer failed",
+  "amount": "Amount"
 
 }

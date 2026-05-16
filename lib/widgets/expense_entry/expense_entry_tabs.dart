@@ -1,4 +1,5 @@
 // lib/widgets/expense_entry/expense_entry_tabs.dart
+
 import 'package:flutter/material.dart';
 import '../../controllers/transaction_entry_controller.dart';
 import '../../constants/transaction_constants.dart';
@@ -7,16 +8,13 @@ import '../../l10n/app_localizations.dart';
 
 class ExpenseEntryTabs extends StatelessWidget {
   final TransactionEntryController controller;
-  
-  const ExpenseEntryTabs({
-    super.key,
-    required this.controller,
-  });
+
+  const ExpenseEntryTabs({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       height: 44,
@@ -36,7 +34,7 @@ class ExpenseEntryTabs extends StatelessWidget {
 
   Widget _buildTab(String title, String transactionType) {
     final isSelected = controller.selectedTransactionType == transactionType;
-    
+
     return Expanded(
       child: Material(
         color: Colors.transparent,

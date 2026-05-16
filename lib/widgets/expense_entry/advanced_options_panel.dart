@@ -1,4 +1,5 @@
 // lib/widgets/expense_entry/advanced_options_panel.dart
+
 import 'package:flutter/material.dart';
 import '../../controllers/transaction_entry_controller.dart';
 import '../../l10n/app_localizations.dart';
@@ -18,7 +19,7 @@ class _AdvancedOptionsPanelState extends State<AdvancedOptionsPanel> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    
+
     return AnimatedSize(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
@@ -45,15 +46,15 @@ class _AdvancedOptionsPanelState extends State<AdvancedOptionsPanel> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Column(
                 children: [
-                  // Note
                   _buildOptionTile(
                     icon: Icons.note,
                     label: t.note,
-                    subtitle: widget.controller.note.isNotEmpty ? widget.controller.note : null,
+                    subtitle: widget.controller.note.isNotEmpty
+                        ? widget.controller.note
+                        : null,
                     onTap: () => _showNoteDialog(context, t),
                   ),
                   const SizedBox(height: 8),
-                  // Future options (disabled for now)
                   _buildOptionTile(
                     icon: Icons.repeat,
                     label: t.recurringTransaction,
@@ -104,7 +105,11 @@ class _AdvancedOptionsPanelState extends State<AdvancedOptionsPanel> {
           color: Colors.white10,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: isDisabled ? Colors.white38 : Colors.white54, size: 20),
+        child: Icon(
+          icon,
+          color: isDisabled ? Colors.white38 : Colors.white54,
+          size: 20,
+        ),
       ),
       title: Text(
         label,
@@ -114,7 +119,10 @@ class _AdvancedOptionsPanelState extends State<AdvancedOptionsPanel> {
         ),
       ),
       subtitle: subtitle != null
-          ? Text(subtitle, style: const TextStyle(color: Colors.white38, fontSize: 12))
+          ? Text(
+              subtitle,
+              style: const TextStyle(color: Colors.white38, fontSize: 12),
+            )
           : null,
       trailing: Icon(
         isDisabled ? Icons.lock_outline : Icons.chevron_right,
@@ -144,14 +152,20 @@ class _AdvancedOptionsPanelState extends State<AdvancedOptionsPanel> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(t.cancel, style: const TextStyle(color: Colors.white70)),
+            child: Text(
+              t.cancel,
+              style: const TextStyle(color: Colors.white70),
+            ),
           ),
           TextButton(
             onPressed: () {
               widget.controller.setNote(controller.text);
               Navigator.pop(context);
             },
-            child: Text(t.save, style: const TextStyle(color: Color(0xFF3A7BFF))),
+            child: Text(
+              t.save,
+              style: const TextStyle(color: Color(0xFF3A7BFF)),
+            ),
           ),
         ],
       ),
@@ -160,7 +174,10 @@ class _AdvancedOptionsPanelState extends State<AdvancedOptionsPanel> {
 
   void _showComingSoon(BuildContext context, AppLocalizations t) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(t.featureComingSoon), backgroundColor: Colors.blue),
+      SnackBar(
+        content: Text(t.featureComingSoon),
+        backgroundColor: Colors.blue,
+      ),
     );
   }
 }

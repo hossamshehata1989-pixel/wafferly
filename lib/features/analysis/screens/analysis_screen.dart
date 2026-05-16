@@ -1,7 +1,9 @@
 // lib/features/analysis/screens/analysis_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../services/transaction_service.dart';
+import '../../../constants/transaction_constants.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/transaction.dart';
 import '../models/time_period.dart';
@@ -29,33 +31,28 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
 
+  bool _didLoad = false;
+
   @override
   void initState() {
     super.initState();
-
     _tabController = TabController(length: 3, vsync: this);
-
     _controller = AnalysisController(
       onUpdate: () {
         if (mounted) setState(() {});
       },
     );
-
-    final now = DateTime.now();
-
-    _startDate = DateTime(now.year, now.month, 1);
-    _endDate = DateTime(now.year, now.month + 1, 0);
+    // ✅ _updateDateRange() removed from initState
   }
-
-  bool _didLoad = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
+    // ✅ Load data only once after context is ready
     if (!_didLoad) {
       _didLoad = true;
-      _loadData();
+      _updateDateRange();
     }
   }
 
@@ -95,8 +92,6 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     final periodDays = _endDate.difference(_startDate).inDays + 1;
     final previousStart = _startDate.subtract(Duration(days: periodDays));
     final previousEnd = _endDate.subtract(Duration(days: periodDays));
-
-    print('BEFORE LOAD');
 
     await _controller.loadData(
       startDate: _startDate,

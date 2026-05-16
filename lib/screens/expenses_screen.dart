@@ -10,6 +10,7 @@ import '../widgets/expense_entry/amount_input_panel.dart';
 import '../widgets/expense_entry/quick_actions_row.dart';
 import '../widgets/expense_entry/action_buttons_row.dart';
 import '../widgets/expense_entry/advanced_options_panel.dart';
+import '../widgets/expense_entry/transfer_form.dart';
 import '../l10n/app_localizations.dart';
 import '../constants/transaction_constants.dart';
 
@@ -32,7 +33,9 @@ class ExpensesScreen extends StatelessWidget {
           title: Text(
             initialType == TransactionType.income
                 ? AppLocalizations.of(context)!.income
-                : AppLocalizations.of(context)!.expenses,
+                : (initialType == TransactionType.transfer
+                      ? AppLocalizations.of(context)!.transfer
+                      : AppLocalizations.of(context)!.expenses),
           ),
           backgroundColor: const Color(0xFF0A0A0A),
         ),
@@ -45,40 +48,25 @@ class ExpensesScreen extends StatelessWidget {
                     context,
                   ).viewInsets.bottom;
                   final isKeyboardOpen = keyboardHeight > 0;
+                  final isTransfer =
+                      controller.selectedTransactionType ==
+                      TransactionType.transfer;
+                  final isExpense = controller.isExpense;
 
                   return Column(
                     children: [
                       ExpenseEntryTabs(controller: controller),
                       const SizedBox(height: 8),
-                      Expanded(
-                        flex: isKeyboardOpen ? 2 : 4,
-                        child: MainCategoriesGrid(
-                          selectedCategoryId: controller.selectedCategoryId,
-                          onCategorySelected: controller.selectCategory,
-                          availableHeight:
-                              constraints.maxHeight *
-                              (isKeyboardOpen ? 0.25 : 0.4),
-                          categoryType: controller.categoryType,
+                      if (isTransfer)
+                        Expanded(child: TransferForm(controller: controller))
+                      else
+                        Expanded(
+                          child: _buildExpenseIncomeContent(
+                            controller: controller,
+                            isKeyboardOpen: isKeyboardOpen,
+                            isExpense: isExpense,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (controller.hasSubCategories && !isKeyboardOpen)
-                        SubCategoriesGrid(
-                          subCategories: controller.currentSubCategories,
-                          selectedSubCategoryId: controller.selectedCategoryId,
-                          onSubCategorySelected: controller.selectCategory,
-                        ),
-                      Flexible(
-                        flex: isKeyboardOpen ? 2 : 3,
-                        child: AmountInputPanel(controller: controller),
-                      ),
-                      if (!isKeyboardOpen && !controller.isIncome) ...[
-                        QuickActionsRow(controller: controller),
-                        const SizedBox(height: 8),
-                        AdvancedOptionsPanel(controller: controller),
-                        const SizedBox(height: 8),
-                      ],
-                      ActionButtonsRow(controller: controller),
                     ],
                   );
                 },
@@ -87,6 +75,46 @@ class ExpensesScreen extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildExpenseIncomeContent({
+    required TransactionEntryController controller,
+    required bool isKeyboardOpen,
+    required bool isExpense,
+  }) {
+    return Column(
+      children: [
+        Expanded(
+          flex: isKeyboardOpen ? 2 : 4,
+          child: MainCategoriesGrid(
+            selectedCategoryId: controller.selectedCategoryId,
+            onCategorySelected: controller.selectCategory,
+            categoryType: controller.categoryType,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (controller.hasSubCategories && !isKeyboardOpen && isExpense)
+          SizedBox(
+            height: 120,
+            child: SubCategoriesGrid(
+              subCategories: controller.currentSubCategories,
+              selectedSubCategoryId: controller.selectedCategoryId,
+              onSubCategorySelected: controller.selectCategory,
+            ),
+          ),
+        Flexible(
+          flex: isKeyboardOpen ? 2 : 3,
+          child: AmountInputPanel(controller: controller),
+        ),
+        if (!isKeyboardOpen && isExpense) ...[
+          QuickActionsRow(controller: controller),
+          const SizedBox(height: 8),
+          AdvancedOptionsPanel(controller: controller),
+          const SizedBox(height: 8),
+        ],
+        ActionButtonsRow(controller: controller),
+      ],
     );
   }
 }

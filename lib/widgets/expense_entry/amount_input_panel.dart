@@ -1,4 +1,5 @@
 // lib/widgets/expense_entry/amount_input_panel.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../controllers/transaction_entry_controller.dart';
@@ -13,14 +14,14 @@ class AmountInputPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    
+
     double buttonSize = screenHeight * 0.055;
     buttonSize = buttonSize.clamp(44.0, 62.0);
-    
+
     if (keyboardHeight > 0) {
       buttonSize = buttonSize.clamp(40.0, 54.0);
     }
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Column(
@@ -37,7 +38,10 @@ class AmountInputPanel extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -82,8 +86,11 @@ class AmountInputPanel extends StatelessWidget {
         Row(
           children: [
             _calcButton("1", buttonSize),
+            const SizedBox(width: 4),
             _calcButton("2", buttonSize),
+            const SizedBox(width: 4),
             _calcButton("3", buttonSize),
+            const SizedBox(width: 4),
             _calcButton("C", buttonSize, isOperator: true),
           ],
         ),
@@ -91,8 +98,11 @@ class AmountInputPanel extends StatelessWidget {
         Row(
           children: [
             _calcButton("4", buttonSize),
+            const SizedBox(width: 4),
             _calcButton("5", buttonSize),
+            const SizedBox(width: 4),
             _calcButton("6", buttonSize),
+            const SizedBox(width: 4),
             _calcButton("⌫", buttonSize, isOperator: true),
           ],
         ),
@@ -100,8 +110,11 @@ class AmountInputPanel extends StatelessWidget {
         Row(
           children: [
             _calcButton("7", buttonSize),
+            const SizedBox(width: 4),
             _calcButton("8", buttonSize),
+            const SizedBox(width: 4),
             _calcButton("9", buttonSize),
+            const SizedBox(width: 4),
             _calcButton("+", buttonSize, isOperator: true),
           ],
         ),
@@ -109,17 +122,12 @@ class AmountInputPanel extends StatelessWidget {
         Row(
           children: [
             _calcButton(".", buttonSize, isOperator: true),
+            const SizedBox(width: 4),
             _calcButton("0", buttonSize),
+            const SizedBox(width: 4),
             _calcButton("=", buttonSize, isOperator: true, isPrimary: true),
-            IgnorePointer(
-              ignoring: true,
-              child: ExcludeSemantics(
-                child: Opacity(
-                  opacity: 0,
-                  child: _calcButton("", buttonSize, isDisabled: true),
-                ),
-              ),
-            ),
+            const SizedBox(width: 4),
+            _calcButton("", buttonSize, isDisabled: true, invisible: true),
           ],
         ),
       ],
@@ -127,49 +135,59 @@ class AmountInputPanel extends StatelessWidget {
   }
 
   Widget _calcButton(
-    String text, 
+    String text,
     double size, {
-    bool isOperator = false, 
+    bool isOperator = false,
     bool isPrimary = false,
     bool isDisabled = false,
+    bool invisible = false,
   }) {
     final double fontSize = (size * 0.4).clamp(16.0, 24.0);
-    
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: InkWell(
-          onTap: isDisabled ? null : () {
-            HapticFeedback.lightImpact();
-            controller.onCalculatorTap(text);
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDisabled
-                  ? Colors.transparent
-                  : isPrimary
-                      ? Colors.blue
-                      : (isOperator ? AppColors.cardSecondary : AppColors.background),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            alignment: Alignment.center,
-            child: text.isEmpty
+
+    return Expanded(
+      child: AspectRatio(
+        aspectRatio: 1.0,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: InkWell(
+            onTap: isDisabled || invisible
                 ? null
-                : Text(
-                    text,
-                    style: TextStyle(
-                      color: isDisabled
-                          ? Colors.transparent
-                          : isPrimary
-                              ? Colors.white
-                              : (isOperator ? Colors.blue : Colors.white),
-                      fontSize: fontSize,
-                      fontWeight: isOperator ? FontWeight.w600 : FontWeight.normal,
+                : () {
+                    HapticFeedback.lightImpact();
+                    controller.onCalculatorTap(text);
+                  },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: invisible
+                    ? Colors.transparent
+                    : isDisabled
+                    ? Colors.transparent
+                    : isPrimary
+                    ? Colors.blue
+                    : (isOperator
+                          ? AppColors.cardSecondary
+                          : AppColors.background),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              alignment: Alignment.center,
+              child: text.isEmpty
+                  ? null
+                  : Text(
+                      text,
+                      style: TextStyle(
+                        color: isDisabled || invisible
+                            ? Colors.transparent
+                            : isPrimary
+                            ? Colors.white
+                            : (isOperator ? Colors.blue : Colors.white),
+                        fontSize: fontSize,
+                        fontWeight: isOperator
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
                     ),
-                  ),
+            ),
           ),
         ),
       ),

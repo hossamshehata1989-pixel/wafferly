@@ -26,10 +26,7 @@ Map<String, double> groupBySubCategory(
 ) {
   final result = <String, double>{};
   for (final tx in transactions) {
-    // Only include transactions belonging to the specified main category
     if (tx.categoryId != mainCategoryId) continue;
-
-    // subCategoryId can be null (if user selected main category directly)
     final subId = tx.subCategoryId;
     if (subId != null) {
       result[subId] = (result[subId] ?? 0) + tx.amount;

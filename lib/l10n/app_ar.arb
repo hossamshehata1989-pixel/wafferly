@@ -308,5 +308,16 @@
   "noSubCategoriesIn": "لا توجد فئات فرعية في {name}",
   "noComparisonData": "لا توجد بيانات للمقارنة",
   "categories": "الفئات",
-  "totalLabel": "الإجمالي:"
+  "totalLabel": "الإجمالي:",
+  "saveIncome": "إضافة دخل",
+  "incomeAddedSuccessfully": "تم إضافة الدخل بنجاح",
+  "fromAccount": "من حساب",
+  "toAccount": "إلى حساب",
+  "selectSourceAccount": "اختر حساب المصدر",
+  "selectDestinationAccount": "اختر حساب الوجهة",
+  "selectBothAccounts": "يرجى اختيار الحسابين",
+  "sameAccountError": "لا يمكن التحويل لنفس الحساب",
+  "transferSuccess": "تم التحويل بنجاح",
+  "transferFailed": "فشل التحويل",
+  "amount": "المبلغ"
 }
