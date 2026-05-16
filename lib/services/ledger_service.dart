@@ -54,13 +54,37 @@ class LedgerService {
     }
   }
 
-  Future<List<LedgerEntry>> getEntriesByTransactionId(String transactionId) async {
+  Future<List<LedgerEntry>> getEntriesByTransactionId(
+    String transactionId,
+  ) async {
     try {
       final box = Hive.box<LedgerEntry>(_boxName);
       return box.values.where((e) => e.transactionId == transactionId).toList();
     } catch (e) {
       print("❌ LedgerService: Failed to get entries by transactionId - $e");
       return [];
+    }
+  }
+
+  // ✅ Sprint 4D - Lifecycle Sync
+  Future<void> deleteEntriesByTransactionId(String transactionId) async {
+    try {
+      final box = Hive.box<LedgerEntry>(_boxName);
+      final entries = await getEntriesByTransactionId(transactionId);
+
+      if (entries.isEmpty) return;
+
+      final keysToDelete = <String>[];
+      for (final entry in entries) {
+        keysToDelete.add(entry.id);
+      }
+
+      await box.deleteAll(keysToDelete);
+    } catch (e) {
+      print(
+        "❌ LedgerService: Failed to delete entries for transaction $transactionId - $e",
+      );
+      rethrow;
     }
   }
 
@@ -104,7 +128,9 @@ class LedgerService {
       }
       return balance;
     } catch (e) {
-      print("❌ LedgerService: Failed to get balance for account $accountId - $e");
+      print(
+        "❌ LedgerService: Failed to get balance for account $accountId - $e",
+      );
       return 0;
     }
   }
@@ -130,7 +156,9 @@ class LedgerService {
       }
       return balance;
     } catch (e) {
-      print("❌ LedgerService: Failed to get balance for account $accountId in range - $e");
+      print(
+        "❌ LedgerService: Failed to get balance for account $accountId in range - $e",
+      );
       return 0;
     }
   }
@@ -216,34 +244,6 @@ class LedgerService {
   // 🧹 FUTURE PHASE - Cleanup Operations (Sprint 5+)
   // غير مستخدمة حالياً
   // ============================================================
-
-  Future<void> deleteEntriesByTransactionId(String transactionId) async {
-    try {
-      final box = Hive.box<LedgerEntry>(_boxName);
-      final keysToDelete = box.keys.where((key) {
-        final entry = box.get(key);
-        return entry?.transactionId == transactionId;
-      }).toList();
-      await box.deleteAll(keysToDelete);
-    } catch (e) {
-      print("❌ LedgerService: Failed to delete entries by transactionId - $e");
-      rethrow;
-    }
-  }
-
-  Future<void> deleteEntriesByAccountId(String accountId) async {
-    try {
-      final box = Hive.box<LedgerEntry>(_boxName);
-      final keysToDelete = box.keys.where((key) {
-        final entry = box.get(key);
-        return entry?.accountId == accountId;
-      }).toList();
-      await box.deleteAll(keysToDelete);
-    } catch (e) {
-      print("❌ LedgerService: Failed to delete entries by accountId - $e");
-      rethrow;
-    }
-  }
 
   Future<void> deleteAllEntries() async {
     try {
