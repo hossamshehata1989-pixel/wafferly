@@ -19,6 +19,7 @@ import 'l10n/app_localizations.dart';
 import 'theme/app_colors.dart';
 import 'services/ledger_stress_test_service.dart';
 import 'features/analysis/registry/category_registry.dart';
+import 'screens/planning/planning_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -127,7 +128,7 @@ class WafferlyApp extends StatelessWidget {
         primaryColor: AppColors.primary,
       ),
 
-      home: const MainNavigation(),
+      home: const PlanningScreen(),
     );
   }
 }
