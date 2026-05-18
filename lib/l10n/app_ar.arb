@@ -345,5 +345,9 @@
   "real": "فعلي",
   "available": "متاح",
   "planning": "التخطيط", 
-  "amount": "المبلغ"
+  "amount": "المبلغ",
+  "noReservedItemsYet": "لا توجد عناصر محجوزة",
+"fixed": "ثابت",
+"bucket": "سلة",
+"goal": "هدف"
 }

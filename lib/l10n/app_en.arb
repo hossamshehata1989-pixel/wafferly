@@ -346,6 +346,10 @@
   "real": "Real",
   "available": "Available",
   "planning": "Planning", 
-  "amount": "Amount"
+  "amount": "Amount",
+  "noReservedItemsYet": "No reserved items yet",
+"fixed": "Fixed",
+"bucket": "Bucket",
+"goal": "Goal"
 }
 

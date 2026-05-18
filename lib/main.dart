@@ -5,8 +5,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/account.dart';
 import 'models/budget.dart';
+import 'models/reserved_money.dart';
 import 'models/enums/account_enums.dart';
 import 'models/enums/budget_period.dart';
+import 'models/enums/reserved_money_type.dart';
 import 'models/transaction.dart';
 import 'models/ledger_entry.dart';
 import 'models/enums/entry_type.dart';
@@ -19,7 +21,6 @@ import 'l10n/app_localizations.dart';
 import 'theme/app_colors.dart';
 import 'services/ledger_stress_test_service.dart';
 import 'features/analysis/registry/category_registry.dart';
-import 'screens/planning/planning_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +35,7 @@ void main() async {
     await Hive.deleteBoxFromDisk('ledger_entries');
     await Hive.deleteBoxFromDisk('ledger_accounts');
     await Hive.deleteBoxFromDisk('budgets');
+    await Hive.deleteBoxFromDisk('reserved_money');
   }
 
   // ========== Account & Transaction Adapters ==========
@@ -84,6 +86,15 @@ void main() async {
     Hive.registerAdapter(BudgetAdapter());
   }
 
+  // ========== Reserved Money Foundation ==========
+  if (!Hive.isAdapterRegistered(50)) {
+    Hive.registerAdapter(ReservedMoneyTypeAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(51)) {
+    Hive.registerAdapter(ReservedMoneyAdapter());
+  }
+
   // ========== Open Boxes ==========
   await Hive.openBox<Account>('accounts');
   await Hive.openBox<Transaction>('transactions');
@@ -91,8 +102,10 @@ void main() async {
   await Hive.openBox<LedgerAccount>('ledger_accounts');
   await Hive.openBox<Budget>('budgets');
 
+  // ✅ Debug: فتح reserved_money والتحقق من النجاح
+  await Hive.openBox<ReservedMoney>('reserved_money');
+
   // ========== TEMP TEST ONLY (Stress Test) ==========
-  // ⚠️ هذا السطر مؤقت للاختبار فقط – سيتم إزالته بعد Sprint 4B
   // try {
   //   await LedgerStressTestService().runStressTest(
   //     transactionCount: 10,
@@ -101,7 +114,6 @@ void main() async {
   // } catch (e) {
   //   print("⚠️ Stress test failed: $e");
   // }
-  // ===================================================
 
   // ✅ IMPORTANT: Initialize CategoryRegistry BEFORE runApp
   CategoryRegistry.initialize();
@@ -128,7 +140,7 @@ class WafferlyApp extends StatelessWidget {
         primaryColor: AppColors.primary,
       ),
 
-      home: const PlanningScreen(),
+      home: const MainNavigation(),
     );
   }
 }

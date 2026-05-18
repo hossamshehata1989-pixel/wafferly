@@ -2,6 +2,11 @@
 
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
+import '../../services/balance_service.dart';
+import '../../services/reserved_money_service.dart';
+import '../../services/current_account_service.dart';
+import '../../models/reserved_money.dart';
+import '../../models/enums/reserved_money_type.dart';
 
 class PlanningScreen extends StatelessWidget {
   const PlanningScreen({super.key});
@@ -12,6 +17,27 @@ class PlanningScreen extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 400;
     final isTablet = screenWidth >= 600;
+
+    final currentAccountService = CurrentAccountService();
+    final accountId = currentAccountService.getFirstActiveAccountId();
+    final balanceService = BalanceService();
+    final reservedService = ReservedMoneyService();
+
+    final realBalance = accountId.isNotEmpty
+        ? balanceService.getBalance(accountId)
+        : 0.0;
+
+    final reservedAmount = accountId.isNotEmpty
+        ? reservedService.getReservedAmount(accountId)
+        : 0.0;
+
+    final availableBalance = accountId.isNotEmpty
+        ? balanceService.getAvailableBalance(accountId)
+        : 0.0;
+
+    final reservedItems = accountId.isNotEmpty
+        ? reservedService.getByAccount(accountId)
+        : <ReservedMoney>[];
 
     return Scaffold(
       body: SafeArea(
@@ -67,7 +93,7 @@ class PlanningScreen extends StatelessWidget {
                       context: context,
                       title: t.reserved,
                       subtitle: t.safetyFirst,
-                      value: "6000",
+                      value: reservedAmount.toStringAsFixed(0),
                       color: Colors.orange,
                       icon: Icons.lock,
                     ),
@@ -77,7 +103,15 @@ class PlanningScreen extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              _reservedHero(context, t, isSmallScreen),
+              _reservedHero(
+                context,
+                t,
+                isSmallScreen,
+                realBalance,
+                reservedAmount,
+                availableBalance,
+                reservedItems,
+              ),
 
               const SizedBox(height: 24),
 
@@ -151,6 +185,10 @@ class PlanningScreen extends StatelessWidget {
     BuildContext context,
     AppLocalizations t,
     bool isSmallScreen,
+    double realBalance,
+    double reservedAmount,
+    double availableBalance,
+    List<ReservedMoney> reservedItems,
   ) {
     return Card(
       child: Padding(
@@ -179,19 +217,19 @@ class PlanningScreen extends StatelessWidget {
                     children: [
                       _balanceItem(
                         t.real,
-                        "10000",
+                        realBalance.toStringAsFixed(0),
                         Colors.green,
                         isSmallScreen,
                       ),
                       _balanceItem(
                         t.reserved,
-                        "6000",
+                        reservedAmount.toStringAsFixed(0),
                         Colors.orange,
                         isSmallScreen,
                       ),
                       _balanceItem(
                         t.available,
-                        "4000",
+                        availableBalance.toStringAsFixed(0),
                         Colors.blue,
                         isSmallScreen,
                       ),
@@ -202,7 +240,7 @@ class PlanningScreen extends StatelessWidget {
                       Expanded(
                         child: _balanceItem(
                           t.real,
-                          "10000",
+                          realBalance.toStringAsFixed(0),
                           Colors.green,
                           isSmallScreen,
                         ),
@@ -210,7 +248,7 @@ class PlanningScreen extends StatelessWidget {
                       Expanded(
                         child: _balanceItem(
                           t.reserved,
-                          "6000",
+                          reservedAmount.toStringAsFixed(0),
                           Colors.orange,
                           isSmallScreen,
                         ),
@@ -218,7 +256,7 @@ class PlanningScreen extends StatelessWidget {
                       Expanded(
                         child: _balanceItem(
                           t.available,
-                          "4000",
+                          availableBalance.toStringAsFixed(0),
                           Colors.blue,
                           isSmallScreen,
                         ),
@@ -241,47 +279,29 @@ class PlanningScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            ListTile(
-              dense: true,
-              leading: const CircleAvatar(child: Icon(Icons.home)),
-              title: Text(t.rent, maxLines: 1, overflow: TextOverflow.ellipsis),
-              subtitle: Text(
-                t.cashAccount,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            ...reservedItems.map(
+              (item) => ListTile(
+                dense: true,
+                leading: CircleAvatar(child: Icon(_getIconForType(item.type))),
+                title: Text(
+                  item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  _getTypeLabel(t, item.type),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: Text(item.amount.toStringAsFixed(0)),
               ),
-              trailing: const Text("3000"),
             ),
-            ListTile(
-              dense: true,
-              leading: const CircleAvatar(child: Icon(Icons.credit_card)),
-              title: Text(
-                t.installment,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+
+            if (reservedItems.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(t.noReservedItemsYet),
               ),
-              subtitle: Text(
-                t.credit,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: const Text("2000"),
-            ),
-            ListTile(
-              dense: true,
-              leading: const CircleAvatar(child: Icon(Icons.fastfood)),
-              title: Text(
-                t.foodBucket,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                t.budget,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: const Text("1000"),
-            ),
 
             const SizedBox(height: 12),
             FilledButton(onPressed: () {}, child: Text(t.viewAll)),
@@ -290,6 +310,34 @@ class PlanningScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // ✅ التعديل 1: إضافة default case
+  IconData _getIconForType(ReservedMoneyType type) {
+    switch (type) {
+      case ReservedMoneyType.fixed:
+        return Icons.home;
+      case ReservedMoneyType.bucket:
+        return Icons.fastfood;
+      case ReservedMoneyType.goal:
+        return Icons.flag;
+      default:
+        return Icons.lock;
+    }
+  }
+
+  // ✅ التعديل 1: إضافة default case
+  String _getTypeLabel(AppLocalizations t, ReservedMoneyType type) {
+    switch (type) {
+      case ReservedMoneyType.fixed:
+        return t.fixed;
+      case ReservedMoneyType.bucket:
+        return t.bucket;
+      case ReservedMoneyType.goal:
+        return t.goal;
+      default:
+        return t.reserved;
+    }
   }
 
   Widget _balanceItem(
@@ -314,7 +362,7 @@ class PlanningScreen extends StatelessWidget {
     );
   }
 
-  // ✅ Mock data: عناصر التخطيط (Budget + Goals)
+  // Mock data مؤقتة لحين ربط Budget و Goals
   final List<_PlanningItem> _budgetItems = const [
     _PlanningItem(
       icon: "🍔",
@@ -369,7 +417,8 @@ class PlanningScreen extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            LinearProgressIndicator(value: .61),
+            // ✅ التعديل 2: إضافة const
+            const LinearProgressIndicator(value: .61),
             const SizedBox(height: 16),
             ..._budgetItems.map((item) => _buildPlanningRow(t, item)),
           ],
@@ -407,7 +456,6 @@ class PlanningScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          // ✅ العمود الأيسر: الأيقونة + العنوان
           Expanded(
             flex: 3,
             child: Row(
@@ -425,7 +473,6 @@ class PlanningScreen extends StatelessWidget {
             ),
           ),
 
-          // ✅ العمود الأوسط: عرض ثابت لـ Chip (يظهر فقط إذا Reserved)
           SizedBox(
             width: 110,
             child: item.isReserved
@@ -441,7 +488,6 @@ class PlanningScreen extends StatelessWidget {
 
           const SizedBox(width: 12),
 
-          // ✅ العمود الأيمن: النسبة المئوية
           Text(
             item.percent,
             style: const TextStyle(fontWeight: FontWeight.w500),
@@ -463,7 +509,8 @@ class PlanningScreen extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            LinearProgressIndicator(value: .24),
+            // ✅ التعديل 2: إضافة const
+            const LinearProgressIndicator(value: .24),
             const SizedBox(height: 16),
             ..._goalItems.map((item) => _buildPlanningRow(t, item)),
           ],
@@ -473,7 +520,6 @@ class PlanningScreen extends StatelessWidget {
   }
 }
 
-// ✅ إعادة التسمية: _PlanningItem (كانت _BudgetItem)
 class _PlanningItem {
   final String icon;
   final String titleKey;

@@ -4,9 +4,11 @@ import 'package:hive/hive.dart';
 import '../models/transaction.dart';
 import '../models/account.dart';
 import '../constants/transaction_constants.dart';
+import 'reserved_money_service.dart';
 
 class BalanceService {
   final Box<Transaction> txBox = Hive.box<Transaction>('transactions');
+  final ReservedMoneyService _reservedService = ReservedMoneyService();
 
   double getBalance(String accountId) {
     double balance = 0;
@@ -52,16 +54,12 @@ class BalanceService {
   }
 
   /// حساب الرصيد في تاريخ محدد
-  /// @param accountId معرف الحساب
-  /// @param date التاريخ المطلوب حساب الرصيد فيه (يشمل المعاملات حتى نهاية هذا اليوم)
-  /// @return الرصيد في التاريخ المحدد
   double getBalanceAtDate(String accountId, DateTime date) {
     double balance = 0;
 
     final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
 
     for (final tx in txBox.values) {
-      // تخطي المعاملات التي حدثت بعد نهاية اليوم المطلوب
       if (tx.date.isAfter(endOfDay)) {
         continue;
       }
@@ -103,5 +101,12 @@ class BalanceService {
     }
 
     return balance;
+  }
+
+  /// حساب الرصيد المتاح (الرصيد الحقيقي - المبلغ المحجوز)
+  double getAvailableBalance(String accountId) {
+    final realBalance = getBalance(accountId);
+    final reservedAmount = _reservedService.getReservedAmount(accountId);
+    return realBalance - reservedAmount;
   }
 }
