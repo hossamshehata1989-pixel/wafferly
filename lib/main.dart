@@ -6,20 +6,28 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'models/account.dart';
 import 'models/budget.dart';
 import 'models/reserved_money.dart';
+import 'models/goal.dart';
+
 import 'models/enums/account_enums.dart';
 import 'models/enums/budget_period.dart';
 import 'models/enums/reserved_money_type.dart';
+import 'models/enums/goal_status.dart';
+
 import 'models/transaction.dart';
 import 'models/ledger_entry.dart';
 import 'models/enums/entry_type.dart';
 import 'models/enums/ledger_purpose.dart';
 import 'models/ledger_account.dart';
 import 'models/enums/ledger_account_type.dart';
+
 import 'adapters/account_migration_adapter.dart';
+
 import 'screens/main_navigation.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/app_colors.dart';
+
 import 'services/ledger_stress_test_service.dart';
+
 import 'features/analysis/registry/category_registry.dart';
 
 void main() async {
@@ -29,6 +37,7 @@ void main() async {
 
   // Optional: reset for debugging
   bool RESET_DB = false;
+
   if (RESET_DB) {
     await Hive.deleteBoxFromDisk('accounts');
     await Hive.deleteBoxFromDisk('transactions');
@@ -36,9 +45,13 @@ void main() async {
     await Hive.deleteBoxFromDisk('ledger_accounts');
     await Hive.deleteBoxFromDisk('budgets');
     await Hive.deleteBoxFromDisk('reserved_money');
+    await Hive.deleteBoxFromDisk('goals');
   }
 
-  // ========== Account & Transaction Adapters ==========
+  // ====================================================
+  // Account & Transaction Adapters
+  // ====================================================
+
   if (!Hive.isAdapterRegistered(1)) {
     Hive.registerAdapter(AccountMigrationAdapter());
   }
@@ -55,7 +68,10 @@ void main() async {
     Hive.registerAdapter(TransactionAdapter());
   }
 
-  // ========== Ledger Foundation ==========
+  // ====================================================
+  // Ledger Foundation
+  // ====================================================
+
   if (!Hive.isAdapterRegistered(20)) {
     Hive.registerAdapter(EntryTypeAdapter());
   }
@@ -68,7 +84,10 @@ void main() async {
     Hive.registerAdapter(LedgerEntryAdapter());
   }
 
-  // ========== LedgerAccount Foundation ==========
+  // ====================================================
+  // LedgerAccount Foundation
+  // ====================================================
+
   if (!Hive.isAdapterRegistered(30)) {
     Hive.registerAdapter(LedgerAccountTypeAdapter());
   }
@@ -77,7 +96,10 @@ void main() async {
     Hive.registerAdapter(LedgerAccountAdapter());
   }
 
-  // ========== Budget Engine ==========
+  // ====================================================
+  // Budget Engine
+  // ====================================================
+
   if (!Hive.isAdapterRegistered(40)) {
     Hive.registerAdapter(BudgetPeriodAdapter());
   }
@@ -86,7 +108,10 @@ void main() async {
     Hive.registerAdapter(BudgetAdapter());
   }
 
-  // ========== Reserved Money Foundation ==========
+  // ====================================================
+  // Reserved Money Foundation
+  // ====================================================
+
   if (!Hive.isAdapterRegistered(50)) {
     Hive.registerAdapter(ReservedMoneyTypeAdapter());
   }
@@ -95,17 +120,40 @@ void main() async {
     Hive.registerAdapter(ReservedMoneyAdapter());
   }
 
-  // ========== Open Boxes ==========
+  // ====================================================
+  // Goals Foundation
+  // ====================================================
+
+  if (!Hive.isAdapterRegistered(60)) {
+    Hive.registerAdapter(GoalAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(61)) {
+    Hive.registerAdapter(GoalStatusAdapter());
+  }
+
+  // ====================================================
+  // Open Boxes
+  // ====================================================
+
   await Hive.openBox<Account>('accounts');
+
   await Hive.openBox<Transaction>('transactions');
+
   await Hive.openBox<LedgerEntry>('ledger_entries');
+
   await Hive.openBox<LedgerAccount>('ledger_accounts');
+
   await Hive.openBox<Budget>('budgets');
 
-  // ✅ Debug: فتح reserved_money والتحقق من النجاح
   await Hive.openBox<ReservedMoney>('reserved_money');
 
-  // ========== TEMP TEST ONLY (Stress Test) ==========
+  await Hive.openBox<Goal>('goals');
+
+  // ====================================================
+  // TEMP TEST ONLY
+  // ====================================================
+
   // try {
   //   await LedgerStressTestService().runStressTest(
   //     transactionCount: 10,
@@ -115,7 +163,10 @@ void main() async {
   //   print("⚠️ Stress test failed: $e");
   // }
 
-  // ✅ IMPORTANT: Initialize CategoryRegistry BEFORE runApp
+  // ====================================================
+  // Initialize registries
+  // ====================================================
+
   CategoryRegistry.initialize();
 
   runApp(const WafferlyApp());
@@ -128,15 +179,18 @@ class WafferlyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Wafferly',
+
       debugShowCheckedModeBanner: false,
 
       // 🌍 Localization
       localizationsDelegates: AppLocalizations.localizationsDelegates,
+
       supportedLocales: AppLocalizations.supportedLocales,
 
       // 🎨 Theme
       theme: ThemeData(
         scaffoldBackgroundColor: AppColors.background,
+
         primaryColor: AppColors.primary,
       ),
 

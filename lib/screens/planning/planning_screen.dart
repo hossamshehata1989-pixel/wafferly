@@ -7,6 +7,7 @@ import '../../services/reserved_money_service.dart';
 import '../../services/current_account_service.dart';
 import '../../models/reserved_money.dart';
 import '../../models/enums/reserved_money_type.dart';
+import 'goals_screen.dart';
 
 class PlanningScreen extends StatelessWidget {
   const PlanningScreen({super.key});
@@ -71,6 +72,7 @@ class PlanningScreen extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
+                    // ✅ Budget Card - بدون Navigation حالياً
                     _summaryCard(
                       context: context,
                       title: t.budget,
@@ -80,15 +82,29 @@ class PlanningScreen extends StatelessWidget {
                       icon: Icons.pie_chart,
                     ),
                     const SizedBox(width: 12),
-                    _summaryCard(
-                      context: context,
-                      title: t.goals,
-                      subtitle: t.makingProgress,
-                      value: "8500",
-                      color: Colors.purple,
-                      icon: Icons.flag,
+
+                    // ✅ Goals Card - مع Navigation إلى GoalsScreen
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const GoalsScreen(),
+                          ),
+                        );
+                      },
+                      child: _summaryCard(
+                        context: context,
+                        title: t.goals,
+                        subtitle: t.makingProgress,
+                        value: "8500",
+                        color: Colors.purple,
+                        icon: Icons.flag,
+                      ),
                     ),
                     const SizedBox(width: 12),
+
+                    // ✅ Reserved Card - بدون Navigation حالياً
                     _summaryCard(
                       context: context,
                       title: t.reserved,
@@ -312,7 +328,6 @@ class PlanningScreen extends StatelessWidget {
     );
   }
 
-  // ✅ التعديل 1: إضافة default case
   IconData _getIconForType(ReservedMoneyType type) {
     switch (type) {
       case ReservedMoneyType.fixed:
@@ -326,7 +341,6 @@ class PlanningScreen extends StatelessWidget {
     }
   }
 
-  // ✅ التعديل 1: إضافة default case
   String _getTypeLabel(AppLocalizations t, ReservedMoneyType type) {
     switch (type) {
       case ReservedMoneyType.fixed:
@@ -417,7 +431,6 @@ class PlanningScreen extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            // ✅ التعديل 2: إضافة const
             const LinearProgressIndicator(value: .61),
             const SizedBox(height: 16),
             ..._budgetItems.map((item) => _buildPlanningRow(t, item)),
@@ -509,7 +522,6 @@ class PlanningScreen extends StatelessWidget {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            // ✅ التعديل 2: إضافة const
             const LinearProgressIndicator(value: .24),
             const SizedBox(height: 16),
             ..._goalItems.map((item) => _buildPlanningRow(t, item)),
