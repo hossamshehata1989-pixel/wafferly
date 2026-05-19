@@ -349,5 +349,20 @@
   "noReservedItemsYet": "لا توجد عناصر محجوزة",
 "fixed": "ثابت",
 "bucket": "سلة",
-"goal": "هدف"
+"goal": "هدف",
+  "moneyBorrowed": "أموال مقترضة",
+  "cash": "نقدي",
+  "bank": "بنك",
+  "wallet": "محفظة",
+  "debitCard": "بطاقة خصم",
+  "loan": "قرض",
+  "creditCard": "بطاقة ائتمان",
+  "installment": "تقسيط",
+  "investment": "استثمار",
+  "gold": "ذهب",
+  "stocks": "أسهم",
+  "certificates": "شهادات",
+  "lent": "سلفة",
+  "rosca": "جمعية"
+
 }

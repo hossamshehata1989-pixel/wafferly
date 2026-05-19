@@ -350,6 +350,20 @@
   "noReservedItemsYet": "No reserved items yet",
 "fixed": "Fixed",
 "bucket": "Bucket",
-"goal": "Goal"
+"goal": "Goal",
+  "moneyBorrowed": "Money Borrowed",
+  "cash": "Cash",
+  "bank": "Bank",
+  "wallet": "Wallet",
+  "debitCard": "Debit Card",
+  "loan": "Loan",
+  "creditCard": "Credit Card",
+  "installment": "Installment",
+  "investment": "Investment",
+  "gold": "Gold",
+  "stocks": "Stocks",
+  "certificates": "Certificates",
+  "lent": "Lent",
+  "rosca": "ROSCA"
 }
 

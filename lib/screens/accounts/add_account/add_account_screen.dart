@@ -1,3 +1,5 @@
+// lib/screens/accounts/add_account_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +9,8 @@ import 'package:wafferly/services/account_service.dart';
 import 'package:wafferly/services/balance_service.dart';
 import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/models/enums/section_type.dart';
+import 'package:wafferly/l10n/app_localizations.dart';
+import '../../../utils/account_type_helper.dart';
 
 enum AccountTypeOption {
   cash('cash', 'Cash', Icons.attach_money, Colors.green),
@@ -16,7 +20,12 @@ enum AccountTypeOption {
   debt('debt', 'Debt', Icons.money_off, Colors.red),
   loan('loan', 'Loan', Icons.request_page, Colors.deepOrange),
   creditCard('creditCard', 'Credit Card Due', Icons.credit_card, Colors.pink),
-  installment('installment', 'Installments', Icons.calendar_month, Colors.purple),
+  installment(
+    'installment',
+    'Installments',
+    Icons.calendar_month,
+    Colors.purple,
+  ),
   investment('investment', 'Investment', Icons.trending_up, Colors.teal),
   gold('gold', 'Gold', Icons.workspace_premium, Colors.amber),
   stocks('stocks', 'Stocks', Icons.show_chart, Colors.green),
@@ -54,27 +63,49 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     final section = widget.sectionType ?? SectionType.asset;
     switch (section) {
       case SectionType.asset:
-        return [AccountTypeOption.cash, AccountTypeOption.bank, AccountTypeOption.wallet, AccountTypeOption.debitCard];
+        return [
+          AccountTypeOption.cash,
+          AccountTypeOption.bank,
+          AccountTypeOption.wallet,
+          AccountTypeOption.debitCard,
+        ];
       case SectionType.liability:
-        return [AccountTypeOption.debt, AccountTypeOption.loan, AccountTypeOption.creditCard, AccountTypeOption.installment];
+        return [
+          AccountTypeOption.debt,
+          AccountTypeOption.loan,
+          AccountTypeOption.creditCard,
+          AccountTypeOption.installment,
+        ];
       case SectionType.investment:
-        return [AccountTypeOption.investment, AccountTypeOption.gold, AccountTypeOption.stocks, AccountTypeOption.certificates];
+        return [
+          AccountTypeOption.investment,
+          AccountTypeOption.gold,
+          AccountTypeOption.stocks,
+          AccountTypeOption.certificates,
+        ];
       case SectionType.receivable:
         return [AccountTypeOption.lent, AccountTypeOption.rosca];
     }
   }
 
-  String get _sectionTitle => widget.accountToEdit != null ? 'Edit Account' : 'Add Account - ${_sectionName}';
+  String get _sectionTitle => widget.accountToEdit != null
+      ? 'Edit Account'
+      : 'Add Account - ${_sectionName}';
   String get _sectionName {
     switch (widget.sectionType ?? SectionType.asset) {
-      case SectionType.asset: return 'Money You Have';
-      case SectionType.liability: return 'Money You Owe';
-      case SectionType.investment: return 'Investments';
-      case SectionType.receivable: return 'Money You Will Get';
+      case SectionType.asset:
+        return 'Money You Have';
+      case SectionType.liability:
+        return 'Money You Owe';
+      case SectionType.investment:
+        return 'Investments';
+      case SectionType.receivable:
+        return 'Money You Will Get';
     }
   }
 
-  String get _buttonText => widget.accountToEdit != null ? 'Update Account' : 'Create Account';
+  String get _buttonText =>
+      widget.accountToEdit != null ? 'Update Account' : 'Create Account';
 
   @override
   void initState() {
@@ -106,14 +137,31 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
-        title: Text(_sectionTitle, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(
+          _sectionTitle,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
-        actions: widget.accountToEdit != null ? [IconButton(icon: const Icon(Icons.archive, color: Colors.red), onPressed: _showCloseAccountDialog)] : null,
+        leading: IconButton(
+          icon: const Icon(Icons.close, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: widget.accountToEdit != null
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.archive, color: Colors.red),
+                  onPressed: _showCloseAccountDialog,
+                ),
+              ]
+            : null,
       ),
       body: Form(
         key: _formKey,
@@ -125,9 +173,16 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Account Type', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
+                    const Text(
+                      'Account Type',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    _buildAccountTypeGrid(),
+                    _buildAccountTypeGrid(t),
                     const SizedBox(height: 24),
                     TextFormField(
                       controller: _nameController,
@@ -136,10 +191,16 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                         labelText: 'Account Name',
                         labelStyle: TextStyle(color: Colors.white54),
                         hintText: 'e.g., My Bank Account',
-                        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-                        focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.blue, width: 2)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white30),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.blue, width: 2),
+                        ),
                       ),
-                      validator: (v) => v == null || v.trim().isEmpty ? 'Please enter account name' : null,
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Please enter account name'
+                          : null,
                     ),
                     const SizedBox(height: 20),
                     TextFormField(
@@ -147,15 +208,24 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       style: const TextStyle(color: Colors.white),
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
-                        labelText: widget.accountToEdit != null ? 'Current Balance' : 'Initial Balance',
+                        labelText: widget.accountToEdit != null
+                            ? 'Current Balance'
+                            : 'Initial Balance',
                         labelStyle: const TextStyle(color: Colors.white54),
                         prefixText: '$_selectedCurrency ',
                         prefixStyle: const TextStyle(color: Colors.white54),
-                        enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-                        focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.blue, width: 2)),
+                        enabledBorder: const UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white30),
+                        ),
+                        focusedBorder: const UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.blue, width: 2),
+                        ),
                       ),
                       validator: (v) {
-                        if (v != null && v.isNotEmpty && double.tryParse(v) == null) return 'Please enter a valid number';
+                        if (v != null &&
+                            v.isNotEmpty &&
+                            double.tryParse(v) == null)
+                          return 'Please enter a valid number';
                         return null;
                       },
                     ),
@@ -164,12 +234,28 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Row(
                         children: [
-                          const Text('Currency', style: TextStyle(color: Colors.white54)),
+                          const Text(
+                            'Currency',
+                            style: TextStyle(color: Colors.white54),
+                          ),
                           const SizedBox(width: 16),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.white24)),
-                            child: const Text('EGP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: const Text(
+                              'EGP',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -182,8 +268,12 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Notes (Optional)',
                         labelStyle: TextStyle(color: Colors.white54),
-                        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white30)),
-                        focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.blue, width: 2)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white30),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.blue, width: 2),
+                        ),
                       ),
                     ),
                   ],
@@ -192,18 +282,42 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
             ),
             Container(
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1)))),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                border: Border(
+                  top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                ),
+              ),
               child: SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _saveAccount,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.accountToEdit != null ? Colors.blue : (_getButtonColor()),
+                    backgroundColor: widget.accountToEdit != null
+                        ? Colors.blue
+                        : (_getButtonColor()),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  child: _isSaving ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : Text(_buttonText, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          _buttonText,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ),
@@ -215,14 +329,18 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
   Color _getButtonColor() {
     switch (widget.sectionType ?? SectionType.asset) {
-      case SectionType.asset: return Colors.green;
-      case SectionType.liability: return Colors.red;
-      case SectionType.investment: return Colors.orange;
-      case SectionType.receivable: return Colors.cyan;
+      case SectionType.asset:
+        return Colors.green;
+      case SectionType.liability:
+        return Colors.red;
+      case SectionType.investment:
+        return Colors.orange;
+      case SectionType.receivable:
+        return Colors.cyan;
     }
   }
 
-  Widget _buildAccountTypeGrid() {
+  Widget _buildAccountTypeGrid(AppLocalizations t) {
     final types = _accountTypes;
     final screenWidth = MediaQuery.of(context).size.width;
     final crossAxisCount = screenWidth < 400 ? 2 : 4;
@@ -230,29 +348,68 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: crossAxisCount, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 1.2),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.2,
+      ),
       itemCount: types.length,
       itemBuilder: (context, index) {
         final type = types[index];
         final isSelected = _selectedType == type.id;
         return GestureDetector(
           onTap: () {
-            if (isEditMode && _selectedType.isNotEmpty && _selectedType != type.id) { _showTypeChangeWarning(); return; }
+            if (isEditMode &&
+                _selectedType.isNotEmpty &&
+                _selectedType != type.id) {
+              _showTypeChangeWarning();
+              return;
+            }
             setState(() => _selectedType = type.id);
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
-              color: isSelected ? type.color.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+              color: isSelected
+                  ? type.color.withOpacity(0.15)
+                  : Colors.white.withOpacity(0.05),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: isSelected ? type.color : Colors.white.withOpacity(0.1), width: isSelected ? 2 : 1),
-              boxShadow: isSelected ? [BoxShadow(color: type.color.withOpacity(0.4), blurRadius: 12, spreadRadius: 2)] : null,
+              border: Border.all(
+                color: isSelected ? type.color : Colors.white.withOpacity(0.1),
+                width: isSelected ? 2 : 1,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: type.color.withOpacity(0.4),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : null,
             ),
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(type.icon, color: isSelected ? type.color : Colors.white54, size: 32),
-              const SizedBox(height: 8),
-              Text(type.name, style: TextStyle(color: isSelected ? type.color : Colors.white70, fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-            ]),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  type.icon,
+                  color: isSelected ? type.color : Colors.white54,
+                  size: 32,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  getAccountTypeDisplayName(type.id, t),
+                  style: TextStyle(
+                    color: isSelected ? type.color : Colors.white70,
+                    fontSize: 12,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -264,9 +421,20 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1B2A6B),
-        title: const Text('⚠️ Cannot Change Account Type', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: const Text('Account type cannot be changed after creation.\n\nIf you need a different account type, please create a new account.', style: TextStyle(color: Colors.white70)),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK', style: TextStyle(color: Colors.blue)))],
+        title: const Text(
+          '⚠️ Cannot Change Account Type',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Account type cannot be changed after creation.\n\nIf you need a different account type, please create a new account.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK', style: TextStyle(color: Colors.blue)),
+          ),
+        ],
       ),
     );
   }
@@ -277,26 +445,71 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1B2A6B),
-        title: const Row(children: [Icon(Icons.archive, color: Colors.red, size: 28), SizedBox(width: 12), Text('Close Account', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))]),
+        title: const Row(
+          children: [
+            Icon(Icons.archive, color: Colors.red, size: 28),
+            SizedBox(width: 12),
+            Text(
+              'Close Account',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Are you sure you want to close "${widget.accountToEdit?.name}"?', style: const TextStyle(color: Colors.white70)),
+            Text(
+              'Are you sure you want to close "${widget.accountToEdit?.name}"?',
+              style: const TextStyle(color: Colors.white70),
+            ),
             const SizedBox(height: 16),
             if (hasTransactions)
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.orange.withOpacity(0.3))),
-                child: const Row(children: [Icon(Icons.history, color: Colors.orange, size: 20), SizedBox(width: 8), Expanded(child: Text('This account has transaction history. Closing it will preserve all records.', style: TextStyle(color: Colors.orange, fontSize: 12)))]),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.history, color: Colors.orange, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'This account has transaction history. Closing it will preserve all records.',
+                        style: TextStyle(color: Colors.orange, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             const SizedBox(height: 16),
-            const Text('This account can be restored later.', style: TextStyle(color: Colors.white54, fontSize: 12)),
+            const Text(
+              'This account can be restored later.',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.white70))),
-          TextButton(onPressed: _closeAccount, child: const Text('Archive Account', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          TextButton(
+            onPressed: _closeAccount,
+            child: const Text(
+              'Archive Account',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
         ],
       ),
     );
@@ -305,7 +518,11 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   Future<bool> _checkIfAccountHasTransactions() async {
     if (widget.accountToEdit == null) return false;
     final transactionsBox = Hive.box<Transaction>('transactions');
-    return transactionsBox.values.any((t) => t.fromAccountId == widget.accountToEdit!.id || t.toAccountId == widget.accountToEdit!.id);
+    return transactionsBox.values.any(
+      (t) =>
+          t.fromAccountId == widget.accountToEdit!.id ||
+          t.toAccountId == widget.accountToEdit!.id,
+    );
   }
 
   Future<void> _closeAccount() async {
@@ -314,12 +531,28 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     try {
       await AccountService().archiveAccount(widget.accountToEdit!.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account archived. You can restore it later from settings.'), backgroundColor: Colors.orange, duration: Duration(seconds: 3)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Account archived. You can restore it later from settings.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
         Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error archiving account: $e'), backgroundColor: Colors.red));
-    } finally { if (mounted) setState(() => _isSaving = false); }
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error archiving account: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   String _getCurrentBookId() => "default";
@@ -340,23 +573,31 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       currencyCode: _selectedCurrency,
       source: TransactionSource.balanceAdjustment,
     );
-    await Hive.box<Transaction>('transactions').put(adjustmentTransaction.id, adjustmentTransaction);
+    await Hive.box<Transaction>(
+      'transactions',
+    ).put(adjustmentTransaction.id, adjustmentTransaction);
   }
 
   Future<void> _saveAccount() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedType.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select an account type'), backgroundColor: Colors.orange));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select an account type'),
+          backgroundColor: Colors.orange,
+        ),
+      );
       return;
     }
     setState(() => _isSaving = true);
 
     final name = _nameController.text.trim();
     final balanceValue = double.tryParse(_balanceController.text) ?? 0;
-    final notes = _notesController.text.trim().isEmpty ? null : _notesController.text.trim();
+    final notes = _notesController.text.trim().isEmpty
+        ? null
+        : _notesController.text.trim();
 
     if (widget.accountToEdit != null) {
-      // تحديث حساب موجود
       final updatedAccount = Account(
         id: widget.accountToEdit!.id,
         bookId: _getCurrentBookId(),
@@ -373,11 +614,15 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       await AccountService().updateAccount(updatedAccount);
       await _updateBalance(widget.accountToEdit!.id, balanceValue);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$name updated successfully'), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$name updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.pop(context, true);
       }
     } else {
-      // إنشاء حساب جديد
       final accountService = AccountService();
       final newAccount = await accountService.createAccount(
         name: name,
@@ -386,12 +631,17 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         notes: notes,
       );
       if (newAccount == null) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to create account'), backgroundColor: Colors.red));
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to create account'),
+              backgroundColor: Colors.red,
+            ),
+          );
         setState(() => _isSaving = false);
         return;
       }
 
-      // معاملة الرصيد الابتدائي
       if (balanceValue != 0) {
         final isLiability = widget.sectionType == SectionType.liability;
         final initialBalanceAmount = isLiability ? -balanceValue : balanceValue;
@@ -408,13 +658,24 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
           currencyCode: _selectedCurrency,
           source: TransactionSource.accountCreation,
         );
-        await Hive.box<Transaction>('transactions').put(initialTransaction.id, initialTransaction);
+        await Hive.box<Transaction>(
+          'transactions',
+        ).put(initialTransaction.id, initialTransaction);
       }
 
       if (mounted) {
-        final formattedAmount = NumberFormat("#,###").format(balanceValue.toInt());
-        final amountText = widget.sectionType == SectionType.liability ? '$formattedAmount EGP (Debt)' : '$formattedAmount EGP';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$name added with $amountText'), backgroundColor: Colors.green));
+        final formattedAmount = NumberFormat(
+          "#,###",
+        ).format(balanceValue.toInt());
+        final amountText = widget.sectionType == SectionType.liability
+            ? '$formattedAmount EGP (Debt)'
+            : '$formattedAmount EGP';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$name added with $amountText'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.pop(context, true);
       }
     }

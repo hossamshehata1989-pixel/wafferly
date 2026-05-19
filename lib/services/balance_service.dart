@@ -19,6 +19,9 @@ class BalanceService {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
         }
+        if (tx.fromAccountId == accountId) {
+          balance -= tx.amount;
+        }
         continue;
       }
 
@@ -53,7 +56,6 @@ class BalanceService {
     return balance;
   }
 
-  /// حساب الرصيد في تاريخ محدد
   double getBalanceAtDate(String accountId, DateTime date) {
     double balance = 0;
 
@@ -69,6 +71,9 @@ class BalanceService {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
         }
+        if (tx.fromAccountId == accountId) {
+          balance -= tx.amount;
+        }
         continue;
       }
 
@@ -103,7 +108,6 @@ class BalanceService {
     return balance;
   }
 
-  /// حساب الرصيد المتاح (الرصيد الحقيقي - المبلغ المحجوز)
   double getAvailableBalance(String accountId) {
     final realBalance = getBalance(accountId);
     final reservedAmount = _reservedService.getReservedAmount(accountId);
