@@ -14,7 +14,6 @@ class BalanceService {
     double balance = 0;
 
     for (final tx in txBox.values) {
-      // 🟦 INITIAL BALANCE
       if (tx.type == TransactionType.initialBalance) {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
@@ -25,7 +24,6 @@ class BalanceService {
         continue;
       }
 
-      // 🟨 TRANSFER
       if (tx.type == TransactionType.transfer) {
         if (tx.fromAccountId == accountId) {
           balance -= tx.amount;
@@ -36,7 +34,6 @@ class BalanceService {
         continue;
       }
 
-      // 🟥 EXPENSE
       if (tx.type == TransactionType.expense) {
         if (tx.fromAccountId == accountId) {
           balance -= tx.amount;
@@ -44,7 +41,6 @@ class BalanceService {
         continue;
       }
 
-      // 🟩 INCOME
       if (tx.type == TransactionType.income) {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
@@ -66,7 +62,6 @@ class BalanceService {
         continue;
       }
 
-      // 🟦 INITIAL BALANCE
       if (tx.type == TransactionType.initialBalance) {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
@@ -77,7 +72,6 @@ class BalanceService {
         continue;
       }
 
-      // 🟨 TRANSFER
       if (tx.type == TransactionType.transfer) {
         if (tx.fromAccountId == accountId) {
           balance -= tx.amount;
@@ -88,7 +82,6 @@ class BalanceService {
         continue;
       }
 
-      // 🟥 EXPENSE
       if (tx.type == TransactionType.expense) {
         if (tx.fromAccountId == accountId) {
           balance -= tx.amount;
@@ -96,7 +89,6 @@ class BalanceService {
         continue;
       }
 
-      // 🟩 INCOME
       if (tx.type == TransactionType.income) {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;

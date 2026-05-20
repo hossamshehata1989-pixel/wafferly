@@ -10,7 +10,7 @@ import '../../l10n/app_localizations.dart';
 import '../../services/balance_service.dart';
 import 'add_account/add_account_screen.dart';
 import '../../models/enums/section_type.dart';
-import '../../utils/account_type_helper.dart';
+import '../../utils/account_mapper.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -182,6 +182,17 @@ class _AccountsScreenState extends State<AccountsScreen> {
         valueListenable: _accountService.box.listenable(),
         builder: (context, Box<Account> box, _) {
           final accounts = _accountService.getAllActiveAccounts();
+
+          // DEBUG مؤقت
+          for (final a in accounts) {
+            print(
+              'DEBUG: ${a.name} | '
+              'type=${a.type} | '
+              'storedGroup=${a.group} | '
+              'resolvedGroup=${resolveGroup(a.type)}',
+            );
+          }
+
           final netWorth = _calculateNetWorth(accounts, balanceService);
           final totalAssets = _calculateTotalByNature(
             accounts,
@@ -550,10 +561,15 @@ class _AccountsScreenState extends State<AccountsScreen> {
     bool isTablet,
     bool isLargeTablet,
   ) {
-    if (isLargeTablet) return 1.4;
-    if (isTablet) return 1.5;
-    if (itemCount <= 2) return 2.2;
-    return 1.6;
+    if (isLargeTablet) return 1.2;
+
+    if (isTablet) return 1.3;
+
+    if (itemCount <= 2) {
+      return 1.6;
+    }
+
+    return 1.3;
   }
 
   Widget _buildAccountCard(
