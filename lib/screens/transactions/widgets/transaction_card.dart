@@ -2,32 +2,29 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../services/transaction_service.dart';
-import '../../../constants/transaction_constants.dart';
 import 'package:wafferly/models/transaction.dart';
-import '../../../l10n/app_localizations.dart';
 
 class TransactionCard extends StatelessWidget {
   final Transaction transaction;
   final VoidCallback onDeleted;
-  final VoidCallback onUpdated;
+  final VoidCallback onEdit;
   final String Function(String?) getAccountName;
 
   const TransactionCard({
     super.key,
     required this.transaction,
     required this.onDeleted,
-    required this.onUpdated,
+    required this.onEdit,
     required this.getAccountName,
   });
 
   Color _getAmountColor() {
     switch (transaction.type) {
-      case TransactionType.expense:
+      case 'expense':
         return Colors.red;
-      case TransactionType.income:
+      case 'income':
         return Colors.green;
-      case TransactionType.transfer:
+      case 'transfer':
         return Colors.blue;
       default:
         return Colors.white;
@@ -36,11 +33,11 @@ class TransactionCard extends StatelessWidget {
 
   String _getAmountPrefix() {
     switch (transaction.type) {
-      case TransactionType.expense:
+      case 'expense':
         return '-';
-      case TransactionType.income:
+      case 'income':
         return '+';
-      case TransactionType.transfer:
+      case 'transfer':
         return '';
       default:
         return '';
@@ -49,9 +46,9 @@ class TransactionCard extends StatelessWidget {
 
   String _getAmountSuffix() {
     switch (transaction.type) {
-      case TransactionType.expense:
+      case 'expense':
         return '↑';
-      case TransactionType.income:
+      case 'income':
         return '↓';
       default:
         return '';
@@ -62,60 +59,18 @@ class TransactionCard extends StatelessWidget {
     return DateFormat('HH:mm').format(date);
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1B2A6B),
-        title: const Text(
-          'Delete Transaction',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Are you sure you want to delete this transaction?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      await TransactionService.instance.deleteTransaction(transaction.id);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transaction deleted'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        onDeleted();
-      }
+  String _getTitle() {
+    if (transaction.note != null && transaction.note!.isNotEmpty) {
+      return transaction.note!;
     }
-  }
-
-  // TODO: Edit functionality will be implemented later
-  void _onEdit(BuildContext context) {
-    // Placeholder - edit coming soon
+    return transaction.categoryId;
   }
 
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat("#,###");
     final accountName = getAccountName(
-      transaction.type == TransactionType.expense
+      transaction.type == 'expense'
           ? transaction.fromAccountId
           : transaction.toAccountId,
     );
@@ -137,16 +92,16 @@ class TransactionCard extends StatelessWidget {
       ),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.endToStart) {
-          await _confirmDelete(context);
+          onDeleted();
           return false;
         } else if (direction == DismissDirection.startToEnd) {
-          _onEdit(context);
+          onEdit();
           return false;
         }
         return false;
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFF1B2A6B),
           borderRadius: BorderRadius.circular(12),
@@ -189,9 +144,7 @@ class TransactionCard extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-
                     const SizedBox(height: 4),
-
                     Text(
                       '$accountName • ${transaction.categoryId}',
                       maxLines: 1,
@@ -201,7 +154,6 @@ class TransactionCard extends StatelessWidget {
                         fontSize: 12,
                       ),
                     ),
-
                     Text(
                       _formatTime(transaction.date),
                       maxLines: 1,
@@ -215,8 +167,8 @@ class TransactionCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 80),
+              SizedBox(
+                width: 110,
                 child: Text(
                   '${_getAmountPrefix()}${formatter.format(transaction.amount.toInt())} EGP ${_getAmountSuffix()}',
                   style: TextStyle(
@@ -224,7 +176,7 @@ class TransactionCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
-                  textAlign: TextAlign.end,
+                  textAlign: TextAlign.right,
                 ),
               ),
             ],
@@ -232,12 +184,5 @@ class TransactionCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _getTitle() {
-    if (transaction.note != null && transaction.note!.isNotEmpty) {
-      return transaction.note!;
-    }
-    return transaction.categoryId;
   }
 }

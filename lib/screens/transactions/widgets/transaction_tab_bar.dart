@@ -15,12 +15,13 @@ class _TransactionTabBarState extends State<TransactionTabBar>
   late TabController _tabController;
   int _currentIndex = 0;
 
+  // ✅ Priority 2: Improved icons for visual distinction
   final List<Map<String, dynamic>> _tabs = const [
-    {'icon': Icons.receipt_long, 'label': 'Expenses', 'type': 'expense'},
+    {'icon': Icons.receipt, 'label': 'Expenses', 'type': 'expense'},
     {'icon': Icons.trending_up, 'label': 'Income', 'type': 'income'},
     {'icon': Icons.swap_horiz, 'label': 'Transfers', 'type': 'transfer'},
     {'icon': Icons.handshake, 'label': 'Borrow/Lend', 'type': 'borrowLend'},
-    {'icon': Icons.payment, 'label': 'Payments', 'type': 'payment'},
+    {'icon': Icons.credit_card, 'label': 'Payments', 'type': 'payment'},
   ];
 
   @override

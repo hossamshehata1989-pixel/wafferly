@@ -52,7 +52,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           .where((t) => t.type == TransactionType.transfer)
           .toList();
     } else if (_selectedTab == 3 || _selectedTab == 4) {
-      // Borrow/Lend and Payments - placeholder until dedicated transaction types exist
       return [];
     }
     return _allTransactions;
@@ -76,7 +75,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         groupKey = 'yesterday';
         title = 'Yesterday';
       } else {
-        // Group by Month + Year
         groupKey = '${tx.date.year}-${tx.date.month}';
         title = '${_getMonthName(tx.date.month)} ${tx.date.year}';
       }
@@ -92,7 +90,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       groups[groupKey]!.transactions.add(tx);
     }
 
-    // Sort: Today first, then Yesterday, then by date descending
     final sortedGroups = groups.values.toList()
       ..sort((a, b) {
         if (a.sortKey == 'today') return -1;
@@ -125,16 +122,30 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   String _getAccountName(String? accountId) {
     if (accountId == null) return 'Unknown';
-
     try {
       final account = _accountService.getAllAccounts().firstWhere(
         (a) => a.id == accountId,
       );
-
       return account.name;
     } catch (_) {
       return 'Unknown';
     }
+  }
+
+  void _handleDeleteTransaction(String transactionId) async {
+    await TransactionService.instance.deleteTransaction(transactionId);
+    _refreshTransactions();
+  }
+
+  void _handleEditTransaction(Transaction transaction) {
+    // TODO: Implement edit functionality
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Edit coming soon'),
+        backgroundColor: Colors.blue,
+        duration: Duration(seconds: 1),
+      ),
+    );
   }
 
   void _onTabChanged(int index) {
@@ -178,7 +189,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       body: Column(
         children: [
           TransactionTabBar(onTabChanged: _onTabChanged),
-          TransactionFiltersRow(),
+          const TransactionFiltersRow(),
           Expanded(
             child: isPlaceholderTab
                 ? Center(
@@ -246,18 +257,15 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.only(bottom: 100),
                     itemCount: _dateGroups.length,
                     itemBuilder: (context, index) {
                       final group = _dateGroups[index];
                       return TransactionSection(
                         title: group.title,
                         transactions: group.transactions,
-                        onTransactionDeleted: _refreshTransactions,
-                        onTransactionUpdated: _refreshTransactions,
+                        onDeleteTransaction: _handleDeleteTransaction,
+                        onEditTransaction: _handleEditTransaction,
                         getAccountName: _getAccountName,
                       );
                     },
@@ -272,7 +280,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 }
 
-// Internal class for date grouping
 class _DateGroup {
   final DateTime date;
   final String title;

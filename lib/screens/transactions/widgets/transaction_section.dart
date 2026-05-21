@@ -7,16 +7,16 @@ import 'package:wafferly/screens/transactions/widgets/transaction_card.dart';
 class TransactionSection extends StatefulWidget {
   final String title;
   final List<Transaction> transactions;
-  final VoidCallback onTransactionDeleted;
-  final VoidCallback onTransactionUpdated;
+  final Function(String) onDeleteTransaction;
+  final Function(Transaction) onEditTransaction;
   final String Function(String?) getAccountName;
 
   const TransactionSection({
     super.key,
     required this.title,
     required this.transactions,
-    required this.onTransactionDeleted,
-    required this.onTransactionUpdated,
+    required this.onDeleteTransaction,
+    required this.onEditTransaction,
     required this.getAccountName,
   });
 
@@ -26,6 +26,14 @@ class TransactionSection extends StatefulWidget {
 
 class _TransactionSectionState extends State<TransactionSection> {
   bool _isExpanded = true;
+
+  void _handleDelete(String transactionId) {
+    widget.onDeleteTransaction(transactionId);
+  }
+
+  void _handleEdit(Transaction transaction) {
+    widget.onEditTransaction(transaction);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,8 +81,8 @@ class _TransactionSectionState extends State<TransactionSection> {
                   .map<Widget>(
                     (tx) => TransactionCard(
                       transaction: tx,
-                      onDeleted: widget.onTransactionDeleted,
-                      onUpdated: widget.onTransactionUpdated,
+                      onDeleted: () => _handleDelete(tx.id),
+                      onEdit: () => _handleEdit(tx),
                       getAccountName: widget.getAccountName,
                     ),
                   )
