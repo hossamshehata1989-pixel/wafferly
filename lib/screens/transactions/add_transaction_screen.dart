@@ -19,17 +19,22 @@ class AccountsScreen extends StatefulWidget {
 
 class _AccountsScreenState extends State<AccountsScreen> {
   final AccountService _accountService = AccountService();
-  
+
   // ✅ معرف حساب الدين المؤقت
   static const String TEMP_DEBT_ACCOUNT_ID = 'temp_debt_account';
 
   SectionType _getSectionTypeFromString(String sectionType) {
     switch (sectionType) {
-      case 'asset': return SectionType.asset;
-      case 'liability': return SectionType.liability;
-      case 'investment': return SectionType.investment;
-      case 'receivable': return SectionType.receivable;
-      default: return SectionType.asset;
+      case 'asset':
+        return SectionType.asset;
+      case 'liability':
+        return SectionType.liability;
+      case 'investment':
+        return SectionType.investment;
+      case 'receivable':
+        return SectionType.receivable;
+      default:
+        return SectionType.asset;
     }
   }
 
@@ -64,7 +69,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
     final balanceService = BalanceService();
     final currentDebt = balanceService.getBalance(account.id).abs();
     final t = AppLocalizations.of(context)!;
-    
+
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -76,7 +81,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
             SizedBox(width: 12),
             Text(
               'Temporary Debt',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -119,18 +127,27 @@ class _AccountsScreenState extends State<AccountsScreen> {
             const SizedBox(height: 8),
             const Text(
               'What would you like to do?',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, 'later'),
-            child: const Text('Pay Later', style: TextStyle(color: Colors.white70)),
+            child: const Text(
+              'Pay Later',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, 'pay'),
-            child: const Text('➕ Add Income & Settle', style: TextStyle(color: Colors.green)),
+            child: const Text(
+              '➕ Add Income & Settle',
+              style: TextStyle(color: Colors.green),
+            ),
           ),
         ],
       ),
@@ -156,7 +173,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
       _showTempDebtDialog(account);
       return;
     }
-    
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -173,11 +190,14 @@ class _AccountsScreenState extends State<AccountsScreen> {
   // ==========================================
   // ✅ دوال الحسابات
   // ==========================================
-  
-  double _calculateNetWorth(List<Account> accounts, BalanceService balanceService) {
+
+  double _calculateNetWorth(
+    List<Account> accounts,
+    BalanceService balanceService,
+  ) {
     double assets = 0;
     double liabilities = 0;
-    
+
     for (final acc in accounts) {
       final balance = balanceService.getBalance(acc.id);
       if (acc.nature == 'asset') {
@@ -189,7 +209,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
     return assets - liabilities;
   }
 
-  double _calculateTotalByNature(List<Account> accounts, BalanceService balanceService, String nature) {
+  double _calculateTotalByNature(
+    List<Account> accounts,
+    BalanceService balanceService,
+    String nature,
+  ) {
     double total = 0;
     for (final acc in accounts.where((a) => a.nature == nature)) {
       final balance = balanceService.getBalance(acc.id);
@@ -202,7 +226,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
     return total;
   }
 
-  double _calculateSectionTotal(List<Account> accounts, BalanceService balanceService) {
+  double _calculateSectionTotal(
+    List<Account> accounts,
+    BalanceService balanceService,
+  ) {
     double total = 0;
     for (final acc in accounts) {
       final balance = balanceService.getBalance(acc.id);
@@ -223,7 +250,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
     final isSmallPhone = screenWidth < 380;
     final isTablet = screenWidth >= 600;
     final isLargeTablet = screenWidth >= 900;
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: _buildAppBar(t, isSmallPhone),
@@ -231,13 +258,17 @@ class _AccountsScreenState extends State<AccountsScreen> {
         valueListenable: _accountService.box.listenable(),
         builder: (context, Box<Account> box, _) {
           final accounts = _accountService.getAllAccounts();
-          
+
           if (accounts.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.account_balance_wallet, size: 80, color: Colors.white54),
+                  const Icon(
+                    Icons.account_balance_wallet,
+                    size: 80,
+                    color: Colors.white54,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     "No accounts yet",
@@ -252,17 +283,35 @@ class _AccountsScreenState extends State<AccountsScreen> {
               ),
             );
           }
-          
+
           final netWorth = _calculateNetWorth(accounts, balanceService);
-          final totalAssets = _calculateTotalByNature(accounts, balanceService, 'asset');
-          final totalLiabilities = _calculateTotalByNature(accounts, balanceService, 'liability');
-          
-          final moneyHave = accounts.where((a) => 
-            a.nature == 'asset' && a.type != 'investment' && a.type != 'lent').toList();
-          final investments = accounts.where((a) => a.type == 'investment').toList();
-          final liabilities = accounts.where((a) => a.nature == 'liability').toList();
+          final totalAssets = _calculateTotalByNature(
+            accounts,
+            balanceService,
+            'asset',
+          );
+          final totalLiabilities = _calculateTotalByNature(
+            accounts,
+            balanceService,
+            'liability',
+          );
+
+          final moneyHave = accounts
+              .where(
+                (a) =>
+                    a.nature == 'asset' &&
+                    a.type != 'investment' &&
+                    a.type != 'lent',
+              )
+              .toList();
+          final investments = accounts
+              .where((a) => a.type == 'investment')
+              .toList();
+          final liabilities = accounts
+              .where((a) => a.nature == 'liability')
+              .toList();
           final receivables = accounts.where((a) => a.type == 'lent').toList();
-          
+
           return CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
@@ -323,7 +372,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
-  
+
   AppBar _buildAppBar(AppLocalizations t, bool isSmallPhone) {
     return AppBar(
       title: Text(
@@ -336,15 +385,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       centerTitle: false,
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.search),
-          onPressed: () {},
-        ),
-      ],
+      actions: [IconButton(icon: const Icon(Icons.search), onPressed: () {})],
     );
   }
-  
+
   Widget _buildNetWorthCard({
     required double netWorth,
     required double totalAssets,
@@ -353,7 +397,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
   }) {
     final formatter = NumberFormat("#,###");
     final isNegative = netWorth < 0;
-    
+
     return Container(
       margin: const EdgeInsets.all(16),
       padding: EdgeInsets.all(isTablet ? 24 : 16),
@@ -379,7 +423,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.account_balance, color: Colors.white70, size: 20),
+              const Icon(
+                Icons.account_balance,
+                color: Colors.white70,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 'NET WORTH',
@@ -392,7 +440,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
               const Spacer(),
               if (isTablet)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -416,21 +467,39 @@ class _AccountsScreenState extends State<AccountsScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              _buildNetWorthDetail('Assets', totalAssets, Colors.green, isTablet),
+              _buildNetWorthDetail(
+                'Assets',
+                totalAssets,
+                Colors.green,
+                isTablet,
+              ),
               const SizedBox(width: 16),
-              _buildNetWorthDetail('Debts', totalLiabilities, Colors.red, isTablet),
+              _buildNetWorthDetail(
+                'Debts',
+                totalLiabilities,
+                Colors.red,
+                isTablet,
+              ),
             ],
           ),
         ],
       ),
     );
   }
-  
-  Widget _buildNetWorthDetail(String label, double amount, Color color, bool isTablet) {
+
+  Widget _buildNetWorthDetail(
+    String label,
+    double amount,
+    Color color,
+    bool isTablet,
+  ) {
     final formatter = NumberFormat("#,###");
     return Expanded(
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: isTablet ? 12 : 8, horizontal: 12),
+        padding: EdgeInsets.symmetric(
+          vertical: isTablet ? 12 : 8,
+          horizontal: 12,
+        ),
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.3),
           borderRadius: BorderRadius.circular(12),
@@ -440,7 +509,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
           children: [
             Text(
               label,
-              style: TextStyle(color: Colors.white54, fontSize: isTablet ? 12 : 10),
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: isTablet ? 12 : 10,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -456,7 +528,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
       ),
     );
   }
-  
+
   Widget _buildResponsiveSection({
     required String title,
     required IconData icon,
@@ -470,13 +542,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
     if (accounts.isEmpty) {
       return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
-    
+
     final sectionTotal = _calculateSectionTotal(accounts, balanceService);
     final formatter = NumberFormat("#,###");
-    
+
     int crossAxisCount;
     double childAspectRatio;
-    
+
     if (isLargeTablet) {
       crossAxisCount = 4;
       childAspectRatio = 1.4;
@@ -490,7 +562,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
       crossAxisCount = 2;
       childAspectRatio = 1.6;
     }
-    
+
     return SliverToBoxAdapter(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -560,8 +632,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
               itemBuilder: (context, index) {
                 final account = accounts[index];
                 final balance = balanceService.getBalance(account.id);
-                final percentage = sectionTotal > 0 ? (balance / sectionTotal) * 100 : 0.0;
-                
+                final percentage = sectionTotal > 0
+                    ? (balance / sectionTotal) * 100
+                    : 0.0;
+
                 return _buildAccountCard(
                   account: account,
                   balance: balance,
@@ -577,7 +651,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
       ),
     );
   }
-  
+
   Widget _buildAccountCard({
     required Account account,
     required double balance,
@@ -589,15 +663,19 @@ class _AccountsScreenState extends State<AccountsScreen> {
     final formatter = NumberFormat("#,###");
     final isLiability = account.nature == 'liability';
     final displayBalance = isLiability ? balance.abs() : balance;
-    final balanceColor = isLiability ? Colors.redAccent : (balance < 0 ? Colors.redAccent : color);
+    final balanceColor = isLiability
+        ? Colors.redAccent
+        : (balance < 0 ? Colors.redAccent : color);
     final isTempDebt = account.id == TEMP_DEBT_ACCOUNT_ID;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.all(isTablet ? 12 : 8),
         decoration: BoxDecoration(
-          color: isTempDebt ? Colors.orange.withOpacity(0.15) : Colors.black.withOpacity(0.4),
+          color: isTempDebt
+              ? Colors.orange.withOpacity(0.15)
+              : Colors.black.withOpacity(0.4),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isTempDebt ? Colors.orange : color.withOpacity(0.2),
@@ -611,7 +689,9 @@ class _AccountsScreenState extends State<AccountsScreen> {
             Row(
               children: [
                 Icon(
-                  isTempDebt ? Icons.receipt_long : _getAccountIcon(account.type),
+                  isTempDebt
+                      ? Icons.receipt_long
+                      : _getAccountIcon(account.type),
                   color: isTempDebt ? Colors.orange : color,
                   size: isTablet ? 28 : 22,
                 ),
@@ -631,7 +711,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
                       if (isTempDebt)
                         Container(
                           margin: const EdgeInsets.only(left: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.orange.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(4),
@@ -682,7 +765,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
       ),
     );
   }
-  
+
   Widget _buildFAB(AppLocalizations t) {
     return FloatingActionButton(
       onPressed: () => _addAccount('asset'),
@@ -690,19 +773,29 @@ class _AccountsScreenState extends State<AccountsScreen> {
       child: const Icon(Icons.add, color: Colors.white),
     );
   }
-  
+
   IconData _getAccountIcon(String type) {
     switch (type) {
-      case 'cash': return Icons.attach_money;
-      case 'bank': return Icons.account_balance;
-      case 'wallet': return Icons.account_balance_wallet;
-      case 'creditCard': return Icons.credit_card;
-      case 'loan': return Icons.money_off;
-      case 'investment': return Icons.trending_up;
-      case 'gold': return Icons.workspace_premium;
-      case 'stocks': return Icons.show_chart;
-      case 'lent': return Icons.handshake;
-      default: return Icons.account_balance_wallet;
+      case 'cash':
+        return Icons.attach_money;
+      case 'bank':
+        return Icons.account_balance;
+      case 'wallet':
+        return Icons.account_balance_wallet;
+      case 'creditCard':
+        return Icons.credit_card;
+      case 'loan':
+        return Icons.money_off;
+      case 'investment':
+        return Icons.trending_up;
+      case 'gold':
+        return Icons.workspace_premium;
+      case 'stocks':
+        return Icons.show_chart;
+      case 'lent':
+        return Icons.handshake;
+      default:
+        return Icons.account_balance_wallet;
     }
   }
 }
