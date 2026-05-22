@@ -94,7 +94,6 @@ class TransactionCard extends StatelessWidget {
           ? transaction.fromAccountId
           : transaction.toAccountId,
     );
-    final subCategory = _getSubCategory();
     final mainCategory = _getMainCategory();
     final time = _formatTime(transaction.date);
     final iconPath = _getCategoryIconPath();
@@ -116,86 +115,77 @@ class TransactionCard extends StatelessWidget {
       ),
       confirmDismiss: (direction) async {
         if (direction == DismissDirection.endToStart) {
-          return await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: const Color(0xFF1B2A6B),
-                  title: const Text(
-                    'Delete Transaction',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  content: const Text(
-                    'Are you sure you want to delete this transaction?',
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: const Color(0xFF1B2A6B),
+              title: const Text(
+                'Delete Transaction',
+                style: TextStyle(color: Colors.white),
+              ),
+              content: const Text(
+                'Are you sure you want to delete this transaction?',
+                style: TextStyle(color: Colors.white70),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text(
+                    'Cancel',
                     style: TextStyle(color: Colors.white70),
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ],
                 ),
-              ) ??
-              false;
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text(
+                    'Delete',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                ),
+              ],
+            ),
+          );
+          return confirmed == true;
         } else if (direction == DismissDirection.startToEnd) {
           onEdit();
           return false;
         }
-
         return false;
       },
-
-      onDismissed: (_) {
-        onDeleted();
-      },
-
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         decoration: BoxDecoration(
           color: const Color(0xFF1B2A6B),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
-              // Category Icon
               Container(
-                width: 40,
-                height: 40,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
                   child: SvgPicture.asset(
                     iconPath,
-                    width: 22,
-                    height: 22,
+                    width: 18,
+                    height: 18,
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) =>
-                        Icon(Icons.category, size: 22, color: Colors.white54),
+                        Icon(Icons.category, size: 18, color: Colors.white54),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              // Transaction details
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Line 1: Subcategory (most specific)
                     Text(
                       _getTitle(),
                       maxLines: 1,
@@ -203,11 +193,10 @@ class TransactionCard extends StatelessWidget {
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w500,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    // Line 2: Main category • Account • Time
+                    const SizedBox(height: 2),
                     Row(
                       children: [
                         Flexible(
@@ -221,12 +210,12 @@ class TransactionCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 3),
                         Text(
                           '•',
-                          style: TextStyle(color: Colors.white38, fontSize: 10),
+                          style: TextStyle(color: Colors.white38, fontSize: 9),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 3),
                         Flexible(
                           child: Text(
                             accountName,
@@ -238,12 +227,12 @@ class TransactionCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 3),
                         Text(
                           '•',
-                          style: TextStyle(color: Colors.white38, fontSize: 10),
+                          style: TextStyle(color: Colors.white38, fontSize: 9),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 3),
                         Flexible(
                           child: Text(
                             time,
@@ -260,16 +249,15 @@ class TransactionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              // Amount
+              const SizedBox(width: 6),
               SizedBox(
-                width: 100,
+                width: 85,
                 child: Text(
-                  '${_getAmountPrefix()}${formatter.format(transaction.amount.toInt())} ${_getAmountSuffix()}',
+                  '${_getAmountPrefix()}${formatter.format(transaction.amount.toInt())}',
                   style: TextStyle(
                     color: _getAmountColor(),
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                   textAlign: TextAlign.right,
                 ),

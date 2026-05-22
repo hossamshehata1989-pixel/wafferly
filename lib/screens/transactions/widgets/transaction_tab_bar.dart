@@ -16,11 +16,22 @@ class _TransactionTabBarState extends State<TransactionTabBar>
   int _currentIndex = 0;
 
   final List<Map<String, dynamic>> _tabs = const [
+    {'icon': Icons.apps, 'label': 'All', 'type': 'all'},
     {'icon': Icons.receipt, 'label': 'Expenses', 'type': 'expense'},
     {'icon': Icons.trending_up, 'label': 'Income', 'type': 'income'},
-    {'icon': Icons.swap_horiz, 'label': 'Transfers', 'type': 'transfer'},
-    {'icon': Icons.handshake, 'label': 'Borrow/Lend', 'type': 'borrowLend'},
-    {'icon': Icons.credit_card, 'label': 'Payments', 'type': 'payment'},
+    {'icon': Icons.swap_horiz, 'label': 'Transfer', 'type': 'transfer'},
+    {
+      'icon': Icons.handshake,
+      'label': 'Borrow/Lend',
+      'type': 'borrowLend',
+      'disabled': true,
+    },
+    {
+      'icon': Icons.credit_card,
+      'label': 'Payments',
+      'type': 'payment',
+      'disabled': true,
+    },
   ];
 
   @override
@@ -30,6 +41,11 @@ class _TransactionTabBarState extends State<TransactionTabBar>
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging &&
           _currentIndex != _tabController.index) {
+        final isDisabled = _tabs[_tabController.index]['disabled'] == true;
+        if (isDisabled) {
+          _tabController.animateTo(_currentIndex);
+          return;
+        }
         _currentIndex = _tabController.index;
         widget.onTabChanged(_currentIndex);
         setState(() {});
@@ -43,6 +59,12 @@ class _TransactionTabBarState extends State<TransactionTabBar>
     super.dispose();
   }
 
+  void _onTabTap(int index) {
+    final isDisabled = _tabs[index]['disabled'] == true;
+    if (isDisabled) return;
+    _tabController.animateTo(index);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -51,6 +73,7 @@ class _TransactionTabBarState extends State<TransactionTabBar>
       child: TabBar(
         controller: _tabController,
         isScrollable: true,
+        onTap: _onTabTap,
         indicator: BoxDecoration(
           color: const Color(0xFF3A7BFF),
           borderRadius: BorderRadius.circular(24),
@@ -82,16 +105,20 @@ class _TransactionTabBarState extends State<TransactionTabBar>
           final index = entry.key;
           final tab = entry.value;
           final isSelected = _currentIndex == index;
+          final isDisabled = tab['disabled'] == true;
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(tab['icon'], size: isSelected ? 18 : 16),
-                const SizedBox(width: 8),
-                Text(tab['label']),
-              ],
+            child: Opacity(
+              opacity: isDisabled ? 0.4 : 1.0,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(tab['icon'], size: isSelected ? 18 : 16),
+                  const SizedBox(width: 8),
+                  Text(tab['label']),
+                ],
+              ),
             ),
           );
         }).toList(),

@@ -60,10 +60,11 @@ class _TransactionSectionState extends State<TransactionSection> {
                     widget.title,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  const SizedBox(width: 12),
                   const Spacer(),
                   Icon(
                     _isExpanded ? Icons.expand_less : Icons.expand_more,
@@ -72,7 +73,7 @@ class _TransactionSectionState extends State<TransactionSection> {
                   const SizedBox(width: 8),
                   Text(
                     label,
-                    style: const TextStyle(color: Colors.white54, fontSize: 14),
+                    style: const TextStyle(color: Colors.white54, fontSize: 13),
                   ),
                 ],
               ),
