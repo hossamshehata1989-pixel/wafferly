@@ -15,7 +15,6 @@ class _TransactionTabBarState extends State<TransactionTabBar>
   late TabController _tabController;
   int _currentIndex = 0;
 
-  // ✅ Priority 2: Improved icons for visual distinction
   final List<Map<String, dynamic>> _tabs = const [
     {'icon': Icons.receipt, 'label': 'Expenses', 'type': 'expense'},
     {'icon': Icons.trending_up, 'label': 'Income', 'type': 'income'},
@@ -47,29 +46,53 @@ class _TransactionTabBarState extends State<TransactionTabBar>
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(30),
-      ),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      height: 48,
       child: TabBar(
         controller: _tabController,
         isScrollable: true,
         indicator: BoxDecoration(
           color: const Color(0xFF3A7BFF),
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF3A7BFF).withOpacity(0.3),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ],
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
-        unselectedLabelColor: Colors.white54,
+        unselectedLabelColor: Colors.white.withOpacity(0.5),
+        labelStyle: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.3,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.normal,
+          letterSpacing: 0.2,
+        ),
+        tabAlignment: TabAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         tabs: _tabs.asMap().entries.map((entry) {
           final index = entry.key;
           final tab = entry.value;
           final isSelected = _currentIndex == index;
-          return Tab(
-            icon: Icon(tab['icon'], size: 22),
-            text: isSelected ? tab['label'] : null,
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(tab['icon'], size: isSelected ? 18 : 16),
+                const SizedBox(width: 8),
+                Text(tab['label']),
+              ],
+            ),
           );
         }).toList(),
       ),

@@ -37,6 +37,9 @@ class _TransactionSectionState extends State<TransactionSection> {
 
   @override
   Widget build(BuildContext context) {
+    final itemCount = widget.transactions.length;
+    final label = itemCount == 1 ? '1 transaction' : '$itemCount transactions';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -68,7 +71,7 @@ class _TransactionSectionState extends State<TransactionSection> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${widget.transactions.length}',
+                    label,
                     style: const TextStyle(color: Colors.white54, fontSize: 14),
                   ),
                 ],

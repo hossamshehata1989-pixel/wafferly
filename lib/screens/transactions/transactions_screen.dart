@@ -25,6 +25,144 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   final TransactionService _transactionService = TransactionService.instance;
   final AccountService _accountService = AccountService();
 
+  void _showSearchSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Search',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const TextField(
+                style: TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Search transactions...',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  prefixIcon: Icon(Icons.search, color: Colors.white54),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white30),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF3A7BFF), width: 2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3A7BFF),
+                  minimumSize: const Size(double.infinity, 45),
+                ),
+                child: const Text(
+                  'Search',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Advanced Filters',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(
+                  Icons.calendar_today,
+                  color: Colors.white54,
+                ),
+                title: const Text(
+                  'Date Range',
+                  style: TextStyle(color: Colors.white),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white54,
+                ),
+                onTap: () => Navigator.pop(context),
+              ),
+              ListTile(
+                leading: const Icon(Icons.category, color: Colors.white54),
+                title: const Text(
+                  'Categories',
+                  style: TextStyle(color: Colors.white),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white54,
+                ),
+                onTap: () => Navigator.pop(context),
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.account_balance_wallet,
+                  color: Colors.white54,
+                ),
+                title: const Text(
+                  'Accounts',
+                  style: TextStyle(color: Colors.white),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white54,
+                ),
+                onTap: () => Navigator.pop(context),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3A7BFF),
+                  minimumSize: const Size(double.infinity, 45),
+                ),
+                child: const Text(
+                  'Apply Filters',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -61,7 +199,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final Map<String, _DateGroup> groups = {};
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final endOfWeek = startOfWeek.add(const Duration(days: 6));
 
     for (final tx in transactions) {
       final txDate = DateTime(tx.date.year, tx.date.month, tx.date.day);
@@ -71,10 +210,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       if (txDate == today) {
         groupKey = 'today';
         title = 'Today';
-      } else if (txDate == yesterday) {
-        groupKey = 'yesterday';
-        title = 'Yesterday';
+      } else if (txDate.isAfter(now.subtract(const Duration(days: 7))) &&
+          txDate.isBefore(now.add(const Duration(days: 1)))) {
+        // Within last 7 days - show weekday name
+        final weekday = _getWeekdayName(txDate.weekday);
+        groupKey = 'week_${txDate.weekday}';
+        title = weekday;
+      } else if (txDate.isAfter(startOfWeek) &&
+          txDate.isBefore(endOfWeek.add(const Duration(days: 1)))) {
+        // Current week - show date range
+        groupKey = 'current_week';
+        title =
+            '${startOfWeek.day}/${startOfWeek.month} → ${endOfWeek.day}/${endOfWeek.month}';
       } else {
+        // Group by Month + Year
         groupKey = '${tx.date.year}-${tx.date.month}';
         title = '${_getMonthName(tx.date.month)} ${tx.date.year}';
       }
@@ -94,12 +243,27 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       ..sort((a, b) {
         if (a.sortKey == 'today') return -1;
         if (b.sortKey == 'today') return 1;
-        if (a.sortKey == 'yesterday') return -1;
-        if (b.sortKey == 'yesterday') return 1;
+        if (a.sortKey.startsWith('week_')) return -1;
+        if (b.sortKey.startsWith('week_')) return 1;
+        if (a.sortKey == 'current_week') return -1;
+        if (b.sortKey == 'current_week') return 1;
         return b.date.compareTo(a.date);
       });
 
     return sortedGroups;
+  }
+
+  String _getWeekdayName(int weekday) {
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    return weekdays[weekday - 1];
   }
 
   String _getMonthName(int month) {
@@ -133,12 +297,70 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   void _handleDeleteTransaction(String transactionId) async {
-    await TransactionService.instance.deleteTransaction(transactionId);
-    _refreshTransactions();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1B2A6B),
+        title: const Text(
+          'Delete Transaction',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this transaction?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final transaction = _allTransactions.firstWhere(
+        (t) => t.id == transactionId,
+      );
+      await TransactionService.instance.deleteTransaction(transactionId);
+      _refreshTransactions();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Transaction deleted'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+            action: SnackBarAction(
+              label: 'UNDO',
+              textColor: Colors.white,
+              onPressed: () async {
+                await TransactionService.instance.addTransaction(transaction);
+                _refreshTransactions();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Transaction restored'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }
+    }
   }
 
   void _handleEditTransaction(Transaction transaction) {
-    // TODO: Implement edit functionality
+    // Placeholder - edit coming soon
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Edit coming soon'),
@@ -178,11 +400,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
+            onPressed: _showSearchSheet,
           ),
           IconButton(
             icon: const Icon(Icons.filter_list, color: Colors.white),
-            onPressed: () {},
+            onPressed: _showFilterSheet,
           ),
         ],
       ),
