@@ -29,7 +29,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   String _searchQuery = '';
   Map<String, dynamic> _filters = {
-    'date': 'Today',
+    'date': 'This Month',
     'members': 'All Members',
     'account': 'All Accounts',
     'category': 'All Categories',
@@ -218,42 +218,56 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   DateTimeRange _getDateRangeForFilter(String filter) {
     final now = DateTime.now();
+
     switch (filter) {
       case 'Today':
-        final start = DateTime(now.year, now.month, now.day);
+        return DateTimeRange(
+          start: DateTime(now.year, now.month, now.day),
+          end: DateTime(now.year, now.month, now.day, 23, 59, 59),
+        );
 
-        final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
-
-        return DateTimeRange(start: start, end: end);
       case 'Last 3 Days':
-        final start = DateTime(
-          now.year,
-          now.month,
-          now.day,
-        ).subtract(const Duration(days: 2));
-        final end = DateTime(now.year, now.month, now.day);
-        return DateTimeRange(start: start, end: end);
-      case 'Last Week':
-        final start = now.subtract(const Duration(days: 7));
-        final end = now;
-        return DateTimeRange(start: start, end: end);
-      case 'Last Month':
-        final start = now.subtract(const Duration(days: 30));
-        final end = now;
-        return DateTimeRange(start: start, end: end);
+        return DateTimeRange(
+          start: now.subtract(const Duration(days: 3)),
+          end: now,
+        );
+
+      case 'Last 7 Days':
+        return DateTimeRange(
+          start: DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(const Duration(days: 7)),
+          end: DateTime(now.year, now.month, now.day, 23, 59, 59),
+        );
+
+      case 'Last 7 Days':
+        return DateTimeRange(
+          start: DateTime(
+            now.year,
+            now.month,
+            now.day,
+          ).subtract(const Duration(days: 7)),
+          end: DateTime(now.year, now.month, now.day, 23, 59, 59),
+        );
+
+      case 'This Month':
+        return DateTimeRange(
+          start: DateTime(now.year, now.month, 1),
+          end: DateTime(now.year, now.month + 1, 0, 23, 59, 59),
+        );
       case 'Last 3 Months':
-        final start = now.subtract(const Duration(days: 90));
-        final end = now;
-        return DateTimeRange(start: start, end: end);
-      case 'Last Year':
-        final start = now.subtract(const Duration(days: 365));
-        final end = now;
-        return DateTimeRange(start: start, end: end);
-      case 'All Time':
-        return DateTimeRange(start: DateTime(2020, 1, 1), end: now);
+        return DateTimeRange(
+          start: DateTime(now.year, now.month - 3, now.day),
+          end: now,
+        );
+
+      case 'This Year':
+        return DateTimeRange(start: DateTime(now.year, 1, 1), end: now);
+
       default:
-        final today = DateTime(now.year, now.month, now.day);
-        return DateTimeRange(start: today, end: today);
+        return DateTimeRange(start: DateTime(2000), end: DateTime(2100));
     }
   }
 
@@ -282,7 +296,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       switch (dateFilter) {
         case 'Today':
         case 'Last 3 Days':
-        case 'Last Week':
+        case 'Last 7 Days':
         case 'Last Month':
         case 'Last 3 Months':
         case 'Last Year':

@@ -1,9 +1,9 @@
 // lib/screens/main_navigation.dart
 
 import 'package:flutter/material.dart';
+import 'package:wafferly/features/analysis/screens/analysis_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_colors.dart';
-
 import 'accounts/accounts_screen.dart';
 import 'expenses_screen.dart';
 import 'transactions/transactions_screen.dart';
@@ -24,6 +24,7 @@ class _MainNavigationState extends State<MainNavigation> {
     AccountsScreen(),
     TransactionsScreen(),
     PlanningScreen(),
+    AnalysisScreen(),
     SettingsPlaceholder(),
   ];
 
@@ -68,6 +69,13 @@ class _MainNavigationState extends State<MainNavigation> {
             icon: const Icon(Icons.auto_graph),
             label: t.planning,
           ),
+
+          BottomNavigationBarItem(
+            icon: Icon(Icons.analytics_outlined),
+            activeIcon: Icon(Icons.analytics),
+            label: 'Analysis',
+          ),
+
           BottomNavigationBarItem(
             icon: const Icon(Icons.settings),
             label: t.settings,

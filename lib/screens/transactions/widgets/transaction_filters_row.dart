@@ -81,7 +81,7 @@ class _TransactionFiltersRowState extends State<TransactionFiltersRow> {
                           for (final date in [
                             'Today',
                             'Last 3 Days',
-                            'Last Week',
+                            'Last 7 Days',
                             'This Month',
                             'Last 3 Months',
                             'This Year',
