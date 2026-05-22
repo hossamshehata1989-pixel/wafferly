@@ -364,6 +364,8 @@
   "stocks": "Stocks",
   "certificates": "Certificates",
   "lent": "Lent",
-  "rosca": "ROSCA"
+  "rosca": "ROSCA",
+  "transactionUpdatedSuccessfully": "Transaction updated successfully",
+  "transactionSavedSuccessfully": "Transaction saved successfully"
 }
 

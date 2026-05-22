@@ -47,7 +47,9 @@ class TransactionEntryController extends ChangeNotifier {
   String _selectedCategoryId = "";
   String _selectedTransactionType = TransactionType.expense;
   SaveStatus _saveStatus = SaveStatus.idle;
+  Transaction? _editingTransaction;
 
+  bool get isEditing => _editingTransaction != null;
   // Transfer specific fields
   String _selectedFromAccountId = "";
   String _selectedFromAccountName = "اختر حساب المصدر";
@@ -181,6 +183,36 @@ class TransactionEntryController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void loadTransaction(Transaction tx) {
+    _editingTransaction = tx;
+
+    _amount = tx.amount.toString();
+    _selectedDate = tx.date;
+    _note = tx.note ?? '';
+    _paymentMethod = tx.paymentMethod;
+
+    _selectedTransactionType = tx.type;
+
+    final categoryId = (tx.subCategoryId?.isNotEmpty == true)
+        ? tx.subCategoryId!
+        : tx.categoryId;
+
+    _selectedCategoryId = categoryId;
+
+    if (tx.type == TransactionType.income) {
+      _selectedAccountId = tx.toAccountId ?? '';
+    } else {
+      _selectedAccountId = tx.fromAccountId ?? '';
+    }
+
+    final box = Hive.box<Account>('accounts');
+
+    final account = box.get(_selectedAccountId);
+
+    _selectedAccountName = account?.name ?? "اختر حساب";
+
+    notifyListeners();
+  }
   // ==============================
   // Calculator
   // ==============================
@@ -265,7 +297,15 @@ class TransactionEntryController extends ChangeNotifier {
 
     if (success) {
       _saveStatus = SaveStatus.idle;
-      _resetExpenseForm();
+
+      final wasEditing = _editingTransaction != null;
+
+      _editingTransaction = null;
+
+      // Reset فقط أثناء إنشاء معاملة جديدة
+      if (!wasEditing) {
+        _resetExpenseForm();
+      }
 
       return const SaveResult(
         success: true,
@@ -327,7 +367,32 @@ class TransactionEntryController extends ChangeNotifier {
       source: TransactionSource.manual,
     );
 
-    await TransactionService.instance.addTransaction(tx);
+    if (_editingTransaction != null) {
+      final updated = _editingTransaction!.copyWith(
+        amount: amount,
+        type: _selectedTransactionType,
+        fromAccountId: isIncome ? null : _selectedAccountId,
+
+        toAccountId: isIncome ? _selectedAccountId : null,
+
+        categoryId: mainCategoryId,
+
+        subCategoryId: subCategoryId,
+
+        date: _selectedDate,
+
+        note: _note.isEmpty ? null : _note,
+
+        paymentMethod: _paymentMethod,
+
+        isExceptional: isExceptional,
+      );
+
+      await TransactionService.instance.updateTransaction(updated);
+    } else {
+      await TransactionService.instance.addTransaction(tx);
+    }
+
     return true;
   }
 
@@ -390,8 +455,14 @@ class TransactionEntryController extends ChangeNotifier {
     _amount = "0";
     _expression = "";
     _note = "";
+
     _selectedCategoryId = "";
+
+    _selectedAccountId = "";
+    _selectedAccountName = "اختر حساب";
+
     _paymentMethod = "cash";
+
     notifyListeners();
   }
 

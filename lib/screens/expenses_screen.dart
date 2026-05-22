@@ -13,25 +13,40 @@ import '../widgets/expense_entry/advanced_options_panel.dart';
 import '../widgets/expense_entry/transfer_form.dart';
 import '../l10n/app_localizations.dart';
 import '../constants/transaction_constants.dart';
+import '../models/transaction.dart';
 
 class ExpensesScreen extends StatelessWidget {
   final String initialType;
+  final Transaction? transactionToEdit;
 
-  const ExpensesScreen({super.key, this.initialType = TransactionType.expense});
+  const ExpensesScreen({
+    super.key,
+    this.initialType = TransactionType.expense,
+    this.transactionToEdit,
+  });
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) {
         final controller = TransactionEntryController();
-        controller.setTransactionType(initialType);
+
+        if (transactionToEdit != null) {
+          controller.loadTransaction(transactionToEdit!);
+        } else {
+          controller.setTransactionType(initialType);
+        }
+
         return controller;
       },
       child: Scaffold(
         resizeToAvoidBottomInset: true,
+
         appBar: AppBar(
           title: Text(
-            initialType == TransactionType.income
+            transactionToEdit != null
+                ? 'Edit Transaction'
+                : initialType == TransactionType.income
                 ? AppLocalizations.of(context)!.income
                 : (initialType == TransactionType.transfer
                       ? AppLocalizations.of(context)!.transfer
@@ -39,6 +54,7 @@ class ExpensesScreen extends StatelessWidget {
           ),
           backgroundColor: const Color(0xFF0A0A0A),
         ),
+
         body: Consumer<TransactionEntryController>(
           builder: (context, controller, _) {
             return SafeArea(
@@ -47,16 +63,45 @@ class ExpensesScreen extends StatelessWidget {
                   final keyboardHeight = MediaQuery.of(
                     context,
                   ).viewInsets.bottom;
+
                   final isKeyboardOpen = keyboardHeight > 0;
+
                   final isTransfer =
                       controller.selectedTransactionType ==
                       TransactionType.transfer;
+
                   final isExpense = controller.isExpense;
 
                   return Column(
                     children: [
-                      ExpenseEntryTabs(controller: controller),
-                      const SizedBox(height: 8),
+                      if (!controller.isEditing) ...[
+                        ExpenseEntryTabs(controller: controller),
+                        const SizedBox(height: 8),
+                      ] else ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(
+                                Icons.edit_outlined,
+                                color: Colors.white70,
+                                size: 20,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Edit Transaction',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
                       if (isTransfer)
                         Expanded(child: TransferForm(controller: controller))
                       else
@@ -89,30 +134,42 @@ class ExpensesScreen extends StatelessWidget {
           flex: isKeyboardOpen ? 2 : 4,
           child: MainCategoriesGrid(
             selectedCategoryId: controller.selectedCategoryId,
+
             onCategorySelected: controller.selectCategory,
+
             categoryType: controller.categoryType,
           ),
         ),
+
         const SizedBox(height: 8),
+
         if (controller.hasSubCategories && !isKeyboardOpen && isExpense)
           SizedBox(
             height: 120,
             child: SubCategoriesGrid(
               subCategories: controller.currentSubCategories,
+
               selectedSubCategoryId: controller.selectedCategoryId,
+
               onSubCategorySelected: controller.selectCategory,
             ),
           ),
+
         Flexible(
           flex: isKeyboardOpen ? 2 : 3,
           child: AmountInputPanel(controller: controller),
         ),
+
         if (!isKeyboardOpen && isExpense) ...[
           QuickActionsRow(controller: controller),
+
           const SizedBox(height: 8),
+
           AdvancedOptionsPanel(controller: controller),
+
           const SizedBox(height: 8),
         ],
+
         ActionButtonsRow(controller: controller),
       ],
     );

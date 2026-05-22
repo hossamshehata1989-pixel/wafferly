@@ -142,10 +142,15 @@ class ActionButtonsRow extends StatelessWidget {
           break;
       }
     } else {
-      final message = controller.isIncome
-          ? t.incomeAddedSuccessfully
-          : t.expenseAddedSuccessfully;
+      final message = controller.isEditing
+          ? t.transactionUpdatedSuccessfully
+          : t.transactionSavedSuccessfully;
+
       _showSnackBar(context, message);
+
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
     }
   }
 

@@ -10,6 +10,7 @@ import 'widgets/transaction_filters_row.dart';
 import 'widgets/transaction_section.dart';
 import 'widgets/transaction_fab.dart';
 import 'package:intl/intl.dart';
+import '../expenses_screen.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -387,7 +388,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   void _handleEditTransaction(Transaction transaction) {
-    // Edit flow not implemented yet
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExpensesScreen(
+          initialType: transaction.type,
+          transactionToEdit: transaction,
+        ),
+      ),
+    ).then((_) {
+      _refreshTransactions();
+    });
   }
 
   void _onTabChanged(int index) {

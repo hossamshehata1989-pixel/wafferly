@@ -363,6 +363,8 @@
   "stocks": "أسهم",
   "certificates": "شهادات",
   "lent": "سلفة",
-  "rosca": "جمعية"
+  "rosca": "جمعية",
+  "transactionUpdatedSuccessfully": "تم تحديث المعاملة بنجاح",
+  "transactionSavedSuccessfully": "تم حفظ المعاملة بنجاح"
 
 }
