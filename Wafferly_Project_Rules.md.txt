@@ -1,0 +1,297 @@
+# Wafferly Project Rules
+
+Last Updated:
+Financial Engine + Transactions Stabilization Phase
+
+---
+
+# FINANCIAL ENGINE RULES
+
+## Rule 1: Ledger Is Part of Financial Engine
+
+Transactions
+↓
+Ledger
+↓
+Balances
+↓
+Reports
+↓
+Analysis
+
+Notes:
+
+- Ledger is NOT a reporting layer only
+- Ledger participates in financial calculations
+- Ledger data must stay synchronized
+
+Status:
+[APPROVED]
+
+---
+
+## Rule 2: Transaction Lifecycle Sync
+
+Create Transaction
+
+Transaction
+↓
+Create Ledger Entries
+
+Update Transaction
+
+Update
+↓
+Delete old Ledger Entries
+↓
+Update Transaction
+↓
+Recreate Ledger Entries
+
+Delete Transaction
+
+Delete
+↓
+Delete Ledger Entries
+↓
+Delete Transaction
+
+Notes:
+
+- Do not leave orphan LedgerEntries
+- Delete and update must keep Ledger synchronized
+
+Status:
+[APPROVED]
+
+---
+
+## Rule 3: Runtime Verification First
+
+Before adding architecture:
+
+Required:
+
+✓ Verify existing implementation
+✓ Verify method existence
+✓ Verify runtime behavior
+
+Forbidden:
+
+❌ Create new services
+❌ Singleton conversions
+❌ Event systems
+❌ Observers
+❌ Streams
+❌ Sync managers
+❌ Random architecture refactors
+
+Status:
+[APPROVED]
+
+---
+
+# ACCOUNT RULES
+
+## Rule 4: Account Delete Policy
+
+If account has linked transactions:
+
+Delete
+↓
+Archive only
+
+Result:
+
+isArchived=true
+
+If account has NO linked transactions:
+
+Delete
+↓
+Hard delete
+
+Status:
+[APPROVED]
+
+---
+
+## Rule 5: Archived Account Behavior
+
+Archived account hidden from:
+
+✓ Add transaction
+✓ Account selectors
+✓ Active accounts list
+
+Archived account still available in:
+
+✓ Historical transactions
+✓ Ledger
+✓ Reports
+✓ Analysis
+✓ Balance calculations
+
+Status:
+[APPROVED]
+
+---
+
+## Rule 6: Account Restore Policy
+
+Lifecycle:
+
+Active
+↓
+Archive
+↓
+Restore
+
+Restore:
+
+isArchived=false
+
+Restored account returns to:
+
+✓ Add transaction
+✓ Account selectors
+✓ Accounts screen
+
+Status:
+[APPROVED]
+
+---
+
+# TRANSACTIONS RULES
+
+## Rule 7: Screen Responsibility
+
+TransactionsScreen:
+
+✓ History
+✓ Search
+✓ Filters
+✓ Grouping
+
+ExpensesScreen:
+
+✓ Create flow
+✓ Edit flow
+
+ExpensesList:
+
+Legacy
+↓
+Remove gradually
+
+Status:
+[APPROVED]
+
+---
+
+## Rule 8: Search Rules
+
+Search supports:
+
+✓ Arabic
+✓ English
+
+Priority:
+
+StartsWith()
+↓
+Contains()
+
+Normalization:
+
+أ/إ/آ → ا
+
+ة → ه
+
+ى → ي
+
+Status:
+[APPROVED]
+
+---
+
+## Rule 9: Date Filters
+
+Available filters:
+
+- Today
+- Last 3 Days
+- Last 7 Days
+- This Month (Default)
+- Last 3 Months
+- This Year
+- All Time
+
+Status:
+[APPROVED]
+
+---
+
+## Rule 10: Transaction Grouping
+
+Today
+Last 3 Days
+Last 7 Days
+
+↓
+
+Daily grouping
+
+This Month
+Last 3 Months
+
+↓
+
+Monthly grouping
+
+This Year
+All Time
+
+↓
+
+Year grouping
+
+Status:
+[APPROVED]
+
+---
+
+## Rule 11: Transaction Tabs
+
+Available:
+
+✓ All
+✓ Expenses
+✓ Income
+✓ Transfer
+
+Disabled:
+
+Borrow/Lend
+Payments
+
+Reason:
+
+Models not ready yet
+
+Status:
+[APPROVED]
+
+---
+
+# FUTURE IMPROVEMENTS
+
+- Atomic transaction lifecycle
+- Dismissible cleanup
+- Hierarchical category filter
+- Edit flow integration
+- Analysis verification
+
+---
+
+END OF RULES

@@ -242,16 +242,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
           end: DateTime(now.year, now.month, now.day, 23, 59, 59),
         );
 
-      case 'Last 7 Days':
-        return DateTimeRange(
-          start: DateTime(
-            now.year,
-            now.month,
-            now.day,
-          ).subtract(const Duration(days: 7)),
-          end: DateTime(now.year, now.month, now.day, 23, 59, 59),
-        );
-
       case 'This Month':
         return DateTimeRange(
           start: DateTime(now.year, now.month, 1),
@@ -259,8 +249,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         );
       case 'Last 3 Months':
         return DateTimeRange(
-          start: DateTime(now.year, now.month - 3, now.day),
-          end: now,
+          start: DateTime(now.year, now.month - 3, 1),
+          end: DateTime(now.year, now.month, now.day, 23, 59, 59),
         );
 
       case 'This Year':
@@ -297,16 +287,32 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         case 'Today':
         case 'Last 3 Days':
         case 'Last 7 Days':
-        case 'Last Month':
-        case 'Last 3 Months':
-        case 'Last Year':
-        case 'All Time':
           title = '${txDate.day} ${_getMonthName(txDate.month)} ${txDate.year}';
-          groupKey = txDate.toString();
+
+          groupKey = '${txDate.year}-${txDate.month}-${txDate.day}';
+
           break;
-        default:
+
+        case 'This Month':
+        case 'Last 3 Months':
           title = '${_getMonthName(txDate.month)} ${txDate.year}';
+
           groupKey = '${txDate.year}-${txDate.month}';
+
+          break;
+
+        case 'This Year':
+        case 'All Time':
+          title = '${txDate.year}';
+
+          groupKey = '${txDate.year}';
+
+          break;
+
+        default:
+          title = '${txDate.day} ${_getMonthName(txDate.month)}';
+
+          groupKey = '${txDate.year}-${txDate.month}-${txDate.day}';
       }
 
       if (!groups.containsKey(groupKey)) {
@@ -557,7 +563,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         children: [
           TransactionTabBar(onTabChanged: _onTabChanged),
           TransactionFiltersRow(onFiltersChanged: _onFiltersChanged),
-          if (_dateGroups.isNotEmpty) _buildSummaryCard(),
+          if (_filteredTransactions.isNotEmpty) _buildSummaryCard(),
           Expanded(
             child: !hasTransactions && hasAnyTransaction
                 ? Center(
