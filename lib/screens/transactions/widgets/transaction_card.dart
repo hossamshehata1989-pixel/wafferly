@@ -114,44 +114,45 @@ class TransactionCard extends StatelessWidget {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          onEdit();
+          return false;
+        }
+
         if (direction == DismissDirection.endToStart) {
           final confirmed = await showDialog<bool>(
             context: context,
             builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xFF1B2A6B),
-              title: const Text(
-                'Delete Transaction',
-                style: TextStyle(color: Colors.white),
-              ),
+              title: const Text('Delete Transaction'),
               content: const Text(
                 'Are you sure you want to delete this transaction?',
-                style: TextStyle(color: Colors.white70),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(color: Colors.white70),
-                  ),
+                  child: const Text('Cancel'),
                 ),
-                TextButton(
+                ElevatedButton(
                   onPressed: () => Navigator.pop(context, true),
-                  child: const Text(
-                    'Delete',
-                    style: TextStyle(color: Colors.red),
-                  ),
+                  child: const Text('Delete'),
                 ),
               ],
             ),
           );
-          return confirmed == true;
-        } else if (direction == DismissDirection.startToEnd) {
-          onEdit();
+
+          if (confirmed == true) {
+            onDeleted();
+            return false;
+          }
+
           return false;
         }
+
         return false;
       },
+
+      onDismissed: (_) {},
+
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         decoration: BoxDecoration(

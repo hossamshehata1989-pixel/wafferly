@@ -375,38 +375,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   void _handleDeleteTransaction(String transactionId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1B2A6B),
-        title: const Text(
-          'Delete Transaction',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Are you sure you want to delete this transaction?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+    await TransactionService.instance.deleteTransaction(transactionId);
 
-    if (confirmed == true) {
-      await TransactionService.instance.deleteTransaction(transactionId);
-      _refreshTransactions();
-    }
+    _refreshTransactions();
   }
 
   void _handleEditTransaction(Transaction transaction) {
