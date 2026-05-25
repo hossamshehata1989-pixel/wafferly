@@ -11,6 +11,9 @@ import 'widgets/transaction_section.dart';
 import 'widgets/transaction_fab.dart';
 import 'package:intl/intl.dart';
 import '../expenses_screen.dart';
+import '../../widgets/transactions/category_filter_sheet.dart';
+import '../../config/category_config.dart';
+import '../../config/category_type.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -40,7 +43,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   double _totalIncome = 0;
   double _totalExpense = 0;
   double _netBalance = 0;
-
+  List<String> _selectedCategoryIds = [];
   @override
   void initState() {
     super.initState();
@@ -67,8 +70,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       result = _filterByAccount(result, _filters['account']);
     }
 
-    if (_filters['category'] != 'All Categories') {
-      result = _filterByCategory(result, _filters['category']);
+    if (_selectedCategoryIds.isNotEmpty) {
+      result = result.where((tx) {
+        final id = tx.subCategoryId ?? tx.categoryId;
+
+        return _selectedCategoryIds.contains(id);
+      }).toList();
     }
 
     result = _applySort(result, _filters['sort']);
@@ -469,6 +476,29 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
+  Future<void> _showCategoryFilter() async {
+    final result = await showModalBottomSheet<List<String>>(
+      context: context,
+      backgroundColor: Colors.transparent,
+
+      isScrollControlled: true,
+
+      builder: (_) => CategoryFilterSheet(
+        categories: getCategories(CategoryType.expense),
+
+        selectedIds: _selectedCategoryIds,
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _selectedCategoryIds = result;
+      });
+
+      _applyFiltersAndSearch();
+    }
+  }
+
   void _refreshTransactions() {
     _loadTransactions();
   }
@@ -573,7 +603,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       body: Column(
         children: [
           TransactionTabBar(onTabChanged: _onTabChanged),
-          TransactionFiltersRow(onFiltersChanged: _onFiltersChanged),
+          TransactionFiltersRow(
+            onFiltersChanged: _onFiltersChanged,
+            onCategoryPressed: _showCategoryFilter,
+          ),
           if (_filteredTransactions.isNotEmpty) _buildSummaryCard(),
           Expanded(
             child: !hasTransactions && hasAnyTransaction

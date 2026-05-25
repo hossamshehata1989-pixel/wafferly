@@ -366,6 +366,8 @@
   "lent": "Lent",
   "rosca": "ROSCA",
   "transactionUpdatedSuccessfully": "Transaction updated successfully",
-  "transactionSavedSuccessfully": "Transaction saved successfully"
+  "transactionSavedSuccessfully": "Transaction saved successfully",
+  "clear": "Clear",
+  "apply": "Apply"
 }
 

@@ -365,6 +365,8 @@
   "lent": "سلفة",
   "rosca": "جمعية",
   "transactionUpdatedSuccessfully": "تم تحديث المعاملة بنجاح",
-  "transactionSavedSuccessfully": "تم حفظ المعاملة بنجاح"
+  "transactionSavedSuccessfully": "تم حفظ المعاملة بنجاح",
+  "clear": "مسح",
+  "apply": "تطبيق"
 
 }

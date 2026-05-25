@@ -1,6 +1,7 @@
 // main.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/account.dart';
@@ -36,7 +37,7 @@ void main() async {
   await Hive.initFlutter();
 
   // Optional: reset for debugging
-  bool RESET_DB = false;
+  const bool RESET_DB = false;
 
   if (RESET_DB) {
     await Hive.deleteBoxFromDisk('accounts');
@@ -154,14 +155,18 @@ void main() async {
   // TEMP TEST ONLY
   // ====================================================
 
+  // const bool runStressTest = false;
+
+  //if (runStressTest) {
   // try {
-  //   await LedgerStressTestService().runStressTest(
-  //     transactionCount: 10,
-  //     verbose: false,
-  //   );
-  // } catch (e) {
-  //   print("⚠️ Stress test failed: $e");
-  // }
+  // await LedgerStressTestService().runStressTest(
+  // transactionCount: 300,
+  // verbose: false,
+  //);
+  //} catch (e) {
+  // debugPrint("⚠️ Stress test failed: $e");
+  //}
+  //}
 
   // ====================================================
   // Initialize registries

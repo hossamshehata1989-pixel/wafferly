@@ -5,8 +5,13 @@ import 'package:wafferly/services/account_service.dart';
 
 class TransactionFiltersRow extends StatefulWidget {
   final Function(Map<String, dynamic>) onFiltersChanged;
+  final VoidCallback onCategoryPressed;
 
-  const TransactionFiltersRow({super.key, required this.onFiltersChanged});
+  const TransactionFiltersRow({
+    super.key,
+    required this.onFiltersChanged,
+    required this.onCategoryPressed,
+  });
 
   @override
   State<TransactionFiltersRow> createState() => _TransactionFiltersRowState();
@@ -201,66 +206,6 @@ class _TransactionFiltersRowState extends State<TransactionFiltersRow> {
     );
   }
 
-  void _showCategoriesSheet() {
-    final categories = [
-      'All Categories',
-      'Food',
-      'Transport',
-      'Shopping',
-      'Bills',
-      'Health',
-      'Income',
-      'Other',
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1A1A1A),
-      builder: (context) {
-        return SafeArea(
-          child: SizedBox(
-            height: MediaQuery.of(context).size.height * .7,
-            child: Column(
-              children: [
-                const SizedBox(height: 20),
-
-                const Text(
-                  'Categories',
-                  style: TextStyle(color: Colors.white, fontSize: 20),
-                ),
-
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: categories
-                          .map(
-                            (c) => _buildFilterOption(context, c, () {
-                              setState(() {
-                                _selectedCategory = c;
-                              });
-                            }),
-                          )
-                          .toList(),
-                    ),
-                  ),
-                ),
-
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-
-                    _applyFilters();
-                  },
-                  child: const Text('Apply'),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _showSortSheet() {
     final sorts = [
       'Recent First',
@@ -318,8 +263,12 @@ class _TransactionFiltersRowState extends State<TransactionFiltersRow> {
           const SizedBox(width: 8),
 
           ActionChip(
-            label: Text(_selectedCategory),
-            onPressed: _showCategoriesSheet,
+            label: Text(
+              _selectedCategory == 'All Categories'
+                  ? 'Categories'
+                  : _selectedCategory,
+            ),
+            onPressed: widget.onCategoryPressed,
           ),
 
           const SizedBox(width: 8),

@@ -19,17 +19,25 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
+  bool _showMoreMenu = false;
 
   final List<Widget> _pages = const [
     AccountsScreen(),
     TransactionsScreen(),
     PlanningScreen(),
     AnalysisScreen(),
-    SettingsPlaceholder(),
+    SizedBox(),
   ];
 
   void _onItemTapped(int index) {
+    if (index == 4) {
+      setState(() {
+        _showMoreMenu = !_showMoreMenu;
+      });
+      return;
+    }
     setState(() {
+      _showMoreMenu = false;
       _selectedIndex = index;
     });
   }
@@ -48,12 +56,34 @@ class _MainNavigationState extends State<MainNavigation> {
     final t = AppLocalizations.of(context)!;
 
     return Scaffold(
-      body: _pages[_selectedIndex],
+      body: Stack(
+        children: [
+          _pages[_selectedIndex],
+          if (_showMoreMenu)
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showMoreMenu = false;
+                });
+              },
+              child: Container(color: Colors.black54),
+            ),
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            top: 0,
+            bottom: 0,
+            right: _showMoreMenu ? 0 : -320,
+            child: const _MoreDrawer(),
+          ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.inactive,
+        selectedItemColor: const Color(0xFF3A7BFF), // أزرق
+        unselectedItemColor: Colors.grey,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
         showUnselectedLabels: true,
         onTap: _onItemTapped,
         items: [
@@ -61,24 +91,22 @@ class _MainNavigationState extends State<MainNavigation> {
             icon: const Icon(Icons.account_balance_wallet),
             label: t.accounts,
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.receipt_long),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.receipt_long),
             label: 'Transactions',
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.auto_graph),
-            label: t.planning,
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.auto_graph),
+            label: 'Planning',
           ),
-
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.analytics_outlined),
             activeIcon: Icon(Icons.analytics),
             label: 'Analysis',
           ),
-
           BottomNavigationBarItem(
-            icon: const Icon(Icons.settings),
-            label: t.settings,
+            icon: Icon(_showMoreMenu ? Icons.close : Icons.more_horiz),
+            label: 'More',
           ),
         ],
       ),
@@ -92,22 +120,227 @@ class _MainNavigationState extends State<MainNavigation> {
   }
 }
 
-// Settings placeholder (temporary)
-class SettingsPlaceholder extends StatelessWidget {
-  const SettingsPlaceholder({super.key});
+// =====================================
+// MORE DRAWER - مع expandable sections
+// =====================================
+
+class _MoreDrawer extends StatefulWidget {
+  const _MoreDrawer();
+
+  @override
+  State<_MoreDrawer> createState() => _MoreDrawerState();
+}
+
+class _MoreDrawerState extends State<_MoreDrawer> {
+  final Map<String, bool> _expandedSections = {
+    '💰 Financial': true,
+    '🎉 Life & Events': false,
+    '🔔 Automation': false,
+    '🤖 AI Tools': false,
+    '👥 Family': false,
+    '☁ Sync': false,
+    '⚙ System': false,
+  };
+
+  final Map<String, List<Map<String, dynamic>>> _sections = {
+    '💰 Financial': [
+      {
+        'icon': Icons.trending_up,
+        'label': 'Investments',
+        'color': Colors.green,
+      },
+      {'icon': Icons.money_off, 'label': 'Debts', 'color': Colors.red},
+      {'icon': Icons.group, 'label': 'Rosca', 'color': Colors.orange},
+      {
+        'icon': Icons.calendar_month,
+        'label': 'Installments',
+        'color': Colors.purple,
+      },
+    ],
+    '🎉 Life & Events': [
+      {'icon': Icons.cake, 'label': 'Birthdays', 'color': Colors.pink},
+      {'icon': Icons.event, 'label': 'Upcoming Events', 'color': Colors.amber},
+    ],
+    '🔔 Automation': [
+      {
+        'icon': Icons.repeat,
+        'label': 'Recurring Transactions',
+        'color': Colors.cyan,
+      },
+      {
+        'icon': Icons.notifications,
+        'label': 'Payment Reminders',
+        'color': Colors.blue,
+      },
+      {'icon': Icons.alarm, 'label': 'Bill Reminders', 'color': Colors.indigo},
+    ],
+    '🤖 AI Tools': [
+      {'icon': Icons.sms, 'label': 'SMS Import', 'color': Colors.teal},
+      {
+        'icon': Icons.description,
+        'label': 'Import Documents',
+        'color': Colors.lightBlue,
+      },
+      {'icon': Icons.insights, 'label': 'Insights', 'color': Colors.deepPurple},
+    ],
+    '👥 Family': [
+      {
+        'icon': Icons.account_balance_wallet,
+        'label': 'Shared Wallet',
+        'color': Colors.green,
+      },
+      {'icon': Icons.people, 'label': 'Members', 'color': Colors.blue},
+    ],
+    '☁ Sync': [
+      {'icon': Icons.backup, 'label': 'Backup', 'color': Colors.orange},
+      {'icon': Icons.file_copy, 'label': 'Export Excel', 'color': Colors.green},
+      {
+        'icon': Icons.picture_as_pdf,
+        'label': 'Export PDF',
+        'color': Colors.red,
+      },
+    ],
+    '⚙ System': [
+      {'icon': Icons.settings, 'label': 'Settings', 'color': Colors.grey},
+      {
+        'icon': Icons.notifications_active,
+        'label': 'Notifications',
+        'color': Colors.amber,
+      },
+      {'icon': Icons.security, 'label': 'Security', 'color': Colors.blue},
+      {'icon': Icons.help, 'label': 'Help & Support', 'color': Colors.cyan},
+    ],
+  };
+
+  void _toggleSection(String title) {
+    setState(() {
+      _expandedSections[title] = !(_expandedSections[title] ?? false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFF0F1115),
-      body: Center(
-        child: Text('Settings', style: TextStyle(color: Colors.white)),
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 280,
+        padding: const EdgeInsets.only(top: 50, left: 16, right: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D111A),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(20),
+            bottomLeft: Radius.circular(20),
+          ),
+          border: Border(
+            left: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+          ),
+        ),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: _sections.keys.map((title) {
+            return _buildExpandableSection(title);
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandableSection(String title) {
+    final isExpanded = _expandedSections[title] ?? false;
+    final items = _sections[title] ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // عنوان القسم الرئيسي (Expandable)
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _toggleSection(title),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    size: 18,
+                    color: const Color(0xFFFFC107), // أصفر واتح
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Color(0xFFFFC107), // أصفر واتخن
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // خط فاصل خفيف بين الأقسام
+        Divider(color: Colors.white.withOpacity(0.08), height: 1),
+        // العناصر الفرعية (تظهر فقط إذا كان القسم مفتوحاً)
+        if (isExpanded)
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: Column(
+              children: items
+                  .map(
+                    (item) => _subMenuItem(
+                      icon: item['icon'] as IconData,
+                      label: item['label'] as String,
+                      color: item['color'] as Color,
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+
+  Widget _subMenuItem({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+          child: Row(
+            children: [
+              Icon(icon, size: 18, color: color),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-// Global FAB Bottom Sheet
+// =====================================
+// ADD TRANSACTION SHEET
+// =====================================
+
 class _AddTransactionBottomSheet extends StatefulWidget {
   @override
   State<_AddTransactionBottomSheet> createState() =>
@@ -121,28 +354,19 @@ class _AddTransactionBottomSheetState
       'icon': Icons.receipt_long,
       'label': 'Expense',
       'type': TransactionType.expense,
+      'color': Colors.red,
     },
     {
       'icon': Icons.trending_up,
       'label': 'Income',
       'type': TransactionType.income,
+      'color': Colors.green,
     },
     {
       'icon': Icons.swap_horiz,
       'label': 'Transfer',
       'type': TransactionType.transfer,
-    },
-    {
-      'icon': Icons.handshake,
-      'label': 'Borrow/Lend',
-      'type': 'borrow_lend',
-      'comingSoon': true,
-    },
-    {
-      'icon': Icons.payment,
-      'label': 'Payments',
-      'type': 'payment',
-      'comingSoon': true,
+      'color': Colors.blue,
     },
   ];
 
@@ -156,22 +380,11 @@ class _AddTransactionBottomSheetState
     );
   }
 
-  void _showComingSoon() {
-    Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Coming Soon'),
-        backgroundColor: Colors.blue,
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF1A1A1A),
+        color: Color(0xFF1A1F2A),
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -186,76 +399,26 @@ class _AddTransactionBottomSheetState
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          const SizedBox(height: 24),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  'New Transaction',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           ..._options.map((option) {
-            final isComingSoon = option['comingSoon'] == true;
+            final iconColor = option['color'] as Color;
             return ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: isComingSoon
-                      ? Colors.white.withOpacity(0.1)
-                      : const Color(0xFF3A7BFF).withOpacity(0.2),
+                  color: iconColor.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  option['icon'],
-                  color: isComingSoon
-                      ? Colors.white54
-                      : const Color(0xFF3A7BFF),
-                  size: 24,
-                ),
+                child: Icon(option['icon'], color: iconColor, size: 24),
               ),
               title: Text(
                 option['label'],
-                style: TextStyle(
-                  color: isComingSoon ? Colors.white54 : Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: const TextStyle(color: Colors.white, fontSize: 16),
               ),
-              trailing: isComingSoon
-                  ? Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Soon',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
-                      ),
-                    )
-                  : null,
-              onTap: () {
-                if (isComingSoon) {
-                  _showComingSoon();
-                } else {
-                  _navigateToExpensesScreen(option['type']);
-                }
-              },
+              onTap: () => _navigateToExpensesScreen(option['type']),
             );
           }).toList(),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
         ],
       ),
     );
