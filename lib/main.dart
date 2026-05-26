@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'package:provider/provider.dart';
+
+import 'features/members/controllers/members_controller.dart';
+
 import 'models/account.dart';
 import 'models/budget.dart';
 import 'models/reserved_money.dart';
@@ -26,6 +30,7 @@ import 'adapters/account_migration_adapter.dart';
 import 'screens/main_navigation.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/app_colors.dart';
+import 'theme/app_theme.dart';
 
 import 'services/ledger_stress_test_service.dart';
 
@@ -174,7 +179,13 @@ void main() async {
 
   CategoryRegistry.initialize();
 
-  runApp(const WafferlyApp());
+  runApp(
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => MembersController())],
+
+      child: const WafferlyApp(),
+    ),
+  );
 }
 
 class WafferlyApp extends StatelessWidget {
@@ -193,11 +204,7 @@ class WafferlyApp extends StatelessWidget {
       supportedLocales: AppLocalizations.supportedLocales,
 
       // 🎨 Theme
-      theme: ThemeData(
-        scaffoldBackgroundColor: AppColors.background,
-
-        primaryColor: AppColors.primary,
-      ),
+      theme: AppTheme.darkTheme,
 
       home: const MainNavigation(),
     );

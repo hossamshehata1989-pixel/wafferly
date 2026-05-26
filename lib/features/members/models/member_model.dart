@@ -1,31 +1,30 @@
 // lib/features/members/models/member_model.dart
 
-import 'package:flutter/material.dart';
-
 class MemberModel {
   final String id;
 
   // Basic
   final String name;
-  final String relationship;
+  final String relationshipId;
   final String? photoUrl;
 
   // Personal
   final DateTime? birthday;
   final String? gender;
 
-  // Contact (Future Share / Sync)
+  // Contact
   final String? phone;
   final String? email;
 
-  // Identity (Future)
+  // Identity
   final String? accountId;
   final bool isLinked;
+  final bool isOwner;
 
   // Notes
   final String? notes;
 
-  // Stats (calculated later)
+  // Stats
   final int transactionsCount;
   final double monthlySpent;
   final int goalsCount;
@@ -33,7 +32,7 @@ class MemberModel {
   const MemberModel({
     required this.id,
     required this.name,
-    required this.relationship,
+    required this.relationshipId,
 
     this.photoUrl,
 
@@ -45,6 +44,7 @@ class MemberModel {
 
     this.accountId,
     this.isLinked = false,
+    this.isOwner = false,
 
     this.notes,
 
@@ -56,7 +56,7 @@ class MemberModel {
   MemberModel copyWith({
     String? id,
     String? name,
-    String? relationship,
+    String? relationshipId,
     String? photoUrl,
     DateTime? birthday,
     String? gender,
@@ -64,6 +64,7 @@ class MemberModel {
     String? email,
     String? accountId,
     bool? isLinked,
+    bool? isOwner,
     String? notes,
     int? transactionsCount,
     double? monthlySpent,
@@ -72,17 +73,30 @@ class MemberModel {
     return MemberModel(
       id: id ?? this.id,
       name: name ?? this.name,
-      relationship: relationship ?? this.relationship,
+      relationshipId: relationshipId ?? this.relationshipId,
+
       photoUrl: photoUrl ?? this.photoUrl,
+
       birthday: birthday ?? this.birthday,
+
       gender: gender ?? this.gender,
+
       phone: phone ?? this.phone,
+
       email: email ?? this.email,
+
       accountId: accountId ?? this.accountId,
+
       isLinked: isLinked ?? this.isLinked,
+
+      isOwner: isOwner ?? this.isOwner,
+
       notes: notes ?? this.notes,
+
       transactionsCount: transactionsCount ?? this.transactionsCount,
+
       monthlySpent: monthlySpent ?? this.monthlySpent,
+
       goalsCount: goalsCount ?? this.goalsCount,
     );
   }

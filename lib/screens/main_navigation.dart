@@ -9,6 +9,7 @@ import 'expenses_screen.dart';
 import 'transactions/transactions_screen.dart';
 import 'planning/planning_screen.dart';
 import '../constants/transaction_constants.dart';
+import '../features/members/screens/members_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -81,7 +82,7 @@ class _MainNavigationState extends State<MainNavigation> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF3A7BFF), // أزرق
+        selectedItemColor: const Color(0xFF3A7BFF),
         unselectedItemColor: Colors.grey,
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
         showUnselectedLabels: true,
@@ -218,6 +219,19 @@ class _MoreDrawerState extends State<_MoreDrawer> {
     });
   }
 
+  void _onSubMenuItemTap(String label) {
+    if (label == "Members") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MembersScreen()),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text("$label coming soon")));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -232,7 +246,10 @@ class _MoreDrawerState extends State<_MoreDrawer> {
             bottomLeft: Radius.circular(20),
           ),
           border: Border(
-            left: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+            left: BorderSide(
+              color: Colors.white.withValues(alpha: 0.1),
+              width: 1,
+            ),
           ),
         ),
         child: ListView(
@@ -265,14 +282,14 @@ class _MoreDrawerState extends State<_MoreDrawer> {
                   Icon(
                     isExpanded ? Icons.expand_less : Icons.expand_more,
                     size: 18,
-                    color: const Color(0xFFFFC107), // أصفر واتح
+                    color: const Color(0xFFFFC107),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       title,
                       style: const TextStyle(
-                        color: Color(0xFFFFC107), // أصفر واتخن
+                        color: Color(0xFFFFC107),
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 0.5,
@@ -285,7 +302,7 @@ class _MoreDrawerState extends State<_MoreDrawer> {
           ),
         ),
         // خط فاصل خفيف بين الأقسام
-        Divider(color: Colors.white.withOpacity(0.08), height: 1),
+        Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
         // العناصر الفرعية (تظهر فقط إذا كان القسم مفتوحاً)
         if (isExpanded)
           Padding(
@@ -315,7 +332,7 @@ class _MoreDrawerState extends State<_MoreDrawer> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: () {},
+        onTap: () => _onSubMenuItemTap(label),
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),

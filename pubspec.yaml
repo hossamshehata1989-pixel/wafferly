@@ -33,6 +33,9 @@ dependencies:
 
   uuid: ^4.5.1
 
+  # State Management
+  image_picker: ^1.1.2
+
 
 dev_dependencies:
   flutter_test:
