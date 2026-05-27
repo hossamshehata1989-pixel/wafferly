@@ -1,5 +1,8 @@
 // lib/features/members/screens/add_member_screen.dart
 
+import 'dart:io';
+
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -11,6 +14,7 @@ import '../../../shared/widgets/wafferly_dropdown.dart';
 import '../../../shared/widgets/wafferly_date_picker.dart';
 import '../../../shared/widgets/wafferly_button.dart';
 import '../../../shared/widgets/wafferly_form_section.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class AddMemberScreen extends StatefulWidget {
   const AddMemberScreen({super.key});
@@ -20,18 +24,18 @@ class AddMemberScreen extends StatefulWidget {
 }
 
 class _AddMemberScreenState extends State<AddMemberScreen> {
+  File? selectedImage;
+  String? selectedAvatar;
+  final picker = ImagePicker();
   final _formKey = GlobalKey<FormState>();
   final nameController = TextEditingController();
-  final phoneController = TextEditingController();
   final emailController = TextEditingController();
   final notesController = TextEditingController();
 
-  String relationship = "me";
   String? gender;
   DateTime? birthday;
 
   final List<Map<String, String>> relationships = [
-    {"id": "me", "name": "Me"},
     {"id": "spouse", "name": "Spouse"},
     {"id": "son", "name": "Son"},
     {"id": "daughter", "name": "Daughter"},
@@ -43,10 +47,26 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     {"id": "custom", "name": "+ Add Custom Relationship"},
   ];
 
+  String relationship = "spouse";
+
+  final List<String> avatarOptions = const [
+    'assets/avatars/other1.svg',
+    'assets/avatars/other2.svg',
+    'assets/avatars/other3.svg',
+    'assets/avatars/other4.svg',
+    'assets/avatars/other5.svg',
+    'assets/avatars/other6.svg',
+    'assets/avatars/other7.svg',
+    'assets/avatars/other8.svg',
+    'assets/avatars/other9.svg',
+    'assets/avatars/other10.svg',
+    'assets/avatars/other11.svg',
+    'assets/avatars/other12.svg',
+  ];
+
   @override
   void dispose() {
     nameController.dispose();
-    phoneController.dispose();
     emailController.dispose();
     notesController.dispose();
     super.dispose();
@@ -65,6 +85,160 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       return "Invalid email format";
     }
     return null;
+  }
+
+  Future<void> _showAvatarPicker() async {
+    showModalBottomSheet(
+      context: context,
+
+      isScrollControlled: true,
+      builder: (_) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  "Choose Avatar",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const BouncingScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: avatarOptions.length,
+                  itemBuilder: (context, index) {
+                    final avatar = avatarOptions[index];
+                    final isSelected = selectedAvatar == avatar;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          selectedAvatar = avatar;
+                          selectedImage = null;
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.primary
+                                : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+
+                            child: SvgPicture.asset(
+                              avatar,
+
+                              width: 48,
+                              height: 48,
+
+                              fit: BoxFit.contain,
+
+                              theme: const SvgTheme(currentColor: Colors.white),
+
+                              placeholderBuilder: (_) =>
+                                  const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickImage() async {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text("Take Photo"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final file = await picker.pickImage(
+                    source: ImageSource.camera,
+                  );
+                  if (file != null) {
+                    setState(() {
+                      selectedImage = File(file.path);
+                      selectedAvatar = null;
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo),
+                title: const Text("Choose From Gallery"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final file = await picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+                  if (file != null) {
+                    setState(() {
+                      selectedImage = File(file.path);
+                      selectedAvatar = null;
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.face),
+                title: const Text("Choose Avatar"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showAvatarPicker();
+                },
+              ),
+              if (selectedImage != null || selectedAvatar != null)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: const Text(
+                    "Remove Photo",
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  onTap: () {
+                    setState(() {
+                      selectedImage = null;
+                      selectedAvatar = null;
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _showCustomRelationshipDialog() async {
@@ -122,7 +296,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   void _saveMember() {
     if (_formKey.currentState!.validate()) {
       final name = nameController.text.trim();
-      final phone = phoneController.text.trim();
       final email = emailController.text.trim();
       final notes = notesController.text.trim();
 
@@ -130,12 +303,13 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         id: const Uuid().v4(),
         name: name,
         relationshipId: relationship,
+        photoUrl: selectedImage?.path,
+        avatarAsset: selectedAvatar,
         birthday: birthday,
         gender: gender,
-        phone: phone.isEmpty ? null : phone,
         email: email.isEmpty ? null : email,
         notes: notes.isEmpty ? null : notes,
-        isOwner: relationship == "me",
+        isOwner: false,
       );
 
       Navigator.pop(context, member);
@@ -156,21 +330,51 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
             children: [
               // Avatar Section
               Center(
-                child: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppColors.primaryGradient,
-                  ),
-                  padding: const EdgeInsets.all(2),
-                  child: CircleAvatar(
-                    radius: 32,
-                    backgroundColor: AppColors.card,
-                    child: Icon(
-                      Icons.person,
-                      size: 34,
-                      color: AppColors.textPrimary,
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: AppColors.primaryGradient,
+                        ),
+                        padding: const EdgeInsets.all(2),
+                        child: CircleAvatar(
+                          radius: 38,
+                          backgroundColor: AppColors.card,
+                          backgroundImage: selectedImage != null
+                              ? FileImage(selectedImage!)
+                              : null,
+                          child: selectedImage != null
+                              ? null
+                              : selectedAvatar != null
+                              ? Padding(
+                                  padding: const EdgeInsets.all(10),
+
+                                  child: SvgPicture.asset(
+                                    selectedAvatar!,
+
+                                    fit: BoxFit.contain,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.add_a_photo,
+                                  size: 30,
+                                  color: AppColors.textPrimary,
+                                ),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: AppSpacing.sm),
+                    const Text(
+                      "Tap to add photo",
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: AppSpacing.md),

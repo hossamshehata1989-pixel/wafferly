@@ -7,6 +7,7 @@ class MemberModel {
   final String name;
   final String relationshipId;
   final String? photoUrl;
+  final String? avatarAsset;
 
   // Personal
   final DateTime? birthday;
@@ -24,6 +25,10 @@ class MemberModel {
   // Notes
   final String? notes;
 
+  // Archive
+  final bool isArchived;
+  final DateTime? archivedAt;
+
   // Stats
   final int transactionsCount;
   final double monthlySpent;
@@ -35,6 +40,7 @@ class MemberModel {
     required this.relationshipId,
 
     this.photoUrl,
+    this.avatarAsset,
 
     this.birthday,
     this.gender,
@@ -43,10 +49,14 @@ class MemberModel {
     this.email,
 
     this.accountId,
+
     this.isLinked = false,
     this.isOwner = false,
 
     this.notes,
+
+    this.isArchived = false,
+    this.archivedAt,
 
     this.transactionsCount = 0,
     this.monthlySpent = 0,
@@ -58,6 +68,7 @@ class MemberModel {
     String? name,
     String? relationshipId,
     String? photoUrl,
+    String? avatarAsset,
     DateTime? birthday,
     String? gender,
     String? phone,
@@ -66,6 +77,8 @@ class MemberModel {
     bool? isLinked,
     bool? isOwner,
     String? notes,
+    bool? isArchived,
+    DateTime? archivedAt,
     int? transactionsCount,
     double? monthlySpent,
     int? goalsCount,
@@ -76,6 +89,8 @@ class MemberModel {
       relationshipId: relationshipId ?? this.relationshipId,
 
       photoUrl: photoUrl ?? this.photoUrl,
+
+      avatarAsset: avatarAsset ?? this.avatarAsset,
 
       birthday: birthday ?? this.birthday,
 
@@ -92,6 +107,10 @@ class MemberModel {
       isOwner: isOwner ?? this.isOwner,
 
       notes: notes ?? this.notes,
+
+      isArchived: isArchived ?? this.isArchived,
+
+      archivedAt: archivedAt ?? this.archivedAt,
 
       transactionsCount: transactionsCount ?? this.transactionsCount,
 

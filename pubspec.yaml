@@ -36,6 +36,8 @@ dependencies:
   # State Management
   image_picker: ^1.1.2
 
+  vector_graphics: ^1.1.11
+
 
 dev_dependencies:
   flutter_test:
@@ -56,3 +58,4 @@ flutter:
   assets:
     - assets/icons/categories/
     - assets/icons/ui/
+    - assets/avatars/
