@@ -768,6 +768,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
   Widget _buildFAB(AppLocalizations t) {
     return FloatingActionButton(
+      heroTag: "addTransactionFab",
       onPressed: () => _addAccount('asset'),
       backgroundColor: Colors.blue,
       child: const Icon(Icons.add, color: Colors.white),

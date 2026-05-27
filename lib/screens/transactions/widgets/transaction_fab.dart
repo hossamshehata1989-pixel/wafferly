@@ -11,6 +11,7 @@ class TransactionFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton(
+      heroTag: "transactionTabFab",
       onPressed: () {
         showModalBottomSheet(
           context: context,

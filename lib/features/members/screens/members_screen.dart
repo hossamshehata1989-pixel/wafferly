@@ -48,15 +48,35 @@ class MembersScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(AppSpacing.md),
             children: [
-              _summaryCard(members.length),
-              const SizedBox(height: AppSpacing.lg),
-              const Text(
-                "All Members",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  const Text(
+                    "All Members",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      "${members.length}",
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.md),
               ...sortedMembers.map((member) {
@@ -85,46 +105,6 @@ class MembersScreen extends StatelessWidget {
     );
   }
 
-  Widget _summaryCard(int totalMembers) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: AppColors.cardSecondary,
-            child: const Icon(Icons.people, color: AppColors.primary),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Members Summary",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  "$totalMembers members",
-                  style: const TextStyle(color: Colors.white54),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _memberCard(
     BuildContext context,
     MemberModel member,
@@ -134,12 +114,12 @@ class MembersScreen extends StatelessWidget {
 
     // Avatar widget
     final avatar = CircleAvatar(
-      radius: 30,
+      radius: 20,
       backgroundColor: AppColors.cardSecondary,
       child: ClipOval(
         child: SizedBox(
-          width: 60,
-          height: 60,
+          width: 45,
+          height: 45,
           child: member.photoUrl != null
               ? Image.file(File(member.photoUrl!), fit: BoxFit.cover)
               : member.avatarAsset != null
@@ -160,10 +140,10 @@ class MembersScreen extends StatelessWidget {
     );
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
@@ -205,12 +185,12 @@ class MembersScreen extends StatelessWidget {
                                   size: 12,
                                   color: AppColors.primary,
                                 ),
-                                SizedBox(width: 4),
+                                SizedBox(width: 10),
                                 Text(
                                   "You",
                                   style: TextStyle(
                                     color: AppColors.primary,
-                                    fontSize: 10,
+                                    fontSize: 15,
                                   ),
                                 ),
                               ],
@@ -219,7 +199,7 @@ class MembersScreen extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 1),
                     Text(
                       RelationshipMapper.getDisplayName(member.relationshipId),
                       style: const TextStyle(color: AppColors.primary),
@@ -256,7 +236,6 @@ class MembersScreen extends StatelessWidget {
                       ),
                       tooltip: "Archive",
                       onPressed: () async {
-                        // ✅ Confirmation dialog before archiving
                         final confirmed = await showDialog<bool>(
                           context: context,
                           builder: (_) => AlertDialog(
@@ -266,7 +245,10 @@ class MembersScreen extends StatelessWidget {
                               style: TextStyle(color: Colors.white),
                             ),
                             content: Text(
-                              "Archive ${member.name}?",
+                              "⚠ Warning\n\n"
+                              "${member.name} has transaction history.\n\n"
+                              "To preserve financial integrity, this member will be archived instead of deleted.\n\n"
+                              "You can restore them anytime from Archived Members.",
                               style: const TextStyle(color: Colors.white70),
                             ),
                             actions: [
@@ -287,22 +269,11 @@ class MembersScreen extends StatelessWidget {
 
                         if (confirmed == true) {
                           controller.archiveMember(member.id);
-                          ScaffoldMessenger.of(context).clearSnackBars();
+
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
+                              duration: const Duration(seconds: 2),
                               content: Text("${member.name} archived"),
-                              action: SnackBarAction(
-                                label: "Undo",
-                                onPressed: () {
-                                  controller.updateMember(
-                                    member.copyWith(
-                                      isArchived: false,
-                                      archivedAt: null,
-                                    ),
-                                  );
-                                },
-                              ),
-                              duration: const Duration(seconds: 3),
                             ),
                           );
                         }

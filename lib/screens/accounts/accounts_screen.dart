@@ -279,6 +279,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: "accountsFab",
         onPressed: () => _addAccount('asset'),
         backgroundColor: Colors.blue,
         child: const Icon(Icons.add, color: Colors.white),

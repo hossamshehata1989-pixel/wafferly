@@ -112,6 +112,7 @@ class _MainNavigationState extends State<MainNavigation> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: "mainNavigationFab",
         onPressed: _showAddBottomSheet,
         backgroundColor: const Color(0xFF3A7BFF),
         child: const Icon(Icons.add, color: Colors.white),

@@ -560,6 +560,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
               },
             ),
       floatingActionButton: FloatingActionButton(
+        heroTag: "accountsFab",
         onPressed: _showAddGoalSheet,
         backgroundColor: const Color(0xFF3A7BFF),
         child: const Icon(Icons.add, color: Colors.white),

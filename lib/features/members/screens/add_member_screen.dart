@@ -38,6 +38,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   DateTime? birthday;
 
   final List<Map<String, String>> relationships = [
+    {"id": "me", "name": "Me"},
     {"id": "spouse", "name": "Spouse"},
     {"id": "son", "name": "Son"},
     {"id": "daughter", "name": "Daughter"},
@@ -74,19 +75,12 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
     if (member != null) {
       nameController.text = member.name;
-
       emailController.text = member.email ?? '';
-
       notesController.text = member.notes ?? '';
-
       relationship = member.relationshipId;
-
       gender = member.gender;
-
       birthday = member.birthday;
-
       selectedAvatar = member.avatarAsset;
-
       if (member.photoUrl != null) {
         selectedImage = File(member.photoUrl!);
       }
@@ -119,7 +113,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   Future<void> _showAvatarPicker() async {
     showModalBottomSheet(
       context: context,
-
       isScrollControlled: true,
       builder: (_) {
         return SafeArea(
@@ -170,17 +163,12 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                         child: ClipOval(
                           child: Padding(
                             padding: const EdgeInsets.all(8),
-
                             child: SvgPicture.asset(
                               avatar,
-
                               width: 48,
                               height: 48,
-
                               fit: BoxFit.contain,
-
                               theme: const SvgTheme(currentColor: Colors.white),
-
                               placeholderBuilder: (_) =>
                                   const CircularProgressIndicator(
                                     strokeWidth: 2,
@@ -330,15 +318,38 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
       final member = MemberModel(
         id: widget.member?.id ?? const Uuid().v4(),
+
         name: name,
+
         relationshipId: relationship,
-        photoUrl: selectedImage?.path,
-        avatarAsset: selectedAvatar,
+
+        photoUrl: selectedImage?.path ?? widget.member?.photoUrl,
+
+        avatarAsset: selectedAvatar ?? widget.member?.avatarAsset,
+
         birthday: birthday,
+
         gender: gender,
+
         email: email.isEmpty ? null : email,
+
         notes: notes.isEmpty ? null : notes,
-        isOwner: false,
+
+        isOwner: widget.member?.isOwner ?? false,
+
+        isLinked: widget.member?.isLinked ?? false,
+
+        accountId: widget.member?.accountId,
+
+        isArchived: widget.member?.isArchived ?? false,
+
+        archivedAt: widget.member?.archivedAt,
+
+        transactionsCount: widget.member?.transactionsCount ?? 0,
+
+        monthlySpent: widget.member?.monthlySpent ?? 0,
+
+        goalsCount: widget.member?.goalsCount ?? 0,
       );
 
       Navigator.pop(context, member);
@@ -347,6 +358,11 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditingOwner = widget.member?.isOwner == true;
+    final availableRelationships = isEditingOwner
+        ? relationships
+        : relationships.where((e) => e["id"] != "me").toList();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -382,10 +398,8 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                               : selectedAvatar != null
                               ? Padding(
                                   padding: const EdgeInsets.all(10),
-
                                   child: SvgPicture.asset(
                                     selectedAvatar!,
-
                                     fit: BoxFit.contain,
                                   ),
                                 )
@@ -424,7 +438,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                   WafferlyDropdown<String>(
                     value: relationship,
                     label: "Relationship",
-                    items: relationships.map((e) {
+                    items: availableRelationships.map((e) {
                       return DropdownMenuItem(
                         value: e["id"],
                         child: Text(e["name"]!),

@@ -3,10 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-
 import 'package:provider/provider.dart';
 
 import 'features/members/controllers/members_controller.dart';
+import 'features/members/models/member_model.dart';
 
 import 'models/account.dart';
 import 'models/budget.dart';
@@ -52,6 +52,7 @@ void main() async {
     await Hive.deleteBoxFromDisk('budgets');
     await Hive.deleteBoxFromDisk('reserved_money');
     await Hive.deleteBoxFromDisk('goals');
+    await Hive.deleteBoxFromDisk('members');
   }
 
   // ====================================================
@@ -139,22 +140,25 @@ void main() async {
   }
 
   // ====================================================
+  // Members Feature
+  // ====================================================
+
+  if (!Hive.isAdapterRegistered(70)) {
+    Hive.registerAdapter(MemberModelAdapter());
+  }
+
+  // ====================================================
   // Open Boxes
   // ====================================================
 
   await Hive.openBox<Account>('accounts');
-
   await Hive.openBox<Transaction>('transactions');
-
   await Hive.openBox<LedgerEntry>('ledger_entries');
-
   await Hive.openBox<LedgerAccount>('ledger_accounts');
-
   await Hive.openBox<Budget>('budgets');
-
   await Hive.openBox<ReservedMoney>('reserved_money');
-
   await Hive.openBox<Goal>('goals');
+  await Hive.openBox<MemberModel>('members');
 
   // ====================================================
   // TEMP TEST ONLY
@@ -182,7 +186,6 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [ChangeNotifierProvider(create: (_) => MembersController())],
-
       child: const WafferlyApp(),
     ),
   );
@@ -195,17 +198,10 @@ class WafferlyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Wafferly',
-
       debugShowCheckedModeBanner: false,
-
-      // 🌍 Localization
       localizationsDelegates: AppLocalizations.localizationsDelegates,
-
       supportedLocales: AppLocalizations.supportedLocales,
-
-      // 🎨 Theme
       theme: AppTheme.darkTheme,
-
       home: const MainNavigation(),
     );
   }

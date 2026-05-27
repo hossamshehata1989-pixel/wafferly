@@ -6,7 +6,6 @@ import '../models/member_model.dart';
 class OwnerMemberService {
   final _uuid = const Uuid();
 
-  /// Create owner member automatically when first Book/Wallet is created
   MemberModel createOwnerMember({
     required String name,
     String? photoUrl,
@@ -16,8 +15,15 @@ class OwnerMemberService {
       id: _uuid.v4(),
       name: name,
       relationshipId: "me",
+
+      // ✅ local uploaded image if exists
       photoUrl: photoUrl,
+
+      // ✅ default avatar for owner
+      avatarAsset: 'assets/avatars/other1.svg',
+
       birthday: birthday,
+
       isOwner: true,
       isLinked: true,
     );

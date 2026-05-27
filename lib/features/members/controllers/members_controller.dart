@@ -1,14 +1,26 @@
 // lib/features/members/controllers/members_controller.dart
 
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import '../models/member_model.dart';
+import '../services/owner_member_service.dart';
 
 class MembersController extends ChangeNotifier {
-  final List<MemberModel> _members = [];
+  final Box<MemberModel> _box = Hive.box<MemberModel>('members');
+  List<MemberModel> _members = [];
 
-  // عرض الأعضاء غير المؤرشفين فقط
+  MembersController() {
+    _loadMembers();
+    _ensureOwnerExists();
+  }
+
+  void _loadMembers() {
+    _members = _box.values.toList();
+    notifyListeners();
+  }
+
   List<MemberModel> get members =>
-      List.unmodifiable(_members.where((m) => !m.isArchived));
+      _members.where((m) => !m.isArchived).toList();
 
   MemberModel? get owner {
     try {
@@ -18,7 +30,7 @@ class MembersController extends ChangeNotifier {
     }
   }
 
-  void addMember(MemberModel member) {
+  Future<void> addMember(MemberModel member) async {
     final exists = _members.any((m) => m.id == member.id);
     if (exists) return;
 
@@ -26,31 +38,28 @@ class MembersController extends ChangeNotifier {
       return;
     }
 
+    await _box.put(member.id, member);
     _members.add(member);
     notifyListeners();
   }
 
-  // أرشفة العضو بدلاً من الحذف
-
-  void archiveMember(String id) {
+  Future<void> archiveMember(String id) async {
     final index = _members.indexWhere((e) => e.id == id);
-
     if (index == -1) return;
 
     final member = _members[index];
-
     if (member.isOwner) return;
 
-    _members[index] = member.copyWith(
+    final updated = member.copyWith(
       isArchived: true,
-
       archivedAt: DateTime.now(),
     );
-
+    await _box.put(id, updated);
+    _members[index] = updated;
     notifyListeners();
   }
 
-  void updateMember(MemberModel member) {
+  Future<void> updateMember(MemberModel member) async {
     final index = _members.indexWhere((e) => e.id == member.id);
     if (index == -1) return;
 
@@ -61,12 +70,22 @@ class MembersController extends ChangeNotifier {
       return;
     }
 
-    // ❌ لا يمكن تحويل Regular → Owner أو Owner → Regular
+    // لا يمكن تحويل Regular → Owner أو Owner → Regular
     if (member.isOwner != existing.isOwner) {
       return;
     }
 
+    await _box.put(member.id, member);
     _members[index] = member;
     notifyListeners();
+  }
+
+  Future<void> _ensureOwnerExists() async {
+    final hasOwner = _members.any((m) => m.isOwner);
+
+    if (!hasOwner) {
+      final owner = OwnerMemberService().createOwnerMember(name: "Me");
+      await addMember(owner);
+    }
   }
 }
