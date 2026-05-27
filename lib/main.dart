@@ -29,7 +29,6 @@ import 'adapters/account_migration_adapter.dart';
 
 import 'screens/main_navigation.dart';
 import 'l10n/app_localizations.dart';
-import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 
 import 'services/ledger_stress_test_service.dart';
@@ -41,8 +40,17 @@ void main() async {
 
   await Hive.initFlutter();
 
-  // Optional: reset for debugging
+  // ====================================================
+  // Debug Flags
+  // ====================================================
+
   const bool RESET_DB = false;
+  const bool runStressTest = false;
+  const bool runActorTest = true;
+
+  // ====================================================
+  // Optional DB Reset
+  // ====================================================
 
   if (RESET_DB) {
     await Hive.deleteBoxFromDisk('accounts');
@@ -161,24 +169,53 @@ void main() async {
   await Hive.openBox<MemberModel>('members');
 
   // ====================================================
-  // TEMP TEST ONLY
+  // Ledger Stress Test
   // ====================================================
 
-  // const bool runStressTest = false;
+  if (runStressTest) {
+    try {
+      await LedgerStressTestService().runStressTest(
+        transactionCount: 300,
+        verbose: false,
+      );
 
-  //if (runStressTest) {
-  // try {
-  // await LedgerStressTestService().runStressTest(
-  // transactionCount: 300,
-  // verbose: false,
-  //);
-  //} catch (e) {
-  // debugPrint("⚠️ Stress test failed: $e");
-  //}
-  //}
+      debugPrint("✅ Ledger stress test completed");
+    } catch (e) {
+      debugPrint("⚠️ Stress test failed: $e");
+    }
+  }
 
   // ====================================================
-  // Initialize registries
+  // ActorMemberId Test
+  // ====================================================
+
+  if (runActorTest) {
+    try {
+      final txBox = Hive.box<Transaction>('transactions');
+
+      final testTransaction = Transaction.create(
+        amount: 250,
+        type: 'expense',
+        categoryId: 'food',
+        date: DateTime.now(),
+        actorMemberId: 'member_test_1',
+      );
+
+      final key = await txBox.add(testTransaction);
+
+      final savedTransaction = txBox.get(key);
+
+      debugPrint(
+        "✅ Actor test saved successfully: "
+        "${savedTransaction?.actorMemberId}",
+      );
+    } catch (e) {
+      debugPrint("⚠️ ActorMemberId test failed: $e");
+    }
+  }
+
+  // ====================================================
+  // Initialize Registries
   // ====================================================
 
   CategoryRegistry.initialize();

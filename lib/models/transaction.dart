@@ -40,19 +40,20 @@ class Transaction extends HiveObject {
   @HiveField(10)
   final String? subCategoryId;
 
-  // ==================== الحقول الجديدة ====================
-  
   @HiveField(11)
-  final String currencyCode;  // non-nullable, default = 'EGP'
-  
+  final String currencyCode;
+
   @HiveField(12)
-  final String source;  // non-nullable, default = TransactionSource.manual
-  
+  final String source;
+
   @HiveField(13)
   final DateTime createdAt;
-  
+
   @HiveField(14)
   final DateTime updatedAt;
+
+  @HiveField(15)
+  final String? actorMemberId; // ✅ behavioral attribution layer
 
   Transaction({
     String? id,
@@ -70,14 +71,13 @@ class Transaction extends HiveObject {
     String? source,
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.actorMemberId,
   }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
        currencyCode = currencyCode ?? 'EGP',
        source = source ?? TransactionSource.manual,
-       createdAt = createdAt ?? date,  // ✅ للبيانات القديمة: نفس تاريخ المعاملة
-       updatedAt = updatedAt ?? date;  // ✅ للبيانات القديمة: نفس تاريخ المعاملة
+       createdAt = createdAt ?? date,
+       updatedAt = updatedAt ?? date;
 
-  // ==================== copyWith ====================
-  
   Transaction copyWith({
     String? id,
     double? amount,
@@ -93,6 +93,7 @@ class Transaction extends HiveObject {
     String? currencyCode,
     String? source,
     DateTime? updatedAt,
+    String? actorMemberId,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -110,11 +111,10 @@ class Transaction extends HiveObject {
       source: source ?? this.source,
       createdAt: this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
+      actorMemberId: actorMemberId ?? this.actorMemberId,
     );
   }
 
-  // ==================== مُنشئ للمعاملات الجديدة ====================
-  
   factory Transaction.create({
     String? id,
     required double amount,
@@ -129,6 +129,7 @@ class Transaction extends HiveObject {
     String? subCategoryId,
     String? currencyCode,
     String? source,
+    String? actorMemberId,
   }) {
     final now = DateTime.now();
     return Transaction(
@@ -145,27 +146,19 @@ class Transaction extends HiveObject {
       subCategoryId: subCategoryId,
       currencyCode: currencyCode,
       source: source,
+      actorMemberId: actorMemberId,
       createdAt: now,
       updatedAt: now,
     );
   }
 
-  // ==================== تحديث updatedAt ====================
-  
-  Transaction touch() {
-    return copyWith(updatedAt: DateTime.now());
-  }
+  Transaction touch() => copyWith(updatedAt: DateTime.now());
 
-  // ==================== تغيير المصدر (للترحيل) ====================
-  
-  Transaction withSource(String newSource) {
-    return copyWith(source: newSource, updatedAt: DateTime.now());
-  }
+  Transaction withSource(String newSource) =>
+      copyWith(source: newSource, updatedAt: DateTime.now());
 
-  // ==================== هل هي معاملة قديمة (قبل التحديث)؟ ====================
-  
-  bool get isLegacy => 
-      source == TransactionSource.manual && 
-      createdAt == date && 
+  bool get isLegacy =>
+      source == TransactionSource.manual &&
+      createdAt == date &&
       updatedAt == date;
 }

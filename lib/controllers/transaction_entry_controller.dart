@@ -49,6 +49,8 @@ class TransactionEntryController extends ChangeNotifier {
   SaveStatus _saveStatus = SaveStatus.idle;
   Transaction? _editingTransaction;
 
+  String? _selectedMemberId;
+
   bool get isEditing => _editingTransaction != null;
   // Transfer specific fields
   String _selectedFromAccountId = "";
@@ -70,6 +72,7 @@ class TransactionEntryController extends ChangeNotifier {
   String get selectedAccountId => _selectedAccountId;
   String get selectedAccountName => _selectedAccountName;
   String get selectedCategoryId => _selectedCategoryId;
+  String? get selectedMemberId => _selectedMemberId;
   String get selectedTransactionType => _selectedTransactionType;
   SaveStatus get saveStatus => _saveStatus;
 
@@ -177,6 +180,11 @@ class TransactionEntryController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void selectMember(String? id) {
+    _selectedMemberId = id;
+    notifyListeners();
+  }
+
   void setTransactionType(String type) {
     _selectedTransactionType = type;
     _selectedCategoryId = "";
@@ -192,6 +200,7 @@ class TransactionEntryController extends ChangeNotifier {
     _paymentMethod = tx.paymentMethod;
 
     _selectedTransactionType = tx.type;
+    _selectedMemberId = tx.actorMemberId;
 
     final categoryId = (tx.subCategoryId?.isNotEmpty == true)
         ? tx.subCategoryId!
@@ -365,6 +374,7 @@ class TransactionEntryController extends ChangeNotifier {
       isExceptional: isExceptional,
       currencyCode: currentCurrency,
       source: TransactionSource.manual,
+      actorMemberId: _selectedMemberId,
     );
 
     if (_editingTransaction != null) {
@@ -386,6 +396,8 @@ class TransactionEntryController extends ChangeNotifier {
         paymentMethod: _paymentMethod,
 
         isExceptional: isExceptional,
+
+        actorMemberId: _selectedMemberId,
       );
 
       await TransactionService.instance.updateTransaction(updated);
@@ -462,6 +474,7 @@ class TransactionEntryController extends ChangeNotifier {
     _selectedAccountName = "اختر حساب";
 
     _paymentMethod = "cash";
+    _selectedMemberId = null;
 
     notifyListeners();
   }
