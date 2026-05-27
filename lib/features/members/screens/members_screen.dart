@@ -78,7 +78,9 @@ class MembersScreen extends StatelessWidget {
                   ),
                 ],
               ),
+
               const SizedBox(height: AppSpacing.md),
+
               ...sortedMembers.map((member) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -89,6 +91,7 @@ class MembersScreen extends StatelessWidget {
           );
         },
       ),
+
       floatingActionButton: FloatingActionButton(
         heroTag: "membersFab",
         child: const Icon(Icons.add),
@@ -97,6 +100,7 @@ class MembersScreen extends StatelessWidget {
             context,
             MaterialPageRoute(builder: (_) => const AddMemberScreen()),
           );
+
           if (member != null) {
             context.read<MembersController>().addMember(member);
           }
@@ -112,7 +116,6 @@ class MembersScreen extends StatelessWidget {
   ) {
     final isOwner = member.isOwner;
 
-    // Avatar widget
     final avatar = CircleAvatar(
       radius: 20,
       backgroundColor: AppColors.cardSecondary,
@@ -151,7 +154,9 @@ class MembersScreen extends StatelessWidget {
           Row(
             children: [
               avatar,
+
               const SizedBox(width: AppSpacing.md),
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -166,8 +171,10 @@ class MembersScreen extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+
                         if (isOwner) ...[
                           const SizedBox(width: 8),
+
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -185,12 +192,14 @@ class MembersScreen extends StatelessWidget {
                                   size: 12,
                                   color: AppColors.primary,
                                 ),
-                                SizedBox(width: 10),
+
+                                SizedBox(width: 4),
+
                                 Text(
                                   "You",
                                   style: TextStyle(
                                     color: AppColors.primary,
-                                    fontSize: 15,
+                                    fontSize: 13,
                                   ),
                                 ),
                               ],
@@ -199,7 +208,9 @@ class MembersScreen extends StatelessWidget {
                         ],
                       ],
                     ),
+
                     const SizedBox(height: 1),
+
                     Text(
                       RelationshipMapper.getDisplayName(member.relationshipId),
                       style: const TextStyle(color: AppColors.primary),
@@ -207,7 +218,7 @@ class MembersScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              // Action buttons: Edit and Archive (only for non-owner)
+
               Row(
                 children: [
                   IconButton(
@@ -223,11 +234,13 @@ class MembersScreen extends StatelessWidget {
                           builder: (_) => AddMemberScreen(member: member),
                         ),
                       );
+
                       if (updatedMember != null) {
                         controller.updateMember(updatedMember);
                       }
                     },
                   ),
+
                   if (!isOwner)
                     IconButton(
                       icon: const Icon(
@@ -240,10 +253,12 @@ class MembersScreen extends StatelessWidget {
                           context: context,
                           builder: (_) => AlertDialog(
                             backgroundColor: AppColors.card,
+
                             title: const Text(
                               "Archive Member",
                               style: TextStyle(color: Colors.white),
                             ),
+
                             content: Text(
                               "⚠ Warning\n\n"
                               "${member.name} has transaction history.\n\n"
@@ -251,11 +266,13 @@ class MembersScreen extends StatelessWidget {
                               "You can restore them anytime from Archived Members.",
                               style: const TextStyle(color: Colors.white70),
                             ),
+
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context, false),
                                 child: const Text("Cancel"),
                               ),
+
                               TextButton(
                                 onPressed: () => Navigator.pop(context, true),
                                 child: const Text(
@@ -283,20 +300,55 @@ class MembersScreen extends StatelessWidget {
               ),
             ],
           ),
+
           const SizedBox(height: AppSpacing.lg),
+
           const Divider(color: AppColors.border),
+
+          // Budget Snapshot
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _stat(
-                "Transactions",
-                member.transactionsCount.toString(),
-                AppColors.primary,
-              ),
               _stat("Spent", "${member.monthlySpent} EGP", AppColors.income),
-              _stat("Goals", member.goalsCount.toString(), AppColors.accent),
+
+              _stat(
+                "Budget",
+                "${member.budgetUsagePercent.toStringAsFixed(0)}%",
+                member.isOverBudget ? Colors.red : AppColors.primary,
+              ),
+
+              _stat(
+                "Status",
+                member.isOverBudget ? "Over" : "On Track",
+                member.isOverBudget ? Colors.red : Colors.green,
+              ),
             ],
           ),
+
+          if (member.isOverBudget)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: const [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                    size: 18,
+                  ),
+
+                  SizedBox(width: 6),
+
+                  Text(
+                    "Overspending detected",
+                    style: TextStyle(
+                      color: Colors.orange,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -309,7 +361,9 @@ class MembersScreen extends StatelessWidget {
           title,
           style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
         ),
+
         const SizedBox(height: AppSpacing.xs),
+
         Text(
           value,
           style: TextStyle(

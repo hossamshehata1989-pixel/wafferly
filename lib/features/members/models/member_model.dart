@@ -81,6 +81,19 @@ class MemberModel {
     this.goalsCount = 0,
   });
 
+  // Temporary budget UI helpers (no Hive persistence)
+  bool get isOverBudget => monthlySpent > 5000;
+
+  double get budgetUsagePercent {
+    const limit = 5000.0;
+
+    if (limit <= 0) return 0;
+
+    final percent = (monthlySpent / limit) * 100;
+
+    return percent;
+  }
+
   MemberModel copyWith({
     String? id,
     String? name,
