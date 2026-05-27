@@ -60,88 +60,9 @@ class MembersScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               ...sortedMembers.map((member) {
-                final isOwner = member.isOwner;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                  child: Dismissible(
-                    key: Key(member.id),
-                    behavior: HitTestBehavior.opaque,
-                    direction: isOwner
-                        ? DismissDirection.none
-                        : DismissDirection.endToStart,
-                    background: Container(
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.archive, color: Colors.white),
-                          SizedBox(width: 8),
-                          Text(
-                            "Archive",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ],
-                      ),
-                    ),
-                    confirmDismiss: (_) async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          backgroundColor: AppColors.card,
-                          title: const Text(
-                            "Archive Member",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                          content: Text(
-                            "Archive ${member.name}?",
-                            style: const TextStyle(color: Colors.white70),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text("Cancel"),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text(
-                                "Archive",
-                                style: TextStyle(color: Colors.orange),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-
-                      if (confirmed == true) {
-                        final archived = member.copyWith();
-                        controller.archiveMember(member.id);
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text("${member.name} archived"),
-                            action: SnackBarAction(
-                              label: "Undo",
-                              onPressed: () {
-                                controller.updateMember(
-                                  archived.copyWith(
-                                    isArchived: false,
-                                    archivedAt: null,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        );
-                      }
-                      return false;
-                    },
-                    child: _memberCard(member),
-                  ),
+                  child: _memberCard(context, member, controller),
                 );
               }),
             ],
@@ -204,8 +125,14 @@ class MembersScreen extends StatelessWidget {
     );
   }
 
-  Widget _memberCard(MemberModel member) {
-    // ✅ إصلاح عرض الـ Avatar لدعم الـ SVG
+  Widget _memberCard(
+    BuildContext context,
+    MemberModel member,
+    MembersController controller,
+  ) {
+    final isOwner = member.isOwner;
+
+    // Avatar widget
     final avatar = CircleAvatar(
       radius: 30,
       backgroundColor: AppColors.cardSecondary,
@@ -259,7 +186,7 @@ class MembersScreen extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        if (member.isOwner) ...[
+                        if (isOwner) ...[
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -299,6 +226,89 @@ class MembersScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              // Action buttons: Edit and Archive (only for non-owner)
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      color: AppColors.primary,
+                    ),
+                    tooltip: "Edit",
+                    onPressed: () async {
+                      final updatedMember = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AddMemberScreen(member: member),
+                        ),
+                      );
+                      if (updatedMember != null) {
+                        controller.updateMember(updatedMember);
+                      }
+                    },
+                  ),
+                  if (!isOwner)
+                    IconButton(
+                      icon: const Icon(
+                        Icons.archive_outlined,
+                        color: Colors.orange,
+                      ),
+                      tooltip: "Archive",
+                      onPressed: () async {
+                        // ✅ Confirmation dialog before archiving
+                        final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            backgroundColor: AppColors.card,
+                            title: const Text(
+                              "Archive Member",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            content: Text(
+                              "Archive ${member.name}?",
+                              style: const TextStyle(color: Colors.white70),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text("Cancel"),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text(
+                                  "Archive",
+                                  style: TextStyle(color: Colors.orange),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirmed == true) {
+                          controller.archiveMember(member.id);
+                          ScaffoldMessenger.of(context).clearSnackBars();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("${member.name} archived"),
+                              action: SnackBarAction(
+                                label: "Undo",
+                                onPressed: () {
+                                  controller.updateMember(
+                                    member.copyWith(
+                                      isArchived: false,
+                                      archivedAt: null,
+                                    ),
+                                  );
+                                },
+                              ),
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                ],
               ),
             ],
           ),

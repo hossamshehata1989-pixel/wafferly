@@ -17,7 +17,9 @@ import '../../../shared/widgets/wafferly_form_section.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class AddMemberScreen extends StatefulWidget {
-  const AddMemberScreen({super.key});
+  final MemberModel? member;
+
+  const AddMemberScreen({super.key, this.member});
 
   @override
   State<AddMemberScreen> createState() => _AddMemberScreenState();
@@ -63,6 +65,33 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     'assets/avatars/other11.svg',
     'assets/avatars/other12.svg',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+
+    final member = widget.member;
+
+    if (member != null) {
+      nameController.text = member.name;
+
+      emailController.text = member.email ?? '';
+
+      notesController.text = member.notes ?? '';
+
+      relationship = member.relationshipId;
+
+      gender = member.gender;
+
+      birthday = member.birthday;
+
+      selectedAvatar = member.avatarAsset;
+
+      if (member.photoUrl != null) {
+        selectedImage = File(member.photoUrl!);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -300,7 +329,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       final notes = notesController.text.trim();
 
       final member = MemberModel(
-        id: const Uuid().v4(),
+        id: widget.member?.id ?? const Uuid().v4(),
         name: name,
         relationshipId: relationship,
         photoUrl: selectedImage?.path,
@@ -320,7 +349,9 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text("Add Member")),
+      appBar: AppBar(
+        title: Text(widget.member == null ? "Add Member" : "Edit Member"),
+      ),
       body: SafeArea(
         child: Form(
           key: _formKey,
