@@ -11,6 +11,7 @@ import '../constants/transaction_constants.dart';
 import '../config/category_config.dart';
 import '../config/category_type.dart';
 import '../features/analysis/registry/category_registry.dart';
+import '../features/members/models/member_model.dart';
 
 enum SaveStatus { idle, saving }
 
@@ -188,6 +189,22 @@ class TransactionEntryController extends ChangeNotifier {
   void setTransactionType(String type) {
     _selectedTransactionType = type;
     _selectedCategoryId = "";
+
+    // Default actor selection
+    if (type == TransactionType.expense || type == TransactionType.income) {
+      try {
+        final owner = Hive.box<MemberModel>(
+          'members',
+        ).values.firstWhere((m) => m.isOwner && !m.isArchived);
+
+        _selectedMemberId = owner.id;
+      } catch (_) {
+        _selectedMemberId = null;
+      }
+    } else {
+      _selectedMemberId = null;
+    }
+
     notifyListeners();
   }
 
