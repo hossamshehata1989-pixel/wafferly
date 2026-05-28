@@ -44,9 +44,9 @@ void main() async {
   // Debug Flags
   // ====================================================
 
-  const bool RESET_DB = false;
+  const bool RESET_DB = true;
   const bool runStressTest = false;
-  const bool runActorTest = true;
+  const bool runActorTest = false;
 
   // ====================================================
   // Optional DB Reset

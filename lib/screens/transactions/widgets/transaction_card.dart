@@ -5,6 +5,12 @@ import 'package:intl/intl.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/utils/category_icons.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:wafferly/features/members/models/member_model.dart';
+import 'package:wafferly/constants/transaction_constants.dart';
+
+const _cardColor = Color(0xFF22307A);
+const _memberColor = Color(0xFF5B8CFF);
 
 class TransactionCard extends StatelessWidget {
   final Transaction transaction;
@@ -22,11 +28,11 @@ class TransactionCard extends StatelessWidget {
 
   Color _getAmountColor() {
     switch (transaction.type) {
-      case 'expense':
+      case TransactionType.expense:
         return Colors.red;
-      case 'income':
+      case TransactionType.income:
         return Colors.green;
-      case 'transfer':
+      case TransactionType.transfer:
         return Colors.blue;
       default:
         return Colors.white;
@@ -35,12 +41,15 @@ class TransactionCard extends StatelessWidget {
 
   String _getAmountPrefix() {
     switch (transaction.type) {
-      case 'expense':
+      case TransactionType.expense:
         return '-';
-      case 'income':
+
+      case TransactionType.income:
         return '+';
-      case 'transfer':
+
+      case TransactionType.transfer:
         return '';
+
       default:
         return '';
     }
@@ -48,10 +57,12 @@ class TransactionCard extends StatelessWidget {
 
   String _getAmountSuffix() {
     switch (transaction.type) {
-      case 'expense':
+      case TransactionType.expense:
         return '↑';
-      case 'income':
+
+      case TransactionType.income:
         return '↓';
+
       default:
         return '';
     }
@@ -83,20 +94,54 @@ class TransactionCard extends StatelessWidget {
     if (transaction.note != null && transaction.note!.isNotEmpty) {
       return transaction.note!;
     }
-    return _getSubCategory();
+
+    final sub = _getSubCategory();
+
+    if (sub.trim().isNotEmpty) {
+      return sub;
+    }
+
+    if (transaction.type == TransactionType.transfer) {
+      return 'Transfer';
+    }
+
+    if (transaction.type == TransactionType.income) {
+      return 'Income';
+    }
+
+    return 'Transaction';
+  }
+
+  String? _getActorName() {
+    if (transaction.actorMemberId == null) {
+      return null;
+    }
+
+    final box = Hive.box<MemberModel>('members');
+
+    try {
+      final member = box.values.firstWhere(
+        (m) => m.id == transaction.actorMemberId,
+      );
+
+      return member.isOwner ? "Me" : member.name;
+    } catch (_) {
+      return "Unknown";
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final formatter = NumberFormat("#,###");
     final accountName = getAccountName(
-      transaction.type == 'expense'
+      transaction.type == TransactionType.expense
           ? transaction.fromAccountId
           : transaction.toAccountId,
     );
     final mainCategory = _getMainCategory();
     final time = _formatTime(transaction.date);
     final iconPath = _getCategoryIconPath();
+    final actorName = _getActorName();
 
     return Dismissible(
       key: Key(transaction.id),
@@ -154,10 +199,13 @@ class TransactionCard extends StatelessWidget {
       onDismissed: (_) {},
 
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
         decoration: BoxDecoration(
-          color: const Color(0xFF1B2A6B),
-          borderRadius: BorderRadius.circular(12),
+          color: _cardColor,
+
+          borderRadius: BorderRadius.circular(14),
+
+          border: Border(left: BorderSide(color: _getAmountColor(), width: 3)),
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -167,7 +215,7 @@ class TransactionCard extends StatelessWidget {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withOpacity(0.14),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -193,56 +241,82 @@ class TransactionCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
                       ),
                     ),
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        Flexible(
-                          child: Text(
-                            mainCategory,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 11,
-                            ),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  mainCategory,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 10.5,
+                                  ),
+                                ),
+                              ),
+
+                              if (actorName != null &&
+                                  actorName != "Unknown") ...[
+                                const Text(
+                                  " • ",
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 10,
+                                  ),
+                                ),
+
+                                Flexible(
+                                  child: Text(
+                                    actorName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: _memberColor,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+
+                              const Text(
+                                " • ",
+                                style: TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 10,
+                                ),
+                              ),
+
+                              Flexible(
+                                child: Text(
+                                  accountName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 10.5,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 3),
+
+                        const SizedBox(width: 8),
+
                         Text(
-                          '•',
-                          style: TextStyle(color: Colors.white38, fontSize: 9),
-                        ),
-                        const SizedBox(width: 3),
-                        Flexible(
-                          child: Text(
-                            accountName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          '•',
-                          style: TextStyle(color: Colors.white38, fontSize: 9),
-                        ),
-                        const SizedBox(width: 3),
-                        Flexible(
-                          child: Text(
-                            time,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 11,
-                            ),
+                          time,
+                          style: const TextStyle(
+                            color: Colors.white38,
+                            fontSize: 10,
                           ),
                         ),
                       ],

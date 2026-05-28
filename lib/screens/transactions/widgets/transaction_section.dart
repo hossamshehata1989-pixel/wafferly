@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/screens/transactions/widgets/transaction_card.dart';
+import 'package:wafferly/constants/transaction_constants.dart';
+import 'package:wafferly/screens/transactions/widgets/day_section_header.dart';
 
 class TransactionSection extends StatefulWidget {
   final String title;
@@ -10,6 +12,8 @@ class TransactionSection extends StatefulWidget {
   final Function(String) onDeleteTransaction;
   final Function(Transaction) onEditTransaction;
   final String Function(String?) getAccountName;
+  final int selectedTab;
+  final double totalAmount;
 
   const TransactionSection({
     super.key,
@@ -18,6 +22,8 @@ class TransactionSection extends StatefulWidget {
     required this.onDeleteTransaction,
     required this.onEditTransaction,
     required this.getAccountName,
+    required this.selectedTab,
+    required this.totalAmount,
   });
 
   @override
@@ -37,9 +43,6 @@ class _TransactionSectionState extends State<TransactionSection> {
 
   @override
   Widget build(BuildContext context) {
-    final itemCount = widget.transactions.length;
-    final label = itemCount == 1 ? '1 transaction' : '$itemCount transactions';
-
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -53,29 +56,12 @@ class _TransactionSectionState extends State<TransactionSection> {
             onTap: () => setState(() => _isExpanded = !_isExpanded),
             borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Text(
-                    widget.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Spacer(),
-                  Icon(
-                    _isExpanded ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.white54,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    label,
-                    style: const TextStyle(color: Colors.white54, fontSize: 13),
-                  ),
-                ],
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: DaySectionHeader(
+                title: widget.title,
+                count: widget.transactions.length,
+                selectedTab: widget.selectedTab,
+                totalAmount: widget.totalAmount,
               ),
             ),
           ),

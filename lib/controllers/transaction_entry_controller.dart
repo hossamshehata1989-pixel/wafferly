@@ -38,6 +38,22 @@ class SaveResult {
 }
 
 class TransactionEntryController extends ChangeNotifier {
+  TransactionEntryController() {
+    _initializeDefaultMember();
+  }
+
+  void _initializeDefaultMember() {
+    try {
+      final owner = Hive.box<MemberModel>(
+        'members',
+      ).values.firstWhere((m) => m.isOwner && !m.isArchived);
+
+      _selectedMemberId = owner.id;
+    } catch (_) {
+      _selectedMemberId = null;
+    }
+  }
+
   String _amount = "0";
   String _expression = "";
   DateTime _selectedDate = DateTime.now();
@@ -491,7 +507,16 @@ class TransactionEntryController extends ChangeNotifier {
     _selectedAccountName = "اختر حساب";
 
     _paymentMethod = "cash";
-    _selectedMemberId = null;
+
+    try {
+      final owner = Hive.box<MemberModel>(
+        'members',
+      ).values.firstWhere((m) => m.isOwner && !m.isArchived);
+
+      _selectedMemberId = owner.id;
+    } catch (_) {
+      _selectedMemberId = null;
+    }
 
     notifyListeners();
   }

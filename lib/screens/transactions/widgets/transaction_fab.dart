@@ -1,7 +1,7 @@
 // lib/screens/transactions/widgets/transaction_fab.dart
 
 import 'package:flutter/material.dart';
-import 'add_transaction_bottom_sheet.dart';
+import '../../expenses_screen.dart';
 
 class TransactionFab extends StatelessWidget {
   final VoidCallback onTransactionAdded;
@@ -13,13 +13,12 @@ class TransactionFab extends StatelessWidget {
     return FloatingActionButton(
       heroTag: "transactionTabFab",
       onPressed: () {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) =>
-              AddTransactionBottomSheet(onTransactionAdded: onTransactionAdded),
-        );
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ExpensesScreen()),
+        ).then((_) {
+          onTransactionAdded();
+        });
       },
       backgroundColor: const Color(0xFF3A7BFF),
       child: const Icon(Icons.add, color: Colors.white),

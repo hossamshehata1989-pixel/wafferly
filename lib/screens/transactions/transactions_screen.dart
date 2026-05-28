@@ -291,37 +291,29 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       String groupKey;
       String title;
 
-      switch (dateFilter) {
-        case 'Today':
-        case 'Last 3 Days':
-        case 'Last 7 Days':
-          title = '${txDate.day} ${_getMonthName(txDate.month)} ${txDate.year}';
+      final now = DateTime.now();
 
-          groupKey = '${txDate.year}-${txDate.month}-${txDate.day}';
+      final isToday =
+          txDate.year == now.year &&
+          txDate.month == now.month &&
+          txDate.day == now.day;
 
-          break;
+      final yesterday = now.subtract(const Duration(days: 1));
 
-        case 'This Month':
-        case 'Last 3 Months':
-          title = '${_getMonthName(txDate.month)} ${txDate.year}';
+      final isYesterday =
+          txDate.year == yesterday.year &&
+          txDate.month == yesterday.month &&
+          txDate.day == yesterday.day;
 
-          groupKey = '${txDate.year}-${txDate.month}';
-
-          break;
-
-        case 'This Year':
-        case 'All Time':
-          title = '${txDate.year}';
-
-          groupKey = '${txDate.year}';
-
-          break;
-
-        default:
-          title = '${txDate.day} ${_getMonthName(txDate.month)}';
-
-          groupKey = '${txDate.year}-${txDate.month}-${txDate.day}';
+      if (isToday) {
+        title = 'Today';
+      } else if (isYesterday) {
+        title = 'Yesterday';
+      } else {
+        title = '${txDate.day} ${_getMonthName(txDate.month)} ${txDate.year}';
       }
+
+      groupKey = '${txDate.year}-${txDate.month}-${txDate.day}';
 
       if (!groups.containsKey(groupKey)) {
         groups[groupKey] = _DateGroup(
@@ -505,6 +497,26 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   Widget _buildSummaryCard() {
     final formatter = NumberFormat("#,###");
+    if (_selectedTab == 3) {
+      return const SizedBox.shrink();
+    }
+    if (_selectedTab == 1) {
+      return _buildSingleSummaryCard(
+        title: 'Total Filtered Expenses',
+        amount: _totalExpense,
+        color: Colors.red,
+        isNegative: true,
+      );
+    }
+
+    if (_selectedTab == 2) {
+      return _buildSingleSummaryCard(
+        title: 'Total Filtered Income',
+        amount: _totalIncome,
+        color: Colors.green,
+        isNegative: false,
+      );
+    }
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(12),
@@ -579,6 +591,42 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
+  Widget _buildSingleSummaryCard({
+    required String title,
+    required double amount,
+    required Color color,
+    required bool isNegative,
+  }) {
+    final formatter = NumberFormat("#,###");
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B2A6B),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(color: color, fontSize: 12)),
+
+          const SizedBox(height: 6),
+
+          Text(
+            '${isNegative ? '-' : '+'}${formatter.format(amount.toInt())} EGP',
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 17,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasTransactions = _dateGroups.isNotEmpty;
@@ -607,7 +655,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             onFiltersChanged: _onFiltersChanged,
             onCategoryPressed: _showCategoryFilter,
           ),
-          if (_filteredTransactions.isNotEmpty) _buildSummaryCard(),
+          if (_filteredTransactions.isNotEmpty && _selectedTab != 3)
+            _buildSummaryCard(),
           Expanded(
             child: !hasTransactions && hasAnyTransaction
                 ? Center(
@@ -661,6 +710,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                         onDeleteTransaction: _handleDeleteTransaction,
                         onEditTransaction: _handleEditTransaction,
                         getAccountName: _getAccountName,
+                        selectedTab: _selectedTab,
+                        totalAmount: group.totalAmount,
                       );
                     },
                   ),
