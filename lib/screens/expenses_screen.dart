@@ -111,6 +111,7 @@ class ExpensesScreen extends StatelessWidget {
                   else
                     Expanded(
                       child: _buildExpenseIncomeContent(
+                        context: context,
                         controller: controller,
                         isKeyboardOpen: isKeyboardOpen,
                         isExpense: isExpense,
@@ -130,6 +131,7 @@ class ExpensesScreen extends StatelessWidget {
   // =========================================================
 
   Widget _buildExpenseIncomeContent({
+    required BuildContext context,
     required TransactionEntryController controller,
     required bool isKeyboardOpen,
     required bool isExpense,
@@ -140,11 +142,19 @@ class ExpensesScreen extends StatelessWidget {
         // MAIN CATEGORIES
         // =========================================
         Expanded(
-          flex: controller.hasSubCategories && isExpense ? 22 : 26,
-          child: MainCategoriesGrid(
-            selectedCategoryId: controller.selectedCategoryId,
-            onCategorySelected: controller.selectCategory,
-            categoryType: controller.categoryType,
+          flex: controller.hasSubCategories && isExpense ? 10 : 8,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF243A8F), width: 1),
+            ),
+            child: MainCategoriesGrid(
+              selectedCategoryId: controller.selectedCategoryId,
+              onCategorySelected: controller.selectCategory,
+              categoryType: controller.categoryType,
+            ),
           ),
         ),
 
@@ -152,12 +162,23 @@ class ExpensesScreen extends StatelessWidget {
         // SUB CATEGORIES
         // =========================================
         SizedBox(
-          height: !isKeyboardOpen && isExpense ? 60 : 0,
+          height: !isKeyboardOpen && isExpense ? 70 : 0,
           child: controller.hasSubCategories && !isKeyboardOpen && isExpense
-              ? SubCategoriesGrid(
-                  subCategories: controller.currentSubCategories,
-                  selectedSubCategoryId: controller.selectedCategoryId,
-                  onSubCategorySelected: controller.selectCategory,
+              ? Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: const Color(0xFF243A8F),
+                      width: 1,
+                    ),
+                  ),
+                  child: SubCategoriesGrid(
+                    subCategories: controller.currentSubCategories,
+                    selectedSubCategoryId: controller.selectedCategoryId,
+                    onSubCategorySelected: controller.selectCategory,
+                  ),
                 )
               : const SizedBox.shrink(),
         ),
@@ -165,7 +186,10 @@ class ExpensesScreen extends StatelessWidget {
         // =========================================
         // AMOUNT INPUT PANEL
         // =========================================
-        Expanded(flex: 18, child: AmountInputPanel(controller: controller)),
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.32,
+          child: AmountInputPanel(controller: controller),
+        ),
 
         // =========================================
         // QUICK ACTIONS

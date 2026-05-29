@@ -1,5 +1,3 @@
-// lib/widgets/expense_entry/amount_input_panel.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../controllers/transaction_entry_controller.dart';
@@ -17,61 +15,94 @@ class AmountInputPanel extends StatelessWidget {
 
     double buttonSize = screenHeight * 0.04;
     buttonSize = buttonSize.clamp(32.0, 42.0);
+
     if (keyboardHeight > 0) {
       buttonSize = buttonSize.clamp(34.0, 48.0);
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
+        // mainAxisSize: MainAxisSize.min,
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            // Amount Display
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.background,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.white12),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    controller.currentCurrency,
-                    style: const TextStyle(
-                      color: Colors.blue,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              controller.amount,
+                              maxLines: 1,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 42,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 8),
+
+                        Text(
+                          controller.currentCurrency,
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      controller.amount,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+
+                const SizedBox(
+                  width: 8,
+                ), // Space between amount and action buttons
+
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _topActionButton(Icons.more_horiz), // More options button
+                    const SizedBox(width: 6),
+
+                    _topActionButton(Icons.note_alt_outlined), // Note button
+                    const SizedBox(width: 6),
+
+                    _topActionButton(Icons.check), // Confirm button
+                  ],
                 ),
               ],
             ),
           ),
+
           const SizedBox(height: 4),
+
           _buildCalculator(buttonSize),
         ],
       ),
@@ -79,6 +110,7 @@ class AmountInputPanel extends StatelessWidget {
   }
 
   Widget _buildCalculator(double buttonSize) {
+    // Calculator buttons
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -133,7 +165,21 @@ class AmountInputPanel extends StatelessWidget {
     );
   }
 
+  Widget _topActionButton(IconData icon) {
+    // Top right action buttons (note, more, confirm)
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: AppColors.cardSecondary,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, color: Colors.white, size: 18),
+    );
+  }
+
   Widget _calcButton(
+    // Calculator buttons
     String text,
     double size, {
     bool isOperator = false,
@@ -141,21 +187,28 @@ class AmountInputPanel extends StatelessWidget {
     bool isDisabled = false,
     bool invisible = false,
   }) {
-    final double fontSize = (size * 0.4).clamp(16.0, 24.0);
+    final double fontSize = (size * 0.4).clamp(
+      16.0,
+      24.0,
+    ); // Dynamic font size based on button size
 
     return Expanded(
+      // Each button takes equal horizontal space
       child: SizedBox(
         height: size,
         child: Padding(
+          // Small padding around each button
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: InkWell(
             onTap: isDisabled || invisible
                 ? null
                 : () {
-                    HapticFeedback.lightImpact();
+                    HapticFeedback.lightImpact(); // Haptic feedback on button press
                     controller.onCalculatorTap(text);
                   },
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(
+              12,
+            ), // Rounded corners for tap effect
             child: Container(
               decoration: BoxDecoration(
                 color: invisible
@@ -169,10 +222,11 @@ class AmountInputPanel extends StatelessWidget {
                           : AppColors.background),
                 borderRadius: BorderRadius.circular(12),
               ),
-              alignment: Alignment.center,
+              alignment: Alignment.center, // Center the text within the button
               child: text.isEmpty
                   ? null
                   : Text(
+                      // Button text
                       text,
                       style: TextStyle(
                         color: isDisabled || invisible
