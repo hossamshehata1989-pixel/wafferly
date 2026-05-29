@@ -15,11 +15,10 @@ class AmountInputPanel extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
-    double buttonSize = screenHeight * 0.055;
-    buttonSize = buttonSize.clamp(44.0, 62.0);
-
+    double buttonSize = screenHeight * 0.04;
+    buttonSize = buttonSize.clamp(32.0, 42.0);
     if (keyboardHeight > 0) {
-      buttonSize = buttonSize.clamp(40.0, 54.0);
+      buttonSize = buttonSize.clamp(34.0, 48.0);
     }
 
     return Padding(
@@ -72,7 +71,7 @@ class AmountInputPanel extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           _buildCalculator(buttonSize),
         ],
       ),
@@ -86,47 +85,47 @@ class AmountInputPanel extends StatelessWidget {
         Row(
           children: [
             _calcButton("1", buttonSize),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("2", buttonSize),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("3", buttonSize),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("C", buttonSize, isOperator: true),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Row(
           children: [
             _calcButton("4", buttonSize),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("5", buttonSize),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("6", buttonSize),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("⌫", buttonSize, isOperator: true),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Row(
           children: [
             _calcButton("7", buttonSize),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("8", buttonSize),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("9", buttonSize),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("+", buttonSize, isOperator: true),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Row(
           children: [
             _calcButton(".", buttonSize, isOperator: true),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("0", buttonSize),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("=", buttonSize, isOperator: true, isPrimary: true),
-            const SizedBox(width: 4),
+            const SizedBox(width: 1),
             _calcButton("", buttonSize, isDisabled: true, invisible: true),
           ],
         ),
@@ -145,8 +144,8 @@ class AmountInputPanel extends StatelessWidget {
     final double fontSize = (size * 0.4).clamp(16.0, 24.0);
 
     return Expanded(
-      child: AspectRatio(
-        aspectRatio: 1.0,
+      child: SizedBox(
+        height: size,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 2),
           child: InkWell(

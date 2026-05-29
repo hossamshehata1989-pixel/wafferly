@@ -37,7 +37,7 @@ class MainCategoriesGrid extends StatelessWidget {
 
     final double cardWidth =
         (screenWidth - 32 - (crossAxisCount - 1) * 6) / crossAxisCount;
-    final double cardHeight = cardWidth * 0.9;
+    final double cardHeight = cardWidth * 0.65;
 
     return GridView.builder(
       padding: EdgeInsets.zero,
@@ -74,7 +74,7 @@ class MainCategoriesGrid extends StatelessWidget {
     required double cardWidth,
     required VoidCallback onTap,
   }) {
-    final double iconSize = cardWidth * 0.4;
+    final double iconSize = cardWidth * 0.35;
     final double fontSize = cardWidth * 0.11;
 
     return Material(
@@ -109,7 +109,7 @@ class MainCategoriesGrid extends StatelessWidget {
             splashColor: Colors.white24,
             highlightColor: Colors.transparent,
             child: Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(4),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -126,7 +126,7 @@ class MainCategoriesGrid extends StatelessWidget {
                       color: isSelected ? Colors.white : Colors.white70,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 2),
                   Flexible(
                     child: Padding(
                       padding: EdgeInsets.symmetric(

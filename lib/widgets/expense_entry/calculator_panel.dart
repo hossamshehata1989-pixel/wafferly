@@ -17,7 +17,7 @@ class CalculatorPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(1),
       child: Column(
         children: [
           Row(
@@ -28,7 +28,7 @@ class CalculatorPanel extends StatelessWidget {
               _calcButton("C", isOperator: true),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 1),
           Row(
             children: [
               _calcButton("4"),
@@ -37,7 +37,7 @@ class CalculatorPanel extends StatelessWidget {
               _calcButton("⌫", isOperator: true),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 1),
           Row(
             children: [
               _calcButton("7"),
@@ -52,7 +52,7 @@ class CalculatorPanel extends StatelessWidget {
               _calcButton(".", isOperator: true),
               _calcButton("0"),
               _calcButton("=", isOperator: true, isPrimary: true),
-              const SizedBox(width: 70),
+              const SizedBox(width: 3),
             ],
           ),
         ],
@@ -60,28 +60,34 @@ class CalculatorPanel extends StatelessWidget {
     );
   }
 
-  Widget _calcButton(String text, {bool isOperator = false, bool isPrimary = false}) {
+  Widget _calcButton(
+    String text, {
+    bool isOperator = false,
+    bool isPrimary = false,
+  }) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: GestureDetector(
           onTap: () => onTap(text),
           child: Container(
-            height: 50,
+            height: 1,
             decoration: BoxDecoration(
-              color: isPrimary 
-                  ? Colors.blue 
-                  : (isOperator ? AppColors.cardSecondary : AppColors.background),
+              color: isPrimary
+                  ? Colors.blue
+                  : (isOperator
+                        ? AppColors.cardSecondary
+                        : AppColors.background),
               borderRadius: BorderRadius.circular(12),
             ),
             alignment: Alignment.center,
             child: Text(
               text,
               style: TextStyle(
-                color: isPrimary 
-                    ? Colors.white 
+                color: isPrimary
+                    ? Colors.white
                     : (isOperator ? Colors.blue : Colors.white),
-                fontSize: 20,
+                fontSize: 3,
                 fontWeight: isOperator ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
