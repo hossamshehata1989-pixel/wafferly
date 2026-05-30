@@ -159,10 +159,10 @@ class ExpensesScreen extends StatelessWidget {
             ),
           ),
 
-        SizedBox(height: metrics.h(6)),
+        const Spacer(),
 
         // AMOUNT INPUT PANEL
-        Expanded(child: AmountInputPanel(controller: controller)),
+        AmountInputPanel(controller: controller),
       ],
     );
   }

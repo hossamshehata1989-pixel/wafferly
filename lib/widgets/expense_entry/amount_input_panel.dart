@@ -27,7 +27,7 @@ class AmountInputPanel extends StatelessWidget {
         vertical: metrics.h(6),
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.max,
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
           // حقل عرض المبلغ
