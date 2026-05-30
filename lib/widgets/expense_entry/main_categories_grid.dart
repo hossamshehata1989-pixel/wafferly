@@ -37,33 +37,41 @@ class MainCategoriesGrid extends StatelessWidget {
 
     final double cardWidth =
         (screenWidth - 32 - (crossAxisCount - 1) * 6) / crossAxisCount;
-    final double cardHeight = cardWidth * 0.78;
+    final double cardHeight = crossAxisCount == 4
+        ? cardWidth * 0.60
+        : cardWidth * 0.78;
+    final double rowHeight = cardHeight + 6; // mainAxisSpacing = 6
+    const int visibleRows = 3;
+    final double gridHeight = visibleRows * rowHeight;
 
-    return GridView.builder(
-      padding: EdgeInsets.zero,
-      physics: const BouncingScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: 6,
-        mainAxisSpacing: 6,
-        childAspectRatio: cardWidth / cardHeight,
+    return SizedBox(
+      height: gridHeight,
+      child: GridView.builder(
+        padding: EdgeInsets.zero,
+        physics: const ClampingScrollPhysics(), // enables internal scrolling
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          crossAxisSpacing: 6,
+          mainAxisSpacing: 6,
+          childAspectRatio: cardWidth / cardHeight,
+        ),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final category = categories[index];
+          final isSelected =
+              selectedCategoryId == category.id ||
+              (category.subCategories?.any((s) => s.id == selectedCategoryId) ??
+                  false);
+
+          return _buildCategoryCard(
+            title: category.resolveTitle(t),
+            iconPath: category.icon,
+            isSelected: isSelected,
+            cardWidth: cardWidth,
+            onTap: () => onCategorySelected(category.id),
+          );
+        },
       ),
-      itemCount: categories.length,
-      itemBuilder: (context, index) {
-        final category = categories[index];
-        final isSelected =
-            selectedCategoryId == category.id ||
-            (category.subCategories?.any((s) => s.id == selectedCategoryId) ??
-                false);
-
-        return _buildCategoryCard(
-          title: category.resolveTitle(t),
-          iconPath: category.icon,
-          isSelected: isSelected,
-          cardWidth: cardWidth,
-          onTap: () => onCategorySelected(category.id),
-        );
-      },
     );
   }
 

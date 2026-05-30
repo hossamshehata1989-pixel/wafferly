@@ -41,7 +41,6 @@ class ExpensesScreen extends StatelessWidget {
       },
       child: Scaffold(
         resizeToAvoidBottomInset: true,
-
         appBar: AppBar(
           title: Text(
             transactionToEdit != null
@@ -54,24 +53,18 @@ class ExpensesScreen extends StatelessWidget {
           ),
           backgroundColor: const Color(0xFF0A0A0A),
         ),
-
         body: Consumer<TransactionEntryController>(
           builder: (context, controller, _) {
             final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-
             final isKeyboardOpen = keyboardHeight > 0;
-
             final isTransfer =
                 controller.selectedTransactionType == TransactionType.transfer;
-
             final isExpense = controller.isExpense;
 
             return SafeArea(
               child: Column(
                 children: [
-                  // =========================================
                   // TABS
-                  // =========================================
                   if (!controller.isEditing) ...[
                     ExpenseEntryTabs(controller: controller),
                     const SizedBox(height: 8),
@@ -100,14 +93,9 @@ class ExpensesScreen extends StatelessWidget {
                     ),
                   ],
 
-                  // =========================================
                   // TRANSFER SCREEN
-                  // =========================================
                   if (isTransfer)
                     Expanded(child: TransferForm(controller: controller))
-                  // =========================================
-                  // EXPENSE / INCOME SCREEN
-                  // =========================================
                   else
                     Expanded(
                       child: _buildExpenseIncomeContent(
@@ -126,10 +114,6 @@ class ExpensesScreen extends StatelessWidget {
     );
   }
 
-  // =========================================================
-  // EXPENSE / INCOME CONTENT
-  // =========================================================
-
   Widget _buildExpenseIncomeContent({
     required BuildContext context,
     required TransactionEntryController controller,
@@ -138,66 +122,41 @@ class ExpensesScreen extends StatelessWidget {
   }) {
     return Column(
       children: [
-        // =========================================
-        // MAIN CATEGORIES
-        // =========================================
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.23,
-          child: Container(
+        // MAIN CATEGORIES (3 rows visible, internal scroll)
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF243A8F), width: 1),
+          ),
+          child: MainCategoriesGrid(
+            selectedCategoryId: controller.selectedCategoryId,
+            onCategorySelected: controller.selectCategory,
+            categoryType: controller.categoryType,
+          ),
+        ),
+
+        // SUB CATEGORIES (horizontal scroll, only for expense & when keyboard closed)
+        if (!isKeyboardOpen && isExpense && controller.hasSubCategories)
+          Container(
             margin: const EdgeInsets.symmetric(horizontal: 8),
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFF243A8F), width: 1),
             ),
-            child: MainCategoriesGrid(
-              selectedCategoryId: controller.selectedCategoryId,
-              onCategorySelected: controller.selectCategory,
-              categoryType: controller.categoryType,
+            child: SubCategoriesGrid(
+              subCategories: controller.currentSubCategories,
+              selectedSubCategoryId: controller.selectedCategoryId,
+              onSubCategorySelected: controller.selectCategory,
             ),
           ),
-        ),
 
-        // =========================================
-        // SUB CATEGORIES
-        // =========================================
-        SizedBox(
-          height: !isKeyboardOpen && isExpense ? 70 : 0,
-          child: controller.hasSubCategories && !isKeyboardOpen && isExpense
-              ? Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFF243A8F),
-                      width: 1,
-                    ),
-                  ),
-                  child: SubCategoriesGrid(
-                    subCategories: controller.currentSubCategories,
-                    selectedSubCategoryId: controller.selectedCategoryId,
-                    onSubCategorySelected: controller.selectCategory,
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
+        const SizedBox(height: 8),
 
-        // =========================================
-        // AMOUNT INPUT PANEL
-        // =========================================
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.39,
-          child: AmountInputPanel(controller: controller),
-        ),
-
-        // =========================================
-        // ACTION BUTTONS
-        // =========================================
-        // Padding(
-        // padding: const EdgeInsets.only(bottom: 8),
-        //child: ActionButtonsRow(controller: controller),
-        // ),
+        // AMOUNT INPUT PANEL (takes remaining space)
+        Expanded(child: AmountInputPanel(controller: controller)),
       ],
     );
   }

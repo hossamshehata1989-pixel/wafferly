@@ -1,7 +1,10 @@
+// lib/widgets/expense_entry/amount_input_panel.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../controllers/transaction_entry_controller.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/responsive_metrics.dart';
 
 class AmountInputPanel extends StatelessWidget {
   final TransactionEntryController controller;
@@ -10,9 +13,11 @@ class AmountInputPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
     final screenHeight = MediaQuery.of(context).size.height;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
+    // ✅ يظل محسوباً من ارتفاع الشاشة فقط (بدون metrics.size)
     double buttonSize = screenHeight * 0.04;
     buttonSize = buttonSize.clamp(32.0, 42.0);
 
@@ -21,12 +26,15 @@ class AmountInputPanel extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: metrics.spacing(16),
+        vertical: metrics.spacing(8),
+      ),
       child: Column(
-        // mainAxisSize: MainAxisSize.min,
-        mainAxisSize: MainAxisSize.min,
-
+        mainAxisSize: MainAxisSize.max,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
+          // شريط الإشارة العلوي (ثابت الأبعاد، غير responsive)
           Center(
             child: Container(
               width: 42,
@@ -34,19 +42,20 @@ class AmountInputPanel extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8),
               decoration: BoxDecoration(
                 color: Colors.white54,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(20), // ثابت
               ),
             ),
           ),
-
-          const SizedBox(height: 2),
-
+          SizedBox(height: metrics.spacing(2)),
+          // حقل عرض المبلغ
           Container(
-            // Amount Display
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+            padding: EdgeInsets.symmetric(
+              horizontal: metrics.spacing(2),
+              vertical: metrics.spacing(2),
+            ),
             decoration: BoxDecoration(
               color: AppColors.background,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(16), // ثابت
               border: Border.all(color: Colors.white12),
             ),
             child: Row(
@@ -54,13 +63,13 @@ class AmountInputPanel extends StatelessWidget {
               children: [
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: metrics.spacing(16),
                       vertical: 0,
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(16), // ثابت
                       border: Border.all(color: Colors.white12),
                     ),
                     child: Row(
@@ -72,22 +81,20 @@ class AmountInputPanel extends StatelessWidget {
                             child: Text(
                               controller.amount,
                               maxLines: 1,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 42,
+                                fontSize: metrics.text(42),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                         ),
-
-                        const SizedBox(width: 8),
-
+                        SizedBox(width: metrics.spacing(8)),
                         Text(
                           controller.currentCurrency,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.blue,
-                            fontSize: 16,
+                            fontSize: metrics.text(16),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -95,70 +102,63 @@ class AmountInputPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                const SizedBox(
-                  width: 4,
-                ), // Space between amount and action buttons
-
+                SizedBox(width: metrics.spacing(4)),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _topActionButton(Icons.note_alt_outlined),
-                    const SizedBox(width: 8),
-
-                    _topActionButton(Icons.check),
+                    _topActionButton(metrics, Icons.note_alt_outlined),
+                    SizedBox(width: metrics.spacing(8)),
+                    _topActionButton(metrics, Icons.check),
                   ],
                 ),
               ],
             ),
           ),
-
-          const SizedBox(height: 4),
-
-          _buildCalculator(buttonSize),
-
-          const SizedBox(height: 8),
-
+          SizedBox(height: metrics.spacing(4)),
+          _buildCalculator(metrics, buttonSize),
+          SizedBox(height: metrics.spacing(8)),
+          // صف أزرار المعلومات
           Row(
             children: [
               Expanded(
                 child: _infoButton(
+                  metrics,
                   Icons.account_balance_wallet_outlined,
                   'Cash',
                 ),
               ),
-
-              const SizedBox(width: 6),
-
+              SizedBox(width: metrics.spacing(6)),
               Expanded(
-                child: _infoButton(Icons.calendar_today_outlined, 'Today'),
+                child: _infoButton(
+                  metrics,
+                  Icons.calendar_today_outlined,
+                  'Today',
+                ),
               ),
-
-              const SizedBox(width: 6),
-
-              Expanded(child: _infoButton(Icons.person_outline, 'Me')),
-
-              const SizedBox(width: 6),
-
-              Expanded(child: _infoButton(Icons.repeat, 'Recurring')),
+              SizedBox(width: metrics.spacing(6)),
+              Expanded(child: _infoButton(metrics, Icons.person_outline, 'Me')),
+              SizedBox(width: metrics.spacing(6)),
+              Expanded(child: _infoButton(metrics, Icons.repeat, 'Recurring')),
             ],
           ),
-
-          const SizedBox(height: 8),
-
+          SizedBox(height: metrics.spacing(8)),
+          // صف الأزرار السفلية
           Row(
             children: [
               Expanded(
-                child: _bottomActionButton('Exceptional', Icons.star_outline),
+                child: _bottomActionButton(
+                  metrics,
+                  'Exceptional',
+                  Icons.star_outline,
+                ),
               ),
-
-              const SizedBox(width: 6),
-
-              SizedBox(width: 56, child: _bottomActionButton('', Icons.mic)),
-
-              const SizedBox(width: 6),
-
-              Expanded(child: _bottomActionButton('Add', Icons.add)),
+              SizedBox(width: metrics.spacing(6)),
+              SizedBox(
+                width: 56, // ثابت (غير responsive)
+                child: _bottomActionButton(metrics, '', Icons.mic),
+              ),
+              SizedBox(width: metrics.spacing(6)),
+              Expanded(child: _bottomActionButton(metrics, 'Add', Icons.add)),
             ],
           ),
         ],
@@ -166,121 +166,70 @@ class AmountInputPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildCalculator(double buttonSize) {
-    // Calculator buttons
+  // ======================== أزرار الحاسبة ========================
+  Widget _buildCalculator(ResponsiveMetrics metrics, double buttonSize) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           children: [
-            _calcButton("1", buttonSize),
-            const SizedBox(width: 1),
-            _calcButton("2", buttonSize),
-            const SizedBox(width: 1),
-            _calcButton("3", buttonSize),
-            const SizedBox(width: 1),
-            _calcButton("C", buttonSize, isOperator: true),
+            _calcButton(metrics, "1", buttonSize),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(metrics, "2", buttonSize),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(metrics, "3", buttonSize),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(metrics, "C", buttonSize, isOperator: true),
           ],
         ),
-        const SizedBox(height: 2),
+        SizedBox(height: metrics.spacing(2)),
         Row(
           children: [
-            _calcButton("4", buttonSize),
-            const SizedBox(width: 1),
-            _calcButton("5", buttonSize),
-            const SizedBox(width: 1),
-            _calcButton("6", buttonSize),
-            const SizedBox(width: 1),
-            _calcButton("⌫", buttonSize, isOperator: true),
+            _calcButton(metrics, "4", buttonSize),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(metrics, "5", buttonSize),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(metrics, "6", buttonSize),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(metrics, "⌫", buttonSize, isOperator: true),
           ],
         ),
-        const SizedBox(height: 2),
+        SizedBox(height: metrics.spacing(2)),
         Row(
           children: [
-            _calcButton("7", buttonSize),
-            const SizedBox(width: 1),
-            _calcButton("8", buttonSize),
-            const SizedBox(width: 1),
-            _calcButton("9", buttonSize),
-            const SizedBox(width: 1),
-            _calcButton("+", buttonSize, isOperator: true),
+            _calcButton(metrics, "7", buttonSize),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(metrics, "8", buttonSize),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(metrics, "9", buttonSize),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(metrics, "+", buttonSize, isOperator: true),
           ],
         ),
-        const SizedBox(height: 2),
+        SizedBox(height: metrics.spacing(2)),
         Row(
           children: [
-            _calcButton(".", buttonSize, isOperator: true),
-            const SizedBox(width: 1),
-            _calcButton("0", buttonSize),
-            const SizedBox(width: 1),
-            _calcButton("=", buttonSize, isOperator: true, isPrimary: true),
-            const SizedBox(width: 1),
-            _calcButton("x", buttonSize, isOperator: true),
+            _calcButton(metrics, ".", buttonSize, isOperator: true),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(metrics, "0", buttonSize),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(
+              metrics,
+              "=",
+              buttonSize,
+              isOperator: true,
+              isPrimary: true,
+            ),
+            SizedBox(width: metrics.spacing(1)),
+            _calcButton(metrics, "x", buttonSize, isOperator: true),
           ],
         ),
       ],
     );
   }
 
-  Widget _topActionButton(IconData icon) {
-    // Top right action buttons (note, more, confirm)
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: AppColors.cardSecondary,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Icon(icon, color: Colors.white, size: 18),
-    );
-  }
-
-  Widget _infoButton(IconData icon, String text) {
-    return Container(
-      height: 40,
-      decoration: BoxDecoration(
-        color: AppColors.cardSecondary,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 20, color: Colors.white70),
-
-          const SizedBox(width: 4),
-
-          Flexible(
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _bottomActionButton(String text, IconData icon) {
-    return SizedBox(
-      height: 40,
-      child: ElevatedButton(
-        onPressed: () {},
-        child: FittedBox(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 20),
-              if (text.isNotEmpty) ...[const SizedBox(width: 4), Text(text)],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _calcButton(
-    // Calculator buttons
+    ResponsiveMetrics metrics,
     String text,
     double size, {
     bool isOperator = false,
@@ -288,28 +237,21 @@ class AmountInputPanel extends StatelessWidget {
     bool isDisabled = false,
     bool invisible = false,
   }) {
-    final double fontSize = (size * 0.4).clamp(
-      20.0,
-      24.0,
-    ); // Dynamic font size based on button size
-
+    final double fontSize = (size * 0.4).clamp(20.0, 24.0);
+    final double responsiveFontSize = metrics.text(fontSize);
     return Expanded(
-      // Each button takes equal horizontal space
       child: SizedBox(
         height: size,
         child: Padding(
-          // Small padding around each button
-          padding: const EdgeInsets.symmetric(horizontal: 2),
+          padding: EdgeInsets.symmetric(horizontal: metrics.spacing(2)),
           child: InkWell(
             onTap: isDisabled || invisible
                 ? null
                 : () {
-                    HapticFeedback.lightImpact(); // Haptic feedback on button press
+                    HapticFeedback.lightImpact();
                     controller.onCalculatorTap(text);
                   },
-            borderRadius: BorderRadius.circular(
-              12,
-            ), // Rounded corners for tap effect
+            borderRadius: BorderRadius.circular(12), // ثابت
             child: Container(
               decoration: BoxDecoration(
                 color: invisible
@@ -321,13 +263,12 @@ class AmountInputPanel extends StatelessWidget {
                     : (isOperator
                           ? AppColors.cardSecondary
                           : AppColors.background),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12), // ثابت
               ),
-              alignment: Alignment.center, // Center the text within the button
+              alignment: Alignment.center,
               child: text.isEmpty
                   ? null
                   : Text(
-                      // Button text
                       text,
                       style: TextStyle(
                         color: isDisabled || invisible
@@ -335,13 +276,86 @@ class AmountInputPanel extends StatelessWidget {
                             : isPrimary
                             ? Colors.white
                             : (isOperator ? Colors.blue : Colors.white),
-                        fontSize: fontSize,
+                        fontSize: responsiveFontSize,
                         fontWeight: isOperator
                             ? FontWeight.w600
                             : FontWeight.normal,
                       ),
                     ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ======================== أزرار علوية (Note, Check) ========================
+  Widget _topActionButton(ResponsiveMetrics metrics, IconData icon) {
+    final double buttonSize = metrics.size(52);
+    return Container(
+      width: buttonSize,
+      height: buttonSize,
+      decoration: BoxDecoration(
+        color: AppColors.cardSecondary,
+        borderRadius: BorderRadius.circular(10), // ثابت
+      ),
+      child: Icon(icon, color: Colors.white, size: metrics.size(18)),
+    );
+  }
+
+  // ======================== أزرار المعلومات (Cash, Today, Me, Recurring) ========================
+  Widget _infoButton(ResponsiveMetrics metrics, IconData icon, String text) {
+    final double height = metrics.size(40);
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.cardSecondary,
+        borderRadius: BorderRadius.circular(12), // ثابت
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: metrics.size(20), color: Colors.white70),
+          SizedBox(width: metrics.spacing(4)),
+          Flexible(
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: metrics.text(11),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ======================== أزرار سفلية (Exceptional, Mic, Add) ========================
+  Widget _bottomActionButton(
+    ResponsiveMetrics metrics,
+    String text,
+    IconData icon,
+  ) {
+    final double height = metrics.size(40);
+    return SizedBox(
+      height: height,
+      child: ElevatedButton(
+        onPressed: () {},
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.symmetric(horizontal: metrics.spacing(8)),
+        ),
+        child: FittedBox(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: metrics.size(20)),
+              if (text.isNotEmpty) ...[
+                SizedBox(width: metrics.spacing(4)),
+                Text(text, style: TextStyle(fontSize: metrics.text(14))),
+              ],
+            ],
           ),
         ),
       ),
