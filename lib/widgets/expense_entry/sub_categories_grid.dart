@@ -33,9 +33,9 @@ class SubCategoriesGrid extends StatelessWidget {
     final double cardWidth =
         (screenWidth - 32 - ((fixedColumns - 1) * spacing)) / fixedColumns;
 
-    final double cardHeight = useTwoRows ? cardWidth * 0.80 : cardWidth * 0.85;
-    final double iconSize = cardWidth * 0.30;
-    final double fontSize = cardWidth * 0.11;
+    final double cardHeight = useTwoRows ? cardWidth * 0.72 : cardWidth * 0.75;
+    final double iconSize = cardWidth * 0.25;
+    final double fontSize = cardWidth * 0.07;
 
     final double listHeight = useTwoRows
         ? (cardHeight * 2) + spacing
@@ -160,7 +160,7 @@ class SubCategoriesGrid extends StatelessWidget {
                       minFontSize: 9,
                       style: TextStyle(
                         color: isSelected ? Colors.white : Colors.white70,
-                        fontSize: fontSize.clamp(9.0, 13.0),
+                        fontSize: fontSize.clamp(8.0, 12.0),
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.normal,

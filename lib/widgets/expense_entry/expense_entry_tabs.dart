@@ -1,71 +1,110 @@
-// lib/widgets/expense_entry/expense_entry_tabs.dart
+// lib/widgets/expense_entry/expenses_income_tabs.dart
 
 import 'package:flutter/material.dart';
-import '../../controllers/transaction_entry_controller.dart';
-import '../../constants/transaction_constants.dart';
 import '../../theme/app_colors.dart';
-import '../../l10n/app_localizations.dart';
+import '../../theme/responsive_metrics.dart';
 
 class ExpenseEntryTabs extends StatelessWidget {
-  final TransactionEntryController controller;
+  final dynamic controller; // TransactionEntryController
 
   const ExpenseEntryTabs({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+    final metrics = ResponsiveMetrics.of(context);
+
+    // Tabs height responsive: 44px مرجع → 33px على iPhone SE
+    final double tabHeight = metrics.h(30);
+    final double fontSize = metrics.text(14);
+    final double borderRadius = 24;
+
+    final tabs = ['Expenses', 'Income', 'Transfer'];
+    final selectedIndex = _selectedIndex(controller);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      height: 44,
+      margin: EdgeInsets.symmetric(horizontal: metrics.spacing(16)),
+      height: tabHeight,
       decoration: BoxDecoration(
-        color: AppColors.cardSecondary,
-        borderRadius: BorderRadius.circular(30),
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(color: Colors.grey.shade300),
       ),
-      child: Row(
+      child: Stack(
         children: [
-          _buildTab(t.expenses, TransactionType.expense),
-          _buildTab(t.income, TransactionType.income),
-          _buildTab(t.transfer, TransactionType.transfer),
+          // Animated selector
+          AnimatedAlign(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            alignment: _alignment(selectedIndex),
+            child: FractionallySizedBox(
+              widthFactor: 1 / tabs.length,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(borderRadius),
+                ),
+              ),
+            ),
+          ),
+
+          // Tab labels
+          Row(
+            children: List.generate(tabs.length, (index) {
+              final isSelected = selectedIndex == index;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => _onTap(controller, index),
+                  child: Center(
+                    child: Text(
+                      tabs[index],
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? Colors.white : Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTab(String title, String transactionType) {
-    final isSelected = controller.selectedTransactionType == transactionType;
+  Alignment _alignment(int index) {
+    switch (index) {
+      case 0:
+        return const Alignment(-1, 0);
+      case 1:
+        return const Alignment(0, 0);
+      case 2:
+        return const Alignment(1, 0);
+      default:
+        return const Alignment(-1, 0);
+    }
+  }
 
-    return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => controller.setTransactionType(transactionType),
-              borderRadius: BorderRadius.circular(30),
-              splashColor: Colors.white24,
-              highlightColor: Colors.transparent,
-              child: Center(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.white54,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+  int _selectedIndex(dynamic controller) {
+    // يعتمد على TransactionType في الـ controller
+    final type = controller.selectedTransactionType as String;
+    if (type == 'income') return 1;
+    if (type == 'transfer') return 2;
+    return 0;
+  }
+
+  void _onTap(dynamic controller, int index) {
+    switch (index) {
+      case 0:
+        controller.setTransactionType('expense');
+        break;
+      case 1:
+        controller.setTransactionType('income');
+        break;
+      case 2:
+        controller.setTransactionType('transfer');
+        break;
+    }
   }
 }

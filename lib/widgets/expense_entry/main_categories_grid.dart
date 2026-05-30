@@ -24,6 +24,7 @@ class MainCategoriesGrid extends StatelessWidget {
     final categories = getCategories(categoryType);
     final screenWidth = MediaQuery.of(context).size.width;
 
+    // عدد الأعمدة بناءً على العرض فقط
     int crossAxisCount;
     if (screenWidth < 400) {
       crossAxisCount = 4;
@@ -35,20 +36,26 @@ class MainCategoriesGrid extends StatelessWidget {
       crossAxisCount = 7;
     }
 
+    // 3 صفوف دائمًا — ثابت لا يتغير
+    const int visibleRows = 3;
+
     final double cardWidth =
         (screenWidth - 32 - (crossAxisCount - 1) * 6) / crossAxisCount;
-    final double cardHeight = crossAxisCount == 4
-        ? cardWidth * 0.60
-        : cardWidth * 0.78;
-    final double rowHeight = cardHeight + 6; // mainAxisSpacing = 6
-    const int visibleRows = 3;
-    final double gridHeight = visibleRows * rowHeight;
+
+    // نسبة الارتفاع للعرض ثابتة — لا تُضرب في heightScale أبدًا
+    // لأن الأيقونة والنص بداخل الكارت نسبتهم ثابتة لحجم الكارت
+    // تطبيق heightScale على cardHeight يكسر التناسب الداخلي
+    final double aspectRatio = crossAxisCount == 4 ? 0.60 : 0.78;
+    final double cardHeight = cardWidth * aspectRatio;
+
+    final double gridHeight =
+        (visibleRows * cardHeight) + ((visibleRows - 1) * 6);
 
     return SizedBox(
       height: gridHeight,
       child: GridView.builder(
         padding: EdgeInsets.zero,
-        physics: const ClampingScrollPhysics(), // enables internal scrolling
+        physics: const ClampingScrollPhysics(),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: crossAxisCount,
           crossAxisSpacing: 6,
@@ -82,8 +89,9 @@ class MainCategoriesGrid extends StatelessWidget {
     required double cardWidth,
     required VoidCallback onTap,
   }) {
-    final double iconSize = cardWidth * 0.35;
-    final double fontSize = cardWidth * 0.11;
+    // الأيقونة والنص يتبعان cardWidth دائمًا
+    final double iconSize = cardWidth * 0.30;
+    final double fontSize = (cardWidth * 0.11).clamp(9.0, 14.0);
 
     return Material(
       color: Colors.transparent,
@@ -155,7 +163,7 @@ class MainCategoriesGrid extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: isSelected ? Colors.white : Colors.white70,
-                            fontSize: fontSize.clamp(9.0, 14.0),
+                            fontSize: fontSize,
                             fontWeight: isSelected
                                 ? FontWeight.w600
                                 : FontWeight.normal,

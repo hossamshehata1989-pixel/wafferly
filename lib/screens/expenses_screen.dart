@@ -7,13 +7,11 @@ import '../widgets/expense_entry/expense_entry_tabs.dart';
 import '../widgets/expense_entry/main_categories_grid.dart';
 import '../widgets/expense_entry/sub_categories_grid.dart';
 import '../widgets/expense_entry/amount_input_panel.dart';
-import '../widgets/expense_entry/quick_actions_row.dart';
-import '../widgets/expense_entry/action_buttons_row.dart';
-import '../widgets/expense_entry/advanced_options_panel.dart';
 import '../widgets/expense_entry/transfer_form.dart';
 import '../l10n/app_localizations.dart';
 import '../constants/transaction_constants.dart';
 import '../models/transaction.dart';
+import '../theme/responsive_metrics.dart';
 
 class ExpensesScreen extends StatelessWidget {
   final String initialType;
@@ -27,31 +25,37 @@ class ExpensesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
+
     return ChangeNotifierProvider(
       create: (_) {
         final controller = TransactionEntryController();
-
         if (transactionToEdit != null) {
           controller.loadTransaction(transactionToEdit!);
         } else {
           controller.setTransactionType(initialType);
         }
-
         return controller;
       },
       child: Scaffold(
         resizeToAvoidBottomInset: true,
-        appBar: AppBar(
-          title: Text(
-            transactionToEdit != null
-                ? 'Edit Transaction'
-                : initialType == TransactionType.income
-                ? AppLocalizations.of(context)!.income
-                : (initialType == TransactionType.transfer
-                      ? AppLocalizations.of(context)!.transfer
-                      : AppLocalizations.of(context)!.expenses),
+        appBar: PreferredSize(
+          // AppBar responsive: 56px مرجع → 42px على iPhone SE
+          preferredSize: Size.fromHeight(metrics.h(45)),
+          child: AppBar(
+            title: Text(
+              transactionToEdit != null
+                  ? 'Edit Transaction'
+                  : initialType == TransactionType.income
+                  ? AppLocalizations.of(context)!.income
+                  : (initialType == TransactionType.transfer
+                        ? AppLocalizations.of(context)!.transfer
+                        : AppLocalizations.of(context)!.expenses),
+              style: TextStyle(fontSize: metrics.text(18)),
+            ),
+            backgroundColor: const Color(0xFF0A0A0A),
+            toolbarHeight: metrics.h(56),
           ),
-          backgroundColor: const Color(0xFF0A0A0A),
         ),
         body: Consumer<TransactionEntryController>(
           builder: (context, controller, _) {
@@ -67,24 +71,24 @@ class ExpensesScreen extends StatelessWidget {
                   // TABS
                   if (!controller.isEditing) ...[
                     ExpenseEntryTabs(controller: controller),
-                    const SizedBox(height: 8),
+                    SizedBox(height: metrics.h(6)),
                   ] else ...[
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: EdgeInsets.symmetric(vertical: metrics.h(10)),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Icon(
                             Icons.edit_outlined,
                             color: Colors.white70,
-                            size: 20,
+                            size: metrics.size(18),
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(width: metrics.spacing(8)),
                           Text(
                             'Edit Transaction',
                             style: TextStyle(
                               color: Colors.white70,
-                              fontSize: 18,
+                              fontSize: metrics.text(16),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -93,7 +97,7 @@ class ExpensesScreen extends StatelessWidget {
                     ),
                   ],
 
-                  // TRANSFER SCREEN
+                  // TRANSFER
                   if (isTransfer)
                     Expanded(child: TransferForm(controller: controller))
                   else
@@ -120,12 +124,14 @@ class ExpensesScreen extends StatelessWidget {
     required bool isKeyboardOpen,
     required bool isExpense,
   }) {
+    final metrics = ResponsiveMetrics.of(context);
+
     return Column(
       children: [
-        // MAIN CATEGORIES (3 rows visible, internal scroll)
+        // MAIN CATEGORIES
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 8),
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFF243A8F), width: 1),
@@ -137,7 +143,7 @@ class ExpensesScreen extends StatelessWidget {
           ),
         ),
 
-        // SUB CATEGORIES (horizontal scroll, only for expense & when keyboard closed)
+        // SUB CATEGORIES
         if (!isKeyboardOpen && isExpense && controller.hasSubCategories)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 8),
@@ -153,9 +159,9 @@ class ExpensesScreen extends StatelessWidget {
             ),
           ),
 
-        const SizedBox(height: 8),
+        SizedBox(height: metrics.h(6)),
 
-        // AMOUNT INPUT PANEL (takes remaining space)
+        // AMOUNT INPUT PANEL
         Expanded(child: AmountInputPanel(controller: controller)),
       ],
     );
