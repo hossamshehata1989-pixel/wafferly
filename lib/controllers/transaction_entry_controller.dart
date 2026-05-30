@@ -12,6 +12,7 @@ import '../config/category_config.dart';
 import '../config/category_type.dart';
 import '../features/analysis/registry/category_registry.dart';
 import '../features/members/models/member_model.dart';
+import 'package:math_expressions/math_expressions.dart';
 
 enum SaveStatus { idle, saving }
 
@@ -56,6 +57,7 @@ class TransactionEntryController extends ChangeNotifier {
 
   String _amount = "0";
   String _expression = "";
+  bool _justCalculated = false;
   DateTime _selectedDate = DateTime.now();
   String _note = "";
   String _paymentMethod = "cash";
@@ -259,28 +261,76 @@ class TransactionEntryController extends ChangeNotifier {
   // Calculator
   // ==============================
 
+  bool _isOperator(String value) {
+    return value == "+" ||
+        value == "-" ||
+        value == "*" ||
+        value == "/" ||
+        value == "x";
+  }
+
   void onCalculatorTap(String value) {
     if (value == "C") {
       _amount = "0";
       _expression = "";
+      _justCalculated = false;
     } else if (value == "⌫") {
       if (_amount.length > 1) {
         _amount = _amount.substring(0, _amount.length - 1);
       } else {
         _amount = "0";
         _expression = "";
+        _justCalculated = false;
       }
     } else if (value == "=") {
-      final result = double.tryParse(_amount) ?? 0;
-      _amount = result.toString();
-      _expression = "";
+      try {
+        final parser = Parser();
+
+        final expression = parser.parse(_amount.replaceAll('x', '*'));
+
+        final result = expression.evaluate(EvaluationType.REAL, ContextModel());
+
+        if (result % 1 == 0) {
+          _amount = result.toInt().toString();
+        } else {
+          _amount = result.toString();
+        }
+
+        _expression = "";
+        _justCalculated = true;
+      } catch (_) {
+        _amount = "0";
+        _expression = "";
+        _justCalculated = false;
+      }
     } else {
-      if (_amount == "0") {
-        _amount = value;
+      // بعد =
+      if (_justCalculated) {
+        if (_isOperator(value)) {
+          _amount += value;
+        } else {
+          _amount = value;
+        }
+
+        _justCalculated = false;
+      }
+      // منع operator في البداية
+      else if (_amount == "0") {
+        if (!_isOperator(value)) {
+          _amount = value;
+        }
       } else {
-        _amount += value;
+        // منع ++ و ** و //
+        final lastChar = _amount[_amount.length - 1];
+
+        if (_isOperator(lastChar) && _isOperator(value)) {
+          _amount = _amount.substring(0, _amount.length - 1) + value;
+        } else {
+          _amount += value;
+        }
       }
     }
+
     notifyListeners();
   }
 

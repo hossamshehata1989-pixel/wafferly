@@ -25,10 +25,25 @@ class AmountInputPanel extends StatelessWidget {
       child: Column(
         // mainAxisSize: MainAxisSize.min,
         mainAxisSize: MainAxisSize.min,
+
         children: [
+          Center(
+            child: Container(
+              width: 42,
+              height: 5,
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.white54,
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 2),
+
           Container(
             // Amount Display
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
             decoration: BoxDecoration(
               color: AppColors.background,
               borderRadius: BorderRadius.circular(16),
@@ -41,7 +56,7 @@ class AmountInputPanel extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 2,
+                      vertical: 0,
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.background,
@@ -82,19 +97,16 @@ class AmountInputPanel extends StatelessWidget {
                 ),
 
                 const SizedBox(
-                  width: 8,
+                  width: 4,
                 ), // Space between amount and action buttons
 
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _topActionButton(Icons.more_horiz), // More options button
-                    const SizedBox(width: 6),
+                    _topActionButton(Icons.note_alt_outlined),
+                    const SizedBox(width: 8),
 
-                    _topActionButton(Icons.note_alt_outlined), // Note button
-                    const SizedBox(width: 6),
-
-                    _topActionButton(Icons.check), // Confirm button
+                    _topActionButton(Icons.check),
                   ],
                 ),
               ],
@@ -104,6 +116,51 @@ class AmountInputPanel extends StatelessWidget {
           const SizedBox(height: 4),
 
           _buildCalculator(buttonSize),
+
+          const SizedBox(height: 8),
+
+          Row(
+            children: [
+              Expanded(
+                child: _infoButton(
+                  Icons.account_balance_wallet_outlined,
+                  'Cash',
+                ),
+              ),
+
+              const SizedBox(width: 6),
+
+              Expanded(
+                child: _infoButton(Icons.calendar_today_outlined, 'Today'),
+              ),
+
+              const SizedBox(width: 6),
+
+              Expanded(child: _infoButton(Icons.person_outline, 'Me')),
+
+              const SizedBox(width: 6),
+
+              Expanded(child: _infoButton(Icons.repeat, 'Recurring')),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          Row(
+            children: [
+              Expanded(
+                child: _bottomActionButton('Exceptional', Icons.star_outline),
+              ),
+
+              const SizedBox(width: 6),
+
+              SizedBox(width: 56, child: _bottomActionButton('', Icons.mic)),
+
+              const SizedBox(width: 6),
+
+              Expanded(child: _bottomActionButton('Add', Icons.add)),
+            ],
+          ),
         ],
       ),
     );
@@ -158,7 +215,7 @@ class AmountInputPanel extends StatelessWidget {
             const SizedBox(width: 1),
             _calcButton("=", buttonSize, isOperator: true, isPrimary: true),
             const SizedBox(width: 1),
-            _calcButton("", buttonSize, isDisabled: true, invisible: true),
+            _calcButton("x", buttonSize, isOperator: true),
           ],
         ),
       ],
@@ -168,13 +225,57 @@ class AmountInputPanel extends StatelessWidget {
   Widget _topActionButton(IconData icon) {
     // Top right action buttons (note, more, confirm)
     return Container(
-      width: 40,
-      height: 40,
+      width: 52,
+      height: 52,
       decoration: BoxDecoration(
         color: AppColors.cardSecondary,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Icon(icon, color: Colors.white, size: 18),
+    );
+  }
+
+  Widget _infoButton(IconData icon, String text) {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: AppColors.cardSecondary,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 20, color: Colors.white70),
+
+          const SizedBox(width: 4),
+
+          Flexible(
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _bottomActionButton(String text, IconData icon) {
+    return SizedBox(
+      height: 40,
+      child: ElevatedButton(
+        onPressed: () {},
+        child: FittedBox(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20),
+              if (text.isNotEmpty) ...[const SizedBox(width: 4), Text(text)],
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -188,7 +289,7 @@ class AmountInputPanel extends StatelessWidget {
     bool invisible = false,
   }) {
     final double fontSize = (size * 0.4).clamp(
-      16.0,
+      20.0,
       24.0,
     ); // Dynamic font size based on button size
 

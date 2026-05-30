@@ -141,8 +141,8 @@ class ExpensesScreen extends StatelessWidget {
         // =========================================
         // MAIN CATEGORIES
         // =========================================
-        Expanded(
-          flex: controller.hasSubCategories && isExpense ? 10 : 8,
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.23,
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 8),
             padding: const EdgeInsets.all(8),
@@ -187,23 +187,17 @@ class ExpensesScreen extends StatelessWidget {
         // AMOUNT INPUT PANEL
         // =========================================
         SizedBox(
-          height: MediaQuery.of(context).size.height * 0.32,
+          height: MediaQuery.of(context).size.height * 0.39,
           child: AmountInputPanel(controller: controller),
         ),
 
         // =========================================
-        // QUICK ACTIONS
-        // =========================================
-        if (!isKeyboardOpen && isExpense)
-          QuickActionsRow(controller: controller),
-
-        // =========================================
         // ACTION BUTTONS
         // =========================================
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: ActionButtonsRow(controller: controller),
-        ),
+        // Padding(
+        // padding: const EdgeInsets.only(bottom: 8),
+        //child: ActionButtonsRow(controller: controller),
+        // ),
       ],
     );
   }
