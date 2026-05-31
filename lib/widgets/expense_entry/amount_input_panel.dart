@@ -19,7 +19,7 @@ class AmountInputPanel extends StatelessWidget {
     // حجم زر الحاسبة — responsive بالارتفاع
     // مرجع 36px → iPhone SE: 27px | Pixel 4: 35px
     // لما الكيبورد يفتح: يصغر أكتر لأن المساحة بتقل
-    final double buttonSize = metrics.h(isKeyboardOpen ? 28 : 32);
+    final double buttonSize = metrics.h(isKeyboardOpen ? 28 : 45);
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -249,7 +249,7 @@ class AmountInputPanel extends StatelessWidget {
   // ======================== أزرار علوية (Note, Check) ========================
   Widget _topActionButton(ResponsiveMetrics metrics, IconData icon) {
     // h() بدل size() — لأن الزر له ارتفاع ثابت في الشاشة
-    final double buttonSize = metrics.h(44);
+    final double buttonSize = metrics.h(50);
     return Container(
       width: buttonSize,
       height: buttonSize,
@@ -263,7 +263,7 @@ class AmountInputPanel extends StatelessWidget {
 
   // ======================== أزرار المعلومات ========================
   Widget _infoButton(ResponsiveMetrics metrics, IconData icon, String text) {
-    final double height = metrics.h(30);
+    final double height = metrics.h(45);
     return Container(
       height: height,
       decoration: BoxDecoration(
@@ -296,7 +296,7 @@ class AmountInputPanel extends StatelessWidget {
     String text,
     IconData icon,
   ) {
-    final double height = metrics.h(30);
+    final double height = metrics.h(45);
     return SizedBox(
       height: height,
       child: ElevatedButton(

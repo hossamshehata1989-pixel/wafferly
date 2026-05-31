@@ -24,7 +24,6 @@ class SubCategoriesGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
     final screenWidth = MediaQuery.of(context).size.width;
-
     const int fixedColumns = 5;
     final bool useTwoRows = subCategories.length > 10;
 
@@ -33,12 +32,12 @@ class SubCategoriesGrid extends StatelessWidget {
     final double cardWidth =
         (screenWidth - 32 - ((fixedColumns - 1) * spacing)) / fixedColumns;
 
-    final double cardHeight = useTwoRows ? cardWidth * 0.72 : cardWidth * 0.75;
+    final double cardHeight = useTwoRows ? cardWidth * 0.75 : cardWidth * 0.75;
     final double iconSize = cardWidth * 0.25;
     final double fontSize = cardWidth * 0.07;
 
     final double listHeight = useTwoRows
-        ? (cardHeight * 2) + spacing
+        ? ((cardHeight * 2) + spacing).ceilToDouble()
         : cardHeight;
 
     final int rows = useTwoRows ? 2 : 1;
@@ -135,6 +134,7 @@ class SubCategoriesGrid extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.all(2),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   SvgPicture.asset(
@@ -158,6 +158,8 @@ class SubCategoriesGrid extends StatelessWidget {
                       textAlign: TextAlign.center,
                       maxLines: 2,
                       minFontSize: 9,
+                      stepGranularity: 0.5,
+                      overflowReplacement: const SizedBox.shrink(),
                       style: TextStyle(
                         color: isSelected ? Colors.white : Colors.white70,
                         fontSize: fontSize.clamp(8.0, 12.0),

@@ -12,6 +12,7 @@ import '../l10n/app_localizations.dart';
 import '../constants/transaction_constants.dart';
 import '../models/transaction.dart';
 import '../theme/responsive_metrics.dart';
+import '../widgets/expense_entry/recent_transactions_preview.dart';
 
 class ExpensesScreen extends StatelessWidget {
   final String initialType;
@@ -26,6 +27,8 @@ class ExpensesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = ResponsiveMetrics.of(context);
+
+    final isCompactScreen = metrics.width < 360 || metrics.height < 700;
 
     return ChangeNotifierProvider(
       create: (_) {
@@ -71,7 +74,7 @@ class ExpensesScreen extends StatelessWidget {
                   // TABS
                   if (!controller.isEditing) ...[
                     ExpenseEntryTabs(controller: controller),
-                    SizedBox(height: metrics.h(6)),
+                    SizedBox(height: metrics.h(3)),
                   ] else ...[
                     Padding(
                       padding: EdgeInsets.symmetric(vertical: metrics.h(10)),
@@ -126,6 +129,8 @@ class ExpensesScreen extends StatelessWidget {
   }) {
     final metrics = ResponsiveMetrics.of(context);
 
+    final isCompactScreen = metrics.width < 360 || metrics.height < 700;
+
     return Column(
       children: [
         // MAIN CATEGORIES
@@ -140,6 +145,7 @@ class ExpensesScreen extends StatelessWidget {
             selectedCategoryId: controller.selectedCategoryId,
             onCategorySelected: controller.selectCategory,
             categoryType: controller.categoryType,
+            isCompactScreen: isCompactScreen,
           ),
         ),
 
@@ -159,8 +165,7 @@ class ExpensesScreen extends StatelessWidget {
             ),
           ),
 
-        const Spacer(),
-
+        SizedBox(height: metrics.h(1)),
         // AMOUNT INPUT PANEL
         AmountInputPanel(controller: controller),
       ],

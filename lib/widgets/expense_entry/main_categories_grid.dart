@@ -9,6 +9,7 @@ import '../../l10n/app_localizations.dart';
 class MainCategoriesGrid extends StatelessWidget {
   final String selectedCategoryId;
   final Function(String) onCategorySelected;
+  final bool isCompactScreen;
   final CategoryType categoryType;
 
   const MainCategoriesGrid({
@@ -16,6 +17,7 @@ class MainCategoriesGrid extends StatelessWidget {
     required this.selectedCategoryId,
     required this.onCategorySelected,
     required this.categoryType,
+    this.isCompactScreen = false,
   });
 
   @override
@@ -36,8 +38,7 @@ class MainCategoriesGrid extends StatelessWidget {
       crossAxisCount = 7;
     }
 
-    // 3 صفوف دائمًا — ثابت لا يتغير
-    const int visibleRows = 3;
+    final int visibleRows = isCompactScreen ? 2 : 3;
 
     final double cardWidth =
         (screenWidth - 32 - (crossAxisCount - 1) * 6) / crossAxisCount;
