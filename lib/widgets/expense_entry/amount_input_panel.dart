@@ -15,150 +15,175 @@ class AmountInputPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final metrics = ResponsiveMetrics.of(context);
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
-
-    // حجم زر الحاسبة — responsive بالارتفاع
-    // مرجع 36px → iPhone SE: 27px | Pixel 4: 35px
-    // لما الكيبورد يفتح: يصغر أكتر لأن المساحة بتقل
+    final isSmallScreen = metrics.width < 360;
     final double buttonSize = metrics.h(isKeyboardOpen ? 28 : 45);
 
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: metrics.spacing(16),
+        horizontal: metrics.spacing(4),
         vertical: metrics.h(6),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          // حقل عرض المبلغ
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: metrics.spacing(2),
-              vertical: metrics.h(2),
+      child: Container(
+        // الحاوية الخارجية للبانل
+        padding: EdgeInsets.all(
+          isSmallScreen ? metrics.spacing(6) : metrics.spacing(10),
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.inputPanel,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border.withOpacity(0.25)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.15),
+              blurRadius: 24,
+              spreadRadius: 2,
             ),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white12),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: metrics.spacing(12),
-                      vertical: metrics.h(3),
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              controller.amount,
-                              maxLines: 1,
-                              style: TextStyle(
-                                color: Colors.white,
-                                // الخط يتبع العرض (text) مش الارتفاع — صح
-                                fontSize: metrics.text(20),
-                                fontWeight: FontWeight.bold,
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: metrics.spacing(1),
+                vertical: metrics.h(2),
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: metrics.spacing(12),
+                        vertical: metrics.h(5), // تمت الزيادة من 3 إلى 5
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                controller.amount,
+                                maxLines: 1,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: metrics.text(
+                                    24,
+                                  ), // تمت الزيادة من 20 إلى 24
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        SizedBox(width: metrics.spacing(8)),
-                        Text(
-                          controller.currentCurrency,
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontSize: metrics.text(14),
-                            fontWeight: FontWeight.w600,
+                          SizedBox(width: metrics.spacing(8)),
+                          Text(
+                            controller.currentCurrency,
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontSize: metrics.text(14),
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
+                  SizedBox(width: metrics.spacing(4)),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _topActionButton(metrics, Icons.note_alt_outlined),
+                      SizedBox(width: metrics.spacing(6)),
+                      _topActionButton(
+                        metrics,
+                        Icons.repeat,
+                      ), // تم التغيير من Icons.check إلى Icons.repeat
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: metrics.h(4)),
+
+            _buildCalculator(metrics, buttonSize),
+
+            SizedBox(height: metrics.h(3)),
+
+            // صف أزرار المعلومات
+            Row(
+              children: [
+                Expanded(
+                  child: _infoButton(
+                    metrics,
+                    Icons.account_balance_wallet_outlined,
+                    'Cash',
+                  ),
                 ),
-                SizedBox(width: metrics.spacing(4)),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _topActionButton(metrics, Icons.note_alt_outlined),
-                    SizedBox(width: metrics.spacing(6)),
-                    _topActionButton(metrics, Icons.check),
-                  ],
+                SizedBox(width: metrics.spacing(6)),
+                Expanded(
+                  child: _infoButton(
+                    metrics,
+                    Icons.calendar_today_outlined,
+                    'Today',
+                  ),
+                ),
+                SizedBox(width: metrics.spacing(6)),
+                Expanded(
+                  child: _infoButton(metrics, Icons.person_outline, 'Me'),
+                ),
+                SizedBox(width: metrics.spacing(6)),
+                Expanded(
+                  child: _infoButton(
+                    metrics,
+                    Icons.check_circle_outline, // تم التغيير من Icons.repeat
+                    'Done', // النص الجديد
+                  ),
                 ),
               ],
             ),
-          ),
 
-          SizedBox(height: metrics.h(4)),
+            SizedBox(height: metrics.h(6)),
 
-          _buildCalculator(metrics, buttonSize),
-
-          SizedBox(height: metrics.h(3)),
-
-          // صف أزرار المعلومات
-          Row(
-            children: [
-              Expanded(
-                child: _infoButton(
-                  metrics,
-                  Icons.account_balance_wallet_outlined,
-                  'Cash',
+            // صف الأزرار السفلية
+            Row(
+              children: [
+                Expanded(
+                  child: _bottomActionButton(
+                    metrics,
+                    'Exceptional',
+                    Icons.star_outline,
+                  ),
                 ),
-              ),
-              SizedBox(width: metrics.spacing(6)),
-              Expanded(
-                child: _infoButton(
-                  metrics,
-                  Icons.calendar_today_outlined,
-                  'Today',
+                SizedBox(width: metrics.spacing(6)),
+                SizedBox(
+                  width: metrics.size(52),
+                  child: _bottomActionButton(metrics, '', Icons.mic),
                 ),
-              ),
-              SizedBox(width: metrics.spacing(6)),
-              Expanded(child: _infoButton(metrics, Icons.person_outline, 'Me')),
-              SizedBox(width: metrics.spacing(6)),
-              Expanded(child: _infoButton(metrics, Icons.repeat, 'Recurring')),
-            ],
-          ),
-
-          SizedBox(height: metrics.h(6)),
-
-          // صف الأزرار السفلية
-          Row(
-            children: [
-              Expanded(
-                child: _bottomActionButton(
-                  metrics,
-                  'Exceptional',
-                  Icons.star_outline,
-                ),
-              ),
-              SizedBox(width: metrics.spacing(6)),
-              SizedBox(
-                width: metrics.size(52),
-                child: _bottomActionButton(metrics, '', Icons.mic),
-              ),
-              SizedBox(width: metrics.spacing(6)),
-              Expanded(child: _bottomActionButton(metrics, 'Add', Icons.add)),
-            ],
-          ),
-        ],
+                SizedBox(width: metrics.spacing(6)),
+                Expanded(child: _bottomActionButton(metrics, 'Add', Icons.add)),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // ======================== الحاسبة ========================
   Widget _buildCalculator(ResponsiveMetrics metrics, double buttonSize) {
-    // spacing بين الصفوف responsive بالارتفاع
     final double rowSpacing = metrics.h(3);
 
     return Column(
@@ -203,7 +228,6 @@ class AmountInputPanel extends StatelessWidget {
     bool isOperator = false,
     bool isPrimary = false,
   }) {
-    // الخط يتبع حجم الزر (رأسي) — clamp لضمان قراءة مريحة
     final double fontSize = (size * 0.44).clamp(11.0, 22.0);
 
     return Expanded(
@@ -222,8 +246,9 @@ class AmountInputPanel extends StatelessWidget {
                 color: isPrimary
                     ? Colors.blue
                     : isOperator
-                    ? AppColors.cardSecondary
-                    : AppColors.background,
+                    ? AppColors.calculatorButton
+                    : AppColors
+                          .cardSecondary, // تم التغيير من AppColors.background إلى cardSecondary
                 borderRadius: BorderRadius.circular(10),
               ),
               alignment: Alignment.center,
@@ -246,15 +271,14 @@ class AmountInputPanel extends StatelessWidget {
     );
   }
 
-  // ======================== أزرار علوية (Note, Check) ========================
+  // ======================== أزرار علوية (Note, Repeat) ========================
   Widget _topActionButton(ResponsiveMetrics metrics, IconData icon) {
-    // h() بدل size() — لأن الزر له ارتفاع ثابت في الشاشة
     final double buttonSize = metrics.h(50);
     return Container(
       width: buttonSize,
       height: buttonSize,
       decoration: BoxDecoration(
-        color: AppColors.cardSecondary,
+        color: AppColors.calculatorButton,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Icon(icon, color: Colors.white, size: metrics.size(16)),
@@ -263,11 +287,13 @@ class AmountInputPanel extends StatelessWidget {
 
   // ======================== أزرار المعلومات ========================
   Widget _infoButton(ResponsiveMetrics metrics, IconData icon, String text) {
-    final double height = metrics.h(45);
+    final isSmallScreen = metrics.width < 360;
+
+    final double height = isSmallScreen ? metrics.h(38) : metrics.h(45);
     return Container(
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.cardSecondary,
+        color: AppColors.calculatorButton,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -296,7 +322,9 @@ class AmountInputPanel extends StatelessWidget {
     String text,
     IconData icon,
   ) {
-    final double height = metrics.h(45);
+    final isSmallScreen = metrics.width < 360;
+
+    final double height = isSmallScreen ? metrics.h(38) : metrics.h(45);
     return SizedBox(
       height: height,
       child: ElevatedButton(

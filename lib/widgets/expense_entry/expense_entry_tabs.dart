@@ -14,7 +14,9 @@ class ExpenseEntryTabs extends StatelessWidget {
     final metrics = ResponsiveMetrics.of(context);
 
     // Tabs height responsive: 44px مرجع → 33px على iPhone SE
-    final double tabHeight = metrics.h(45);
+    final isSmallScreen = metrics.width < 360;
+
+    final double tabHeight = isSmallScreen ? metrics.h(38) : metrics.h(45);
     final double fontSize = metrics.text(14);
     final double borderRadius = 24;
 

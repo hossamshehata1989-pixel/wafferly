@@ -90,4 +90,8 @@ class AppColors {
   static const LinearGradient dangerGradient = LinearGradient(
     colors: [Color(0xFFFF6B6B), Color(0xFFFF8A80)],
   );
+
+  static const Color inputPanel = Color.fromARGB(255, 80, 106, 146);
+
+  static const Color calculatorButton = Color(0xFF162033);
 }
