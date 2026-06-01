@@ -69,6 +69,7 @@ class TransactionEntryController extends ChangeNotifier {
   Transaction? _editingTransaction;
 
   String? _selectedMemberId;
+  bool _isExceptional = false;
 
   bool get isEditing => _editingTransaction != null;
   // Transfer specific fields
@@ -102,6 +103,7 @@ class TransactionEntryController extends ChangeNotifier {
 
   bool get isIncome => _selectedTransactionType == TransactionType.income;
   bool get isExpense => _selectedTransactionType == TransactionType.expense;
+  bool get isExceptional => _isExceptional;
 
   CategoryType get categoryType =>
       isIncome ? CategoryType.income : CategoryType.expense;
@@ -201,6 +203,11 @@ class TransactionEntryController extends ChangeNotifier {
 
   void selectMember(String? id) {
     _selectedMemberId = id;
+    notifyListeners();
+  }
+
+  void toggleExceptional() {
+    _isExceptional = !_isExceptional;
     notifyListeners();
   }
 

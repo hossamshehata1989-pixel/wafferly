@@ -189,6 +189,16 @@ class QuickActionsRow extends StatelessWidget {
                     .toList(),
               ),
             ),
+            const Divider(color: Colors.white24),
+
+            ListTile(
+              leading: const Icon(Icons.check, color: Colors.white),
+              title: const Text(
+                'Remember last account',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () {},
+            ),
           ],
         ),
       ),

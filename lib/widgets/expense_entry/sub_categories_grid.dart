@@ -162,7 +162,7 @@ class SubCategoriesGrid extends StatelessWidget {
                       overflowReplacement: const SizedBox.shrink(),
                       style: TextStyle(
                         color: isSelected ? Colors.white : Colors.white70,
-                        fontSize: fontSize.clamp(8.0, 12.0),
+                        fontSize: fontSize.clamp(9.0, 12.0),
                         fontWeight: isSelected
                             ? FontWeight.w600
                             : FontWeight.normal,

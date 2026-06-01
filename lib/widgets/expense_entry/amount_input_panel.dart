@@ -5,11 +5,18 @@ import 'package:flutter/services.dart';
 import '../../controllers/transaction_entry_controller.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
+import 'package:provider/provider.dart';
+import '../../features/settings/controller/settings_controller.dart';
 
 class AmountInputPanel extends StatelessWidget {
   final TransactionEntryController controller;
+  final VoidCallback? onAccountTap;
 
-  const AmountInputPanel({super.key, required this.controller});
+  const AmountInputPanel({
+    super.key,
+    required this.controller,
+    this.onAccountTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,17 +27,17 @@ class AmountInputPanel extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: metrics.spacing(4),
-        vertical: metrics.h(6),
+        horizontal: metrics.spacing(0),
+        vertical: metrics.h(0),
       ),
       child: Container(
         // الحاوية الخارجية للبانل
         padding: EdgeInsets.all(
-          isSmallScreen ? metrics.spacing(6) : metrics.spacing(10),
+          isSmallScreen ? metrics.spacing(6) : metrics.spacing(6),
         ),
         decoration: BoxDecoration(
           color: AppColors.inputPanel,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: AppColors.border.withOpacity(0.25)),
           boxShadow: [
             BoxShadow(
@@ -51,7 +58,7 @@ class AmountInputPanel extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: AppColors.background,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.white12),
               ),
               child: Row(
@@ -118,7 +125,7 @@ class AmountInputPanel extends StatelessWidget {
 
             SizedBox(height: metrics.h(4)),
 
-            _buildCalculator(metrics, buttonSize),
+            _buildCalculator(context, metrics, buttonSize),
 
             SizedBox(height: metrics.h(3)),
 
@@ -128,16 +135,17 @@ class AmountInputPanel extends StatelessWidget {
                 Expanded(
                   child: _infoButton(
                     metrics,
-                    Icons.account_balance_wallet_outlined,
-                    'Cash',
+                    Icons.calendar_today_outlined,
+                    'Today',
                   ),
                 ),
                 SizedBox(width: metrics.spacing(6)),
                 Expanded(
                   child: _infoButton(
                     metrics,
-                    Icons.calendar_today_outlined,
-                    'Today',
+                    Icons.account_balance_wallet_outlined,
+                    controller.selectedAccountName,
+                    onTap: onAccountTap,
                   ),
                 ),
                 SizedBox(width: metrics.spacing(6)),
@@ -161,19 +169,16 @@ class AmountInputPanel extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: _bottomActionButton(
-                    metrics,
-                    'Exceptional',
-                    Icons.star_outline,
-                  ),
+                  child: _bottomActionButton(metrics, '', Icons.more_horiz),
                 ),
+
                 SizedBox(width: metrics.spacing(6)),
-                SizedBox(
-                  width: metrics.size(52),
-                  child: _bottomActionButton(metrics, '', Icons.mic),
-                ),
+
+                Expanded(flex: 2, child: _addExceptionalButton(metrics)),
+
                 SizedBox(width: metrics.spacing(6)),
-                Expanded(child: _bottomActionButton(metrics, 'Add', Icons.add)),
+
+                Expanded(child: _bottomActionButton(metrics, '', Icons.mic)),
               ],
             ),
           ],
@@ -183,24 +188,29 @@ class AmountInputPanel extends StatelessWidget {
   }
 
   // ======================== الحاسبة ========================
-  Widget _buildCalculator(ResponsiveMetrics metrics, double buttonSize) {
+  Widget _buildCalculator(
+    BuildContext context,
+    ResponsiveMetrics metrics,
+    double buttonSize,
+  ) {
     final double rowSpacing = metrics.h(3);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _calcRow(metrics, buttonSize, ["1", "2", "3", "C"]),
+        _calcRow(context, metrics, buttonSize, ["1", "2", "3", "C"]),
         SizedBox(height: rowSpacing),
-        _calcRow(metrics, buttonSize, ["4", "5", "6", "⌫"]),
+        _calcRow(context, metrics, buttonSize, ["4", "5", "6", "⌫"]),
         SizedBox(height: rowSpacing),
-        _calcRow(metrics, buttonSize, ["7", "8", "9", "+"]),
+        _calcRow(context, metrics, buttonSize, ["7", "8", "9", "+"]),
         SizedBox(height: rowSpacing),
-        _calcRow(metrics, buttonSize, [".", "0", "=", "x"]),
+        _calcRow(context, metrics, buttonSize, [".", "0", "=", "x"]),
       ],
     );
   }
 
   Widget _calcRow(
+    BuildContext context,
     ResponsiveMetrics metrics,
     double buttonSize,
     List<String> keys,
@@ -211,6 +221,7 @@ class AmountInputPanel extends StatelessWidget {
     return Row(
       children: keys.map((key) {
         return _calcButton(
+          context,
           metrics,
           key,
           buttonSize,
@@ -222,6 +233,7 @@ class AmountInputPanel extends StatelessWidget {
   }
 
   Widget _calcButton(
+    BuildContext context,
     ResponsiveMetrics metrics,
     String text,
     double size, {
@@ -235,33 +247,40 @@ class AmountInputPanel extends StatelessWidget {
         height: size,
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: metrics.spacing(2)),
-          child: InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              controller.onCalculatorTap(text);
-            },
+          child: Material(
+            color: isPrimary
+                ? Colors.blue
+                : isOperator
+                ? AppColors.calculatorButton
+                : AppColors.cardSecondary,
             borderRadius: BorderRadius.circular(10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isPrimary
-                    ? Colors.blue
-                    : isOperator
-                    ? AppColors.calculatorButton
-                    : AppColors
-                          .cardSecondary, // تم التغيير من AppColors.background إلى cardSecondary
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: isPrimary
-                      ? Colors.white
-                      : isOperator
-                      ? Colors.blue
-                      : Colors.white,
-                  fontSize: fontSize,
-                  fontWeight: isOperator ? FontWeight.w600 : FontWeight.normal,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              splashColor: Colors.white24,
+              highlightColor: Colors.white12,
+              onTap: () {
+                final settings = context.read<SettingsController>();
+
+                if (settings.state.hapticFeedback) {
+                  HapticFeedback.lightImpact();
+                }
+
+                controller.onCalculatorTap(text);
+              },
+              child: Center(
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    color: isPrimary
+                        ? Colors.white
+                        : isOperator
+                        ? Colors.blue
+                        : Colors.white,
+                    fontSize: fontSize,
+                    fontWeight: isOperator
+                        ? FontWeight.w600
+                        : FontWeight.normal,
+                  ),
                 ),
               ),
             ),
@@ -286,32 +305,41 @@ class AmountInputPanel extends StatelessWidget {
   }
 
   // ======================== أزرار المعلومات ========================
-  Widget _infoButton(ResponsiveMetrics metrics, IconData icon, String text) {
+  Widget _infoButton(
+    ResponsiveMetrics metrics,
+    IconData icon,
+    String text, {
+    VoidCallback? onTap,
+  }) {
     final isSmallScreen = metrics.width < 360;
 
     final double height = isSmallScreen ? metrics.h(38) : metrics.h(45);
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        color: AppColors.calculatorButton,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: metrics.size(15), color: Colors.white70),
-          SizedBox(width: metrics.spacing(4)),
-          Flexible(
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: metrics.text(11),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: AppColors.calculatorButton,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: metrics.size(15), color: Colors.white70),
+            SizedBox(width: metrics.spacing(4)),
+            Flexible(
+              child: Text(
+                text,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: metrics.text(11),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -343,6 +371,90 @@ class AmountInputPanel extends StatelessWidget {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _addExceptionalButton(ResponsiveMetrics metrics) {
+    final double height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
+
+    return SizedBox(
+      height: height,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(4),
+              child: InkWell(
+                onTap: controller.toggleExceptional,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  height: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: controller.isExceptional
+                        ? Colors.amber.withOpacity(0.35)
+                        : AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Exceptional',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.help_outline, size: 13, color: Colors.amber),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            Expanded(
+              child: InkWell(
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(10),
+                  bottomRight: Radius.circular(10),
+                ),
+                onTap: () async {
+                  final result = await controller.validateAndSave(
+                    isExceptional: controller.isExceptional,
+                  );
+
+                  debugPrint('saved = ${result.success}');
+                  debugPrint('action = ${result.action}');
+                },
+                child: const Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text(
+                        'Add',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

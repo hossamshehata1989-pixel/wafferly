@@ -40,6 +40,10 @@ dependencies:
 
   math_expressions: ^2.6.0
 
+  shared_preferences: ^2.2.3
+
+  audioplayers: ^6.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -57,3 +61,4 @@ flutter:
     - assets/icons/categories/
     - assets/icons/ui/
     - assets/avatars/
+    - assets/sounds/

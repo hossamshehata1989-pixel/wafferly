@@ -10,6 +10,7 @@ import 'transactions/transactions_screen.dart';
 import 'planning/planning_screen.dart';
 import '../constants/transaction_constants.dart';
 import '../features/members/screens/members_screen.dart';
+import 'package:wafferly/features/settings/presentation/screens/settings_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -141,7 +142,6 @@ class _MoreDrawerState extends State<_MoreDrawer> {
     '🤖 AI Tools': false,
     '👥 Family': false,
     '☁ Sync': false,
-    '⚙ System': false,
   };
 
   final Map<String, List<Map<String, dynamic>>> _sections = {
@@ -202,16 +202,6 @@ class _MoreDrawerState extends State<_MoreDrawer> {
         'color': Colors.red,
       },
     ],
-    '⚙ System': [
-      {'icon': Icons.settings, 'label': 'Settings', 'color': Colors.grey},
-      {
-        'icon': Icons.notifications_active,
-        'label': 'Notifications',
-        'color': Colors.amber,
-      },
-      {'icon': Icons.security, 'label': 'Security', 'color': Colors.blue},
-      {'icon': Icons.help, 'label': 'Help & Support', 'color': Colors.cyan},
-    ],
   };
 
   void _toggleSection(String title) {
@@ -231,6 +221,40 @@ class _MoreDrawerState extends State<_MoreDrawer> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text("$label coming soon")));
+  }
+
+  Widget settingsTile() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+          child: Row(
+            children: [
+              Icon(Icons.settings, color: Colors.white, size: 22),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Settings',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -255,9 +279,19 @@ class _MoreDrawerState extends State<_MoreDrawer> {
         ),
         child: ListView(
           padding: EdgeInsets.zero,
-          children: _sections.keys.map((title) {
-            return _buildExpandableSection(title);
-          }).toList(),
+          children: [
+            ..._sections.keys.map((title) {
+              return _buildExpandableSection(title);
+            }),
+
+            const SizedBox(height: 12),
+
+            Divider(color: Colors.white.withValues(alpha: 0.08)),
+
+            settingsTile(),
+
+            const SizedBox(height: 80),
+          ],
         ),
       ),
     );

@@ -32,7 +32,7 @@ import 'l10n/app_localizations.dart';
 import 'theme/app_theme.dart';
 
 import 'services/ledger_stress_test_service.dart';
-
+import 'features/settings/controller/settings_controller.dart';
 import 'features/analysis/registry/category_registry.dart';
 
 void main() async {
@@ -222,7 +222,13 @@ void main() async {
 
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => MembersController())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => MembersController()),
+
+        ChangeNotifierProvider(
+          create: (_) => SettingsController()..loadSettings(),
+        ),
+      ],
       child: const WafferlyApp(),
     ),
   );

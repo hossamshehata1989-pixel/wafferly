@@ -24,6 +24,34 @@ class ExpensesScreen extends StatelessWidget {
     this.transactionToEdit,
   });
 
+  void _showAccountPicker(
+    BuildContext context,
+    TransactionEntryController controller,
+  ) {
+    final accounts = controller.availableAccounts;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SizedBox(
+          height: 300,
+          child: ListView(
+            children: accounts.map((account) {
+              return ListTile(
+                title: Text(account.name),
+                onTap: () {
+                  controller.selectAccount(account.id, account.name);
+
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final metrics = ResponsiveMetrics.of(context);
@@ -168,7 +196,12 @@ class ExpensesScreen extends StatelessWidget {
         const Spacer(),
 
         // AMOUNT INPUT PANEL
-        AmountInputPanel(controller: controller),
+        AmountInputPanel(
+          controller: controller,
+          onAccountTap: () {
+            _showAccountPicker(context, controller);
+          },
+        ),
       ],
     );
   }
