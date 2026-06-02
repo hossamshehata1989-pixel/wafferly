@@ -12,6 +12,7 @@ import '../l10n/app_localizations.dart';
 import '../constants/transaction_constants.dart';
 import '../models/transaction.dart';
 import '../theme/responsive_metrics.dart';
+import '../widgets/expense_entry/account_picker_sheet.dart';
 import '../widgets/expense_entry/recent_transactions_preview.dart';
 
 class ExpensesScreen extends StatelessWidget {
@@ -23,34 +24,6 @@ class ExpensesScreen extends StatelessWidget {
     this.initialType = TransactionType.expense,
     this.transactionToEdit,
   });
-
-  void _showAccountPicker(
-    BuildContext context,
-    TransactionEntryController controller,
-  ) {
-    final accounts = controller.availableAccounts;
-
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return SizedBox(
-          height: 300,
-          child: ListView(
-            children: accounts.map((account) {
-              return ListTile(
-                title: Text(account.name),
-                onTap: () {
-                  controller.selectAccount(account.id, account.name);
-
-                  Navigator.pop(context);
-                },
-              );
-            }).toList(),
-          ),
-        );
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -199,7 +172,7 @@ class ExpensesScreen extends StatelessWidget {
         AmountInputPanel(
           controller: controller,
           onAccountTap: () {
-            _showAccountPicker(context, controller);
+            showAccountPickerSheet(context, controller);
           },
         ),
       ],

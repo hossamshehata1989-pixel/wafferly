@@ -1,260 +1,354 @@
-# Wafferly Financial Architecture
+# Wafferly Financial Architecture v2.0
 
-## Financial Rules
-
-### Source of Truth
-
-Accounts + Transactions are the only source of truth.
-
-Any balance shown in the application must ultimately be derived from accounts and transactions.
+Last Updated: Financial Engine Stabilization Phase
 
 ---
 
-### Accounts
+# Core Philosophy
 
-Accounts represent real financial containers.
+Wafferly is built around one fundamental rule:
+
+**Money exists only inside Accounts.**
+
+Everything else is an organizational or planning layer built on top of money.
+
+Examples:
+
+* Goals
+* Budgets
+* Savings Planning
+* Virtual Saving
+* Reserved Money
+* Analysis
+* Reports
+
+These entities do not own money.
+
+---
+
+# Source of Truth
+
+The only source of truth is:
+
+Accounts
++
+Transactions
+
+All balances, reports, analytics, progress values and financial summaries must ultimately be derived from these two sources.
+
+---
+
+# Single Source of Truth Rule
+
+Every amount of money must have one source of truth.
+
+Money must never exist in multiple places simultaneously.
+
+---
+
+# Derived Values Rule
+
+Never store derived values.
+
+Store causes, not results.
+
+Do NOT store:
+
+* Goal Progress
+* Goal Saved Amount
+* Budget Remaining
+* Available Balance
+* Virtual Saving Balance
+* Analytics Metrics
+
+Calculate them when needed.
+
+---
+
+# Financial Engine
+
+Transactions
+↓
+Ledger
+↓
+Account Balances
+↓
+Reports
+↓
+Analytics
+
+The Ledger is part of the financial engine.
+
+The Ledger is not a reporting layer.
+
+Status:
+[APPROVED]
+
+---
+
+# Accounts
+
+Accounts are real financial containers.
 
 Examples:
 
 * Cash
-* Bank Accounts
-* Wallets
+* Wallet
+* Bank Account
+* Credit Account
+* Loan Account
+* Investment Account
+* Saving Account
 
-Real balances live here.
+Accounts are the only entities that own money.
+
+Status:
+[APPROVED]
 
 ---
 
-### Transactions
+# Transactions
 
-Transactions are financial events that modify balances.
+Transactions are financial events.
 
 Examples:
 
-* Expense
 * Income
+* Expense
 * Transfer
 * Borrow
 * Lend
 * Repayment
 * Collection
 
----
+Transactions modify balances through the Ledger.
 
-### Members
-
-Members are actors/participants.
-
-Members are NOT financial containers.
-
-A member can participate in transactions but does not own a balance.
+Status:
+[APPROVED]
 
 ---
 
-### Goals
+# Members
 
-Goals are allocation layers.
+Members are participants only.
 
-Goals do not contain money.
+Members are not financial containers.
 
-Money always remains inside real accounts.
+Members do not own balances.
 
-Goals only reserve or allocate portions of existing balances.
+Members may participate in transactions.
 
----
-
-### Reserved Money
-
-Reserved money does not reduce actual balance.
-
-Reserved money reduces available balance only.
-
-Example:
-
-Cash = 10,000
-
-Goal Allocation = 3,000
-
-Actual Balance = 10,000
-
-Available Balance = 7,000
+Status:
+[APPROVED]
 
 ---
 
-### Budgets
+# Archive Policy
 
-Budgets are policy and allocation layers.
+Financial entities should be archived whenever possible.
 
-Budgets do not own balances.
+Historical data should remain available for:
 
-Budgets analyze and control spending behavior.
+* Reports
+* Analytics
+* Auditing
+* Historical Tracking
 
----
+Examples:
 
-### Analysis
+* Accounts
+* Goals
+* Members
+* Saving Circles
 
-Analysis is derived data only.
-
-Analysis never becomes a source of truth.
-
-All reports must be calculated from accounts and transactions.
-
----
-
-### Archive
-
-Financial entities should be archived, not deleted.
-
-Historical financial data must remain available for reporting and auditing purposes.
+Status:
+[APPROVED]
 
 ---
 
 # Net Worth
 
-## Core Principle
+## Formula
 
-Wafferly is built around Net Worth, not just account balances.
+Net Worth
 
-Net Worth = Assets - Liabilities
+=
 
-Assets:
+## Assets
 
-* Cash
-* Bank Accounts
-* Wallets
-* Lent (Money you will get)
+Liabilities
 
-Liabilities:
-
-* Borrowed (Money you owe)
-* Temporary Debt
-
-Every financial operation must preserve this principle.
+Status:
+[APPROVED]
 
 ---
 
-# Borrowed (Money I Owe)
-
-Borrowed is a Liability.
-
-Example:
-
-Cash
-+1000
-
-Borrowed
-+1000
-
-Net Worth remains unchanged.
-
----
-
-## Repayment
-
-Cash
--300
-
-Borrowed
--300
-
-Net Worth remains unchanged.
-
----
-
-# Lent (Money Others Owe Me)
-
-Lent is an Asset.
-
-Example:
-
-Cash
--1000
-
-Lent
-+1000
-
-Net Worth remains unchanged.
-
----
-
-## Collection
-
-Cash
-+300
-
-Lent
--300
-
-Net Worth remains unchanged.
-
----
-
-# Effect on Real Accounts
-
-Borrowed and Lent MUST affect the selected real account.
+# Assets
 
 Examples:
 
-Borrowed:
-
-Cash
-+1000
-
-Borrowed
-+1000
-
-Lent:
-
-Cash
--1000
-
-Lent
-+1000
-
-This follows Double Entry Accounting principles.
+* Cash
+* Wallets
+* Bank Accounts
+* Investments
+* Lent
 
 ---
 
-# Rejected Design
+# Liabilities
 
-Borrowed
-+1000
+Examples:
 
-Cash unchanged
+* Borrowed
+* Temporary Debt
+* Loans
+* Credit Accounts
+* Saving Circle Liability
 
-Rejected because it creates unrealistic balances and inaccurate reports.
+Status:
+[APPROVED]
+
+---
+
+# Borrowed
+
+Borrowed is a Liability Account.
+
+When user borrows money:
+
+Cash +1000
+
+Borrowed +1000
+
+Result:
+
+* Cash increases
+* Liability increases
+* Net Worth remains unchanged
+
+---
+
+# Borrowed Repayment
+
+Cash -300
+
+Borrowed -300
+
+Result:
+
+* Cash decreases
+* Liability decreases
+* Net Worth remains unchanged
+
+Status:
+[APPROVED]
+
+---
+
+# Lent
+
+Lent is an Asset Account.
+
+When user lends money:
+
+Cash -1000
+
+Lent +1000
+
+Result:
+
+* Cash decreases
+* Receivable Asset increases
+* Net Worth remains unchanged
+
+---
+
+# Collection
+
+Cash +300
+
+Lent -300
+
+Result:
+
+* Cash increases
+* Receivable Asset decreases
+* Net Worth remains unchanged
+
+Status:
+[APPROVED]
+
+---
+
+# Double Entry Rule
+
+Borrowed and Lent transactions must affect:
+
+1. Real Account
+2. Counterpart Account
+
+Examples:
+
+Cash ↔ Borrowed
+
+Cash ↔ Lent
+
+Forbidden:
+
+* Updating Borrowed only
+* Updating Lent only
+* Ignoring real account balances
+
+Reason:
+
+Balances
+Ledger
+Reports
+Analytics
+
+must remain synchronized.
+
+Status:
+[APPROVED]
 
 ---
 
 # Temporary Debt
 
+Temporary Debt is a Liability Account.
+
 Temporary Debt is NOT Borrowed.
 
 Borrowed:
 
-* Real borrowing transaction
-* Money entered a real account
+* Real borrowing event
+* Real money entered an account
 
 Temporary Debt:
 
 * Insufficient balance workaround
-* No real borrowing transaction
+* No real borrowing event occurred
+
+Status:
+[APPROVED]
 
 ---
 
 # Insufficient Balance Flow
 
-Available Balance = 200
+When:
 
-Expense = 500
+Expense > Available Balance
 
-Shortage = 300
+User may:
 
-Options:
-
-* Choose Another Account
-* Add Income
-* Temporary Debt
+* Choose another account
+* Add income
+* Use Temporary Debt
 * Cancel
+
+Status:
+[APPROVED]
 
 ---
 
@@ -270,11 +364,14 @@ Shortage #2 = 100
 
 Temporary Debt Balance = 400
 
-Wafferly does not create a separate debt record for every shortage.
+Separate debt records are not required.
+
+Status:
+[APPROVED]
 
 ---
 
-# Income Settlement Reminder
+# Temporary Debt Settlement
 
 When:
 
@@ -284,752 +381,421 @@ AND
 
 Temporary Debt Balance > 0
 
-Wafferly displays:
-
-"You have a temporary debt.
-
-Would you like to settle it now?"
-
-Options:
+Wafferly may offer:
 
 * Settle Debt
 * Keep Debt
 
+Status:
+[APPROVED]
+
 ---
 
-# Final Design Summary
+# Savings UI Structure
 
-# Borrowed
+Savings is a dedicated section inside Accounts UI.
 
-Real Liability
-+
-Affects Real Account
+Savings may contain:
 
-# Lent
+* Real Saving Accounts
+* Virtual Saving
+* Saving Circle
 
-Real Asset
-+
-Affects Real Account
+This grouping is a user experience decision.
 
-# Temporary Debt
-
-Insufficient Balance Workaround
-+
-Liability
-+
-No Real Borrowing Transaction
-
-All three affect Net Worth correctly and preserve accounting consistency.
-
-
-# BORROWED / LENT RULES
-
-## Rule 12: Borrowed Account Behavior
-
-Borrowed is a Liability Account.
-
-When user borrows money:
-
-Real Account
-(Cash / Bank / Wallet)
-+
-Borrowed Account
-
-Example:
-
-Borrow 1000 EGP
-
-Cash
-+1000
-
-Borrowed
-+1000
-
-Result:
-
-* Available cash increases
-* Liability increases
-* Net Worth remains unchanged
-
-When user repays debt:
-
-Cash
--300
-
-Borrowed
--300
-
-Result:
-
-* Cash decreases
-* Remaining liability decreases
+It does not change the financial architecture.
 
 Status:
 [APPROVED]
 
 ---
 
-## Rule 13: Lent Account Behavior
+# Real Saving Account Rule
 
-Lent is an Asset Account.
+Real Saving Account is a normal Account.
 
-When user lends money:
+Real Saving Accounts:
 
-Real Account
-(Cash / Bank / Wallet)
-↓
-Lent Account
+* Own real money
+* Participate in Ledger
+* Can receive Income
+* Can receive Transfers
+* Can record Expenses
+* Affect Net Worth
 
-Example:
+They differ only by purpose and UI grouping.
 
-Lend 1000 EGP
-
-Cash
--1000
-
-Lent
-+1000
-
-Result:
-
-* Cash decreases
-* Receivable asset increases
-* Net Worth remains unchanged
-
-When money is collected:
-
-Cash
-+300
-
-Lent
--300
-
-Result:
-
-* Cash increases
-* Remaining receivable decreases
+They are not a special financial entity.
 
 Status:
 [APPROVED]
 
 ---
 
-## Rule 14: Double Entry Principle
+# Virtual Saving Rule
 
-Borrowed and Lent transactions must affect:
+Virtual Saving is NOT an Account.
 
-1. A real account
-   (Cash / Bank / Wallet)
+Virtual Saving is an organizational layer.
 
-AND
+Virtual Saving does not own money.
 
-2. A counterpart account
-   (Borrowed / Lent)
+Virtual Saving exists to organize reserved money when the user does not have a dedicated real saving account.
 
-Forbidden:
+Virtual Saving may display:
 
-❌ Update Borrowed only
-❌ Update Lent only
-❌ Ignore real account balance
+* Monthly Saving Allocations
+* Goal Allocations
+* Budget Surplus Allocations
 
-Reason:
+Virtual Saving Balance is calculated.
 
-Balances
-Ledger
-Reports
-Analysis
+Formula:
 
-must remain synchronized.
+Virtual Saving Balance
+
+=
+
+Sum(Active Saving Allocations)
+
+Virtual Saving Balance must never be stored.
 
 Status:
 [APPROVED]
 
 ---
 
-# GOALS / BUDGETS (PRELIMINARY DECISIONS)
-
-## Rule 15: Goals
+# Goals
 
 Goal is NOT an Account.
 
-Goal represents:
-
-✓ Saving target
-✓ Financial objective
+Goal does not own money.
 
 Goal does not create money.
 
+Goal represents:
+
+* Financial Objective
+* Saving Target
+
 Status:
-[PRELIMINARY]
+[APPROVED]
 
 ---
 
-## Rule 16: Budgets
+# Goal Funding
 
-Budget is NOT an Account.
+Users never add money directly to Goals.
 
-Budget represents:
+Money always remains inside Accounts.
 
-✓ Spending limit
-✓ Spending tracking
-
-Budget does not represent real money.
+Goals only reserve existing money.
 
 Status:
-[PRELIMINARY]
+[APPROVED]
 
 ---
 
-## Rule 17: Budget Feature Toggle
+# Goal Progress
 
-Expected behavior:
+Goal Progress is calculated.
 
-User may choose:
+Formula:
 
-Budgets ON
-or
-Budgets OFF
+Progress
 
-Reason:
+=
 
-Some users want budgeting.
-Some users only want expense tracking.
+Reserved Amount
+÷
+Target Amount
+
+Goal Progress must never be stored.
 
 Status:
-[PRELIMINARY]
+[APPROVED]
 
 ---
 
-## Rule 18: Reserved Money
+# Reserved Money
 
-Current direction:
+Reserved Money is an allocation layer.
 
-Account Balance
-remains unchanged
+Reserved Money does not create money.
+
+Reserved Money does not affect Net Worth.
+
+Reserved Money does not affect actual balances.
+
+Reserved Money only affects Available Balance.
+
+Status:
+[APPROVED]
+
+---
+
+# Reserved Money Sources
+
+Reserved Money is calculated from active allocations.
+
+Formula:
+
+Reserved Money
+
+=
+
+Sum(Active Allocations)
+
+Possible Sources:
+
+* Goal Allocations
+* Saving Allocations
+* Budget Surplus Allocations
+
+Budgets themselves do not reserve money.
+
+Budgets themselves do not move money.
+
+A Budget Surplus Allocation is created only when the user explicitly chooses:
+
+Move Remaining Budget To Saving
+
+Reserved Money must never be stored.
+
+Status:
+[APPROVED]
+
+---
 
 # Available Balance
 
-Balance - Reserved Money
+Available Balance is calculated.
+
+Formula:
+
+Available Balance
+
+=
+
+## Account Balance
+
+Reserved Money
 
 Example:
 
-Cash = 10,000
+Balance = 10,000
 
 Reserved = 3,000
 
 Available = 7,000
 
+Available Balance must never be stored.
+
 Status:
-[PRELIMINARY]
-
-Note:
-
-Goals / Budgets / Reserved Money
-have NOT been fully finalized yet.
-Only Borrowed / Lent decisions are considered approved.
-
-
-
-# البنية المالية لتطبيق Wafferly
-
-آخر تحديث: مرحلة استقرار المحرك المالي (Financial Engine Stabilization)
+[APPROVED]
 
 ---
 
-# 1. المبادئ الأساسية
+# Budgets
 
-## مصدر الحقيقة (Source of Truth)
+Budget is NOT an Account.
 
-المصدر الحقيقي الوحيد للبيانات المالية داخل Wafferly هو:
+Budget does not own money.
 
-الحسابات (Accounts)
-+
-المعاملات (Transactions)
+Budget does not create money.
 
-أي شيء آخر يجب أن يتم اشتقاقه منهما.
+Budget is used for:
 
-أمثلة:
+* Spending Limits
+* Spending Tracking
+* Spending Analysis
+* Spending Alerts
 
-* التحليلات (Analysis)
-* التقارير (Reports)
-* الميزانيات (Budgets)
-* الأهداف (Goals)
-* الأموال المحجوزة (Reserved Money)
-
-ليست مصادر حقيقة للبيانات.
+Status:
+[APPROVED]
 
 ---
 
-## التدفق المالي
+# Budget Surplus
 
-المعاملات
-↓
-Ledger
-↓
-الأرصدة
-↓
-التقارير
-↓
-التحليلات
+Budget surplus does not move automatically.
 
-الـ Ledger جزء من المحرك المالي.
+Example:
 
-الـ Ledger ليس طبقة تقارير فقط.
+Budget = 2000
 
-الحالة:
-[معتمد]
+Spent = 1500
 
----
+Remaining = 500
 
-# 2. الحسابات
+Savings do NOT increase automatically.
 
-الحسابات تمثل أوعية مالية حقيقية.
+The user must explicitly move the surplus.
 
-أمثلة:
-
-* نقدي (Cash)
-* حسابات بنكية
-* محافظ
-* بطاقات ائتمان
-* قروض
-* استثمارات
-
-الأرصدة الحقيقية تعيش هنا.
-
-الحالة:
-[معتمد]
+Status:
+[APPROVED]
 
 ---
 
-# 3. المعاملات
+# Budget Toggle
 
-المعاملات هي أحداث مالية.
+Users may choose:
 
-أمثلة:
+* Budgets ON
+* Budgets OFF
 
-* مصروف
-* دخل
-* تحويل
-* استلاف (Borrow)
-* إقراض (Lend)
-* سداد
-* تحصيل
+Budgeting is optional.
 
-المعاملات هي التي تعدل الأرصدة من خلال الـ Ledger.
-
-الحالة:
-[معتمد]
+Status:
+[APPROVED]
 
 ---
 
-# 4. الأعضاء (Members)
+# Saving Circle
 
-الأعضاء هم أطراف مشاركة فقط.
+Official Name:
 
-العضو ليس حسابًا ماليًا.
+Saving Circle
 
-العضو لا يمتلك رصيدًا.
+ROSCA may be used internally when needed.
 
-يمكن ربط العضو بمعاملة لكنه ليس مصدر أموال.
-
-الحالة:
-[معتمد]
+Status:
+[APPROVED]
 
 ---
 
-# 5. سياسة الأرشفة
+# Saving Circle States
 
-الكيانات المالية يجب أرشفتها بدلًا من حذفها متى أمكن.
+Saving Circle has three states:
 
-السبب:
+* Waiting
+* Received
+* Completed
 
-الحفاظ على السجل التاريخي للتقارير والتحليلات.
-
-أمثلة:
-
-* الحسابات
-* الأهداف
-* الأعضاء
-
-الحالة:
-[معتمد]
+Status:
+[APPROVED]
 
 ---
 
-# 6. صافي الثروة (Net Worth)
+## Waiting State
 
-## المعادلة الأساسية
+User contributes to the Saving Circle.
 
-صافي الثروة
+User has not received the payout yet.
 
-=
+Characteristics:
 
-## الأصول
+* Considered part of Savings
+* No liability exists
+* No borrowing event exists
 
-الالتزامات
-
----
-
-## الأصول (Assets)
-
-أمثلة:
-
-* النقدية
-* الحسابات البنكية
-* المحافظ
-* الاستثمارات
-* الأموال التي لي عند الآخرين (Lent)
+Status:
+[APPROVED]
 
 ---
 
-## الالتزامات (Liabilities)
+## Received State
 
-أمثلة:
+User received the payout.
 
-* الأموال التي عليّ للآخرين (Borrowed)
-* القروض
-* بطاقات الائتمان
-* الديون المؤقتة (Temporary Debt)
+User still has remaining installments.
 
-الحالة:
-[معتمد]
+Characteristics:
 
----
+* Saving Circle remains visible in Savings
+* Saving Circle Liability is created
 
-# 7. Borrowed (أموال مستحقة عليّ)
+Example:
 
-Borrowed يعتبر التزامًا (Liability).
+Received Amount = 10,000
 
-عندما أستلف 1000 جنيه:
+Remaining Installments = 9,000
 
-النقدية
-+1000
+Financial Effect:
 
-Borrowed
-+1000
+Cash +10,000
 
-النتيجة:
+Saving Circle Liability +9,000
 
-* النقدية زادت
-* الالتزامات زادت
-* صافي الثروة لم يتغير
+Net Worth reflects only the real difference.
+
+Status:
+[APPROVED]
 
 ---
 
-## عند السداد
+## Completed State
 
-النقدية
--300
+All installments are paid.
 
-Borrowed
--300
+Characteristics:
 
-النتيجة:
+* Remaining Liability = 0
+* Saving Circle becomes completed
+* May be archived
 
-* النقدية قلت
-* الدين المتبقي قل
-* صافي الثروة لم يتغير
-
-الحالة:
-[معتمد]
+Status:
+[APPROVED]
 
 ---
 
-# 8. Lent (أموال مستحقة لي)
+# Planning Relationship
 
-Lent يعتبر أصلًا (Asset).
+Money Planning is responsible for:
 
-عندما أسلف شخصًا 1000 جنيه:
+* Goals
+* Budgets
+* Reserved Money
+* Progress Tracking
 
-النقدية
--1000
+Accounts explain where money exists.
 
-Lent
-+1000
+Planning explains why money is allocated.
 
-النتيجة:
-
-* النقدية قلت
-* المبلغ المستحق لي زاد
-* صافي الثروة لم يتغير
+Status:
+[APPROVED]
 
 ---
 
-## عند التحصيل
+# Net Worth Protection Rule
 
-النقدية
-+300
+Anything that does not create or destroy real money must never affect Net Worth.
 
-Lent
--300
+Examples:
 
-النتيجة:
+* Goals
+* Budgets
+* Virtual Saving
+* Reserved Money
+* Progress
+* Analysis
 
-* النقدية زادت
-* المبلغ المتبقي لي قل
-* صافي الثروة لم يتغير
-
-الحالة:
-[معتمد]
-
----
-
-# 9. قاعدة القيد المزدوج (Double Entry)
-
-أي عملية Borrowed أو Lent يجب أن تؤثر على:
-
-1. حساب حقيقي
-
-مثل:
-
-* Cash
-* Bank
-* Wallet
-
-و
-
-2. حساب مقابل
-
-مثل:
-
-* Borrowed
-* Lent
-
-ممنوع:
-
-❌ تعديل Borrowed فقط
-
-❌ تعديل Lent فقط
-
-❌ تجاهل الحساب الحقيقي
-
-السبب:
-
-لضمان تطابق:
-
-* الأرصدة
-* Ledger
-* التقارير
-* التحليلات
-
-الحالة:
-[معتمد]
+Status:
+[APPROVED]
 
 ---
 
-# 10. Temporary Debt (الدين المؤقت)
+# Final Architecture Rule
 
-الدين المؤقت ليس Borrowed.
+Accounts own money.
 
-Borrowed:
+Transactions move money.
 
-* حدث استلاف حقيقي
-* دخلت أموال فعلية إلى حساب حقيقي
+Real Saving moves money.
 
-Temporary Debt:
+Virtual Saving reserves money.
 
-* حل مؤقت لنقص الرصيد
-* لم يحدث استلاف فعلي
+Goals reserve money.
 
-الحالة:
-[معتمد]
+Budgets monitor money.
 
----
+Budget Surplus Allocations may reserve money after explicit user action.
 
-# 11. مسار الرصيد غير الكافي
+Saving Circle may create liabilities after payout.
 
-مثال:
+Planning never owns money.
 
-الرصيد المتاح = 200
+Only real Accounts affect Net Worth.
 
-المصروف = 500
-
-العجز = 300
-
-الخيارات:
-
-* اختيار حساب آخر
-* إضافة دخل
-* دين مؤقت
-* إلغاء
-
-الحالة:
-[معتمد]
-
----
-
-# 12. تراكم الدين المؤقت
-
-الدين المؤقت يتراكم داخل رصيد واحد.
-
-مثال:
-
-العجز الأول = 300
-
-العجز الثاني = 100
-
-إجمالي الدين المؤقت = 400
-
-لا يتم إنشاء سجل دين مستقل لكل عجز.
-
-الحالة:
-[معتمد]
-
----
-
-# 13. تذكير تسوية الدين المؤقت
-
-عندما:
-
-الدخل > 0
-
-و
-
-رصيد الدين المؤقت > 0
-
-يعرض النظام:
-
-"لديك دين مؤقت، هل تريد تسويته الآن؟"
-
-الخيارات:
-
-* تسوية الدين
-* الاحتفاظ بالدين
-
-الحالة:
-[معتمد]
-
----
-
-# 14. الأهداف (Goals)
-
-الهدف ليس حسابًا ماليًا.
-
-الهدف يمثل:
-
-* هدف ادخار
-* هدف مالي
-
-الأموال تظل داخل الحسابات الحقيقية.
-
-الهدف لا ينشئ أموالًا جديدة.
-
-الحالة:
-[قيد النقاش]
-
----
-
-# 15. الأموال المحجوزة (Reserved Money)
-
-الاتجاه الحالي:
-
-الأموال المحجوزة لا تقلل الرصيد الفعلي.
-
-الأموال المحجوزة تقلل الرصيد المتاح فقط.
-
-مثال:
-
-الرصيد = 10,000
-
-المبلغ المحجوز = 3,000
-
-الرصيد الفعلي = 10,000
-
-الرصيد المتاح = 7,000
-
-الحالة:
-[قيد النقاش]
-
----
-
-# 16. الميزانيات (Budgets)
-
-الميزانية ليست حسابًا ماليًا.
-
-الميزانية تمثل:
-
-* حدود صرف
-* مراقبة الإنفاق
-* التحكم في الإنفاق
-
-الميزانية لا تمتلك أموالًا.
-
-الحالة:
-[قيد النقاش]
-
----
-
-# 17. تفعيل الميزانيات
-
-الاتجاه الحالي:
-
-الميزة اختيارية.
-
-يمكن للمستخدم اختيار:
-
-تشغيل الميزانيات
-
-أو
-
-إيقاف الميزانيات
-
-السبب:
-
-بعض المستخدمين يريدون إدارة ميزانيات تفصيلية.
-
-وبعضهم يريد فقط تسجيل المصروفات.
-
-الحالة:
-[قيد النقاش]
-
----
-
-# القرارات المفتوحة
-
-المواضيع التالية لم تُحسم نهائيًا بعد:
-
-* آلية تمويل الأهداف (Goals Funding)
-* كيفية عمل Reserved Money
-* طريقة تنفيذ Budgets
-* العلاقة بين Goals و Reserved Money
-* العلاقة بين Budgets و Reserved Money
-
----
-
-# الملخص النهائي
-
-مصدر الحقيقة:
-
-الحسابات + المعاملات
-
-المحرك المالي:
-
-المعاملات
-↓
-Ledger
-↓
-الأرصدة
-↓
-التقارير
-↓
-التحليلات
-
-قرارات معتمدة:
-
-✓ Borrowed
-
-✓ Lent
-
-✓ Temporary Debt
-
-✓ الأرشفة
-
-✓ نموذج Net Worth
-
-قرارات ما زالت قيد النقاش:
-
-◌ Goals
-
-◌ Reserved Money
-
-◌ Budgets
+Status:
+[APPROVED]

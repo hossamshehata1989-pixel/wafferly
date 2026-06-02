@@ -26,18 +26,21 @@ AccountGroup resolveGroup(String type) {
     // 💰 Money You Have
     case 'cash':
     case 'bank':
-    case 'wallet':
     case 'debitCard':
-      return AccountGroup.moneyYouHave;
+    case 'wallet':
+      return AccountGroup.liquidity;
+
+    // 🏦 Savings
+    case 'realSaving':
+    case 'virtualSaving':
+    case 'savingCircle':
+      return AccountGroup.savings;
 
     // 📈 Investments
     case 'investment':
     case 'gold':
-    case 'stock':
     case 'stocks':
-    case 'certificate':
     case 'certificates':
-    case 'rosca':
       return AccountGroup.investments;
 
     // 💳 Money You Owe
@@ -46,13 +49,13 @@ AccountGroup resolveGroup(String type) {
     case 'loan':
     case 'creditCard':
     case 'installment':
-      return AccountGroup.moneyYouOwe;
+      return AccountGroup.liabilities;
 
     // 🧾 Money You Will Get
     case 'lent':
     case 'receivable':
     case 'moneyLent':
-      return AccountGroup.moneyYouWillGet;
+      return AccountGroup.receivable;
 
     default:
       return AccountGroup.moneyYouHave;

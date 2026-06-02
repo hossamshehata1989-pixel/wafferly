@@ -367,6 +367,11 @@
   "transactionUpdatedSuccessfully": "تم تحديث المعاملة بنجاح",
   "transactionSavedSuccessfully": "تم حفظ المعاملة بنجاح",
   "clear": "مسح",
-  "apply": "تطبيق"
+  "apply": "تطبيق",
+  "liquidity": "السيولة",
+  "savings": "التوفير",
+  "liabilities": "الالتزامات",
+  "receivable": "المستحقات",
+  "savingCircle": "جمعية"
 
 }

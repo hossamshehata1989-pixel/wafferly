@@ -368,6 +368,11 @@
   "transactionUpdatedSuccessfully": "Transaction updated successfully",
   "transactionSavedSuccessfully": "Transaction saved successfully",
   "clear": "Clear",
-  "apply": "Apply"
+  "apply": "Apply",
+  "liquidity": "Liquidity",
+  "savings": "Savings",
+  "liabilities": "Liabilities",
+  "receivable": "Receivable",
+  "savingCircle": "Saving Circle"
 }
 
