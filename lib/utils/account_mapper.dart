@@ -23,7 +23,7 @@ AccountNature resolveNature(String type) {
 /// ==============================
 AccountGroup resolveGroup(String type) {
   switch (type) {
-    // 💰 Money You Have
+    // 💰 Liquidity
     case 'cash':
     case 'bank':
     case 'debitCard':
@@ -34,6 +34,7 @@ AccountGroup resolveGroup(String type) {
     case 'realSaving':
     case 'virtualSaving':
     case 'savingCircle':
+    case 'rosca':
       return AccountGroup.savings;
 
     // 📈 Investments
@@ -43,7 +44,7 @@ AccountGroup resolveGroup(String type) {
     case 'certificates':
       return AccountGroup.investments;
 
-    // 💳 Money You Owe
+    // 💳 Liabilities
     case 'debt':
     case 'moneyBorrowed':
     case 'loan':
@@ -51,13 +52,13 @@ AccountGroup resolveGroup(String type) {
     case 'installment':
       return AccountGroup.liabilities;
 
-    // 🧾 Money You Will Get
+    // 🧾 Receivable
     case 'lent':
     case 'receivable':
     case 'moneyLent':
       return AccountGroup.receivable;
 
     default:
-      return AccountGroup.moneyYouHave;
+      return AccountGroup.liquidity;
   }
 }

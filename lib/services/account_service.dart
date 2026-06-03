@@ -58,7 +58,8 @@ class AccountService {
   }
 
   List<Account> getAllAccounts() => box.values.toList();
-  List<Account> getAllActiveAccounts() => box.values.where((acc) => !acc.isArchived).toList();
+  List<Account> getAllActiveAccounts() =>
+      box.values.where((acc) => !acc.isArchived).toList();
 
   Future<void> updateAccount(Account account) async {
     await box.put(account.id, account);

@@ -11,6 +11,8 @@ import '../../services/balance_service.dart';
 import 'add_account/add_account_screen.dart';
 import '../../models/enums/section_type.dart';
 import '../../utils/account_mapper.dart';
+import '../../services/virtual_saving_service.dart';
+import '../savings/virtual_saving_screen.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -58,20 +60,27 @@ class _AccountsScreenState extends State<AccountsScreen> {
         return SectionType.investment;
       case 'receivable':
         return SectionType.receivable;
+      case 'saving':
+        return SectionType.saving;
       default:
         return SectionType.asset;
     }
   }
 
   SectionType _getSectionTypeFromAccount(Account account) {
-    if (account.nature == AccountNature.asset) {
-      if (account.type == 'investment') return SectionType.investment;
-      return SectionType.asset;
-    } else if (account.nature == AccountNature.liability) {
-      return SectionType.liability;
-    } else {
+    if (account.group == AccountGroup.savings) {
+      return SectionType.saving;
+    }
+    if (account.group == AccountGroup.investments) {
+      return SectionType.investment;
+    }
+    if (account.group == AccountGroup.receivable) {
       return SectionType.receivable;
     }
+    if (account.group == AccountGroup.liabilities) {
+      return SectionType.liability;
+    }
+    return SectionType.asset;
   }
 
   void _addAccount(String sectionType) {
@@ -183,6 +192,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
         builder: (context, Box<Account> box, _) {
           final accounts = _accountService.getAllActiveAccounts();
 
+          final virtualSavingService = VirtualSavingService();
+          final virtualSavingBalance = virtualSavingService.getTotalBalance();
+          final virtualSavingItemsCount = virtualSavingService.getItemsCount();
+
           // DEBUG مؤقت
           for (final a in accounts) {
             print(
@@ -206,16 +219,19 @@ class _AccountsScreenState extends State<AccountsScreen> {
           );
 
           final moneyHave = accounts
-              .where((a) => a.group == AccountGroup.moneyYouHave)
+              .where((a) => a.group == AccountGroup.liquidity)
               .toList();
           final investments = accounts
               .where((a) => a.group == AccountGroup.investments)
               .toList();
           final liabilities = accounts
-              .where((a) => a.group == AccountGroup.moneyYouOwe)
+              .where((a) => a.group == AccountGroup.liabilities)
               .toList();
           final receivables = accounts
-              .where((a) => a.group == AccountGroup.moneyYouWillGet)
+              .where((a) => a.group == AccountGroup.receivable)
+              .toList();
+          final savings = accounts
+              .where((a) => a.group == AccountGroup.savings)
               .toList();
 
           return CustomScrollView(
@@ -239,6 +255,20 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 isLargeTablet,
                 () => _addAccount('asset'),
                 true,
+              ),
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    _buildSavingsSection(
+                      savings,
+                      balanceService,
+                      isTablet,
+                      isLargeTablet,
+                      virtualSavingBalance,
+                      virtualSavingItemsCount,
+                    ),
+                  ],
+                ),
               ),
               _buildSection(
                 t.investments,
@@ -498,52 +528,29 @@ class _AccountsScreenState extends State<AccountsScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            if (accounts.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: Text(
-                    t.noAccountsYet,
-                    style: TextStyle(color: Colors.white38, fontSize: 14),
-                  ),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Column(
+                  children: [
+                    Text(
+                      '${accounts.length} Accounts',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white38,
+                      size: 18,
+                    ),
+                  ],
                 ),
-              )
-            else
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: accounts.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: _getCrossAxisCount(
-                    accounts.length,
-                    isTablet,
-                    isLargeTablet,
-                  ),
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: _getChildAspectRatio(
-                    accounts.length,
-                    isTablet,
-                    isLargeTablet,
-                  ),
-                ),
-                itemBuilder: (context, index) {
-                  final account = accounts[index];
-                  final balance = balanceService.getBalance(account.id);
-                  final percentage = sectionTotal > 0
-                      ? (balance / sectionTotal) * 100
-                      : 0.0;
-                  return _buildAccountCard(
-                    account,
-                    balance,
-                    percentage,
-                    color,
-                    isTablet,
-                    () => _editAccount(account),
-                    t,
-                  );
-                },
               ),
+            ),
           ],
         ),
       ),
@@ -563,13 +570,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
     bool isLargeTablet,
   ) {
     if (isLargeTablet) return 1.2;
-
     if (isTablet) return 1.3;
-
     if (itemCount <= 2) {
       return 1.6;
     }
-
     return 1.3;
   }
 
@@ -697,5 +701,138 @@ class _AccountsScreenState extends State<AccountsScreen> {
       default:
         return Icons.account_balance_wallet;
     }
+  }
+
+  Widget _buildSavingsSection(
+    List<Account> savings,
+    BalanceService balanceService,
+    bool isTablet,
+    bool isLargeTablet,
+    double virtualSavingBalance,
+    int virtualSavingItemsCount,
+  ) {
+    final t = AppLocalizations.of(context)!;
+
+    final savingsTotal = _calculateSectionTotal(savings, balanceService);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.teal.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.teal.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.savings, color: Colors.teal),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  t.savings,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isTablet ? 18 : 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+
+              Text(
+                '${NumberFormat("#,###").format(savingsTotal.toInt())} ${t.currency}',
+                style: const TextStyle(
+                  color: Colors.teal,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              GestureDetector(
+                onTap: () => _addAccount('saving'),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.add, color: Colors.teal, size: 18),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Normal savings grid
+          const SizedBox(height: 16),
+          // Virtual saving card
+          Column(
+            children: [
+              _buildSavingsSummaryTile(
+                'Real Saving',
+                savings.where((a) => a.type == 'realSaving').length,
+              ),
+
+              const SizedBox(height: 12),
+
+              _buildSavingsSummaryTile(
+                'Saving Circle',
+                savings
+                    .where((a) => a.type == 'savingCircle' || a.type == 'rosca')
+                    .length,
+              ),
+
+              const SizedBox(height: 12),
+
+              _buildSavingsSummaryTile(
+                'Virtual Saving',
+                virtualSavingItemsCount,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSavingsSummaryTile(String title, int count) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.25),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.teal.withOpacity(0.25)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Text(
+            '$count Accounts',
+            style: const TextStyle(color: Colors.white60),
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white54),
+        ],
+      ),
+    );
   }
 }

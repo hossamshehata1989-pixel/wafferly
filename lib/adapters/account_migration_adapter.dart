@@ -41,7 +41,7 @@ class AccountMigrationAdapter extends TypeAdapter<Account> {
         groupValue < AccountGroup.values.length) {
       group = AccountGroup.values[groupValue];
     } else {
-      group = AccountGroup.moneyYouHave;
+      group = AccountGroup.liquidity;
     }
 
     return Account(

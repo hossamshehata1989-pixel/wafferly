@@ -32,8 +32,8 @@ String getAccountTypeDisplayName(String type, AppLocalizations t) {
       return t.certificates;
     case 'lent':
       return t.lent;
-    case 'rosca':
-      return t.rosca;
+    case 'savingCircle':
+      return t.savingCircle;
     default:
       return type
           .replaceAllMapped(RegExp(r'([A-Z])'), (match) => ' ${match.group(0)}')

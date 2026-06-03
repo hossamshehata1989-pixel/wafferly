@@ -1,1 +1,1 @@
-enum SectionType { asset, liability, investment, receivable }
+enum SectionType { asset, liability, investment, receivable, saving }

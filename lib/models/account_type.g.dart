@@ -41,6 +41,12 @@ class AccountTypeAdapter extends TypeAdapter<AccountType> {
         return AccountType.lent;
       case 13:
         return AccountType.rosca;
+      case 14:
+        return AccountType.realSaving;
+      case 15:
+        return AccountType.virtualSaving;
+      case 16:
+        return AccountType.savingCircle;
       default:
         return AccountType.cash;
     }
@@ -90,6 +96,15 @@ class AccountTypeAdapter extends TypeAdapter<AccountType> {
         break;
       case AccountType.rosca:
         writer.writeByte(13);
+        break;
+      case AccountType.realSaving:
+        writer.writeByte(14);
+        break;
+      case AccountType.virtualSaving:
+        writer.writeByte(15);
+        break;
+      case AccountType.savingCircle:
+        writer.writeByte(16);
         break;
     }
   }
