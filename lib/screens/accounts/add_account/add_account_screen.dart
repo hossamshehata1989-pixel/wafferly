@@ -551,6 +551,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
             duration: Duration(seconds: 3),
           ),
         );
+        await Future.delayed(const Duration(milliseconds: 100));
         Navigator.pop(context, true);
       }
     } catch (e) {

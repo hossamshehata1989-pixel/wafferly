@@ -32,7 +32,6 @@ AccountGroup resolveGroup(String type) {
 
     // 🏦 Savings
     case 'realSaving':
-    case 'virtualSaving':
     case 'savingCircle':
     case 'rosca':
       return AccountGroup.savings;

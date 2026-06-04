@@ -11,8 +11,10 @@ import '../../services/balance_service.dart';
 import 'add_account/add_account_screen.dart';
 import '../../models/enums/section_type.dart';
 import '../../utils/account_mapper.dart';
-import '../../services/virtual_saving_service.dart';
-import '../savings/virtual_saving_screen.dart';
+import 'package:wafferly/screens/accounts/group_accounts_screen.dart';
+import 'widgets/section_summary_card.dart';
+import 'widgets/net_worth_card.dart';
+import 'controllers/accounts_screen_controller.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -22,6 +24,9 @@ class AccountsScreen extends StatefulWidget {
 
 class _AccountsScreenState extends State<AccountsScreen> {
   final AccountService _accountService = AccountService();
+
+  final AccountsScreenController _controller = AccountsScreenController();
+
   static const String TEMP_DEBT_ACCOUNT_NAME = 'دين مؤقت';
 
   void _showSimpleTempDebtDialog() {
@@ -114,55 +119,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
     });
   }
 
-  double _calculateNetWorth(
-    List<Account> accounts,
-    BalanceService balanceService,
-  ) {
-    double assets = 0, liabilities = 0;
-    for (final acc in accounts) {
-      final balance = balanceService.getBalance(acc.id);
-      if (acc.nature == AccountNature.asset) {
-        assets += balance;
-      } else if (acc.nature == AccountNature.liability) {
-        liabilities += balance.abs();
-      }
-    }
-    return assets - liabilities;
-  }
-
-  double _calculateTotalByNature(
-    List<Account> accounts,
-    BalanceService balanceService,
-    AccountNature nature,
-  ) {
-    double total = 0;
-    for (final acc in accounts.where((a) => a.nature == nature)) {
-      final balance = balanceService.getBalance(acc.id);
-      if (nature == AccountNature.liability) {
-        total += balance.abs();
-      } else {
-        total += balance;
-      }
-    }
-    return total;
-  }
-
-  double _calculateSectionTotal(
-    List<Account> accounts,
-    BalanceService balanceService,
-  ) {
-    double total = 0;
-    for (final acc in accounts) {
-      final balance = balanceService.getBalance(acc.id);
-      if (acc.nature == AccountNature.liability) {
-        total += balance.abs();
-      } else {
-        total += balance;
-      }
-    }
-    return total;
-  }
-
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -178,7 +134,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
         title: Text(
           t.accounts,
           style: TextStyle(
-            fontSize: isSmallPhone ? 18 : 22,
+            fontSize: isSmallPhone ? 18 : 20,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -187,14 +143,14 @@ class _AccountsScreenState extends State<AccountsScreen> {
         centerTitle: false,
         actions: [IconButton(icon: const Icon(Icons.search), onPressed: () {})],
       ),
+
+      // TODO:
+      // Replace ValueListenableBuilder with AnimatedBuilder
+      // listening to Accounts + Transactions boxes.
       body: ValueListenableBuilder(
         valueListenable: _accountService.box.listenable(),
         builder: (context, Box<Account> box, _) {
           final accounts = _accountService.getAllActiveAccounts();
-
-          final virtualSavingService = VirtualSavingService();
-          final virtualSavingBalance = virtualSavingService.getTotalBalance();
-          final virtualSavingItemsCount = virtualSavingService.getItemsCount();
 
           // DEBUG مؤقت
           for (final a in accounts) {
@@ -206,13 +162,16 @@ class _AccountsScreenState extends State<AccountsScreen> {
             );
           }
 
-          final netWorth = _calculateNetWorth(accounts, balanceService);
-          final totalAssets = _calculateTotalByNature(
+          final netWorth = _controller.calculateNetWorth(
+            accounts,
+            balanceService,
+          );
+          final totalAssets = _controller.calculateTotalByNature(
             accounts,
             balanceService,
             AccountNature.asset,
           );
-          final totalLiabilities = _calculateTotalByNature(
+          final totalLiabilities = _controller.calculateTotalByNature(
             accounts,
             balanceService,
             AccountNature.liability,
@@ -237,15 +196,16 @@ class _AccountsScreenState extends State<AccountsScreen> {
           return CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
-                child: _buildNetWorthCard(
-                  netWorth,
-                  totalAssets,
-                  totalLiabilities,
-                  isTablet,
+                child: NetWorthCard(
+                  netWorth: netWorth,
+                  totalAssets: totalAssets,
+                  totalLiabilities: totalLiabilities,
+                  isTablet: isTablet,
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)), // Spacing
               _buildSection(
+                // 💰 Money You Have
                 t.moneyYouHave,
                 Icons.account_balance_wallet,
                 moneyHave,
@@ -254,21 +214,19 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 isTablet,
                 isLargeTablet,
                 () => _addAccount('asset'),
-                true,
+                false,
               ),
-              SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    _buildSavingsSection(
-                      savings,
-                      balanceService,
-                      isTablet,
-                      isLargeTablet,
-                      virtualSavingBalance,
-                      virtualSavingItemsCount,
-                    ),
-                  ],
-                ),
+              _buildSection(
+                //
+                t.savings,
+                Icons.savings,
+                savings,
+                balanceService,
+                Colors.teal,
+                isTablet,
+                isLargeTablet,
+                () => _addAccount('saving'),
+                false,
               ),
               _buildSection(
                 t.investments,
@@ -279,7 +237,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 isTablet,
                 isLargeTablet,
                 () => _addAccount('investment'),
-                true,
+                false,
               ),
               _buildSection(
                 t.moneyYouOwe,
@@ -290,7 +248,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 isTablet,
                 isLargeTablet,
                 () => _addAccount('liability'),
-                true,
+                false,
               ),
               _buildSection(
                 t.moneyYouWillGet,
@@ -301,158 +259,12 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 isTablet,
                 isLargeTablet,
                 () => _addAccount('receivable'),
-                true,
+                false,
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: "accountsFab",
-        onPressed: () => _addAccount('asset'),
-        backgroundColor: Colors.blue,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-    );
-  }
-
-  Widget _buildNetWorthCard(
-    double netWorth,
-    double totalAssets,
-    double totalLiabilities,
-    bool isTablet,
-  ) {
-    final t = AppLocalizations.of(context)!;
-    final formatter = NumberFormat("#,###");
-    final isNegative = netWorth < 0;
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: EdgeInsets.all(isTablet ? 24 : 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isNegative
-              ? [Colors.red.shade900, Colors.red.shade800]
-              : [Colors.blue.shade900, Colors.purple.shade800],
-        ),
-        borderRadius: BorderRadius.circular(isTablet ? 28 : 20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.account_balance,
-                color: Colors.white70,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                t.netWorth,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: isTablet ? 14 : 12,
-                  letterSpacing: 1,
-                ),
-              ),
-              const Spacer(),
-              if (isTablet)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    t.last30DaysGrowth,
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '${formatter.format(netWorth.abs().toInt())} ${t.currency}',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isTablet ? 42 : 32,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildNetWorthDetail(
-                t.moneyYouHave,
-                totalAssets,
-                Colors.green,
-                isTablet,
-              ),
-              const SizedBox(width: 16),
-              _buildNetWorthDetail(
-                t.moneyYouOwe,
-                totalLiabilities,
-                Colors.red,
-                isTablet,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNetWorthDetail(
-    String label,
-    double amount,
-    Color color,
-    bool isTablet,
-  ) {
-    final t = AppLocalizations.of(context)!;
-    final formatter = NumberFormat("#,###");
-    return Expanded(
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: isTablet ? 12 : 8,
-          horizontal: 12,
-        ),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: isTablet ? 12 : 10,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${formatter.format(amount.toInt())} ${t.currency}',
-              style: TextStyle(
-                color: color,
-                fontSize: isTablet ? 16 : 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -469,90 +281,38 @@ class _AccountsScreenState extends State<AccountsScreen> {
     bool showAddButton,
   ) {
     final t = AppLocalizations.of(context)!;
-    final sectionTotal = _calculateSectionTotal(accounts, balanceService);
+    final sectionTotal = _controller.calculateSectionTotal(
+      accounts,
+      balanceService,
+    );
     final formatter = NumberFormat("#,###");
     return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.3), width: 1),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isTablet ? 18 : 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${formatter.format(sectionTotal.toInt())} ${t.currency}',
-                  style: TextStyle(
-                    color: color,
-                    fontSize: isTablet ? 16 : 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (showAddButton)
-                  GestureDetector(
-                    onTap: onAddTap,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.add, color: color, size: 18),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Column(
-                  children: [
-                    Text(
-                      '${accounts.length} Accounts',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.white38,
-                      size: 18,
-                    ),
-                  ],
-                ),
+      child: SectionSummaryCard(
+        title: title,
+        icon: icon,
+        amountText: '${formatter.format(sectionTotal.toInt())} ${t.currency}',
+        accountsCount: accounts.length,
+        color: color,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => GroupAccountsScreen(
+                title: title,
+                isSavings: title == 'Savings',
+                sectionType: title == 'Savings'
+                    ? SectionType.saving
+                    : title == 'Investments'
+                    ? SectionType.investment
+                    : title == 'Money You Owe'
+                    ? SectionType.liability
+                    : title == 'Money You Will Get'
+                    ? SectionType.receivable
+                    : SectionType.asset,
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -701,138 +461,5 @@ class _AccountsScreenState extends State<AccountsScreen> {
       default:
         return Icons.account_balance_wallet;
     }
-  }
-
-  Widget _buildSavingsSection(
-    List<Account> savings,
-    BalanceService balanceService,
-    bool isTablet,
-    bool isLargeTablet,
-    double virtualSavingBalance,
-    int virtualSavingItemsCount,
-  ) {
-    final t = AppLocalizations.of(context)!;
-
-    final savingsTotal = _calculateSectionTotal(savings, balanceService);
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.teal.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header row
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.teal.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.savings, color: Colors.teal),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  t.savings,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isTablet ? 18 : 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-
-              Text(
-                '${NumberFormat("#,###").format(savingsTotal.toInt())} ${t.currency}',
-                style: const TextStyle(
-                  color: Colors.teal,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              GestureDetector(
-                onTap: () => _addAccount('saving'),
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.add, color: Colors.teal, size: 18),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Normal savings grid
-          const SizedBox(height: 16),
-          // Virtual saving card
-          Column(
-            children: [
-              _buildSavingsSummaryTile(
-                'Real Saving',
-                savings.where((a) => a.type == 'realSaving').length,
-              ),
-
-              const SizedBox(height: 12),
-
-              _buildSavingsSummaryTile(
-                'Saving Circle',
-                savings
-                    .where((a) => a.type == 'savingCircle' || a.type == 'rosca')
-                    .length,
-              ),
-
-              const SizedBox(height: 12),
-
-              _buildSavingsSummaryTile(
-                'Virtual Saving',
-                virtualSavingItemsCount,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSavingsSummaryTile(String title, int count) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.25),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.teal.withOpacity(0.25)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Text(
-            '$count Accounts',
-            style: const TextStyle(color: Colors.white60),
-          ),
-          const SizedBox(width: 8),
-          const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white54),
-        ],
-      ),
-    );
   }
 }
