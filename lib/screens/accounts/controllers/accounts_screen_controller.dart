@@ -1,6 +1,8 @@
 import '../../../models/account.dart';
 import '../../../models/enums/account_enums.dart';
+import '../../../models/enums/section_type.dart';
 import '../../../services/balance_service.dart';
+import '../models/accounts_screen_data.dart';
 
 class AccountsScreenController {
   double calculateNetWorth(
@@ -60,5 +62,79 @@ class AccountsScreenController {
     }
 
     return total;
+  }
+
+  List<Account> getLiquidityAccounts(List<Account> accounts) {
+    return accounts.where((a) => a.group == AccountGroup.liquidity).toList();
+  }
+
+  List<Account> getSavingsAccounts(List<Account> accounts) {
+    return accounts.where((a) => a.group == AccountGroup.savings).toList();
+  }
+
+  List<Account> getInvestmentAccounts(List<Account> accounts) {
+    return accounts.where((a) => a.group == AccountGroup.investments).toList();
+  }
+
+  List<Account> getLiabilityAccounts(List<Account> accounts) {
+    return accounts.where((a) => a.group == AccountGroup.liabilities).toList();
+  }
+
+  List<Account> getReceivableAccounts(List<Account> accounts) {
+    return accounts.where((a) => a.group == AccountGroup.receivable).toList();
+  }
+
+  SectionType getSectionType(String title) {
+    switch (title) {
+      case 'Savings':
+        return SectionType.saving;
+
+      case 'Investments':
+        return SectionType.investment;
+
+      case 'Money You Owe':
+        return SectionType.liability;
+
+      case 'Money You Will Get':
+        return SectionType.receivable;
+
+      default:
+        return SectionType.asset;
+    }
+  }
+
+  bool isSavingsSection(String title) {
+    return title == 'Savings';
+  }
+
+  AccountsScreenData buildScreenData(
+    List<Account> accounts,
+    BalanceService balanceService,
+  ) {
+    return AccountsScreenData(
+      netWorth: calculateNetWorth(accounts, balanceService),
+
+      totalAssets: calculateTotalByNature(
+        accounts,
+        balanceService,
+        AccountNature.asset,
+      ),
+
+      totalLiabilities: calculateTotalByNature(
+        accounts,
+        balanceService,
+        AccountNature.liability,
+      ),
+
+      moneyHave: getLiquidityAccounts(accounts),
+
+      savings: getSavingsAccounts(accounts),
+
+      investments: getInvestmentAccounts(accounts),
+
+      liabilities: getLiabilityAccounts(accounts),
+
+      receivables: getReceivableAccounts(accounts),
+    );
   }
 }

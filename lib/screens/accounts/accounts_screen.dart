@@ -162,44 +162,15 @@ class _AccountsScreenState extends State<AccountsScreen> {
             );
           }
 
-          final netWorth = _controller.calculateNetWorth(
-            accounts,
-            balanceService,
-          );
-          final totalAssets = _controller.calculateTotalByNature(
-            accounts,
-            balanceService,
-            AccountNature.asset,
-          );
-          final totalLiabilities = _controller.calculateTotalByNature(
-            accounts,
-            balanceService,
-            AccountNature.liability,
-          );
-
-          final moneyHave = accounts
-              .where((a) => a.group == AccountGroup.liquidity)
-              .toList();
-          final investments = accounts
-              .where((a) => a.group == AccountGroup.investments)
-              .toList();
-          final liabilities = accounts
-              .where((a) => a.group == AccountGroup.liabilities)
-              .toList();
-          final receivables = accounts
-              .where((a) => a.group == AccountGroup.receivable)
-              .toList();
-          final savings = accounts
-              .where((a) => a.group == AccountGroup.savings)
-              .toList();
+          final data = _controller.buildScreenData(accounts, balanceService);
 
           return CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
                 child: NetWorthCard(
-                  netWorth: netWorth,
-                  totalAssets: totalAssets,
-                  totalLiabilities: totalLiabilities,
+                  netWorth: data.netWorth,
+                  totalAssets: data.totalAssets,
+                  totalLiabilities: data.totalLiabilities,
                   isTablet: isTablet,
                 ),
               ),
@@ -208,7 +179,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 // 💰 Money You Have
                 t.moneyYouHave,
                 Icons.account_balance_wallet,
-                moneyHave,
+                data.moneyHave,
                 balanceService,
                 Colors.green,
                 isTablet,
@@ -220,7 +191,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 //
                 t.savings,
                 Icons.savings,
-                savings,
+                data.savings,
                 balanceService,
                 Colors.teal,
                 isTablet,
@@ -231,7 +202,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
               _buildSection(
                 t.investments,
                 Icons.trending_up,
-                investments,
+                data.investments,
                 balanceService,
                 Colors.orange,
                 isTablet,
@@ -242,7 +213,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
               _buildSection(
                 t.moneyYouOwe,
                 Icons.credit_card,
-                liabilities,
+                data.liabilities,
                 balanceService,
                 Colors.red,
                 isTablet,
@@ -253,7 +224,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
               _buildSection(
                 t.moneyYouWillGet,
                 Icons.handshake,
-                receivables,
+                data.receivables,
                 balanceService,
                 Colors.blue,
                 isTablet,
@@ -299,42 +270,14 @@ class _AccountsScreenState extends State<AccountsScreen> {
             MaterialPageRoute(
               builder: (_) => GroupAccountsScreen(
                 title: title,
-                isSavings: title == 'Savings',
-                sectionType: title == 'Savings'
-                    ? SectionType.saving
-                    : title == 'Investments'
-                    ? SectionType.investment
-                    : title == 'Money You Owe'
-                    ? SectionType.liability
-                    : title == 'Money You Will Get'
-                    ? SectionType.receivable
-                    : SectionType.asset,
+                isSavings: _controller.isSavingsSection(title),
+                sectionType: _controller.getSectionType(title),
               ),
             ),
           );
         },
       ),
     );
-  }
-
-  int _getCrossAxisCount(int itemCount, bool isTablet, bool isLargeTablet) {
-    if (isLargeTablet) return 4;
-    if (isTablet) return 3;
-    if (itemCount <= 2) return 2;
-    return 2;
-  }
-
-  double _getChildAspectRatio(
-    int itemCount,
-    bool isTablet,
-    bool isLargeTablet,
-  ) {
-    if (isLargeTablet) return 1.2;
-    if (isTablet) return 1.3;
-    if (itemCount <= 2) {
-      return 1.6;
-    }
-    return 1.3;
   }
 
   Widget _buildAccountCard(
