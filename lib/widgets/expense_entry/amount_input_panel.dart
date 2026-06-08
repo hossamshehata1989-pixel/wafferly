@@ -7,6 +7,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
 import 'package:provider/provider.dart';
 import '../../features/settings/controller/settings_controller.dart';
+import '../../features/transactions/models/expense_resolution_analysis.dart';
 
 class AmountInputPanel extends StatelessWidget {
   final TransactionEntryController controller;
@@ -31,7 +32,6 @@ class AmountInputPanel extends StatelessWidget {
         vertical: metrics.h(0),
       ),
       child: Container(
-        // الحاوية الخارجية للبانل
         padding: EdgeInsets.all(
           isSmallScreen ? metrics.spacing(6) : metrics.spacing(6),
         ),
@@ -68,7 +68,7 @@ class AmountInputPanel extends StatelessWidget {
                     child: Container(
                       padding: EdgeInsets.symmetric(
                         horizontal: metrics.spacing(12),
-                        vertical: metrics.h(5), // تمت الزيادة من 3 إلى 5
+                        vertical: metrics.h(5),
                       ),
                       decoration: BoxDecoration(
                         color: AppColors.background,
@@ -86,9 +86,7 @@ class AmountInputPanel extends StatelessWidget {
                                 maxLines: 1,
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: metrics.text(
-                                    24,
-                                  ), // تمت الزيادة من 20 إلى 24
+                                  fontSize: metrics.text(24),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -113,23 +111,15 @@ class AmountInputPanel extends StatelessWidget {
                     children: [
                       _topActionButton(metrics, Icons.note_alt_outlined),
                       SizedBox(width: metrics.spacing(6)),
-                      _topActionButton(
-                        metrics,
-                        Icons.repeat,
-                      ), // تم التغيير من Icons.check إلى Icons.repeat
+                      _topActionButton(metrics, Icons.repeat),
                     ],
                   ),
                 ],
               ),
             ),
-
             SizedBox(height: metrics.h(4)),
-
             _buildCalculator(context, metrics, buttonSize),
-
             SizedBox(height: metrics.h(3)),
-
-            // صف أزرار المعلومات
             Row(
               children: [
                 Expanded(
@@ -156,31 +146,24 @@ class AmountInputPanel extends StatelessWidget {
                 Expanded(
                   child: _infoButton(
                     metrics,
-                    Icons.check_circle_outline, // تم التغيير من Icons.repeat
-                    'Done', // النص الجديد
+                    Icons.check_circle_outline,
+                    'Done',
                   ),
                 ),
               ],
             ),
-
             SizedBox(height: metrics.h(6)),
-
-            // صف الأزرار السفلية
             Row(
               children: [
                 Expanded(
                   child: _bottomActionButton(metrics, '', Icons.more_horiz),
                 ),
-
                 SizedBox(width: metrics.spacing(6)),
-
                 Expanded(
                   flex: 2,
                   child: _addExceptionalButton(context, metrics),
                 ),
-
                 SizedBox(width: metrics.spacing(6)),
-
                 Expanded(child: _bottomActionButton(metrics, '', Icons.mic)),
               ],
             ),
@@ -190,14 +173,12 @@ class AmountInputPanel extends StatelessWidget {
     );
   }
 
-  // ======================== الحاسبة ========================
   Widget _buildCalculator(
     BuildContext context,
     ResponsiveMetrics metrics,
     double buttonSize,
   ) {
     final double rowSpacing = metrics.h(3);
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -220,7 +201,6 @@ class AmountInputPanel extends StatelessWidget {
   ) {
     const operators = {"C", "⌫", "+", "x", ".", "="};
     const primary = {"="};
-
     return Row(
       children: keys.map((key) {
         return _calcButton(
@@ -244,7 +224,6 @@ class AmountInputPanel extends StatelessWidget {
     bool isPrimary = false,
   }) {
     final double fontSize = (size * 0.44).clamp(11.0, 22.0);
-
     return Expanded(
       child: SizedBox(
         height: size,
@@ -263,11 +242,9 @@ class AmountInputPanel extends StatelessWidget {
               highlightColor: Colors.white12,
               onTap: () {
                 final settings = context.read<SettingsController>();
-
                 if (settings.state.hapticFeedback) {
                   HapticFeedback.lightImpact();
                 }
-
                 controller.onCalculatorTap(text);
               },
               child: Center(
@@ -293,7 +270,6 @@ class AmountInputPanel extends StatelessWidget {
     );
   }
 
-  // ======================== أزرار علوية (Note, Repeat) ========================
   Widget _topActionButton(ResponsiveMetrics metrics, IconData icon) {
     final double buttonSize = metrics.h(50);
     return Container(
@@ -307,7 +283,6 @@ class AmountInputPanel extends StatelessWidget {
     );
   }
 
-  // ======================== أزرار المعلومات ========================
   Widget _infoButton(
     ResponsiveMetrics metrics,
     IconData icon,
@@ -315,7 +290,6 @@ class AmountInputPanel extends StatelessWidget {
     VoidCallback? onTap,
   }) {
     final isSmallScreen = metrics.width < 360;
-
     final double height = isSmallScreen ? metrics.h(38) : metrics.h(45);
     return InkWell(
       onTap: onTap,
@@ -347,14 +321,12 @@ class AmountInputPanel extends StatelessWidget {
     );
   }
 
-  // ======================== أزرار سفلية ========================
   Widget _bottomActionButton(
     ResponsiveMetrics metrics,
     String text,
     IconData icon,
   ) {
     final isSmallScreen = metrics.width < 360;
-
     final double height = isSmallScreen ? metrics.h(38) : metrics.h(45);
     return SizedBox(
       height: height,
@@ -384,7 +356,6 @@ class AmountInputPanel extends StatelessWidget {
     ResponsiveMetrics metrics,
   ) {
     final double height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
-
     return SizedBox(
       height: height,
       child: Container(
@@ -427,7 +398,6 @@ class AmountInputPanel extends StatelessWidget {
                 ),
               ),
             ),
-
             Expanded(
               child: InkWell(
                 borderRadius: const BorderRadius.only(
@@ -439,10 +409,52 @@ class AmountInputPanel extends StatelessWidget {
                     isExceptional: controller.isExceptional,
                   );
 
-                  debugPrint('AMOUNT PANEL SAVE');
-                  debugPrint(result.action.toString());
-
                   if (!result.success) {
+                    switch (result.action) {
+                      case SaveAction.invalidAmount:
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please enter a valid amount'),
+                          ),
+                        );
+                        return;
+
+                      case SaveAction.noCategorySelected:
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please select category'),
+                          ),
+                        );
+                        return;
+
+                      case SaveAction.noAccountSelected:
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please select account'),
+                          ),
+                        );
+                        return;
+
+                      default:
+                        break;
+                    }
+                  }
+
+                  final analysis =
+                      result.data?['analysis'] as ExpenseResolutionAnalysis?;
+
+                  debugPrint('ACTION = ${result.action}');
+                  debugPrint('ANALYSIS = $analysis');
+
+                  if (analysis != null) {
+                    debugPrint('SHORTAGE = ${analysis.shortage}');
+                    debugPrint('LIQUIDITY = ${analysis.totalLiquidity}');
+                    debugPrint('SAVINGS = ${analysis.totalSavings}');
+                    debugPrint('RESERVED = ${analysis.totalReserved}');
+                  }
+
+                  if (!result.success &&
+                      result.action == SaveAction.insufficientBalance) {
                     final shortage = result.data?['shortage'] ?? 0;
 
                     final action = await showDialog<String>(
@@ -465,16 +477,15 @@ class AmountInputPanel extends StatelessWidget {
                     );
 
                     if (action == 'temp_debt') {
-                      final totalAvailable = controller
-                          .getTotalAvailableBalance();
-
+                      final totalLiquidity = controller
+                          .getTotalLiquidityBalance();
                       final expenseAmount =
                           double.tryParse(controller.amount) ?? 0;
 
-                      debugPrint('TOTAL AVAILABLE = $totalAvailable');
+                      debugPrint('TOTAL LIQUIDITY = $totalLiquidity');
                       debugPrint('EXPENSE AMOUNT = $expenseAmount');
 
-                      if (totalAvailable >= expenseAmount) {
+                      if (totalLiquidity >= expenseAmount) {
                         await showDialog(
                           context: context,
                           builder: (_) => const AlertDialog(
@@ -484,12 +495,10 @@ class AmountInputPanel extends StatelessWidget {
                             ),
                           ),
                         );
-
                         return;
                       }
 
                       await controller.addBalanceAndRetry(shortage);
-
                       debugPrint('TEMP DEBT BUTTON PRESSED');
                     }
                   }

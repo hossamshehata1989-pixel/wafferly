@@ -14,6 +14,10 @@ import '../features/analysis/registry/category_registry.dart';
 import '../features/members/models/member_model.dart';
 import 'package:math_expressions/math_expressions.dart';
 import '../constants/temp_debt_constants.dart';
+import '../models/enums/account_enums.dart';
+import '../services/reserved_money_service.dart';
+import '../features/transactions/models/expense_resolution_analysis.dart';
+import '../features/transactions/services/expense_resolution_analyzer.dart';
 
 enum SaveStatus { idle, saving }
 
@@ -22,7 +26,9 @@ enum SaveAction {
   invalidAmount,
   noCategorySelected,
   noAccountSelected,
+
   insufficientBalance,
+
   showTempDebtSuccess,
   showNormalSuccess,
 }
@@ -142,6 +148,43 @@ class TransactionEntryController extends ChangeNotifier {
         .toList();
   }
 
+  double getTotalLiquidityBalance() {
+    double total = 0;
+
+    for (final account in availableAccounts) {
+      if (account.group == AccountGroup.liquidity) {
+        total += BalanceService().getAvailableBalance(account.id);
+      }
+    }
+
+    return total;
+  }
+
+  double getTotalSavingsBalance() {
+    double total = 0;
+
+    for (final account in availableAccounts) {
+      if (account.group == AccountGroup.savings) {
+        total += BalanceService().getAvailableBalance(account.id);
+      }
+    }
+
+    return total;
+  }
+
+  double getTotalReservedBalance() {
+    return ReservedMoneyService().getAll().fold(
+      0.0,
+      (sum, item) => sum + item.amount,
+    );
+  }
+
+  // TODO(Wafferly V2)
+  // Deprecated.
+  // Use:
+  // getTotalLiquidityBalance()
+  // getTotalSavingsBalance()
+  // getTotalReservedBalance()
   double getTotalAvailableBalance() {
     double total = 0;
 
@@ -398,13 +441,23 @@ class TransactionEntryController extends ChangeNotifier {
 
     if (isExpense) {
       final balance = BalanceService().getBalance(_selectedAccountId);
+
       if (amountValue > balance) {
+        final analysis = ExpenseResolutionAnalyzer().analyze(
+          expenseAmount: amountValue,
+          selectedAccountBalance: balance,
+          totalLiquidity: getTotalLiquidityBalance(),
+          totalSavings: getTotalSavingsBalance(),
+          totalReserved: getTotalReservedBalance(),
+        );
+
         _saveStatus = SaveStatus.idle;
         notifyListeners();
+
         return SaveResult(
           success: false,
           action: SaveAction.insufficientBalance,
-          data: {"shortage": amountValue - balance},
+          data: {'shortage': amountValue - balance, 'analysis': analysis},
         );
       }
     }
