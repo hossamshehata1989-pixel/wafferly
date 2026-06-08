@@ -13,6 +13,7 @@ import '../config/category_type.dart';
 import '../features/analysis/registry/category_registry.dart';
 import '../features/members/models/member_model.dart';
 import 'package:math_expressions/math_expressions.dart';
+import '../constants/temp_debt_constants.dart';
 
 enum SaveStatus { idle, saving }
 
@@ -130,9 +131,25 @@ class TransactionEntryController extends ChangeNotifier {
 
   List<Account> get availableAccounts {
     final box = Hive.box<Account>('accounts');
+
     return box.values
-        .where((acc) => acc.bookId == 'default' && !acc.isArchived)
+        .where(
+          (acc) =>
+              acc.bookId == 'default' &&
+              !acc.isArchived &&
+              acc.id != tempDebtAccountId,
+        )
         .toList();
+  }
+
+  double getTotalAvailableBalance() {
+    double total = 0;
+
+    for (final account in availableAccounts) {
+      total += BalanceService().getAvailableBalance(account.id);
+    }
+
+    return total;
   }
 
   // ==============================
@@ -637,16 +654,21 @@ class TransactionEntryController extends ChangeNotifier {
 
   Future<Account> _getOrCreateTempDebtAccount() async {
     final box = Hive.box<Account>('accounts');
-    try {
-      return box.values.firstWhere(
-        (a) => a.name == tempDebtAccountName && !a.isArchived,
-      );
-    } catch (_) {
-      return await AccountService().createAccount(
-        name: tempDebtAccountName,
-        type: 'liability',
-        currency: currentCurrency,
-      );
+
+    final existing = box.get(tempDebtAccountId);
+
+    if (existing != null && !existing.isArchived) {
+      print('TEMP DEBT FOUND');
+
+      return existing;
     }
+    print('TEMP DEBT CREATED');
+
+    return await AccountService().createSystemAccount(
+      id: tempDebtAccountId,
+      name: tempDebtAccountName,
+      type: 'liability',
+      currency: currentCurrency,
+    );
   }
 }

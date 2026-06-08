@@ -204,10 +204,53 @@ class ActionButtonsRow extends StatelessWidget {
     if (action == 'add_income') {
       controller.setTransactionType(TransactionType.income);
       controller.setAmount(shortage.toString());
-      if (context.mounted) _showSnackBar(context, t.expenseAddedAfterBalance);
-    } else if (action == 'temp_debt') {
+
+      if (context.mounted) {
+        _showSnackBar(context, t.expenseAddedAfterBalance);
+      }
+
+      return;
+    }
+
+    if (action == 'temp_debt') {
+      final totalAvailable = controller.getTotalAvailableBalance();
+
+      final expenseAmount = double.tryParse(controller.amount) ?? 0;
+
+      debugPrint('====================');
+      debugPrint('TOTAL AVAILABLE = $totalAvailable');
+      debugPrint('EXPENSE AMOUNT = $expenseAmount');
+      debugPrint('SHORTAGE = $shortage');
+      debugPrint('====================');
+
+      if (totalAvailable >= expenseAmount) {
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Temp Debt Blocked'),
+            content: Text(
+              'Available Balance: $totalAvailable\n'
+              'Expense Amount: $expenseAmount',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+
+        return;
+      }
+
       await controller.addBalanceAndRetry(shortage);
-      if (context.mounted) _showSnackBar(context, t.tempDebtSavedSuccessfully);
+
+      if (context.mounted) {
+        _showSnackBar(context, t.tempDebtSavedSuccessfully);
+      }
+
+      return;
     }
   }
 }

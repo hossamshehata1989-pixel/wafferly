@@ -6,6 +6,7 @@ import '../models/enums/account_enums.dart';
 AccountNature resolveNature(String type) {
   switch (type) {
     // Liabilities
+    case 'liability':
     case 'debt':
     case 'moneyBorrowed':
     case 'loan':
@@ -44,6 +45,7 @@ AccountGroup resolveGroup(String type) {
       return AccountGroup.investments;
 
     // 💳 Liabilities
+    case 'liability':
     case 'debt':
     case 'moneyBorrowed':
     case 'loan':

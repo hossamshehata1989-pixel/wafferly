@@ -174,7 +174,10 @@ class AmountInputPanel extends StatelessWidget {
 
                 SizedBox(width: metrics.spacing(6)),
 
-                Expanded(flex: 2, child: _addExceptionalButton(metrics)),
+                Expanded(
+                  flex: 2,
+                  child: _addExceptionalButton(context, metrics),
+                ),
 
                 SizedBox(width: metrics.spacing(6)),
 
@@ -376,7 +379,10 @@ class AmountInputPanel extends StatelessWidget {
     );
   }
 
-  Widget _addExceptionalButton(ResponsiveMetrics metrics) {
+  Widget _addExceptionalButton(
+    BuildContext context,
+    ResponsiveMetrics metrics,
+  ) {
     final double height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
 
     return SizedBox(
@@ -433,8 +439,60 @@ class AmountInputPanel extends StatelessWidget {
                     isExceptional: controller.isExceptional,
                   );
 
-                  debugPrint('saved = ${result.success}');
-                  debugPrint('action = ${result.action}');
+                  debugPrint('AMOUNT PANEL SAVE');
+                  debugPrint(result.action.toString());
+
+                  if (!result.success) {
+                    final shortage = result.data?['shortage'] ?? 0;
+
+                    final action = await showDialog<String>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Insufficient Balance'),
+                        content: Text('Shortage: $shortage'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, 'cancel'),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                Navigator.pop(context, 'temp_debt'),
+                            child: const Text('Temp Debt'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (action == 'temp_debt') {
+                      final totalAvailable = controller
+                          .getTotalAvailableBalance();
+
+                      final expenseAmount =
+                          double.tryParse(controller.amount) ?? 0;
+
+                      debugPrint('TOTAL AVAILABLE = $totalAvailable');
+                      debugPrint('EXPENSE AMOUNT = $expenseAmount');
+
+                      if (totalAvailable >= expenseAmount) {
+                        await showDialog(
+                          context: context,
+                          builder: (_) => const AlertDialog(
+                            title: Text('Temp Debt Blocked'),
+                            content: Text(
+                              'You already have enough money in other accounts.',
+                            ),
+                          ),
+                        );
+
+                        return;
+                      }
+
+                      await controller.addBalanceAndRetry(shortage);
+
+                      debugPrint('TEMP DEBT BUTTON PRESSED');
+                    }
+                  }
                 },
                 child: const Center(
                   child: Row(
