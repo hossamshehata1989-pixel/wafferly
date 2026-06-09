@@ -18,6 +18,8 @@ import '../models/enums/account_enums.dart';
 import '../services/reserved_money_service.dart';
 import '../features/transactions/models/expense_resolution_analysis.dart';
 import '../features/transactions/services/expense_resolution_analyzer.dart';
+import '../features/transactions/models/expense_resolution_option.dart';
+import '../services/reserved_money_projection_service.dart';
 
 enum SaveStatus { idle, saving }
 
@@ -143,6 +145,20 @@ class TransactionEntryController extends ChangeNotifier {
           (acc) =>
               acc.bookId == 'default' &&
               !acc.isArchived &&
+              acc.id != tempDebtAccountId &&
+              acc.group == AccountGroup.liquidity,
+        )
+        .toList();
+  }
+
+  List<Account> get activeAccounts {
+    final box = Hive.box<Account>('accounts');
+
+    return box.values
+        .where(
+          (acc) =>
+              acc.bookId == 'default' &&
+              !acc.isArchived &&
               acc.id != tempDebtAccountId,
         )
         .toList();
@@ -163,7 +179,7 @@ class TransactionEntryController extends ChangeNotifier {
   double getTotalSavingsBalance() {
     double total = 0;
 
-    for (final account in availableAccounts) {
+    for (final account in activeAccounts) {
       if (account.group == AccountGroup.savings) {
         total += BalanceService().getAvailableBalance(account.id);
       }
@@ -173,10 +189,77 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   double getTotalReservedBalance() {
-    return ReservedMoneyService().getAll().fold(
-      0.0,
-      (sum, item) => sum + item.amount,
-    );
+    return ReservedMoneyProjectionService().getTotalReservedAmount();
+  }
+
+  List<ExpenseResolutionOption> getLiquidityOptions() {
+    final options = <ExpenseResolutionOption>[];
+
+    for (final account in availableAccounts) {
+      if (account.group != AccountGroup.liquidity) {
+        continue;
+      }
+
+      if (account.id == _selectedAccountId) {
+        continue;
+      }
+
+      final balance = BalanceService().getAvailableBalance(account.id);
+
+      if (balance <= 0) {
+        continue;
+      }
+
+      options.add(
+        ExpenseResolutionOption(
+          id: account.id,
+          name: account.name,
+          amount: balance,
+        ),
+      );
+    }
+
+    return options;
+  }
+
+  List<ExpenseResolutionOption> getSavingsOptions() {
+    final options = <ExpenseResolutionOption>[];
+
+    for (final account in activeAccounts) {
+      if (account.group != AccountGroup.savings) {
+        continue;
+      }
+
+      final balance = BalanceService().getAvailableBalance(account.id);
+
+      if (balance <= 0) {
+        continue;
+      }
+
+      options.add(
+        ExpenseResolutionOption(
+          id: account.id,
+          name: account.name,
+          amount: balance,
+        ),
+      );
+    }
+
+    return options;
+  }
+
+  List<ExpenseResolutionOption> getReservedOptions() {
+    final reservedItems = ReservedMoneyService().getAll();
+
+    return reservedItems
+        .map(
+          (item) => ExpenseResolutionOption(
+            id: item.id,
+            name: item.title,
+            amount: item.amount,
+          ),
+        )
+        .toList();
   }
 
   // TODO(Wafferly V2)
@@ -446,9 +529,14 @@ class TransactionEntryController extends ChangeNotifier {
         final analysis = ExpenseResolutionAnalyzer().analyze(
           expenseAmount: amountValue,
           selectedAccountBalance: balance,
+
           totalLiquidity: getTotalLiquidityBalance(),
           totalSavings: getTotalSavingsBalance(),
           totalReserved: getTotalReservedBalance(),
+
+          liquidityOptions: getLiquidityOptions(),
+          savingsOptions: getSavingsOptions(),
+          reservedOptions: getReservedOptions(),
         );
 
         _saveStatus = SaveStatus.idle;

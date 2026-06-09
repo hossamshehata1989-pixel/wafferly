@@ -409,6 +409,7 @@ class AmountInputPanel extends StatelessWidget {
                     isExceptional: controller.isExceptional,
                   );
 
+                  // Handle simple errors
                   if (!result.success) {
                     switch (result.action) {
                       case SaveAction.invalidAmount:
@@ -418,7 +419,6 @@ class AmountInputPanel extends StatelessWidget {
                           ),
                         );
                         return;
-
                       case SaveAction.noCategorySelected:
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -426,7 +426,6 @@ class AmountInputPanel extends StatelessWidget {
                           ),
                         );
                         return;
-
                       case SaveAction.noAccountSelected:
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -434,39 +433,84 @@ class AmountInputPanel extends StatelessWidget {
                           ),
                         );
                         return;
-
                       default:
                         break;
                     }
                   }
 
-                  final analysis =
-                      result.data?['analysis'] as ExpenseResolutionAnalysis?;
-
-                  debugPrint('ACTION = ${result.action}');
-                  debugPrint('ANALYSIS = $analysis');
-
-                  if (analysis != null) {
-                    debugPrint('SHORTAGE = ${analysis.shortage}');
-                    debugPrint('LIQUIDITY = ${analysis.totalLiquidity}');
-                    debugPrint('SAVINGS = ${analysis.totalSavings}');
-                    debugPrint('RESERVED = ${analysis.totalReserved}');
-                  }
-
+                  // If insufficient balance, show resolution dialog
                   if (!result.success &&
                       result.action == SaveAction.insufficientBalance) {
+                    final analysis =
+                        result.data?['analysis'] as ExpenseResolutionAnalysis?;
+
+                    for (final item in analysis?.reservedOptions ?? []) {
+                      debugPrint('RESERVED => ${item.name} = ${item.amount}');
+                    }
+
+                    debugPrint('================');
+                    debugPrint('SAVINGS = ${analysis?.totalSavings}');
+                    debugPrint('RESERVED = ${analysis?.totalReserved}');
+                    debugPrint(
+                      'LIQUIDITY = ${analysis?.otherLiquidityBalance}',
+                    );
+                    debugPrint('================');
+
                     final shortage = result.data?['shortage'] ?? 0;
+
+                    final hasOtherLiquidity =
+                        (analysis?.otherLiquidityBalance ?? 0) > 0;
+                    final hasSavings = (analysis?.totalSavings ?? 0) > 0;
+                    final hasReserved = (analysis?.totalReserved ?? 0) > 0;
 
                     final action = await showDialog<String>(
                       context: context,
                       builder: (_) => AlertDialog(
                         title: const Text('Insufficient Balance'),
-                        content: Text('Shortage: $shortage'),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Shortage: ${shortage.toInt()}'),
+                            const SizedBox(height: 12),
+                            if (hasOtherLiquidity)
+                              Text(
+                                'Other Liquidity: '
+                                '${analysis!.otherLiquidityBalance.toInt()}',
+                              ),
+                            if (hasSavings)
+                              Text(
+                                'Savings: ${analysis!.totalSavings.toInt()}',
+                              ),
+                            if (hasReserved)
+                              Text(
+                                'Reserved: ${analysis!.totalReserved.toInt()}',
+                              ),
+                          ],
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context, 'cancel'),
                             child: const Text('Cancel'),
                           ),
+                          if (hasOtherLiquidity)
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(context, 'other_accounts'),
+                              child: const Text('Other Accounts'),
+                            ),
+                          if (hasSavings)
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(context, 'savings'),
+                              child: const Text('Savings'),
+                            ),
+                          if (hasReserved)
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(context, 'reserved'),
+                              child: const Text('Reserved'),
+                            ),
                           TextButton(
                             onPressed: () =>
                                 Navigator.pop(context, 'temp_debt'),
@@ -476,31 +520,76 @@ class AmountInputPanel extends StatelessWidget {
                       ),
                     );
 
-                    if (action == 'temp_debt') {
-                      final totalLiquidity = controller
-                          .getTotalLiquidityBalance();
-                      final expenseAmount =
-                          double.tryParse(controller.amount) ?? 0;
-
-                      debugPrint('TOTAL LIQUIDITY = $totalLiquidity');
-                      debugPrint('EXPENSE AMOUNT = $expenseAmount');
-
-                      if (totalLiquidity >= expenseAmount) {
-                        await showDialog(
-                          context: context,
-                          builder: (_) => const AlertDialog(
-                            title: Text('Temp Debt Blocked'),
-                            content: Text(
-                              'You already have enough money in other accounts.',
+                    // Handle user choice
+                    if (action == 'other_accounts') {
+                      await showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Other Accounts'),
+                          content: SizedBox(
+                            width: double.maxFinite,
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: analysis?.liquidityOptions.length ?? 0,
+                              itemBuilder: (_, index) {
+                                final option =
+                                    analysis!.liquidityOptions[index];
+                                return ListTile(
+                                  title: Text(option.name),
+                                  trailing: Text(
+                                    option.amount.toStringAsFixed(0),
+                                  ),
+                                );
+                              },
                             ),
                           ),
-                        );
-                        return;
-                      }
-
-                      await controller.addBalanceAndRetry(shortage);
-                      debugPrint('TEMP DEBT BUTTON PRESSED');
+                        ),
+                      );
+                      return;
                     }
+                    if (action == 'savings') {
+                      await showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Savings'),
+                          content: Text(
+                            'Available savings: '
+                            '${analysis?.totalSavings ?? 0}',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    if (action == 'reserved') {
+                      await showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Reserved Money'),
+                          content: Text(
+                            'Reserved amount: '
+                            '${analysis?.totalReserved ?? 0}',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    if (action == 'temp_debt') {
+                      await controller.addBalanceAndRetry(shortage);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Temporary debt created'),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                    return;
+                  }
+
+                  // Success case
+                  if (result.success) {
+                    if (context.mounted) Navigator.pop(context);
                   }
                 },
                 child: const Center(

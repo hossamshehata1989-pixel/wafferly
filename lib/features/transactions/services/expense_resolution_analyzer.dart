@@ -1,4 +1,5 @@
 import '../models/expense_resolution_analysis.dart';
+import '../models/expense_resolution_option.dart';
 
 class ExpenseResolutionAnalyzer {
   ExpenseResolutionAnalysis analyze({
@@ -7,6 +8,10 @@ class ExpenseResolutionAnalyzer {
     required double totalLiquidity,
     required double totalSavings,
     required double totalReserved,
+
+    required List<ExpenseResolutionOption> liquidityOptions,
+    required List<ExpenseResolutionOption> savingsOptions,
+    required List<ExpenseResolutionOption> reservedOptions,
   }) {
     final shortage = expenseAmount - selectedAccountBalance;
 
@@ -21,6 +26,12 @@ class ExpenseResolutionAnalyzer {
       totalReserved: totalReserved,
       shortage: shortage,
       otherLiquidityBalance: otherLiquidityBalance,
+
+      liquidityOptions: liquidityOptions,
+
+      savingsOptions: savingsOptions,
+
+      reservedOptions: reservedOptions,
     );
   }
 }

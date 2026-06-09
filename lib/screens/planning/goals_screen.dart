@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../models/goal.dart';
 import '../../services/goal_service.dart';
 import '../../services/current_account_service.dart';
+import '../../services/goal_projection_service.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -14,6 +15,8 @@ class GoalsScreen extends StatefulWidget {
 
 class _GoalsScreenState extends State<GoalsScreen> {
   final GoalService _goalService = GoalService();
+
+  final GoalProjectionService _goalProjectionService = GoalProjectionService();
 
   List<Goal> goals = [];
 
@@ -145,18 +148,18 @@ class _GoalsScreenState extends State<GoalsScreen> {
             children: [
               ListTile(
                 leading: const Icon(
-                  Icons.add_circle_outline,
-                  color: Colors.blue,
+                  Icons.account_balance_wallet_outlined,
+                  color: Colors.orange,
                 ),
                 title: const Text(
-                  "Add Money",
+                  'Manage Allocation',
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  _showAddMoneySheet(goal);
                 },
               ),
+
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: const Text(
@@ -169,108 +172,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 },
               ),
               const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _showAddMoneySheet(Goal goal) {
-    final amountController = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF1A1A1A),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Add to ${goal.title}",
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: "Amount",
-                  labelStyle: TextStyle(color: Colors.white54),
-                  prefixText: "EGP ",
-                  prefixStyle: TextStyle(color: Colors.white54),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white30),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF3A7BFF), width: 2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white54,
-                        side: const BorderSide(color: Colors.white30),
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text("Cancel"),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () async {
-                        final amount =
-                            double.tryParse(amountController.text) ?? 0;
-                        if (amount > 0) {
-                          final newSaved = goal.savedAmount + amount;
-                          // ✅ بدون GoalStatus - فقط تحديث savedAmount
-                          final updatedGoal = goal.copyWith(
-                            savedAmount: newSaved > goal.targetAmount
-                                ? goal.targetAmount
-                                : newSaved,
-                          );
-                          await _goalService.update(updatedGoal);
-                          Navigator.pop(context);
-                          _loadGoals();
-                        }
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF3A7BFF),
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text("Add"),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         );
@@ -376,11 +277,22 @@ class _GoalsScreenState extends State<GoalsScreen> {
               itemCount: goals.length,
               itemBuilder: (_, index) {
                 final goal = goals[index];
-                final progress = goal.progress;
-                final percent = (progress * 100).toStringAsFixed(0);
-                final remaining = goal.targetAmount - goal.savedAmount;
-                final isCompleted = progress >= 1.0;
+                final allocated = _goalProjectionService.getGoalAllocatedAmount(
+                  goal.id,
+                );
 
+                final progress = goal.targetAmount <= 0
+                    ? 0.0
+                    : (allocated / goal.targetAmount).clamp(0.0, 1.0);
+
+                final percent = (progress * 100).toStringAsFixed(0);
+
+                final remaining = (goal.targetAmount - allocated).clamp(
+                  0.0,
+                  double.infinity,
+                );
+
+                final isCompleted = progress >= 1.0;
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
@@ -412,7 +324,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // ✅ الصف العلوي: أيقونة + العنوان + نسبة التقدم
                             Row(
                               children: [
                                 Container(
@@ -462,7 +373,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                     ],
                                   ),
                                 ),
-                                // ✅ نسبة التقدم
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
@@ -486,7 +396,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               ],
                             ),
                             const SizedBox(height: 20),
-                            // ✅ Progress Bar
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: LinearProgressIndicator(
@@ -497,12 +406,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
                               ),
                             ),
                             const SizedBox(height: 14),
-                            // ✅ الصف السفلي: المبلغ المحفوظ / المستهدف
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  "Saved: ${goal.savedAmount.toStringAsFixed(0)} EGP",
+                                  "Allocated: ${allocated.toStringAsFixed(0)} EGP",
                                   style: const TextStyle(
                                     color: Colors.white70,
                                     fontSize: 13,
@@ -517,7 +425,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                 ),
                               ],
                             ),
-                            // ✅ علامة الإكمال
                             if (isCompleted)
                               Padding(
                                 padding: const EdgeInsets.only(top: 12),

@@ -1,4 +1,4 @@
-// lib/models/goal
+// lib/models/goal.dart
 
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
@@ -21,9 +21,6 @@ class Goal {
   @HiveField(3)
   final double targetAmount;
 
-  @HiveField(4)
-  final double savedAmount;
-
   @HiveField(5)
   final DateTime? targetDate;
 
@@ -38,7 +35,6 @@ class Goal {
     required this.accountId,
     required this.title,
     required this.targetAmount,
-    required this.savedAmount,
     this.targetDate,
     required this.reserveMoney,
     required this.status,
@@ -56,22 +52,18 @@ class Goal {
       accountId: accountId,
       title: title,
       targetAmount: targetAmount,
-      savedAmount: 0,
       targetDate: targetDate,
       reserveMoney: reserveMoney,
       status: GoalStatus.active,
     );
   }
 
-  double get progress => targetAmount <= 0 ? 0 : (savedAmount / targetAmount);
-
-  Goal copyWith({double? savedAmount, GoalStatus? status}) {
+  Goal copyWith({GoalStatus? status}) {
     return Goal(
       id: id,
       accountId: accountId,
       title: title,
       targetAmount: targetAmount,
-      savedAmount: savedAmount ?? this.savedAmount,
       targetDate: targetDate,
       reserveMoney: reserveMoney,
       status: status ?? this.status,

@@ -35,6 +35,9 @@ import 'services/ledger_stress_test_service.dart';
 import 'features/settings/controller/settings_controller.dart';
 import 'features/analysis/registry/category_registry.dart';
 
+import 'models/allocation.dart';
+import 'models/enums/allocation_type.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -156,6 +159,18 @@ void main() async {
   }
 
   // ====================================================
+  // Allocation Foundation
+  // ====================================================
+
+  if (!Hive.isAdapterRegistered(80)) {
+    Hive.registerAdapter(AllocationAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(81)) {
+    Hive.registerAdapter(AllocationTypeAdapter());
+  }
+
+  // ====================================================
   // Open Boxes
   // ====================================================
 
@@ -167,6 +182,7 @@ void main() async {
   await Hive.openBox<ReservedMoney>('reserved_money');
   await Hive.openBox<Goal>('goals');
   await Hive.openBox<MemberModel>('members');
+  await Hive.openBox<Allocation>('allocations');
 
   // ====================================================
   // Ledger Stress Test

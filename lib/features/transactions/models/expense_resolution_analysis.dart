@@ -1,3 +1,5 @@
+import 'expense_resolution_option.dart';
+
 class ExpenseResolutionAnalysis {
   final double expenseAmount;
 
@@ -13,6 +15,12 @@ class ExpenseResolutionAnalysis {
 
   final double otherLiquidityBalance;
 
+  final List<ExpenseResolutionOption> liquidityOptions;
+
+  final List<ExpenseResolutionOption> savingsOptions;
+
+  final List<ExpenseResolutionOption> reservedOptions;
+
   const ExpenseResolutionAnalysis({
     required this.expenseAmount,
     required this.selectedAccountBalance,
@@ -21,6 +29,9 @@ class ExpenseResolutionAnalysis {
     required this.totalReserved,
     required this.shortage,
     required this.otherLiquidityBalance,
+    required this.liquidityOptions,
+    required this.savingsOptions,
+    required this.reservedOptions,
   });
 
   bool get hasOtherLiquidity => otherLiquidityBalance > 0;

@@ -1,50 +1,47 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'goal.dart';
+part of 'allocation.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class GoalAdapter extends TypeAdapter<Goal> {
+class AllocationAdapter extends TypeAdapter<Allocation> {
   @override
-  final int typeId = 60;
+  final int typeId = 80;
 
   @override
-  Goal read(BinaryReader reader) {
+  Allocation read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Goal(
+    return Allocation(
       id: fields[0] as String,
       accountId: fields[1] as String,
-      title: fields[2] as String,
-      targetAmount: fields[3] as double,
-      targetDate: fields[5] as DateTime?,
-      reserveMoney: fields[6] as bool,
-      status: fields[7] as GoalStatus,
+      amount: fields[2] as double,
+      type: fields[3] as AllocationType,
+      referenceId: fields[4] as String,
+      createdAt: fields[5] as DateTime,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Goal obj) {
+  void write(BinaryWriter writer, Allocation obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
       ..write(obj.accountId)
       ..writeByte(2)
-      ..write(obj.title)
+      ..write(obj.amount)
       ..writeByte(3)
-      ..write(obj.targetAmount)
+      ..write(obj.type)
+      ..writeByte(4)
+      ..write(obj.referenceId)
       ..writeByte(5)
-      ..write(obj.targetDate)
-      ..writeByte(6)
-      ..write(obj.reserveMoney)
-      ..writeByte(7)
-      ..write(obj.status);
+      ..write(obj.createdAt);
   }
 
   @override
@@ -53,7 +50,7 @@ class GoalAdapter extends TypeAdapter<Goal> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is GoalAdapter &&
+      other is AllocationAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }
