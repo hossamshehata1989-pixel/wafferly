@@ -88,9 +88,7 @@ class PlanningScreen extends StatelessWidget {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => const GoalsScreen(),
-                          ),
+                          MaterialPageRoute(builder: (_) => GoalsScreen()),
                         );
                       },
                       child: _summaryCard(

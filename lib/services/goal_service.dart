@@ -21,10 +21,6 @@ class GoalService {
     return _box.values.toList();
   }
 
-  List<Goal> getByAccount(String accountId) {
-    return _box.values.where((g) => g.accountId == accountId).toList();
-  }
-
   Future<void> delete(String id) async {
     await _box.delete(id);
   }

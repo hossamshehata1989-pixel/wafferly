@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
 import 'enums/goal_status.dart';
+import 'enums/goal_type.dart';
 
 part 'goal.g.dart';
 
@@ -13,60 +14,81 @@ class Goal {
   final String id;
 
   @HiveField(1)
-  final String accountId;
-
-  @HiveField(2)
   final String title;
 
-  @HiveField(3)
+  @HiveField(2)
   final double targetAmount;
 
-  @HiveField(5)
+  @HiveField(3)
   final DateTime? targetDate;
 
-  @HiveField(6)
+  @HiveField(4)
   final bool reserveMoney;
 
-  @HiveField(7)
+  @HiveField(5)
   final GoalStatus status;
+
+  @HiveField(6)
+  final GoalType type;
+
+  // ✅ جديد: ملاحظات المستخدم
+  @HiveField(7)
+  final String? notes;
+
+  // ✅ جديد: قاعدة التكرار (مثال: 'monthly', 'weekly', 'every_2_weeks')
+  @HiveField(8)
+  final String? recurringRule;
 
   Goal({
     required this.id,
-    required this.accountId,
     required this.title,
     required this.targetAmount,
+    required this.type,
     this.targetDate,
     required this.reserveMoney,
     required this.status,
+    this.notes,
+    this.recurringRule,
   });
 
   factory Goal.create({
-    required String accountId,
     required String title,
     required double targetAmount,
+    GoalType type = GoalType.manual,
     DateTime? targetDate,
     bool reserveMoney = false,
+    String? notes,
+    String? recurringRule,
   }) {
     return Goal(
       id: const Uuid().v4(),
-      accountId: accountId,
       title: title,
       targetAmount: targetAmount,
+      type: type,
       targetDate: targetDate,
       reserveMoney: reserveMoney,
       status: GoalStatus.active,
+      notes: notes,
+      recurringRule: recurringRule,
     );
   }
 
-  Goal copyWith({GoalStatus? status}) {
+  Goal copyWith({
+    GoalStatus? status,
+    GoalType? type,
+    String? notes,
+    String? recurringRule,
+  }) {
     return Goal(
       id: id,
-      accountId: accountId,
       title: title,
       targetAmount: targetAmount,
+      type: type ?? this.type,
       targetDate: targetDate,
       reserveMoney: reserveMoney,
       status: status ?? this.status,
+      notes: notes ?? this.notes,
+      recurringRule: recurringRule ?? this.recurringRule,
     );
   }
 }

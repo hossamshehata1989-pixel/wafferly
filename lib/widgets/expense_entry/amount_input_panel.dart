@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 import '../../features/settings/controller/settings_controller.dart';
 import '../../features/transactions/models/expense_resolution_analysis.dart';
 
+import '../../services/sound_service.dart';
+
 class AmountInputPanel extends StatelessWidget {
   final TransactionEntryController controller;
   final VoidCallback? onAccountTap;
@@ -242,9 +244,13 @@ class AmountInputPanel extends StatelessWidget {
               highlightColor: Colors.white12,
               onTap: () {
                 final settings = context.read<SettingsController>();
+
                 if (settings.state.hapticFeedback) {
                   HapticFeedback.lightImpact();
                 }
+
+                SoundService.instance.playCalculatorTap();
+
                 controller.onCalculatorTap(text);
               },
               child: Center(

@@ -38,6 +38,10 @@ import 'features/analysis/registry/category_registry.dart';
 import 'models/allocation.dart';
 import 'models/enums/allocation_type.dart';
 
+import 'models/enums/goal_type.dart';
+
+import 'models/goal_activity.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -47,7 +51,8 @@ void main() async {
   // Debug Flags
   // ====================================================
 
-  const bool RESET_DB = true;
+  const bool RESET_DB =
+      false; // Set to true to clear all data on app start (for testing)
   const bool runStressTest = false;
   const bool runActorTest = false;
 
@@ -150,6 +155,10 @@ void main() async {
     Hive.registerAdapter(GoalStatusAdapter());
   }
 
+  if (!Hive.isAdapterRegistered(62)) {
+    Hive.registerAdapter(GoalTypeAdapter());
+  }
+
   // ====================================================
   // Members Feature
   // ====================================================
@@ -164,6 +173,10 @@ void main() async {
 
   if (!Hive.isAdapterRegistered(80)) {
     Hive.registerAdapter(AllocationAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(90)) {
+    Hive.registerAdapter(GoalActivityAdapter());
   }
 
   if (!Hive.isAdapterRegistered(81)) {
@@ -183,6 +196,7 @@ void main() async {
   await Hive.openBox<Goal>('goals');
   await Hive.openBox<MemberModel>('members');
   await Hive.openBox<Allocation>('allocations');
+  await Hive.openBox<GoalActivity>('goal_activities');
 
   // ====================================================
   // Ledger Stress Test

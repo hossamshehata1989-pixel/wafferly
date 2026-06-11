@@ -1,56 +1,53 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'goal.dart';
+part of 'goal_activity.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class GoalAdapter extends TypeAdapter<Goal> {
+class GoalActivityAdapter extends TypeAdapter<GoalActivity> {
   @override
-  final int typeId = 60;
+  final int typeId = 90;
 
   @override
-  Goal read(BinaryReader reader) {
+  GoalActivity read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return Goal(
+    return GoalActivity(
       id: fields[0] as String,
-      title: fields[1] as String,
-      targetAmount: fields[2] as double,
-      type: fields[6] as GoalType,
-      targetDate: fields[3] as DateTime?,
-      reserveMoney: fields[4] as bool,
-      status: fields[5] as GoalStatus,
-      notes: fields[7] as String?,
-      recurringRule: fields[8] as String?,
+      goalId: fields[1] as String,
+      type: fields[2] as String,
+      amount: fields[3] as double,
+      sourceAccountId: fields[4] as String?,
+      destinationAccountId: fields[5] as String?,
+      notes: fields[6] as String?,
+      createdAt: fields[7] as DateTime,
     );
   }
 
   @override
-  void write(BinaryWriter writer, Goal obj) {
+  void write(BinaryWriter writer, GoalActivity obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.title)
+      ..write(obj.goalId)
       ..writeByte(2)
-      ..write(obj.targetAmount)
-      ..writeByte(3)
-      ..write(obj.targetDate)
-      ..writeByte(4)
-      ..write(obj.reserveMoney)
-      ..writeByte(5)
-      ..write(obj.status)
-      ..writeByte(6)
       ..write(obj.type)
-      ..writeByte(7)
+      ..writeByte(3)
+      ..write(obj.amount)
+      ..writeByte(4)
+      ..write(obj.sourceAccountId)
+      ..writeByte(5)
+      ..write(obj.destinationAccountId)
+      ..writeByte(6)
       ..write(obj.notes)
-      ..writeByte(8)
-      ..write(obj.recurringRule);
+      ..writeByte(7)
+      ..write(obj.createdAt);
   }
 
   @override
@@ -59,7 +56,7 @@ class GoalAdapter extends TypeAdapter<Goal> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is GoalAdapter &&
+      other is GoalActivityAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

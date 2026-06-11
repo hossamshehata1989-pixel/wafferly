@@ -112,4 +112,8 @@ class AccountService {
       await updateAccount(acc);
     }
   }
+
+  Account? getAccountById(String id) {
+    return box.get(id);
+  }
 }

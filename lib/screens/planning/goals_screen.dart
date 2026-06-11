@@ -3,8 +3,13 @@
 import 'package:flutter/material.dart';
 import '../../models/goal.dart';
 import '../../services/goal_service.dart';
-import '../../services/current_account_service.dart';
 import '../../services/goal_projection_service.dart';
+import '../../services/goal_allocation_service.dart';
+import '../../models/account.dart';
+import '../../services/account_service.dart';
+import '../../models/enums/account_enums.dart';
+import '../../models/enums/goal_type.dart';
+import 'goal_details_screen.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -15,6 +20,8 @@ class GoalsScreen extends StatefulWidget {
 
 class _GoalsScreenState extends State<GoalsScreen> {
   final GoalService _goalService = GoalService();
+
+  final GoalAllocationService _goalAllocationService = GoalAllocationService();
 
   final GoalProjectionService _goalProjectionService = GoalProjectionService();
 
@@ -27,9 +34,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
   }
 
   void _loadGoals() {
-    final accountId = CurrentAccountService().getFirstActiveAccountId();
-
-    final loadedGoals = _goalService.getByAccount(accountId);
+    final loadedGoals = _goalService.getAll();
 
     if (!mounted) return;
 
@@ -41,6 +46,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
   void _showAddGoalSheet() {
     final titleController = TextEditingController();
     final amountController = TextEditingController();
+    GoalType selectedType = GoalType.manual;
+    final contributionController = TextEditingController();
 
     showModalBottomSheet(
       context: context,
@@ -84,6 +91,75 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
+              StatefulBuilder(
+                builder: (context, setSheetState) {
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setSheetState(() {
+                              selectedType = GoalType.manual;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: selectedType == GoalType.manual
+                                  ? const Color(0xFF3A7BFF)
+                                  : Colors.white10,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Column(
+                              children: [
+                                Icon(Icons.touch_app, color: Colors.white),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Manual Goal',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setSheetState(() {
+                              selectedType = GoalType.recurring;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: selectedType == GoalType.recurring
+                                  ? const Color(0xFF3A7BFF)
+                                  : Colors.white10,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Column(
+                              children: [
+                                Icon(Icons.repeat, color: Colors.white),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Recurring Goal',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+
               TextField(
                 controller: amountController,
                 keyboardType: TextInputType.number,
@@ -104,12 +180,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: () async {
-                  final accountId = CurrentAccountService()
-                      .getFirstActiveAccountId();
                   final goal = Goal.create(
-                    accountId: accountId,
                     title: titleController.text,
                     targetAmount: double.tryParse(amountController.text) ?? 0,
+                    type: selectedType,
                   );
                   await _goalService.add(goal);
                   Navigator.pop(context);
@@ -152,11 +226,13 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   color: Colors.orange,
                 ),
                 title: const Text(
-                  'Manage Allocation',
+                  'Goal Actions',
                   style: TextStyle(color: Colors.white),
                 ),
                 onTap: () {
                   Navigator.pop(context);
+
+                  _showGoalActions(goal);
                 },
               ),
 
@@ -172,6 +248,157 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 },
               ),
               const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAllocationDialog(Goal goal) {
+    final accounts = AccountService()
+        .getAllActiveAccounts()
+        .where((a) => a.group == AccountGroup.liquidity)
+        .toList();
+
+    String? selectedAccountId = accounts.isNotEmpty ? accounts.first.id : null;
+
+    if (accounts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Create a cash or bank account first')),
+      );
+      return;
+    }
+
+    final controller = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Reserve For ${goal.title}'),
+        content: StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedAccountId,
+                  decoration: const InputDecoration(
+                    labelText: 'Source Account',
+                  ),
+                  items: accounts.map((account) {
+                    return DropdownMenuItem(
+                      value: account.id,
+                      child: Text(account.name),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectedAccountId = value;
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(hintText: 'Amount'),
+                ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final amount = double.tryParse(controller.text) ?? 0;
+
+              if (amount <= 0) {
+                return;
+              }
+
+              final success = await _goalAllocationService.createAllocation(
+                accountId: selectedAccountId!,
+                goalId: goal.id,
+                amount: amount,
+              );
+
+              Navigator.pop(context);
+
+              if (!mounted) return;
+
+              if (success) {
+                _loadGoals();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Money reserved successfully')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Not enough available balance')),
+                );
+              }
+            },
+            child: const Text('Reserve'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGoalActions(Goal goal) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.lock),
+                title: const Text('Reserve Money'),
+                onTap: () {
+                  Navigator.pop(context);
+
+                  _showAllocationDialog(goal);
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.savings),
+                title: const Text('Transfer To Saving'),
+                onTap: () {
+                  Navigator.pop(context);
+
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('Coming Soon')));
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(Icons.lock_open),
+                title: const Text('Release Reservation'),
+                onTap: () {
+                  Navigator.pop(context);
+
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text('Coming Soon')));
+                },
+              ),
+
+              const SizedBox(height: 16),
             ],
           ),
         );
@@ -317,7 +544,20 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () => _showGoalOptions(goal),
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => GoalDetailsScreen(goal: goal),
+                          ),
+                        );
+
+                        if (!mounted) return;
+
+                        _loadGoals();
+
+                        setState(() {});
+                      },
                       borderRadius: BorderRadius.circular(20),
                       child: Padding(
                         padding: const EdgeInsets.all(18),

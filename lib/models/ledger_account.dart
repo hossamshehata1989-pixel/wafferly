@@ -1,9 +1,7 @@
 import 'package:hive/hive.dart';
 import 'enums/ledger_account_type.dart';
 
-
 part 'ledger_account.g.dart';
-
 
 @HiveType(typeId: 31)
 class LedgerAccount {
