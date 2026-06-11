@@ -10,6 +10,7 @@ import '../../services/account_service.dart';
 import '../../models/enums/account_enums.dart';
 import '../../models/enums/goal_type.dart';
 import 'goal_details_screen.dart';
+import '../../models/enums/goal_status.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -36,10 +37,14 @@ class _GoalsScreenState extends State<GoalsScreen> {
   void _loadGoals() {
     final loadedGoals = _goalService.getAll();
 
+    final activeGoals = loadedGoals.where((goal) {
+      return goal.status == GoalStatus.active;
+    }).toList();
+
     if (!mounted) return;
 
     setState(() {
-      goals = loadedGoals;
+      goals = activeGoals;
     });
   }
 

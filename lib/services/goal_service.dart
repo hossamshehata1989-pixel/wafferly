@@ -21,6 +21,10 @@ class GoalService {
     return _box.values.toList();
   }
 
+  Goal? getById(String id) {
+    return _box.get(id);
+  }
+
   Future<void> delete(String id) async {
     await _box.delete(id);
   }

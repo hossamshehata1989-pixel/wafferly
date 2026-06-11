@@ -13,6 +13,12 @@ import '../../services/goal_funding_projection_service.dart';
 import '../../models/goal_funding_source.dart';
 import 'dialogs/release_goal_dialog.dart';
 import '../../services/goal_allocation_service.dart';
+import 'dialogs/cancel_goal_dialog.dart';
+import '../../services/goal_service.dart';
+import '../../models/enums/goal_status.dart';
+import 'dialogs/complete_goal_dialog.dart';
+import '../../models/enums/goal_status.dart';
+import '../../services/goal_service.dart';
 
 class GoalDetailsScreen extends StatefulWidget {
   final Goal goal;
@@ -27,9 +33,8 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   late final GoalProjectionService _projectionService;
   late final GoalAllocationService _goalAllocationService;
   late final GoalActivityService _activityService;
-
   late final GoalFundingProjectionService _fundingProjectionService;
-
+  late final GoalService _goalService;
   List<GoalFundingSource> _fundingSources = [];
 
   double _saved = 0.0;
@@ -47,6 +52,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     _goalAllocationService = GoalAllocationService();
 
     _fundingProjectionService = GoalFundingProjectionService();
+    _goalService = GoalService();
 
     _loadData();
   }
@@ -133,11 +139,144 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     ).showSnackBar(const SnackBar(content: Text('Goal released successfully')));
   }
 
-  void _archiveGoal() {
-    // TODO: تنفيذ أرشفة الهدف
-    ScaffoldMessenger.of(
+  Future<void> _cancelGoal() async {
+    final fundingSources = _fundingProjectionService.getFundingSources(
+      widget.goal.id,
+    );
+
+    final totalAmount = fundingSources.fold<double>(
+      0,
+      (sum, source) => sum + source.amount,
+    );
+
+    final confirm = await showCancelGoalDialog(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Archive goal coming soon')));
+      fundingSources: fundingSources,
+    );
+
+    if (confirm != true) {
+      return;
+    }
+
+    await _goalAllocationService.releaseGoal(widget.goal.id);
+
+    for (final source in fundingSources) {
+      await _activityService.addActivity(
+        GoalActivity.create(
+          goalId: widget.goal.id,
+          type: 'cancel',
+          amount: source.amount,
+          sourceAccountId: source.accountId,
+        ),
+      );
+    }
+
+    await _loadData();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Goal cancelled successfully')),
+    );
+  }
+
+  Future<void> _completeGoal() async {
+    final action = await showCompleteGoalDialog(context);
+
+    if (action == null) {
+      return;
+    }
+
+    if (action == 'keep') {
+      await _markGoalCompleted();
+
+      await _activityService.addActivity(
+        GoalActivity.create(
+          goalId: widget.goal.id,
+          type: 'completed_reserved',
+          amount: _saved,
+        ),
+      );
+
+      if (!mounted) return;
+
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Goal completed successfully')),
+      );
+    }
+
+    if (action == 'release') {
+      await _goalAllocationService.releaseGoal(widget.goal.id);
+
+      await _markGoalCompleted();
+
+      for (final source in _fundingSources) {
+        await _activityService.addActivity(
+          GoalActivity.create(
+            goalId: widget.goal.id,
+            type: 'completed_release',
+            amount: source.amount,
+            sourceAccountId: source.accountId,
+          ),
+        );
+      }
+
+      await _loadData();
+
+      if (!mounted) return;
+
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Goal completed and funds released')),
+      );
+
+      return;
+    }
+  }
+
+  Future<void> _markGoalCompleted() async {
+    final updatedGoal = widget.goal.copyWith(status: GoalStatus.completed);
+
+    await _goalService.update(updatedGoal);
+  }
+
+  Future<void> _archiveGoal() async {
+    final confirm = await showCancelGoalDialog(
+      context,
+      fundingSources: _fundingSources,
+    );
+
+    if (confirm != true) {
+      return;
+    }
+
+    await _goalAllocationService.releaseGoal(widget.goal.id);
+
+    for (final source in _fundingSources) {
+      await _activityService.addActivity(
+        GoalActivity.create(
+          goalId: widget.goal.id,
+          type: 'cancel',
+          amount: source.amount,
+          sourceAccountId: source.accountId,
+        ),
+      );
+    }
+
+    await _goalService.update(
+      widget.goal.copyWith(status: GoalStatus.cancelled),
+    );
+
+    await _loadData();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Goal cancelled successfully')),
+    );
   }
 
   @override
@@ -246,6 +385,42 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                               activity.sourceAccountId!,
                             );
 
+                      final icon = activity.type == 'reserve'
+                          ? Icons.lock
+                          : activity.type == 'release'
+                          ? Icons.lock_open
+                          : activity.type == 'cancel'
+                          ? Icons.cancel
+                          : activity.type == 'completed_reserved'
+                          ? Icons.check_circle
+                          : activity.type == 'completed_release'
+                          ? Icons.check_circle
+                          : Icons.history;
+
+                      final color = activity.type == 'reserve'
+                          ? Colors.orange
+                          : activity.type == 'release'
+                          ? Colors.green
+                          : activity.type == 'cancel'
+                          ? Colors.red
+                          : activity.type == 'completed_reserved'
+                          ? Colors.blue
+                          : activity.type == 'completed_release'
+                          ? Colors.green
+                          : Colors.grey;
+
+                      final title = activity.type == 'reserve'
+                          ? 'Reserved'
+                          : activity.type == 'release'
+                          ? 'Released'
+                          : activity.type == 'cancel'
+                          ? 'Cancelled'
+                          : activity.type == 'completed_reserved'
+                          ? 'Completed'
+                          : activity.type == 'completed_release'
+                          ? 'Completed & Released'
+                          : activity.type;
+
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(14),
@@ -255,7 +430,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.lock, color: Colors.orange),
+                            Icon(icon, color: color),
 
                             const SizedBox(width: 12),
 
@@ -264,7 +439,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Reserved ${activity.amount.toStringAsFixed(0)} EGP',
+                                    '$title ${activity.amount.toStringAsFixed(0)} EGP',
                                     style: const TextStyle(color: Colors.white),
                                   ),
 
@@ -313,11 +488,13 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               label: 'Release Goal',
               onTap: _releaseReservation,
             ),
-            GoalActionTile(
-              icon: Icons.archive,
-              label: 'Archive Goal',
-              onTap: _archiveGoal,
-            ),
+
+            if (_progress >= 1.0)
+              GoalActionTile(
+                icon: Icons.check_circle,
+                label: 'Complete Goal',
+                onTap: _completeGoal,
+              ),
           ],
         ),
       ),

@@ -7,6 +7,8 @@ import '../../../services/goal_allocation_service.dart';
 import '../../../models/enums/account_enums.dart';
 import '../../../models/goal_activity.dart';
 import '../../../services/goal_activity_service.dart';
+import '../../../services/goal_service.dart';
+import '../../../services/goal_projection_service.dart';
 
 Future<bool?> showReserveGoalDialog(
   BuildContext context, {
@@ -68,8 +70,53 @@ Future<bool?> showReserveGoalDialog(
         ),
         TextButton(
           onPressed: () async {
-            final amount = double.tryParse(amountController.text) ?? 0;
+            var amount = double.tryParse(amountController.text) ?? 0;
+
+            final goalService = GoalService();
+            final projectionService = GoalProjectionService();
+
+            final goal = goalService.getById(goalId);
+
+            if (goal == null) {
+              return;
+            }
+
+            final allocated = await projectionService.getGoalAllocatedAmount(
+              goalId,
+            );
+
+            final remaining = goal.targetAmount - allocated;
+
             if (amount <= 0) return;
+
+            if (amount > remaining) {
+              final reserveRemaining = await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Goal Limit'),
+                  content: Text(
+                    'Only ${remaining.toStringAsFixed(0)} EGP remains to reach this goal.\n\nReserve the remaining amount instead?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: Text('Reserve ${remaining.toStringAsFixed(0)}'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (reserveRemaining != true) {
+                return;
+              }
+
+              amount = remaining;
+            }
+
             final success = await allocationService.createAllocation(
               accountId: selectedAccountId!,
               goalId: goalId,
