@@ -2,6 +2,7 @@ import '../models/goal_activity.dart';
 import '../models/goal_funding_source.dart';
 import 'goal_activity_service.dart';
 import 'account_service.dart';
+import '../models/goal_funding_projection.dart';
 
 class GoalFundingProjectionService {
   final GoalActivityService _activityService = GoalActivityService();
@@ -41,5 +42,36 @@ class GoalFundingProjectionService {
         isSaving: false,
       );
     }).toList();
+  }
+
+  Future<GoalFundingProjection> getProjection(String goalId) async {
+    final fundingSources = getFundingSources(goalId);
+
+    final reservedSources = fundingSources.where((s) => !s.isSaving).toList();
+
+    final savingSources = fundingSources.where((s) => s.isSaving).toList();
+
+    final totalReserved = reservedSources.fold<double>(
+      0,
+      (sum, source) => sum + source.amount,
+    );
+
+    final totalSaved = savingSources.fold<double>(
+      0,
+      (sum, source) => sum + source.amount,
+    );
+    print('------------------------');
+    print('GOAL PROJECTION');
+    print('Reserved: $totalReserved');
+    print('Saved: $totalSaved');
+    print('Progress: ${totalReserved + totalSaved}');
+    print('------------------------');
+    return GoalFundingProjection(
+      reservedSources: reservedSources,
+      savingSources: savingSources,
+      totalReserved: totalReserved,
+      totalSaved: totalSaved,
+      totalProgress: totalReserved + totalSaved,
+    );
   }
 }

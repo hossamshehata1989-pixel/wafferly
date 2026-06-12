@@ -17,8 +17,7 @@ import 'dialogs/cancel_goal_dialog.dart';
 import '../../services/goal_service.dart';
 import '../../models/enums/goal_status.dart';
 import 'dialogs/complete_goal_dialog.dart';
-import '../../models/enums/goal_status.dart';
-import '../../services/goal_service.dart';
+import 'dialogs/transfer_to_saving_dialog.dart';
 
 class GoalDetailsScreen extends StatefulWidget {
   final Goal goal;
@@ -62,6 +61,17 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       widget.goal.id,
     );
 
+    final projection = await _fundingProjectionService.getProjection(
+      widget.goal.id,
+    );
+
+    print('===================');
+    print('PROJECTION TEST');
+    print('Reserved: ${projection.totalReserved}');
+    print('Saved: ${projection.totalSaved}');
+    print('Progress: ${projection.totalProgress}');
+    print('===================');
+
     final activities = _activityService.getGoalActivities(widget.goal.id);
     final fundingSources = _fundingProjectionService.getFundingSources(
       widget.goal.id,
@@ -97,11 +107,14 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     }
   }
 
-  void _transferToSaving() {
-    // TODO: تنفيذ التحويل إلى حساب Saving
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Transfer to saving coming soon')),
-    );
+  Future<void> _transferToSaving() async {
+    double totalReserved = 0;
+
+    for (final source in _fundingSources) {
+      totalReserved += source.amount;
+    }
+
+    await showTransferToSavingDialog(context, availableAmount: totalReserved);
   }
 
   Future<void> _releaseReservation() async {

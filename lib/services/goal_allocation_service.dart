@@ -47,4 +47,11 @@ class GoalAllocationService {
       await _allocationService.delete(allocation.id);
     }
   }
+
+  List<Allocation> getGoalAllocations(String goalId) {
+    return _allocationService
+        .getAll()
+        .where((a) => a.type == AllocationType.goal && a.referenceId == goalId)
+        .toList();
+  }
 }
