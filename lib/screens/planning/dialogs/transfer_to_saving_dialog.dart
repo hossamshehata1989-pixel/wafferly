@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../services/account_service.dart';
+import '../../../models/transfer_to_saving_result.dart';
 
-Future<void> showTransferToSavingDialog(
+Future<TransferToSavingResult?> showTransferToSavingDialog(
   BuildContext context, {
   required double availableAmount,
 }) async {
@@ -17,11 +18,12 @@ Future<void> showTransferToSavingDialog(
 
   final savingAccounts = accountService
       .getAllAccounts()
-      .where((a) => a.type.toLowerCase().contains('saving'))
+      .where((a) => a.type == 'realSaving')
       .toList();
 
-  await showModalBottomSheet(
+  return await showModalBottomSheet<TransferToSavingResult>(
     context: context,
+
     isScrollControlled: true,
     backgroundColor: const Color(0xFF1B1D22),
     shape: const RoundedRectangleBorder(
@@ -203,7 +205,15 @@ Future<void> showTransferToSavingDialog(
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: isValid && selectedSavingId != null
-                        ? () {}
+                        ? () {
+                            Navigator.pop(
+                              context,
+                              TransferToSavingResult(
+                                savingAccountId: selectedSavingId!,
+                                amount: double.parse(controller.text),
+                              ),
+                            );
+                          }
                         : null,
                     child: const Text('Transfer'),
                   ),

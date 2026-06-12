@@ -117,6 +117,10 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     await showTransferToSavingDialog(context, availableAmount: totalReserved);
   }
 
+  Future<void> _transferFundingSource(GoalFundingSource source) async {
+    await showTransferToSavingDialog(context, availableAmount: source.amount);
+  }
+
   Future<void> _releaseReservation() async {
     double total = 0;
 
@@ -150,6 +154,36 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Goal released successfully')));
+  }
+
+  Future<void> _releaseFundingSource(GoalFundingSource source) async {
+    final confirm = await showReleaseGoalDialog(
+      context,
+      totalAmount: source.amount,
+    );
+
+    if (confirm != true) {
+      return;
+    }
+
+    await _goalAllocationService.releaseGoal(widget.goal.id);
+
+    await _activityService.addActivity(
+      GoalActivity.create(
+        goalId: widget.goal.id,
+        type: 'release',
+        amount: source.amount,
+        sourceAccountId: source.accountId,
+      ),
+    );
+
+    await _loadData();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${source.accountName} released successfully')),
+    );
   }
 
   Future<void> _cancelGoal() async {
@@ -302,7 +336,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -314,7 +348,42 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               type: widget.goal.type,
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 12),
+
+            if (_progress < 1.0)
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _reserveMoney,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Reserve Money'),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _cancelGoal,
+                      icon: const Icon(Icons.cancel_outlined),
+                      label: const Text('Cancel Goal'),
+                    ),
+                  ),
+                ],
+              ),
+
+            if (_progress >= 1.0)
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _completeGoal,
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text('Complete Goal'),
+                ),
+              ),
+
+            const SizedBox(height: 24),
 
             const Text(
               'Funding Sources',
@@ -327,8 +396,10 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
 
             const SizedBox(height: 12),
 
+            const SizedBox(height: 12),
+
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.white10,
                 borderRadius: BorderRadius.circular(16),
@@ -340,20 +411,102 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                     )
                   : Column(
                       children: _fundingSources.map((source) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6),
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white10,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                           child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  source.accountName,
-                                  style: const TextStyle(color: Colors.white),
+                              // الأيقونة
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.account_balance_wallet,
+                                  color: Colors.green,
+                                  size: 24,
                                 ),
                               ),
+                              const SizedBox(width: 12),
+                              // معلومات الحساب والمبلغ المحجوز
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      source.accountName,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Reserved',
+                                      style: TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 12,
+                                      ),
+                                    ),
 
-                              Text(
-                                '${source.amount.toStringAsFixed(0)} EGP',
-                                style: const TextStyle(color: Colors.white70),
+                                    const SizedBox(height: 2),
+
+                                    Text(
+                                      '${source.amount.toStringAsFixed(0)} EGP',
+                                      style: const TextStyle(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // الأزرار
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: () =>
+                                        _transferFundingSource(source),
+                                    icon: const Icon(
+                                      Icons.swap_horiz,
+                                      size: 16,
+                                    ),
+                                    label: const Text('Transfer'),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                      ),
+                                      minimumSize: const Size(0, 34),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  OutlinedButton.icon(
+                                    onPressed: () =>
+                                        _releaseFundingSource(source),
+                                    icon: const Icon(Icons.lock_open, size: 16),
+                                    label: const Text('Release'),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                      ),
+                                      minimumSize: const Size(0, 34),
+                                      tapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -477,37 +630,6 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
             const SizedBox(height: 32),
 
             const SizedBox(height: 24),
-            const Text(
-              'Actions',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 12),
-            GoalActionTile(
-              icon: Icons.lock,
-              label: 'Reserve Money',
-              onTap: _reserveMoney,
-            ),
-            GoalActionTile(
-              icon: Icons.savings,
-              label: 'Transfer To Saving',
-              onTap: _transferToSaving,
-            ),
-            GoalActionTile(
-              icon: Icons.lock_open,
-              label: 'Release Goal',
-              onTap: _releaseReservation,
-            ),
-
-            if (_progress >= 1.0)
-              GoalActionTile(
-                icon: Icons.check_circle,
-                label: 'Complete Goal',
-                onTap: _completeGoal,
-              ),
           ],
         ),
       ),
