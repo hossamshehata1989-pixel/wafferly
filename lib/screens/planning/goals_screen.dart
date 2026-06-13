@@ -11,6 +11,7 @@ import '../../models/enums/account_enums.dart';
 import '../../models/enums/goal_type.dart';
 import 'goal_details_screen.dart';
 import '../../models/enums/goal_status.dart';
+import 'create_goal_screen.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -51,6 +52,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
   void _showAddGoalSheet() {
     final titleController = TextEditingController();
     final amountController = TextEditingController();
+    String fundingMethod = 'saving';
     GoalType selectedType = GoalType.manual;
     final contributionController = TextEditingController();
 
@@ -152,7 +154,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                 Icon(Icons.repeat, color: Colors.white),
                                 SizedBox(height: 8),
                                 Text(
-                                  'Recurring Goal',
+                                  'Scheduled Goal',
                                   style: TextStyle(color: Colors.white),
                                 ),
                               ],
@@ -165,6 +167,94 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 },
               ),
 
+              // =============================================================================
+              const SizedBox(height: 20),
+
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Funding Method',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              StatefulBuilder(
+                builder: (context, setFundingState) {
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setFundingState(() {
+                              fundingMethod = 'saving';
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: fundingMethod == 'saving'
+                                  ? const Color(0xFF3A7BFF)
+                                  : Colors.white10,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Column(
+                              children: [
+                                Icon(Icons.savings, color: Colors.white),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Real Saving',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setFundingState(() {
+                              fundingMethod = 'reserve';
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: fundingMethod == 'reserve'
+                                  ? const Color(0xFF3A7BFF)
+                                  : Colors.white10,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Column(
+                              children: [
+                                Icon(Icons.lock, color: Colors.white),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Reserve Money',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // =============================================================================
               TextField(
                 controller: amountController,
                 keyboardType: TextInputType.number,
@@ -711,11 +801,15 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 );
               },
             ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: "accountsFab",
-        onPressed: _showAddGoalSheet,
-        backgroundColor: const Color(0xFF3A7BFF),
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreateGoalScreen()),
+          );
+        },
+        icon: const Icon(Icons.flag),
+        label: const Text('New Goal'),
       ),
     );
   }

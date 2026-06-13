@@ -65,12 +65,12 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       widget.goal.id,
     );
 
-    print('===================');
-    print('PROJECTION TEST');
-    print('Reserved: ${projection.totalReserved}');
-    print('Saved: ${projection.totalSaved}');
-    print('Progress: ${projection.totalProgress}');
-    print('===================');
+    debugPrint('===================');
+    debugPrint('PROJECTION TEST');
+    debugPrint('Reserved: ${projection.totalReserved}');
+    debugPrint('Saved: ${projection.totalSaved}');
+    debugPrint('Progress: ${projection.totalProgress}');
+    debugPrint('===================');
 
     final activities = _activityService.getGoalActivities(widget.goal.id);
     final fundingSources = _fundingProjectionService.getFundingSources(
@@ -336,7 +336,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(2),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -348,8 +348,9 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               type: widget.goal.type,
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
 
+            // Action Buttons Row
             if (_progress < 1.0)
               Row(
                 children: [
@@ -360,9 +361,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                       label: const Text('Reserve Money'),
                     ),
                   ),
-
                   const SizedBox(width: 12),
-
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: _cancelGoal,
@@ -383,255 +382,321 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                 ),
               ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
-            const Text(
-              'Funding Sources',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            // Funding Sources Section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Funding Sources',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                if (_fundingSources.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${_fundingSources.length} source${_fundingSources.length == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
             ),
 
-            const SizedBox(height: 12),
-
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
             Container(
-              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.white10,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white12, width: 0.5),
               ),
               child: _fundingSources.isEmpty
-                  ? const Text(
-                      'No funding yet',
-                      style: TextStyle(color: Colors.white54),
+                  ? const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(
+                        child: Text(
+                          'No funding yet',
+                          style: TextStyle(color: Colors.white38),
+                        ),
+                      ),
                     )
                   : Column(
-                      children: _fundingSources.map((source) {
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white10,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        for (int i = 0; i < _fundingSources.length; i++)
+                          Column(
                             children: [
-                              // الأيقونة
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(12),
+                              _buildFundingSourceTile(_fundingSources[i]),
+                              if (i < _fundingSources.length - 1)
+                                const Divider(
+                                  height: 0,
+                                  thickness: 0.5,
+                                  color: Colors.white12,
                                 ),
-                                child: const Icon(
-                                  Icons.account_balance_wallet,
-                                  color: Colors.green,
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              // معلومات الحساب والمبلغ المحجوز
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      source.accountName,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Text(
-                                      'Reserved',
-                                      style: TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 2),
-
-                                    Text(
-                                      '${source.amount.toStringAsFixed(0)} EGP',
-                                      style: const TextStyle(
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // الأزرار
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  OutlinedButton.icon(
-                                    onPressed: () =>
-                                        _transferFundingSource(source),
-                                    icon: const Icon(
-                                      Icons.swap_horiz,
-                                      size: 16,
-                                    ),
-                                    label: const Text('Transfer'),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                      ),
-                                      minimumSize: const Size(0, 34),
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  OutlinedButton.icon(
-                                    onPressed: () =>
-                                        _releaseFundingSource(source),
-                                    icon: const Icon(Icons.lock_open, size: 16),
-                                    label: const Text('Release'),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                      ),
-                                      minimumSize: const Size(0, 34),
-                                      tapTargetSize:
-                                          MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ],
                           ),
-                        );
-                      }).toList(),
+                      ],
                     ),
             ),
 
             const SizedBox(height: 32),
 
-            const Text(
-              'Goal Activity',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            _activities.isEmpty
-                ? Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white10,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Text(
-                      'No activity yet',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  )
-                : Column(
-                    children: _activities.map((activity) {
-                      final accountService = AccountService();
-
-                      final account = activity.sourceAccountId == null
-                          ? null
-                          : accountService.getAccountById(
-                              activity.sourceAccountId!,
-                            );
-
-                      final icon = activity.type == 'reserve'
-                          ? Icons.lock
-                          : activity.type == 'release'
-                          ? Icons.lock_open
-                          : activity.type == 'cancel'
-                          ? Icons.cancel
-                          : activity.type == 'completed_reserved'
-                          ? Icons.check_circle
-                          : activity.type == 'completed_release'
-                          ? Icons.check_circle
-                          : Icons.history;
-
-                      final color = activity.type == 'reserve'
-                          ? Colors.orange
-                          : activity.type == 'release'
-                          ? Colors.green
-                          : activity.type == 'cancel'
-                          ? Colors.red
-                          : activity.type == 'completed_reserved'
-                          ? Colors.blue
-                          : activity.type == 'completed_release'
-                          ? Colors.green
-                          : Colors.grey;
-
-                      final title = activity.type == 'reserve'
-                          ? 'Reserved'
-                          : activity.type == 'release'
-                          ? 'Released'
-                          : activity.type == 'cancel'
-                          ? 'Cancelled'
-                          : activity.type == 'completed_reserved'
-                          ? 'Completed'
-                          : activity.type == 'completed_release'
-                          ? 'Completed & Released'
-                          : activity.type;
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white10,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(icon, color: color),
-
-                            const SizedBox(width: 12),
-
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '$title ${activity.amount.toStringAsFixed(0)} EGP',
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-
-                                  const SizedBox(height: 4),
-
-                                  Text(
-                                    account?.name ?? '',
-                                    style: const TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
+            // Goal Activity Section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Goal Activity',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
+                ),
+                if (_activities.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white12,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${_activities.length} event${_activities.length == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white10,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white12, width: 0.5),
+              ),
+              child: _activities.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Center(
+                        child: Text(
+                          'No activity yet',
+                          style: TextStyle(color: Colors.white38),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        for (int i = 0; i < _activities.length; i++)
+                          Column(
+                            children: [
+                              _buildActivityTile(_activities[i]),
+                              if (i < _activities.length - 1)
+                                const Divider(
+                                  height: 0,
+                                  thickness: 0.5,
+                                  color: Colors.white12,
+                                ),
+                            ],
+                          ),
+                      ],
+                    ),
+            ),
 
             const SizedBox(height: 32),
-
-            const SizedBox(height: 24),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFundingSourceTile(GoalFundingSource source) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.green.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.account_balance_wallet,
+              color: Colors.green,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  source.accountName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Reserved',
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${source.amount.toStringAsFixed(0)} EGP',
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _transferFundingSource(source),
+                icon: const Icon(Icons.swap_horiz, size: 16),
+                label: const Text('Transfer'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white24),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: () => _releaseFundingSource(source),
+                icon: const Icon(Icons.lock_open, size: 16),
+                label: const Text('Release'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: const BorderSide(color: Colors.white24),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityTile(GoalActivity activity) {
+    final accountService = AccountService();
+    final account = activity.sourceAccountId == null
+        ? null
+        : accountService.getAccountById(activity.sourceAccountId!);
+
+    final icon = activity.type == 'reserve'
+        ? Icons.lock
+        : activity.type == 'release'
+        ? Icons.lock_open
+        : activity.type == 'cancel'
+        ? Icons.cancel
+        : activity.type == 'completed_reserved'
+        ? Icons.check_circle
+        : activity.type == 'completed_release'
+        ? Icons.check_circle
+        : Icons.history;
+
+    final color = activity.type == 'reserve'
+        ? Colors.orange
+        : activity.type == 'release'
+        ? Colors.green
+        : activity.type == 'cancel'
+        ? Colors.red
+        : activity.type == 'completed_reserved'
+        ? Colors.blue
+        : activity.type == 'completed_release'
+        ? Colors.green
+        : Colors.grey;
+
+    final title = activity.type == 'reserve'
+        ? 'Reserved'
+        : activity.type == 'release'
+        ? 'Released'
+        : activity.type == 'cancel'
+        ? 'Cancelled'
+        : activity.type == 'completed_reserved'
+        ? 'Completed'
+        : activity.type == 'completed_release'
+        ? 'Completed & Released'
+        : activity.type;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$title ${activity.amount.toStringAsFixed(0)} EGP',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                if (account != null)
+                  Text(
+                    account.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
