@@ -12,6 +12,7 @@ import '../../models/enums/goal_type.dart';
 import 'goal_details_screen.dart';
 import '../../models/enums/goal_status.dart';
 import 'create_goal_screen.dart';
+import 'package:flutter/services.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -257,7 +258,12 @@ class _GoalsScreenState extends State<GoalsScreen> {
               // =============================================================================
               TextField(
                 controller: amountController,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                ],
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: "Target amount",
@@ -802,11 +808,17 @@ class _GoalsScreenState extends State<GoalsScreen> {
               },
             ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const CreateGoalScreen()),
           );
+
+          _loadGoals();
+
+          if (mounted) {
+            setState(() {});
+          }
         },
         icon: const Icon(Icons.flag),
         label: const Text('New Goal'),
