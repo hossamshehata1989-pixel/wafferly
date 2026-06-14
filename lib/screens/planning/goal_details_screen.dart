@@ -295,6 +295,12 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompleted = widget.goal.status == GoalStatus.completed;
+
+    final isCancelled = widget.goal.status == GoalStatus.cancelled;
+    final hasReleasedCompletion = _activities.any(
+      (a) => a.type == 'completed_release',
+    );
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
@@ -316,6 +322,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
           ),
         ],
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
@@ -329,7 +336,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               type: widget.goal.type,
             ),
             const SizedBox(height: 20),
-            if (_progress < 1.0)
+            if (!isCompleted && !isCancelled && _progress < 1.0)
               Row(
                 children: [
                   Expanded(
@@ -349,7 +356,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                   ),
                 ],
               ),
-            if (_progress >= 1.0)
+            if (!isCompleted && !isCancelled && _progress >= 1.0)
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -359,73 +366,76 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                 ),
               ),
             const SizedBox(height: 32),
-            // Funding Sources Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Funding Sources',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+
+            if (!hasReleasedCompletion) ...[
+              // Funding Sources Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Funding Sources',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-                if (_fundingSources.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white12,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${_fundingSources.length} source${_fundingSources.length == 1 ? '' : 's'}',
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
+                  if (_fundingSources.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
                       ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white12, width: 0.5),
-              ),
-              child: _fundingSources.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(
-                        child: Text(
-                          'No funding yet',
-                          style: TextStyle(color: Colors.white38),
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_fundingSources.length} source${_fundingSources.length == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
                         ),
                       ),
-                    )
-                  : Column(
-                      children: [
-                        for (int i = 0; i < _fundingSources.length; i++)
-                          Column(
-                            children: [
-                              _buildFundingSourceTile(_fundingSources[i]),
-                              if (i < _fundingSources.length - 1)
-                                const Divider(
-                                  height: 0,
-                                  thickness: 0.5,
-                                  color: Colors.white12,
-                                ),
-                            ],
-                          ),
-                      ],
                     ),
-            ),
-            const SizedBox(height: 32),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white12, width: 0.5),
+                ),
+                child: _fundingSources.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Center(
+                          child: Text(
+                            'No funding yet',
+                            style: TextStyle(color: Colors.white38),
+                          ),
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          for (int i = 0; i < _fundingSources.length; i++)
+                            Column(
+                              children: [
+                                _buildFundingSourceTile(_fundingSources[i]),
+                                if (i < _fundingSources.length - 1)
+                                  const Divider(
+                                    height: 0,
+                                    thickness: 0.5,
+                                    color: Colors.white12,
+                                  ),
+                              ],
+                            ),
+                        ],
+                      ),
+              ),
+              const SizedBox(height: 32),
+            ],
             // Goal Activity Section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
