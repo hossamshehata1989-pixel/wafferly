@@ -23,12 +23,11 @@ class GoalsScreen extends StatefulWidget {
 
 class _GoalsScreenState extends State<GoalsScreen> {
   final GoalService _goalService = GoalService();
-
   final GoalAllocationService _goalAllocationService = GoalAllocationService();
-
   final GoalProjectionService _goalProjectionService = GoalProjectionService();
 
   List<Goal> goals = [];
+  bool showArchived = false;
 
   @override
   void initState() {
@@ -38,16 +37,166 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   void _loadGoals() {
     final loadedGoals = _goalService.getAll();
-
-    final activeGoals = loadedGoals.where((goal) {
-      return goal.status == GoalStatus.active;
-    }).toList();
-
     if (!mounted) return;
-
     setState(() {
-      goals = activeGoals;
+      goals = loadedGoals;
     });
+  }
+
+  // استخراج دالة بناء البطاقة (نفس الكود الأصلي حرفياً)
+  Widget _buildGoalCard(Goal goal, bool isTablet) {
+    final allocated = _goalProjectionService.getGoalAllocatedAmount(goal.id);
+    final progress = goal.targetAmount <= 0
+        ? 0.0
+        : (allocated / goal.targetAmount).clamp(0.0, 1.0);
+    final percent = (progress * 100).toStringAsFixed(0);
+    final remaining = (goal.targetAmount - allocated).clamp(
+      0.0,
+      double.infinity,
+    );
+    final isCompleted = goal.status == GoalStatus.completed;
+    final isCancelled = goal.status == GoalStatus.cancelled;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isCompleted
+              ? [Colors.green.withOpacity(0.15), Colors.green.withOpacity(0.05)]
+              : [const Color(0xFF1B2A6B), const Color(0xFF0F1115)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isCompleted
+              ? Colors.green.withOpacity(0.5)
+              : const Color(0xFF243A8F),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => GoalDetailsScreen(goal: goal),
+              ),
+            );
+            if (!mounted) return;
+            _loadGoals();
+            setState(() {});
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: _getProgressColor(progress).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(
+                        child: Text(
+                          _getGoalIcon(goal.title),
+                          style: const TextStyle(fontSize: 28),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            goal.title,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: isTablet ? 20 : 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            isCompleted
+                                ? "Completed! 🎉"
+                                : "${remaining.toStringAsFixed(0)} EGP remaining",
+                            style: TextStyle(
+                              color: isCompleted
+                                  ? Colors.green
+                                  : Colors.white54,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getProgressColor(progress).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "$percent%",
+                        style: TextStyle(
+                          color: _getProgressColor(progress),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.white.withOpacity(0.1),
+                    color: _getProgressColor(progress),
+                    minHeight: 8,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Allocated: ${allocated.toStringAsFixed(0)} EGP",
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      "Target: ${goal.targetAmount.toStringAsFixed(0)} EGP",
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showAddGoalSheet() {
@@ -132,9 +281,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 12),
-
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
@@ -217,9 +364,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 12),
-
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
@@ -332,11 +477,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-
                   _showGoalActions(goal);
                 },
               ),
-
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: const Text(
@@ -399,9 +542,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     });
                   },
                 ),
-
                 const SizedBox(height: 16),
-
                 TextField(
                   controller: controller,
                   keyboardType: TextInputType.number,
@@ -419,10 +560,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
           TextButton(
             onPressed: () async {
               final amount = double.tryParse(controller.text) ?? 0;
-
-              if (amount <= 0) {
-                return;
-              }
+              if (amount <= 0) return;
 
               final success = await _goalAllocationService.createAllocation(
                 accountId: selectedAccountId!,
@@ -431,12 +569,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
               );
 
               Navigator.pop(context);
-
               if (!mounted) return;
 
               if (success) {
                 _loadGoals();
-
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Money reserved successfully')),
                 );
@@ -470,35 +606,29 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 title: const Text('Reserve Money'),
                 onTap: () {
                   Navigator.pop(context);
-
                   _showAllocationDialog(goal);
                 },
               ),
-
               ListTile(
                 leading: const Icon(Icons.savings),
                 title: const Text('Transfer To Saving'),
                 onTap: () {
                   Navigator.pop(context);
-
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(const SnackBar(content: Text('Coming Soon')));
                 },
               ),
-
               ListTile(
                 leading: const Icon(Icons.lock_open),
                 title: const Text('Release Reservation'),
                 onTap: () {
                   Navigator.pop(context);
-
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(const SnackBar(content: Text('Coming Soon')));
                 },
               ),
-
               const SizedBox(height: 16),
             ],
           ),
@@ -552,9 +682,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
       'investment': '📈',
     };
     for (final entry in icons.entries) {
-      if (title.toLowerCase().contains(entry.key)) {
-        return entry.value;
-      }
+      if (title.toLowerCase().contains(entry.key)) return entry.value;
     }
     return '🎯';
   }
@@ -570,6 +698,16 @@ class _GoalsScreenState extends State<GoalsScreen> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600;
+
+    final activeGoals = goals
+        .where((g) => g.status == GoalStatus.active)
+        .toList();
+    final completedGoals = goals
+        .where((g) => g.status == GoalStatus.completed)
+        .toList();
+    final cancelledGoals = goals
+        .where((g) => g.status == GoalStatus.cancelled)
+        .toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
@@ -600,225 +738,114 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ],
               ),
             )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: goals.length,
-              itemBuilder: (_, index) {
-                final goal = goals[index];
-                final allocated = _goalProjectionService.getGoalAllocatedAmount(
-                  goal.id,
-                );
-
-                final progress = goal.targetAmount <= 0
-                    ? 0.0
-                    : (allocated / goal.targetAmount).clamp(0.0, 1.0);
-
-                final percent = (progress * 100).toStringAsFixed(0);
-
-                final remaining = (goal.targetAmount - allocated).clamp(
-                  0.0,
-                  double.infinity,
-                );
-
-                final isCompleted = progress >= 1.0;
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isCompleted
-                          ? [
-                              Colors.green.withOpacity(0.15),
-                              Colors.green.withOpacity(0.05),
-                            ]
-                          : [const Color(0xFF1B2A6B), const Color(0xFF0F1115)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isCompleted
-                          ? Colors.green.withOpacity(0.5)
-                          : const Color(0xFF243A8F),
-                      width: 1,
-                    ),
+          : Column(
+              children: [
+                // Toggle between Active and Archived
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
                   ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => GoalDetailsScreen(goal: goal),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text('Active'),
+                          selected: !showArchived,
+                          onSelected: (_) =>
+                              setState(() => showArchived = false),
+                          selectedColor: const Color(0xFF3A7BFF),
+                          backgroundColor: Colors.white10,
+                          labelStyle: TextStyle(
+                            color: !showArchived
+                                ? Colors.white
+                                : Colors.white70,
                           ),
-                        );
-
-                        if (!mounted) return;
-
-                        _loadGoals();
-
-                        setState(() {});
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Padding(
-                        padding: const EdgeInsets.all(18),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 52,
-                                  height: 52,
-                                  decoration: BoxDecoration(
-                                    color: _getProgressColor(
-                                      progress,
-                                    ).withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      _getGoalIcon(goal.title),
-                                      style: const TextStyle(fontSize: 28),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        goal.title,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: isTablet ? 20 : 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        isCompleted
-                                            ? "Completed! 🎉"
-                                            : "${remaining.toStringAsFixed(0)} EGP remaining",
-                                        style: TextStyle(
-                                          color: isCompleted
-                                              ? Colors.green
-                                              : Colors.white54,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _getProgressColor(
-                                      progress,
-                                    ).withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    "$percent%",
-                                    style: TextStyle(
-                                      color: _getProgressColor(progress),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                backgroundColor: Colors.white.withOpacity(0.1),
-                                color: _getProgressColor(progress),
-                                minHeight: 8,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  "Allocated: ${allocated.toStringAsFixed(0)} EGP",
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                Text(
-                                  "Target: ${goal.targetAmount.toStringAsFixed(0)} EGP",
-                                  style: const TextStyle(
-                                    color: Colors.white54,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (isCompleted)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 12),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.check_circle,
-                                        color: Colors.green,
-                                        size: 16,
-                                      ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        "Goal Achieved!",
-                                        style: TextStyle(
-                                          color: Colors.green,
-                                          fontWeight: FontWeight.w500,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                          ],
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text('Archived'),
+                          selected: showArchived,
+                          onSelected: (_) =>
+                              setState(() => showArchived = true),
+                          selectedColor: const Color(0xFF3A7BFF),
+                          backgroundColor: Colors.white10,
+                          labelStyle: TextStyle(
+                            color: showArchived ? Colors.white : Colors.white70,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
+                ),
+                Expanded(
+                  child: showArchived
+                      ? ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount:
+                              completedGoals.length +
+                              cancelledGoals.length +
+                              2, // +2 للعناوين
+                          itemBuilder: (context, index) {
+                            if (index == 0) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12.0,
+                                ),
+                                child: Text(
+                                  'Completed Goals',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            } else if (index == completedGoals.length + 1) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12.0,
+                                ),
+                                child: Text(
+                                  'Cancelled Goals',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            } else if (index <= completedGoals.length) {
+                              final goal = completedGoals[index - 1];
+                              return _buildGoalCard(goal, isTablet);
+                            } else {
+                              final goal =
+                                  cancelledGoals[index -
+                                      completedGoals.length -
+                                      2];
+                              return _buildGoalCard(goal, isTablet);
+                            }
+                          },
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: activeGoals.length,
+                          itemBuilder: (context, index) =>
+                              _buildGoalCard(activeGoals[index], isTablet),
+                        ),
+                ),
+              ],
             ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "goalsFab",
         onPressed: () async {
           await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const CreateGoalScreen()),
           );
-
           _loadGoals();
-
-          if (mounted) {
-            setState(() {});
-          }
         },
         icon: const Icon(Icons.flag),
         label: const Text('New Goal'),

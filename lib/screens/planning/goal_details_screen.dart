@@ -57,10 +57,6 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   }
 
   Future<void> _loadData() async {
-    final allocated = await _projectionService.getGoalAllocatedAmount(
-      widget.goal.id,
-    );
-
     final projection = await _fundingProjectionService.getProjection(
       widget.goal.id,
     );
@@ -78,10 +74,13 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     );
 
     setState(() {
-      _saved = allocated;
+      _saved = projection.totalProgress;
 
       _progress = widget.goal.targetAmount > 0
-          ? (allocated / widget.goal.targetAmount).clamp(0.0, 1.0)
+          ? (projection.totalProgress / widget.goal.targetAmount).clamp(
+              0.0,
+              1.0,
+            )
           : 0.0;
 
       _activities = activities;
@@ -218,6 +217,10 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       );
     }
 
+    await _goalService.update(
+      widget.goal.copyWith(status: GoalStatus.cancelled),
+    );
+
     await _loadData();
 
     if (!mounted) return;
@@ -290,42 +293,6 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     await _goalService.update(updatedGoal);
   }
 
-  Future<void> _archiveGoal() async {
-    final confirm = await showCancelGoalDialog(
-      context,
-      fundingSources: _fundingSources,
-    );
-
-    if (confirm != true) {
-      return;
-    }
-
-    await _goalAllocationService.releaseGoal(widget.goal.id);
-
-    for (final source in _fundingSources) {
-      await _activityService.addActivity(
-        GoalActivity.create(
-          goalId: widget.goal.id,
-          type: 'cancel',
-          amount: source.amount,
-          sourceAccountId: source.accountId,
-        ),
-      );
-    }
-
-    await _goalService.update(
-      widget.goal.copyWith(status: GoalStatus.cancelled),
-    );
-
-    await _loadData();
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Goal cancelled successfully')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -334,6 +301,20 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         title: const Text('Goal Details'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'edit') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Edit Goal - Coming Soon')),
+                );
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'edit', child: Text('Edit Goal')),
+            ],
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -347,10 +328,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               progress: _progress,
               type: widget.goal.type,
             ),
-
             const SizedBox(height: 20),
-
-            // Action Buttons Row
             if (_progress < 1.0)
               Row(
                 children: [
@@ -371,7 +349,6 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                   ),
                 ],
               ),
-
             if (_progress >= 1.0)
               SizedBox(
                 width: double.infinity,
@@ -381,9 +358,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                   label: const Text('Complete Goal'),
                 ),
               ),
-
             const SizedBox(height: 32),
-
             // Funding Sources Section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -416,9 +391,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                   ),
               ],
             ),
-
             const SizedBox(height: 16),
-
             Container(
               decoration: BoxDecoration(
                 color: Colors.white10,
@@ -452,9 +425,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                       ],
                     ),
             ),
-
             const SizedBox(height: 32),
-
             // Goal Activity Section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -487,9 +458,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                   ),
               ],
             ),
-
             const SizedBox(height: 16),
-
             Container(
               decoration: BoxDecoration(
                 color: Colors.white10,
@@ -523,7 +492,6 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                       ],
                     ),
             ),
-
             const SizedBox(height: 32),
           ],
         ),
