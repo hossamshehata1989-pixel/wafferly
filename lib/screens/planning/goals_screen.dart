@@ -46,7 +46,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
   // استخراج دالة بناء البطاقة (نفس الكود الأصلي حرفياً)
   Widget _buildGoalCard(Goal goal, bool isTablet) {
     final allocated = _goalProjectionService.getGoalAllocatedAmount(goal.id);
-    final progress = goal.targetAmount <= 0
+
+    final progress = goal.status == GoalStatus.completed
+        ? 1.0
+        : goal.targetAmount <= 0
         ? 0.0
         : (allocated / goal.targetAmount).clamp(0.0, 1.0);
     final percent = (progress * 100).toStringAsFixed(0);
@@ -129,7 +132,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                           const SizedBox(height: 4),
                           Text(
                             isCompleted
-                                ? "Completed! 🎉"
+                                ? "Completed Goal 🎉"
                                 : "${remaining.toStringAsFixed(0)} EGP remaining",
                             style: TextStyle(
                               color: isCompleted
@@ -161,7 +164,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 3),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
@@ -171,7 +174,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                     minHeight: 8,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 3),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -782,52 +785,107 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 ),
                 Expanded(
                   child: showArchived
-                      ? ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount:
-                              completedGoals.length +
-                              cancelledGoals.length +
-                              2, // +2 للعناوين
-                          itemBuilder: (context, index) {
-                            if (index == 0) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12.0,
+                      ? (completedGoals.isEmpty && cancelledGoals.isEmpty)
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: const [
+                                    Icon(
+                                      Icons.archive_outlined,
+                                      size: 72,
+                                      color: Colors.white24,
+                                    ),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'No Archived Goals',
+                                      style: TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Completed and cancelled goals will appear here',
+                                      style: TextStyle(
+                                        color: Colors.white38,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                child: Text(
-                                  'Completed Goals',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(16),
+                                itemCount:
+                                    completedGoals.length +
+                                    cancelledGoals.length +
+                                    2,
+                                itemBuilder: (context, index) {
+                                  if (index == 0) {
+                                    return const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 12.0,
+                                      ),
+                                      child: Text(
+                                        'Completed Goals',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    );
+                                  } else if (index ==
+                                      completedGoals.length + 1) {
+                                    return const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 12.0,
+                                      ),
+                                      child: Text(
+                                        'Cancelled Goals',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    );
+                                  } else if (index <= completedGoals.length) {
+                                    final goal = completedGoals[index - 1];
+                                    return _buildGoalCard(goal, isTablet);
+                                  } else {
+                                    final goal =
+                                        cancelledGoals[index -
+                                            completedGoals.length -
+                                            2];
+                                    return _buildGoalCard(goal, isTablet);
+                                  }
+                                },
+                              )
+                      : activeGoals.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Text('🎯', style: TextStyle(fontSize: 64)),
+                              SizedBox(height: 16),
+                              Text(
+                                'No Active Goals',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 18,
                                 ),
-                              );
-                            } else if (index == completedGoals.length + 1) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12.0,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Create a new goal or view archived goals',
+                                style: TextStyle(
+                                  color: Colors.white38,
+                                  fontSize: 14,
                                 ),
-                                child: Text(
-                                  'Cancelled Goals',
-                                  style: const TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              );
-                            } else if (index <= completedGoals.length) {
-                              final goal = completedGoals[index - 1];
-                              return _buildGoalCard(goal, isTablet);
-                            } else {
-                              final goal =
-                                  cancelledGoals[index -
-                                      completedGoals.length -
-                                      2];
-                              return _buildGoalCard(goal, isTablet);
-                            }
-                          },
+                              ),
+                            ],
+                          ),
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.all(16),
