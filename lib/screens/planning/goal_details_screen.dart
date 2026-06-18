@@ -38,7 +38,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   late final GoalFundingProjectionService _fundingProjectionService;
   late final GoalService _goalService;
   List<GoalFundingSource> _fundingSources = [];
-  List<GoalFundingSource> _savedSources = []; // ✅ Saved Sources
+  List<GoalFundingSource> _savedSources = [];
 
   double _saved = 0.0;
   double _progress = 0.0;
@@ -61,15 +61,13 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   }
 
   Future<void> _loadData() async {
-    // ✅ getProjection() is SYNC (no await)
     final projection = _fundingProjectionService.getProjection(widget.goal.id);
 
     final activities = _activityService.getGoalActivities(widget.goal.id);
     final fundingSources = _fundingProjectionService.getFundingSources(
       widget.goal.id,
     );
-    final savedSources =
-        projection.savingSources; // ✅ Retrieved from projection
+    final savedSources = projection.savingSources;
 
     setState(() {
       _saved = projection.totalProgress;
@@ -82,7 +80,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
           : 0.0;
 
       _activities = activities;
-      _savedSources = savedSources; // ✅ Updated
+      _savedSources = savedSources;
       _fundingSources = fundingSources;
     });
   }
@@ -110,14 +108,14 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     required double amount,
     required String goalId,
   }) async {
-    // Step 1: Reduce Allocation (state change)
+    // Step 1: Reduce Allocation
     await _goalAllocationService.reduceAllocation(
       goalId: goalId,
       accountId: sourceAccountId,
       reductionAmount: amount,
     );
 
-    // Step 2: Create GoalActivity (history)
+    // Step 2: Create GoalActivity
     GoalActivity activity;
     try {
       activity = GoalActivity.create(
@@ -139,13 +137,13 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       rethrow;
     }
 
-    // Step 3: Create Transaction (financial record)
+    // Step 3: Create Transaction
     final transaction = Transaction.create(
       amount: amount,
       type: TransactionType.transfer,
       fromAccountId: sourceAccountId,
       toAccountId: savingAccountId,
-      categoryId: "", // Consistent with existing transfer architecture
+      categoryId: "",
       date: DateTime.now(),
       note: 'Transfer to saving from goal funding',
       paymentMethod: 'transfer',
@@ -169,19 +167,75 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
 
     // Step 4: Reload projection
     await _loadData();
+  }
+
+  Future<bool> _transferAllToSaving() async {
+    final reservedSources = _fundingSources;
+    if (reservedSources.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No reserved funds to transfer.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return false;
+    }
+
+    final savingAccounts = AccountService()
+        .getAllActiveAccounts()
+        .where((a) => a.type == 'realSaving')
+        .toList();
+
+    if (savingAccounts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please create a saving account first.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return false;
+    }
+
+    final totalReserved = reservedSources.fold<double>(
+      0,
+      (sum, s) => sum + s.amount,
+    );
+
+    final result = await showTransferToSavingDialog(
+      context,
+      availableAmount: totalReserved,
+      savingAccounts: savingAccounts,
+    );
+
+    if (result == null) {
+      return false;
+    }
+
+    final sourcesCopy = List<GoalFundingSource>.from(reservedSources);
+    for (final source in sourcesCopy) {
+      await _executeTransfer(
+        sourceAccountId: source.accountId,
+        savingAccountId: result.savingAccountId,
+        amount: source.amount,
+        goalId: widget.goal.id,
+      );
+    }
+
+    await _loadData();
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Transfer to saving completed successfully'),
+          content: Text('All reserved funds transferred to saving.'),
           backgroundColor: Colors.green,
         ),
       );
     }
+
+    return true;
   }
 
   Future<void> _transferFundingSource(GoalFundingSource source) async {
-    // Check if there are active saving accounts
     final savingAccounts = AccountService()
         .getAllActiveAccounts()
         .where((a) => a.type == 'realSaving')
@@ -197,7 +251,6 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       return;
     }
 
-    // Open the dialog
     final result = await showTransferToSavingDialog(
       context,
       availableAmount: source.amount,
@@ -211,6 +264,15 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         amount: result.amount,
         goalId: widget.goal.id,
       );
+      await _loadData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Transfer to saving completed successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     }
   }
 
@@ -352,9 +414,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Goal completed successfully')),
       );
-    }
-
-    if (action == 'release') {
+    } else if (action == 'release') {
       await _goalAllocationService.releaseGoal(widget.goal.id);
 
       await _markGoalCompleted();
@@ -379,25 +439,40 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Goal completed and funds released')),
       );
+    } else if (action == 'transfer') {
+      final transferSuccess = await _transferAllToSaving();
 
-      return;
+      if (!transferSuccess) {
+        return;
+      }
+
+      await _markGoalCompleted();
+
+      if (!mounted) return;
+
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Goal completed and funds transferred to saving.'),
+        ),
+      );
     }
   }
 
   Future<void> _markGoalCompleted() async {
     final updatedGoal = widget.goal.copyWith(status: GoalStatus.completed);
-
     await _goalService.update(updatedGoal);
   }
 
   @override
   Widget build(BuildContext context) {
     final isCompleted = widget.goal.status == GoalStatus.completed;
-
     final isCancelled = widget.goal.status == GoalStatus.cancelled;
     final hasReleasedCompletion = _activities.any(
       (a) => a.type == 'completed_release',
     );
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F1115),
       appBar: AppBar(
@@ -419,7 +494,6 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
           ),
         ],
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Column(
@@ -464,9 +538,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               ),
             const SizedBox(height: 32),
 
-            // ============================
             // RESERVED SOURCES
-            // ============================
             if (!hasReleasedCompletion &&
                 widget.goal.status != GoalStatus.cancelled) ...[
               if (widget.goal.status != GoalStatus.cancelled) ...[
@@ -542,9 +614,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               ],
             ],
 
-            // ============================
-            // SAVED SOURCES (from transfer_to_saving)
-            // ============================
+            // SAVED SOURCES
             if (_savedSources.isNotEmpty) ...[
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -736,7 +806,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               ],
             ),
           ),
-          if (!isSaving) // ✅ Actions only for Reserved Sources
+          if (!isSaving)
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [

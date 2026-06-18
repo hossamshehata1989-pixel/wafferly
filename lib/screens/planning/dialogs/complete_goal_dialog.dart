@@ -1,3 +1,5 @@
+// lib/screens/planning/dialogs/complete_goal_dialog.dart
+
 import 'package:flutter/material.dart';
 
 Future<String?> showCompleteGoalDialog(BuildContext context) {
@@ -8,15 +10,16 @@ Future<String?> showCompleteGoalDialog(BuildContext context) {
       content: const Text('What would you like to do with the reserved money?'),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context, 'saving'),
+          onPressed: () => Navigator.pop(
+            context,
+            'transfer',
+          ), // ✅ تم التصحيح من 'saving' إلى 'transfer'
           child: const Text('Transfer To Saving'),
         ),
-
         TextButton(
           onPressed: () => Navigator.pop(context, 'release'),
           child: const Text('Release Money'),
         ),
-
         TextButton(
           onPressed: () => Navigator.pop(context, 'keep'),
           child: const Text('Keep Reserved'),

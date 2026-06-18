@@ -4,7 +4,7 @@ import '../models/goal_funding_source.dart';
 import '../models/goal_funding_projection.dart';
 import 'allocation_service.dart';
 import 'account_service.dart';
-import '../models/goal_activity.dart'; // ✅ GoalActivityType from domain model
+import '../models/goal_activity.dart';
 import 'goal_activity_service.dart';
 import '../models/enums/allocation_type.dart';
 
@@ -87,7 +87,7 @@ class GoalFundingProjectionService {
 
     return GoalFundingProjection(
       reservedSources: reservedSources,
-      savingSources: savedSources, // Now contains real data
+      savingSources: savedSources,
       totalReserved: totalReserved,
       totalSaved: totalSaved,
       totalProgress: totalReserved + totalSaved,

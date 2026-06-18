@@ -27,7 +27,6 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
     return null;
   }
 
-  // Select first account by default
   if (selectedSavingId == null && savingAccounts.isNotEmpty) {
     selectedSavingId = savingAccounts.first.id;
   }
@@ -198,7 +197,6 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
                             final amount =
                                 double.tryParse(controller.text) ?? 0;
                             if (amount <= 0 || amount > availableAmount) {
-                              // Invalid amount, reject
                               return;
                             }
                             Navigator.pop(

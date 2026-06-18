@@ -5,25 +5,50 @@ import '../models/allocation.dart';
 import '../models/enums/allocation_type.dart';
 import 'allocation_service.dart';
 import 'allocation_validator.dart';
+import 'goal_funding_projection_service.dart';
+import 'goal_service.dart';
 
 class GoalAllocationService {
   final AllocationService _allocationService = AllocationService();
   final AllocationValidator _validator = AllocationValidator();
+  final GoalService _goalService = GoalService();
+  final GoalFundingProjectionService _projectionService =
+      GoalFundingProjectionService();
 
+  /// Creates a new goal allocation if:
+  /// - The account has enough available balance.
+  /// - The new allocation does not exceed the goal target.
   Future<bool> createAllocation({
     required String accountId,
     required String goalId,
     required double amount,
   }) async {
+    // 1️⃣ التحقق من الرصيد المتاح
     final canAllocate = _validator.canAllocate(
       accountId: accountId,
       amount: amount,
     );
-
     if (!canAllocate) {
       return false;
     }
 
+    // 2️⃣ التحقق من عدم تجاوز الهدف (الحماية الأساسية)
+    final goal = _goalService.getById(goalId);
+    if (goal == null) {
+      return false;
+    }
+
+    final projection = _projectionService.getProjection(goalId);
+    final currentProgress = projection.totalProgress; // Reserved + Saved
+
+    final newProgress = currentProgress + amount;
+
+    if (newProgress > goal.targetAmount) {
+      // ❌ رفض العملية – لا يتم إنشاء Allocation
+      return false;
+    }
+
+    // 3️⃣ إنشاء Allocation
     final allocation = Allocation(
       id: const Uuid().v4(),
       accountId: accountId,
@@ -141,6 +166,9 @@ class GoalAllocationService {
       return;
     }
 
+    // ✅ الحفاظ على FIFO order (مثل reduceAllocation)
+    allocations.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
     // Add the amount to the first allocation (FIFO — simple approach)
     final allocation = allocations.first;
     final updated = allocation.copyWith(
@@ -157,6 +185,7 @@ class GoalAllocationService {
         .toList();
   }
 
+  /// Release all allocations for a specific funding source (account) within a goal
   Future<void> releaseFundingSource({
     required String goalId,
     required String accountId,
