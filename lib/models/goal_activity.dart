@@ -1,7 +1,19 @@
+// lib/models/goal_activity.dart
+
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
 part 'goal_activity.g.dart';
+
+/// Constants for GoalActivity types
+class GoalActivityType {
+  static const String reserve = 'reserve';
+  static const String release = 'release';
+  static const String cancel = 'cancel';
+  static const String completedReserved = 'completed_reserved';
+  static const String completedRelease = 'completed_release';
+  static const String transferToSaving = 'transfer_to_saving';
+}
 
 @HiveType(typeId: 90)
 class GoalActivity {

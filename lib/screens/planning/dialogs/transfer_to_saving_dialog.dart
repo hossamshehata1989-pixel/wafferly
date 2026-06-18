@@ -1,10 +1,13 @@
+// lib/screens/planning/dialogs/transfer_to_saving_dialog.dart
+
 import 'package:flutter/material.dart';
-import '../../../services/account_service.dart';
 import '../../../models/transfer_to_saving_result.dart';
+import '../../../models/account.dart';
 
 Future<TransferToSavingResult?> showTransferToSavingDialog(
   BuildContext context, {
   required double availableAmount,
+  required List<Account> savingAccounts,
 }) async {
   double percentage = 100;
   bool isValid = true;
@@ -14,16 +17,23 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
     text: availableAmount.toStringAsFixed(2),
   );
 
-  final accountService = AccountService();
+  if (savingAccounts.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No saving accounts available. Please create one first.'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return null;
+  }
 
-  final savingAccounts = accountService
-      .getAllAccounts()
-      .where((a) => a.type == 'realSaving')
-      .toList();
+  // Select first account by default
+  if (selectedSavingId == null && savingAccounts.isNotEmpty) {
+    selectedSavingId = savingAccounts.first.id;
+  }
 
   return await showModalBottomSheet<TransferToSavingResult>(
     context: context,
-
     isScrollControlled: true,
     backgroundColor: const Color(0xFF1B1D22),
     shape: const RoundedRectangleBorder(
@@ -50,16 +60,12 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 12),
-
                 Text(
                   'Available Reserved',
                   style: TextStyle(color: Colors.grey.shade400),
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
                   '${availableAmount.toStringAsFixed(2)} EGP',
                   style: const TextStyle(
@@ -68,9 +74,7 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
                 DropdownButtonFormField<String>(
                   value: selectedSavingId,
                   decoration: const InputDecoration(
@@ -88,9 +92,7 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
                     });
                   },
                 ),
-
                 const SizedBox(height: 24),
-
                 TextField(
                   controller: controller,
                   keyboardType: const TextInputType.numberWithOptions(
@@ -107,7 +109,6 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
 
                       if (amount > availableAmount) {
                         controller.text = availableAmount.toStringAsFixed(0);
-
                         controller.selection = TextSelection.fromPosition(
                           TextPosition(offset: controller.text.length),
                         );
@@ -129,14 +130,11 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
                         : 'Amount must be greater than zero',
                   ),
                 ),
-
                 const SizedBox(height: 24),
-
                 Text(
                   '${percentage.toInt()}%',
                   style: const TextStyle(color: Colors.white),
                 ),
-
                 Slider(
                   value: percentage,
                   min: 0,
@@ -144,16 +142,12 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
                   onChanged: (value) {
                     setState(() {
                       percentage = value;
-
                       final amount = (availableAmount * percentage) / 100;
-
                       controller.text = amount.toStringAsFixed(2);
                     });
                   },
                 ),
-
                 const SizedBox(height: 16),
-
                 Wrap(
                   spacing: 8,
                   children: [
@@ -166,7 +160,6 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
                       (v) => percentage = v,
                       () => isValid = true,
                     ),
-
                     _quickPercent(
                       '50%',
                       50,
@@ -176,7 +169,6 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
                       (v) => percentage = v,
                       () => isValid = true,
                     ),
-
                     _quickPercent(
                       '75%',
                       75,
@@ -186,7 +178,6 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
                       (v) => percentage = v,
                       () => isValid = true,
                     ),
-
                     _quickPercent(
                       '100%',
                       100,
@@ -198,19 +189,23 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 24),
-
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: isValid && selectedSavingId != null
                         ? () {
+                            final amount =
+                                double.tryParse(controller.text) ?? 0;
+                            if (amount <= 0 || amount > availableAmount) {
+                              // Invalid amount, reject
+                              return;
+                            }
                             Navigator.pop(
                               context,
                               TransferToSavingResult(
                                 savingAccountId: selectedSavingId!,
-                                amount: double.parse(controller.text),
+                                amount: amount,
                               ),
                             );
                           }
@@ -240,11 +235,8 @@ Widget _quickPercent(
     onPressed: () {
       setState(() {
         onPercentChanged(value);
-
         markValid();
-
         final amount = (availableAmount * value) / 100;
-
         controller.text = amount.toStringAsFixed(2);
       });
     },

@@ -1,5 +1,6 @@
-import 'package:hive/hive.dart';
+// lib/services/goal_activity_service.dart
 
+import 'package:hive/hive.dart';
 import '../models/goal_activity.dart';
 
 class GoalActivityService {
@@ -8,12 +9,12 @@ class GoalActivityService {
   Box<GoalActivity> get _box => Hive.box<GoalActivity>(_boxName);
 
   Future<void> addActivity(GoalActivity activity) async {
-    print('ACTIVITY ADDED');
-    print(activity.goalId);
-    print(activity.type);
-    print(activity.amount);
-
     await _box.put(activity.id, activity);
+  }
+
+  /// Delete an activity by ID (used for rollback)
+  Future<void> deleteActivity(String id) async {
+    await _box.delete(id);
   }
 
   List<GoalActivity> getGoalActivities(String goalId) {

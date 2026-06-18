@@ -18,6 +18,9 @@ import '../../services/goal_service.dart';
 import '../../models/enums/goal_status.dart';
 import 'dialogs/complete_goal_dialog.dart';
 import 'dialogs/transfer_to_saving_dialog.dart';
+import '../../services/transaction_service.dart';
+import '../../models/transaction.dart';
+import '../../constants/transaction_constants.dart';
 
 class GoalDetailsScreen extends StatefulWidget {
   final Goal goal;
@@ -35,6 +38,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   late final GoalFundingProjectionService _fundingProjectionService;
   late final GoalService _goalService;
   List<GoalFundingSource> _fundingSources = [];
+  List<GoalFundingSource> _savedSources = []; // ✅ Saved Sources
 
   double _saved = 0.0;
   double _progress = 0.0;
@@ -57,21 +61,15 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   }
 
   Future<void> _loadData() async {
-    final projection = await _fundingProjectionService.getProjection(
-      widget.goal.id,
-    );
-
-    debugPrint('===================');
-    debugPrint('PROJECTION TEST');
-    debugPrint('Reserved: ${projection.totalReserved}');
-    debugPrint('Saved: ${projection.totalSaved}');
-    debugPrint('Progress: ${projection.totalProgress}');
-    debugPrint('===================');
+    // ✅ getProjection() is SYNC (no await)
+    final projection = _fundingProjectionService.getProjection(widget.goal.id);
 
     final activities = _activityService.getGoalActivities(widget.goal.id);
     final fundingSources = _fundingProjectionService.getFundingSources(
       widget.goal.id,
     );
+    final savedSources =
+        projection.savingSources; // ✅ Retrieved from projection
 
     setState(() {
       _saved = projection.totalProgress;
@@ -84,7 +82,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
           : 0.0;
 
       _activities = activities;
-
+      _savedSources = savedSources; // ✅ Updated
       _fundingSources = fundingSources;
     });
   }
@@ -106,18 +104,114 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     }
   }
 
-  Future<void> _transferToSaving() async {
-    double totalReserved = 0;
+  Future<void> _executeTransfer({
+    required String sourceAccountId,
+    required String savingAccountId,
+    required double amount,
+    required String goalId,
+  }) async {
+    // Step 1: Reduce Allocation (state change)
+    await _goalAllocationService.reduceAllocation(
+      goalId: goalId,
+      accountId: sourceAccountId,
+      reductionAmount: amount,
+    );
 
-    for (final source in _fundingSources) {
-      totalReserved += source.amount;
+    // Step 2: Create GoalActivity (history)
+    GoalActivity activity;
+    try {
+      activity = GoalActivity.create(
+        goalId: goalId,
+        type: GoalActivityType.transferToSaving,
+        amount: amount,
+        sourceAccountId: sourceAccountId,
+        destinationAccountId: savingAccountId,
+        notes: 'Transfer to saving account',
+      );
+      await _activityService.addActivity(activity);
+    } catch (e) {
+      // Rollback Allocation
+      await _goalAllocationService.increaseAllocation(
+        goalId: goalId,
+        accountId: sourceAccountId,
+        increaseAmount: amount,
+      );
+      rethrow;
     }
 
-    await showTransferToSavingDialog(context, availableAmount: totalReserved);
+    // Step 3: Create Transaction (financial record)
+    final transaction = Transaction.create(
+      amount: amount,
+      type: TransactionType.transfer,
+      fromAccountId: sourceAccountId,
+      toAccountId: savingAccountId,
+      categoryId: "", // Consistent with existing transfer architecture
+      date: DateTime.now(),
+      note: 'Transfer to saving from goal funding',
+      paymentMethod: 'transfer',
+      isExceptional: false,
+      currencyCode: 'EGP',
+      source: TransactionSource.manual,
+    );
+
+    try {
+      await TransactionService.instance.addTransaction(transaction);
+    } catch (e) {
+      // Rollback Allocation + Activity
+      await _goalAllocationService.increaseAllocation(
+        goalId: goalId,
+        accountId: sourceAccountId,
+        increaseAmount: amount,
+      );
+      await _activityService.deleteActivity(activity.id);
+      rethrow;
+    }
+
+    // Step 4: Reload projection
+    await _loadData();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Transfer to saving completed successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   Future<void> _transferFundingSource(GoalFundingSource source) async {
-    await showTransferToSavingDialog(context, availableAmount: source.amount);
+    // Check if there are active saving accounts
+    final savingAccounts = AccountService()
+        .getAllActiveAccounts()
+        .where((a) => a.type == 'realSaving')
+        .toList();
+
+    if (savingAccounts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please create a saving account first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Open the dialog
+    final result = await showTransferToSavingDialog(
+      context,
+      availableAmount: source.amount,
+      savingAccounts: savingAccounts,
+    );
+
+    if (result != null) {
+      await _executeTransfer(
+        sourceAccountId: source.accountId,
+        savingAccountId: result.savingAccountId,
+        amount: result.amount,
+        goalId: widget.goal.id,
+      );
+    }
   }
 
   Future<void> _releaseReservation() async {
@@ -165,7 +259,10 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       return;
     }
 
-    await _goalAllocationService.releaseGoal(widget.goal.id);
+    await _goalAllocationService.releaseFundingSource(
+      goalId: widget.goal.id,
+      accountId: source.accountId,
+    );
 
     await _activityService.addActivity(
       GoalActivity.create(
@@ -367,9 +464,11 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               ),
             const SizedBox(height: 32),
 
+            // ============================
+            // RESERVED SOURCES
+            // ============================
             if (!hasReleasedCompletion &&
                 widget.goal.status != GoalStatus.cancelled) ...[
-              // Funding Sources Section
               if (widget.goal.status != GoalStatus.cancelled) ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -424,7 +523,10 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                             for (int i = 0; i < _fundingSources.length; i++)
                               Column(
                                 children: [
-                                  _buildFundingSourceTile(_fundingSources[i]),
+                                  _buildFundingSourceTile(
+                                    _fundingSources[i],
+                                    isSaving: false,
+                                  ),
                                   if (i < _fundingSources.length - 1)
                                     const Divider(
                                       height: 0,
@@ -439,6 +541,74 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                 const SizedBox(height: 32),
               ],
             ],
+
+            // ============================
+            // SAVED SOURCES (from transfer_to_saving)
+            // ============================
+            if (_savedSources.isNotEmpty) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Saved Sources',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purple,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${_savedSources.length} source${_savedSources.length == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        color: Colors.purple,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.purple.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.purple.withOpacity(0.3),
+                    width: 0.5,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    for (int i = 0; i < _savedSources.length; i++)
+                      Column(
+                        children: [
+                          _buildFundingSourceTile(
+                            _savedSources[i],
+                            isSaving: true,
+                          ),
+                          if (i < _savedSources.length - 1)
+                            const Divider(
+                              height: 0,
+                              thickness: 0.5,
+                              color: Colors.white12,
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+            ],
+
             // Goal Activity Section
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -512,7 +682,14 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     );
   }
 
-  Widget _buildFundingSourceTile(GoalFundingSource source) {
+  Widget _buildFundingSourceTile(
+    GoalFundingSource source, {
+    required bool isSaving,
+  }) {
+    final color = isSaving ? Colors.purple : Colors.green;
+    final label = isSaving ? 'Saved' : 'Reserved';
+    final icon = isSaving ? Icons.savings : Icons.account_balance_wallet;
+
     return Container(
       padding: const EdgeInsets.all(14),
       child: Row(
@@ -522,14 +699,10 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.15),
+              color: color.withOpacity(0.15),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(
-              Icons.account_balance_wallet,
-              color: Colors.green,
-              size: 26,
-            ),
+            child: Icon(icon, color: color, size: 26),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -547,15 +720,15 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Reserved',
+                Text(
+                  label,
                   style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${source.amount.toStringAsFixed(0)} EGP',
-                  style: const TextStyle(
-                    color: Colors.green,
+                  style: TextStyle(
+                    color: color,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -563,36 +736,37 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               ],
             ),
           ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => _transferFundingSource(source),
-                icon: const Icon(Icons.swap_horiz, size: 16),
-                label: const Text('Transfer'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white70,
-                  side: const BorderSide(color: Colors.white24),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  minimumSize: const Size(0, 36),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          if (!isSaving) // ✅ Actions only for Reserved Sources
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _transferFundingSource(source),
+                  icon: const Icon(Icons.swap_horiz, size: 16),
+                  label: const Text('Transfer'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    side: const BorderSide(color: Colors.white24),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: const Size(0, 36),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: () => _releaseFundingSource(source),
-                icon: const Icon(Icons.lock_open, size: 16),
-                label: const Text('Release'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white70,
-                  side: const BorderSide(color: Colors.white24),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  minimumSize: const Size(0, 36),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () => _releaseFundingSource(source),
+                  icon: const Icon(Icons.lock_open, size: 16),
+                  label: const Text('Release'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    side: const BorderSide(color: Colors.white24),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: const Size(0, 36),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
     );
@@ -604,41 +778,9 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         ? null
         : accountService.getAccountById(activity.sourceAccountId!);
 
-    final icon = activity.type == 'reserve'
-        ? Icons.lock
-        : activity.type == 'release'
-        ? Icons.lock_open
-        : activity.type == 'cancel'
-        ? Icons.cancel
-        : activity.type == 'completed_reserved'
-        ? Icons.check_circle
-        : activity.type == 'completed_release'
-        ? Icons.check_circle
-        : Icons.history;
-
-    final color = activity.type == 'reserve'
-        ? Colors.orange
-        : activity.type == 'release'
-        ? Colors.green
-        : activity.type == 'cancel'
-        ? Colors.red
-        : activity.type == 'completed_reserved'
-        ? Colors.blue
-        : activity.type == 'completed_release'
-        ? Colors.green
-        : Colors.grey;
-
-    final title = activity.type == 'reserve'
-        ? 'Reserved'
-        : activity.type == 'release'
-        ? 'Released'
-        : activity.type == 'cancel'
-        ? 'Cancelled'
-        : activity.type == 'completed_reserved'
-        ? 'Completed'
-        : activity.type == 'completed_release'
-        ? 'Completed & Released'
-        : activity.type;
+    final icon = _getActivityIcon(activity.type);
+    final color = _getActivityColor(activity.type);
+    final title = _getActivityTitle(activity.type);
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -680,5 +822,62 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         ],
       ),
     );
+  }
+
+  IconData _getActivityIcon(String type) {
+    switch (type) {
+      case 'reserve':
+        return Icons.lock;
+      case 'release':
+        return Icons.lock_open;
+      case 'cancel':
+        return Icons.cancel;
+      case 'completed_reserved':
+        return Icons.check_circle;
+      case 'completed_release':
+        return Icons.check_circle;
+      case GoalActivityType.transferToSaving:
+        return Icons.swap_horiz;
+      default:
+        return Icons.history;
+    }
+  }
+
+  Color _getActivityColor(String type) {
+    switch (type) {
+      case 'reserve':
+        return Colors.orange;
+      case 'release':
+        return Colors.green;
+      case 'cancel':
+        return Colors.red;
+      case 'completed_reserved':
+        return Colors.blue;
+      case 'completed_release':
+        return Colors.green;
+      case GoalActivityType.transferToSaving:
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getActivityTitle(String type) {
+    switch (type) {
+      case 'reserve':
+        return 'Reserved';
+      case 'release':
+        return 'Released';
+      case 'cancel':
+        return 'Cancelled';
+      case 'completed_reserved':
+        return 'Completed';
+      case 'completed_release':
+        return 'Completed & Released';
+      case GoalActivityType.transferToSaving:
+        return 'Transferred to Saving';
+      default:
+        return type;
+    }
   }
 }

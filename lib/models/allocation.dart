@@ -1,3 +1,4 @@
+// lib/models/allocation.dart
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 
@@ -47,6 +48,25 @@ class Allocation {
       type: type,
       referenceId: referenceId,
       createdAt: DateTime.now(),
+    );
+  }
+
+  /// Create a copy of this Allocation with optional field overrides
+  Allocation copyWith({
+    String? id,
+    String? accountId,
+    double? amount,
+    AllocationType? type,
+    String? referenceId,
+    DateTime? createdAt,
+  }) {
+    return Allocation(
+      id: id ?? this.id,
+      accountId: accountId ?? this.accountId,
+      amount: amount ?? this.amount,
+      type: type ?? this.type,
+      referenceId: referenceId ?? this.referenceId,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }

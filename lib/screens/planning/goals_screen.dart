@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import '../../models/goal.dart';
 import '../../services/goal_service.dart';
-import '../../services/goal_projection_service.dart';
+import '../../services/goal_funding_projection_service.dart'; // ✅ استبدال import
 import '../../services/goal_allocation_service.dart';
 import '../../models/account.dart';
 import '../../services/account_service.dart';
@@ -24,7 +24,10 @@ class GoalsScreen extends StatefulWidget {
 class _GoalsScreenState extends State<GoalsScreen> {
   final GoalService _goalService = GoalService();
   final GoalAllocationService _goalAllocationService = GoalAllocationService();
-  final GoalProjectionService _goalProjectionService = GoalProjectionService();
+
+  // ✅ استبدال GoalProjectionService بـ GoalFundingProjectionService
+  final GoalFundingProjectionService _projectionService =
+      GoalFundingProjectionService();
 
   List<Goal> goals = [];
   bool showArchived = false;
@@ -43,9 +46,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
     });
   }
 
-  // استخراج دالة بناء البطاقة (نفس الكود الأصلي حرفياً)
   Widget _buildGoalCard(Goal goal, bool isTablet) {
-    final allocated = _goalProjectionService.getGoalAllocatedAmount(goal.id);
+    // ✅ استخدام getProjection() مباشرة (متزامن)
+    final projection = _projectionService.getProjection(goal.id);
+    final allocated =
+        projection.totalProgress; // totalReserved + totalSaved (saved = 0)
 
     final progress = goal.status == GoalStatus.completed
         ? 1.0
@@ -318,7 +323,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 },
               ),
 
-              // =============================================================================
               const SizedBox(height: 20),
 
               const Align(
@@ -403,7 +407,6 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
               const SizedBox(height: 20),
 
-              // =============================================================================
               TextField(
                 controller: amountController,
                 keyboardType: const TextInputType.numberWithOptions(
