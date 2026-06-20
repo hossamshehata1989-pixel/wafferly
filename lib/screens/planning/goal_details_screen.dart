@@ -467,10 +467,27 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     await _goalService.update(updatedGoal);
   }
 
+  Future<void> _archiveGoal() async {
+    await _markGoalCompleted();
+
+    if (!mounted) return;
+
+    Navigator.pop(context);
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Goal moved to archive')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final isCompleted = widget.goal.status == GoalStatus.completed;
     final isCancelled = widget.goal.status == GoalStatus.cancelled;
+    final isAchieved =
+        _progress >= 1.0 &&
+        _fundingSources.isEmpty &&
+        !isCompleted &&
+        !isCancelled;
     final hasReleasedCompletion = _activities.any(
       (a) => a.type == 'completed_release',
     );
@@ -529,7 +546,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                   ),
                 ],
               ),
-            if (!isCompleted && !isCancelled && _progress >= 1.0)
+            if (!isCompleted && !isCancelled && _progress >= 1.0 && !isAchieved)
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -538,11 +555,43 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                   label: const Text('Complete Goal'),
                 ),
               ),
+
+            if (isAchieved) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.green.withOpacity(0.4)),
+                ),
+                child: const Text(
+                  '🎉 Goal achieved successfully.\nAll funds have been transferred.',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _archiveGoal,
+                  icon: const Icon(Icons.archive),
+                  label: const Text('Move To Archive'),
+                ),
+              ),
+            ],
             const SizedBox(height: 32),
 
             // RESERVED SOURCES
             if (!hasReleasedCompletion &&
-                widget.goal.status != GoalStatus.cancelled) ...[
+                widget.goal.status != GoalStatus.cancelled &&
+                _fundingSources.isNotEmpty) ...[
               if (widget.goal.status != GoalStatus.cancelled) ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
