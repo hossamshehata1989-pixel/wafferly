@@ -446,6 +446,59 @@ AI must never use Goal Progress as source of truth.
 
 ---
 
+# Saving Goal Progress Rule
+
+Reserve Goal
+
+Progress = Reserved + Saved
+
+Example:
+
+Reserved = 4000
+Saved = 1000
+
+Progress = 5000
+
+---
+
+Saving Goal
+
+Progress = Saved
+
+Example:
+
+Saved = 5000
+
+Progress = 5000
+
+---
+
+Current Implementation
+
+GoalFundingProjectionService remains the single source of truth for Goal Funding State and Goal Progress calculation.
+
+Status:
+
+APPROVED
+
+---
+
+# Current Implementation Note
+
+GoalFundingProjectionService is the current source of truth for Goal Funding State.
+
+For transferred savings, the projection currently derives saved funding from transfer_to_saving records.
+
+This is an implementation detail and does not change the architectural rule that Goal Activities belong to the History Layer.
+
+Future versions may introduce a dedicated Saved State projection model without changing Goal UI consumers.
+
+Status:
+
+IMPLEMENTATION NOTE
+
+---
+
 # Summary
 
 Goals explain purpose.

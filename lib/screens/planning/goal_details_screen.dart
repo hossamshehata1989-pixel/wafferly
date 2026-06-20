@@ -21,6 +21,7 @@ import 'dialogs/transfer_to_saving_dialog.dart';
 import '../../services/transaction_service.dart';
 import '../../models/transaction.dart';
 import '../../constants/transaction_constants.dart';
+import '../../services/goal_details_projection_service.dart';
 
 class GoalDetailsScreen extends StatefulWidget {
   final Goal goal;
@@ -234,6 +235,91 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     }
 
     return true;
+  }
+
+  Future<void> _transferSavingGoalFunding() async {
+    final accountService = AccountService();
+
+    final liquidityAccounts = accountService
+        .getAllActiveAccounts()
+        .where((a) => a.type == 'cash' || a.type == 'bank')
+        .toList();
+
+    final savingAccounts = accountService
+        .getAllActiveAccounts()
+        .where((a) => a.type == 'realSaving')
+        .toList();
+
+    if (liquidityAccounts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No liquidity accounts available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (savingAccounts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please create a saving account first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final result = await showTransferToSavingDialog(
+      context: context,
+      availableAmount: widget.goal.targetAmount,
+      savingAccounts: savingAccounts,
+      liquidityAccounts: liquidityAccounts,
+      requireSourceAccount: true,
+      allowPartialTransfer: true,
+    );
+
+    if (result == null) {
+      return;
+    }
+
+    final transaction = Transaction.create(
+      amount: result.amount,
+      type: TransactionType.transfer,
+      fromAccountId: result.sourceAccountId!,
+      toAccountId: result.savingAccountId,
+      categoryId: '',
+      date: DateTime.now(),
+      note: 'Saving Goal Contribution',
+      paymentMethod: 'transfer',
+      isExceptional: false,
+      currencyCode: 'EGP',
+      source: TransactionSource.manual,
+    );
+
+    await TransactionService.instance.addTransaction(transaction);
+
+    await _activityService.addActivity(
+      GoalActivity.create(
+        goalId: widget.goal.id,
+        type: GoalActivityType.transferToSaving,
+        amount: result.amount,
+        sourceAccountId: result.sourceAccountId,
+        destinationAccountId: result.savingAccountId,
+        notes: 'Saving Goal Contribution',
+      ),
+    );
+
+    await _loadData();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Contribution added successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   Future<void> _transferFundingSource(GoalFundingSource source) async {
@@ -483,6 +569,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   Widget build(BuildContext context) {
     final isCompleted = widget.goal.status == GoalStatus.completed;
     final isCancelled = widget.goal.status == GoalStatus.cancelled;
+
     final isAchieved =
         _progress >= 1.0 &&
         _fundingSources.isEmpty &&
@@ -490,6 +577,12 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         !isCancelled;
     final hasReleasedCompletion = _activities.any(
       (a) => a.type == 'completed_release',
+    );
+
+    final projection = GoalDetailsProjectionService().build(
+      goal: widget.goal,
+      progress: _progress,
+      hasFundingSources: _fundingSources.isNotEmpty,
     );
 
     return Scaffold(
@@ -526,7 +619,8 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               type: widget.goal.type,
             ),
             const SizedBox(height: 20),
-            if (!isCompleted && !isCancelled && _progress < 1.0)
+
+            if (projection.showReserveActions)
               Row(
                 children: [
                   Expanded(
@@ -546,13 +640,47 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
                   ),
                 ],
               ),
-            if (!isCompleted && !isCancelled && _progress >= 1.0 && !isAchieved)
+
+            if (projection.showSavingActions)
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _transferSavingGoalFunding,
+                      icon: const Icon(Icons.savings),
+                      label: const Text('Transfer To Saving'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _cancelGoal,
+                      icon: const Icon(Icons.cancel_outlined),
+                      label: const Text('Cancel Goal'),
+                    ),
+                  ),
+                ],
+              ),
+
+            const SizedBox(height: 12),
+
+            if (projection.showCompleteGoalButton && !isAchieved)
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
                   onPressed: _completeGoal,
                   icon: const Icon(Icons.check_circle),
                   label: const Text('Complete Goal'),
+                ),
+              ),
+
+            if (projection.showArchiveButton && !isAchieved)
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _archiveGoal,
+                  icon: const Icon(Icons.archive),
+                  label: const Text('Archive Goal'),
                 ),
               ),
 
@@ -589,9 +717,9 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
             const SizedBox(height: 32),
 
             // RESERVED SOURCES
-            if (!hasReleasedCompletion &&
-                widget.goal.status != GoalStatus.cancelled &&
-                _fundingSources.isNotEmpty) ...[
+            if (projection.showFundingSources &&
+                !hasReleasedCompletion &&
+                widget.goal.status != GoalStatus.cancelled) ...[
               if (widget.goal.status != GoalStatus.cancelled) ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

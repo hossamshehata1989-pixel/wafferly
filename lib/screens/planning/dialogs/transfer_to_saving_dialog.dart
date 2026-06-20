@@ -8,11 +8,17 @@ Future<TransferToSavingResult?> showTransferToSavingDialog({
   required BuildContext context,
   required double availableAmount,
   required List<Account> savingAccounts,
+
+  List<Account> liquidityAccounts = const [],
+
+  bool requireSourceAccount = false,
+
   bool allowPartialTransfer = true,
 }) async {
   double percentage = 100;
   bool isValid = true;
   String? selectedSavingId;
+  String? selectedSourceId;
 
   final controller = TextEditingController(
     text: availableAmount.toStringAsFixed(2),
@@ -30,6 +36,12 @@ Future<TransferToSavingResult?> showTransferToSavingDialog({
 
   if (selectedSavingId == null && savingAccounts.isNotEmpty) {
     selectedSavingId = savingAccounts.first.id;
+  }
+
+  if (requireSourceAccount &&
+      selectedSourceId == null &&
+      liquidityAccounts.isNotEmpty) {
+    selectedSourceId = liquidityAccounts.first.id;
   }
 
   return await showModalBottomSheet<TransferToSavingResult>(
@@ -74,6 +86,29 @@ Future<TransferToSavingResult?> showTransferToSavingDialog({
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+
+                if (requireSourceAccount) ...[
+                  DropdownButtonFormField<String>(
+                    value: selectedSourceId,
+                    decoration: const InputDecoration(
+                      labelText: 'Source Account',
+                    ),
+                    items: liquidityAccounts.map((account) {
+                      return DropdownMenuItem<String>(
+                        value: account.id,
+                        child: Text(account.name),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedSourceId = value;
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+                ],
+
                 const SizedBox(height: 24),
                 DropdownButtonFormField<String>(
                   value: selectedSavingId,
@@ -203,7 +238,9 @@ Future<TransferToSavingResult?> showTransferToSavingDialog({
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: selectedSavingId != null
+                    onPressed:
+                        selectedSavingId != null &&
+                            (!requireSourceAccount || selectedSourceId != null)
                         ? () {
                             final amount = allowPartialTransfer
                                 ? (double.tryParse(controller.text) ?? 0)
@@ -216,6 +253,7 @@ Future<TransferToSavingResult?> showTransferToSavingDialog({
                             Navigator.pop(
                               context,
                               TransferToSavingResult(
+                                sourceAccountId: selectedSourceId,
                                 savingAccountId: selectedSavingId!,
                                 amount: amount,
                               ),
