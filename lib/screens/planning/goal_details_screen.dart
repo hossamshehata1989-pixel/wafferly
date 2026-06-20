@@ -202,9 +202,10 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     );
 
     final result = await showTransferToSavingDialog(
-      context,
+      context: context,
       availableAmount: totalReserved,
       savingAccounts: savingAccounts,
+      allowPartialTransfer: false,
     );
 
     if (result == null) {
@@ -252,9 +253,10 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     }
 
     final result = await showTransferToSavingDialog(
-      context,
+      context: context,
       availableAmount: source.amount,
       savingAccounts: savingAccounts,
+      allowPartialTransfer: true,
     );
 
     if (result != null) {

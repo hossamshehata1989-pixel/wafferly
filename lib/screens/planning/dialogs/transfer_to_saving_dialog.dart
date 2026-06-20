@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import '../../../models/transfer_to_saving_result.dart';
 import '../../../models/account.dart';
 
-Future<TransferToSavingResult?> showTransferToSavingDialog(
-  BuildContext context, {
+Future<TransferToSavingResult?> showTransferToSavingDialog({
+  required BuildContext context,
   required double availableAmount,
   required List<Account> savingAccounts,
+  bool allowPartialTransfer = true,
 }) async {
   double percentage = 100;
   bool isValid = true;
@@ -92,113 +93,126 @@ Future<TransferToSavingResult?> showTransferToSavingDialog(
                   },
                 ),
                 const SizedBox(height: 24),
-                TextField(
-                  controller: controller,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+
+                if (allowPartialTransfer) ...[
+                  TextField(
+                    controller: controller,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        final amount = double.tryParse(value) ?? 0;
+
+                        if (amount <= 0) {
+                          isValid = false;
+                          return;
+                        }
+
+                        if (amount > availableAmount) {
+                          controller.text = availableAmount.toStringAsFixed(0);
+                          controller.selection = TextSelection.fromPosition(
+                            TextPosition(offset: controller.text.length),
+                          );
+                        }
+
+                        final safeAmount = amount > availableAmount
+                            ? availableAmount
+                            : amount;
+
+                        percentage = (safeAmount / availableAmount) * 100;
+
+                        isValid = true;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Amount',
+                      errorText: isValid
+                          ? null
+                          : 'Amount must be greater than zero',
+                    ),
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      final amount = double.tryParse(value) ?? 0;
 
-                      if (amount <= 0) {
-                        isValid = false;
-                        return;
-                      }
+                  const SizedBox(height: 24),
 
-                      if (amount > availableAmount) {
-                        controller.text = availableAmount.toStringAsFixed(0);
-                        controller.selection = TextSelection.fromPosition(
-                          TextPosition(offset: controller.text.length),
-                        );
-                      }
-
-                      final safeAmount = amount > availableAmount
-                          ? availableAmount
-                          : amount;
-
-                      percentage = (safeAmount / availableAmount) * 100;
-
-                      isValid = true;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Amount',
-                    errorText: isValid
-                        ? null
-                        : 'Amount must be greater than zero',
+                  Text(
+                    '${percentage.toInt()}%',
+                    style: const TextStyle(color: Colors.white),
                   ),
-                ),
+
+                  Slider(
+                    value: percentage,
+                    min: 0,
+                    max: 100,
+                    onChanged: (value) {
+                      setState(() {
+                        percentage = value;
+                        final amount = (availableAmount * percentage) / 100;
+                        controller.text = amount.toStringAsFixed(2);
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      _quickPercent(
+                        '25%',
+                        25,
+                        availableAmount,
+                        setState,
+                        controller,
+                        (v) => percentage = v,
+                        () => isValid = true,
+                      ),
+                      _quickPercent(
+                        '50%',
+                        50,
+                        availableAmount,
+                        setState,
+                        controller,
+                        (v) => percentage = v,
+                        () => isValid = true,
+                      ),
+                      _quickPercent(
+                        '75%',
+                        75,
+                        availableAmount,
+                        setState,
+                        controller,
+                        (v) => percentage = v,
+                        () => isValid = true,
+                      ),
+                      _quickPercent(
+                        '100%',
+                        100,
+                        availableAmount,
+                        setState,
+                        controller,
+                        (v) => percentage = v,
+                        () => isValid = true,
+                      ),
+                    ],
+                  ),
+                ],
+
                 const SizedBox(height: 24),
-                Text(
-                  '${percentage.toInt()}%',
-                  style: const TextStyle(color: Colors.white),
-                ),
-                Slider(
-                  value: percentage,
-                  min: 0,
-                  max: 100,
-                  onChanged: (value) {
-                    setState(() {
-                      percentage = value;
-                      final amount = (availableAmount * percentage) / 100;
-                      controller.text = amount.toStringAsFixed(2);
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    _quickPercent(
-                      '25%',
-                      25,
-                      availableAmount,
-                      setState,
-                      controller,
-                      (v) => percentage = v,
-                      () => isValid = true,
-                    ),
-                    _quickPercent(
-                      '50%',
-                      50,
-                      availableAmount,
-                      setState,
-                      controller,
-                      (v) => percentage = v,
-                      () => isValid = true,
-                    ),
-                    _quickPercent(
-                      '75%',
-                      75,
-                      availableAmount,
-                      setState,
-                      controller,
-                      (v) => percentage = v,
-                      () => isValid = true,
-                    ),
-                    _quickPercent(
-                      '100%',
-                      100,
-                      availableAmount,
-                      setState,
-                      controller,
-                      (v) => percentage = v,
-                      () => isValid = true,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
+
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: isValid && selectedSavingId != null
+                    onPressed: selectedSavingId != null
                         ? () {
-                            final amount =
-                                double.tryParse(controller.text) ?? 0;
+                            final amount = allowPartialTransfer
+                                ? (double.tryParse(controller.text) ?? 0)
+                                : availableAmount;
+
                             if (amount <= 0 || amount > availableAmount) {
                               return;
                             }
+
                             Navigator.pop(
                               context,
                               TransferToSavingResult(
