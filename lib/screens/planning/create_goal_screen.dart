@@ -275,13 +275,6 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
               ],
             ),
 
-            const SizedBox(height: 28),
-            _buildTextField(
-              controller: _targetAmountController,
-
-              label: 'Target Amount',
-              prefix: 'EGP',
-            ),
             const SizedBox(height: 32),
 
             SizedBox(
@@ -470,10 +463,22 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
           const SizedBox(height: 24),
 
           if (planningMode == 'amount') ...[
+            const SizedBox(height: 28),
+            _buildTextField(
+              controller: _targetAmountController,
+
+              label: 'Target Amount',
+              prefix: 'EGP',
+            ),
             const SizedBox(height: 20),
             _buildTextField(
               controller: _periodAmountController,
               label: 'Amount Per Period',
+
+              errorText: _periodAmount > _targetAmount && _targetAmount > 0
+                  ? 'Contribution amount cannot exceed target amount'
+                  : null,
+
               prefix: 'EGP',
             ),
           ],
@@ -538,7 +543,23 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
           SizedBox(
             width: double.infinity,
             child: _buildGradientButton(
-              onPressed: () => setState(() => currentStep = 3),
+              onPressed: () {
+                if (selectedType == GoalType.recurring &&
+                    planningMode == 'amount' &&
+                    _periodAmount > _targetAmount) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Contribution amount cannot exceed target amount',
+                      ),
+                      backgroundColor: Color.fromARGB(255, 170, 118, 114),
+                    ),
+                  );
+                  return;
+                }
+
+                setState(() => currentStep = 3);
+              },
               label: 'Continue',
             ),
           ),
@@ -551,6 +572,7 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
     required TextEditingController controller,
     required String label,
     String? prefix,
+    String? errorText,
   }) {
     return TextField(
       controller: controller,
@@ -564,11 +586,16 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white54),
+
         prefixText: prefix != null ? '$prefix ' : null,
         prefixStyle: const TextStyle(color: Colors.white70),
+
+        errorText: errorText,
+
         enabledBorder: UnderlineInputBorder(
           borderSide: BorderSide(color: Colors.white24),
         ),
+
         focusedBorder: UnderlineInputBorder(
           borderSide: BorderSide(color: Color(0xFFB794F4), width: 2),
         ),
@@ -1265,10 +1292,35 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
                 type: selectedType,
                 targetDate: targetDate,
                 reserveMoney: fundingMethod == GoalFundingMethod.reserve,
+
                 recurringRule: selectedType == GoalType.recurring
                     ? frequency.name
                     : null,
+
+                contributionAmount:
+                    selectedType == GoalType.recurring &&
+                        planningMode == 'amount'
+                    ? _periodAmount
+                    : null,
+
+                nextDueDate: selectedType == GoalType.recurring
+                    ? startDate
+                    : null,
               );
+
+              if (selectedType == GoalType.recurring &&
+                  planningMode == 'amount' &&
+                  _periodAmount > _targetAmount) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Contribution amount cannot exceed target amount',
+                    ),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
 
               await _goalService.add(goal);
 

@@ -39,6 +39,18 @@ class Goal {
   @HiveField(8)
   final String? recurringRule;
 
+  @HiveField(9)
+  final double? contributionAmount;
+
+  @HiveField(10)
+  final DateTime? nextDueDate;
+
+  @HiveField(11)
+  final String? preferredSourceAccountId;
+
+  @HiveField(12)
+  final String? preferredSavingAccountId;
+
   Goal({
     required this.id,
     required this.title,
@@ -49,6 +61,11 @@ class Goal {
     required this.status,
     this.notes,
     this.recurringRule,
+    this.contributionAmount,
+    this.nextDueDate,
+
+    this.preferredSourceAccountId,
+    this.preferredSavingAccountId,
   });
 
   factory Goal.create({
@@ -59,6 +76,12 @@ class Goal {
     bool reserveMoney = false,
     String? notes,
     String? recurringRule,
+
+    double? contributionAmount,
+    DateTime? nextDueDate,
+
+    String? preferredSourceAccountId,
+    String? preferredSavingAccountId,
   }) {
     return Goal(
       id: const Uuid().v4(),
@@ -70,6 +93,10 @@ class Goal {
       status: GoalStatus.active,
       notes: notes,
       recurringRule: recurringRule,
+      contributionAmount: contributionAmount,
+      nextDueDate: nextDueDate,
+      preferredSourceAccountId: preferredSourceAccountId,
+      preferredSavingAccountId: preferredSavingAccountId,
     );
   }
 
@@ -78,6 +105,12 @@ class Goal {
     GoalType? type,
     String? notes,
     String? recurringRule,
+
+    double? contributionAmount,
+    DateTime? nextDueDate,
+
+    String? preferredSourceAccountId,
+    String? preferredSavingAccountId,
   }) {
     return Goal(
       id: id,
@@ -89,6 +122,14 @@ class Goal {
       status: status ?? this.status,
       notes: notes ?? this.notes,
       recurringRule: recurringRule ?? this.recurringRule,
+      contributionAmount: contributionAmount ?? this.contributionAmount,
+      nextDueDate: nextDueDate ?? this.nextDueDate,
+
+      preferredSourceAccountId:
+          preferredSourceAccountId ?? this.preferredSourceAccountId,
+
+      preferredSavingAccountId:
+          preferredSavingAccountId ?? this.preferredSavingAccountId,
     );
   }
 }

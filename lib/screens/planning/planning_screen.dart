@@ -8,6 +8,7 @@ import '../../services/current_account_service.dart';
 import '../../models/reserved_money.dart';
 import '../../models/enums/reserved_money_type.dart';
 import 'goals_screen.dart';
+import '../../services/goal_schedule_service.dart';
 
 class PlanningScreen extends StatelessWidget {
   const PlanningScreen({super.key});
@@ -21,30 +22,17 @@ class PlanningScreen extends StatelessWidget {
 
     final currentAccountService = CurrentAccountService();
     final accountId = currentAccountService.getFirstActiveAccountId();
-    final balanceService = BalanceService();
-    final reservedService = ReservedMoneyService();
+    final goalScheduleService = GoalScheduleService();
 
-    final realBalance = accountId.isNotEmpty
-        ? balanceService.getBalance(accountId)
-        : 0.0;
-
-    final reservedAmount = accountId.isNotEmpty
-        ? reservedService.getReservedAmount(accountId)
-        : 0.0;
-
-    final availableBalance = accountId.isNotEmpty
-        ? balanceService.getAvailableBalance(accountId)
-        : 0.0;
-
-    final reservedItems = accountId.isNotEmpty
-        ? reservedService.getByAccount(accountId)
-        : <ReservedMoney>[];
+    final dueGoals = goalScheduleService.getDueGoals();
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0F1115),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 8),
 
@@ -53,37 +41,98 @@ class PlanningScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: isTablet ? 32 : 28,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
 
               Text(
                 t.planTrackAchieve,
                 style: TextStyle(
-                  color: Colors.grey,
+                  color: Colors.grey.shade400,
                   fontSize: isTablet ? 16 : 14,
                 ),
               ),
+              const SizedBox(height: 20),
 
-              const SizedBox(height: 16),
+              if (dueGoals.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.orange.withOpacity(0.2),
+                        Colors.orange.withOpacity(0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.orange.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.notifications_active,
+                            color: Colors.orange,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${dueGoals.length} scheduled goal(s) due',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      ...dueGoals.map(
+                        (goal) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            '• ${goal.title} | ${goal.reserveMoney ? "Reserve" : "Saving"} | ${goal.contributionAmount ?? 0} EGP',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
+              const SizedBox(height: 6),
+
+              // Summary Cards (Horizontal)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    // ✅ Budget Card - بدون Navigation حالياً
                     _summaryCard(
                       context: context,
                       title: t.budget,
                       subtitle: t.stayOnTrack,
-                      value: "4300 / 7000",
+                      value: "4,300 / 7,000",
                       color: Colors.green,
                       icon: Icons.pie_chart,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0B3D2E), Color(0xFF0F5C3A)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                     ),
                     const SizedBox(width: 12),
-
-                    // ✅ Goals Card - مع Navigation إلى GoalsScreen
                     GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -95,21 +144,29 @@ class PlanningScreen extends StatelessWidget {
                         context: context,
                         title: t.goals,
                         subtitle: t.makingProgress,
-                        value: "8500",
+                        value: "8,500",
                         color: Colors.purple,
                         icon: Icons.flag,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF2D1B4E), Color(0xFF4A2B7A)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
-
-                    // ✅ Reserved Card - بدون Navigation حالياً
                     _summaryCard(
                       context: context,
-                      title: t.reserved,
-                      subtitle: t.safetyFirst,
-                      value: reservedAmount.toStringAsFixed(0),
-                      color: Colors.orange,
-                      icon: Icons.lock,
+                      title: 'Recurring',
+                      subtitle: 'Scheduled items',
+                      value: '12',
+                      color: Colors.blue,
+                      icon: Icons.repeat,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0A2A4A), Color(0xFF0F3D6B)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                     ),
                   ],
                 ),
@@ -117,25 +174,11 @@ class PlanningScreen extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              _reservedHero(
-                context,
-                t,
-                isSmallScreen,
-                realBalance,
-                reservedAmount,
-                availableBalance,
-                reservedItems,
-              ),
+              _buildActionsRequiredCard(),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-              Column(
-                children: [
-                  _budgetOverview(t),
-                  const SizedBox(height: 16),
-                  _goalsOverview(t),
-                ],
-              ),
+              _buildComingUpCard(),
             ],
           ),
         ),
@@ -150,396 +193,274 @@ class PlanningScreen extends StatelessWidget {
     required String value,
     required Color color,
     required IconData icon,
+    required LinearGradient gradient,
   }) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = (screenWidth * 0.28).clamp(100.0, 140.0);
+    final cardWidth = (screenWidth * 0.28).clamp(110.0, 150.0);
 
     return SizedBox(
       width: cardWidth,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 11),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.3),
+              blurRadius: 12,
+              spreadRadius: 2,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 20),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white54,
+                  size: 14,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(color: Colors.white54, fontSize: 10),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionsRequiredCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF1A1A2E).withOpacity(0.8),
+            const Color(0xFF16213E).withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 12,
+            spreadRadius: 2,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.red,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Actions Required',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _reservedHero(
-    BuildContext context,
-    AppLocalizations t,
-    bool isSmallScreen,
-    double realBalance,
-    double reservedAmount,
-    double availableBalance,
-    List<ReservedMoney> reservedItems,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.lock, color: Colors.orange),
-                const SizedBox(width: 8),
-                Text(
-                  t.reservedMoney,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            isSmallScreen
-                ? Wrap(
-                    alignment: WrapAlignment.spaceAround,
-                    runSpacing: 12,
-                    children: [
-                      _balanceItem(
-                        t.real,
-                        realBalance.toStringAsFixed(0),
-                        Colors.green,
-                        isSmallScreen,
-                      ),
-                      _balanceItem(
-                        t.reserved,
-                        reservedAmount.toStringAsFixed(0),
-                        Colors.orange,
-                        isSmallScreen,
-                      ),
-                      _balanceItem(
-                        t.available,
-                        availableBalance.toStringAsFixed(0),
-                        Colors.blue,
-                        isSmallScreen,
-                      ),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      Expanded(
-                        child: _balanceItem(
-                          t.real,
-                          realBalance.toStringAsFixed(0),
-                          Colors.green,
-                          isSmallScreen,
-                        ),
-                      ),
-                      Expanded(
-                        child: _balanceItem(
-                          t.reserved,
-                          reservedAmount.toStringAsFixed(0),
-                          Colors.orange,
-                          isSmallScreen,
-                        ),
-                      ),
-                      Expanded(
-                        child: _balanceItem(
-                          t.available,
-                          availableBalance.toStringAsFixed(0),
-                          Colors.blue,
-                          isSmallScreen,
-                        ),
-                      ),
-                    ],
-                  ),
-
-            const SizedBox(height: 20),
-            const Divider(),
-
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                t.topReservedItems,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            ...reservedItems.map(
-              (item) => ListTile(
-                dense: true,
-                leading: CircleAvatar(child: Icon(_getIconForType(item.type))),
-                title: Text(
-                  item.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  _getTypeLabel(t, item.type),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: Text(item.amount.toStringAsFixed(0)),
-              ),
-            ),
-
-            if (reservedItems.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(t.noReservedItemsYet),
-              ),
-
-            const SizedBox(height: 12),
-            FilledButton(onPressed: () {}, child: Text(t.viewAll)),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  IconData _getIconForType(ReservedMoneyType type) {
-    switch (type) {
-      case ReservedMoneyType.fixed:
-        return Icons.home;
-      case ReservedMoneyType.bucket:
-        return Icons.fastfood;
-      case ReservedMoneyType.goal:
-        return Icons.flag;
-      default:
-        return Icons.lock;
-    }
-  }
-
-  String _getTypeLabel(AppLocalizations t, ReservedMoneyType type) {
-    switch (type) {
-      case ReservedMoneyType.fixed:
-        return t.fixed;
-      case ReservedMoneyType.bucket:
-        return t.bucket;
-      case ReservedMoneyType.goal:
-        return t.goal;
-      default:
-        return t.reserved;
-    }
-  }
-
-  Widget _balanceItem(
-    String title,
-    String value,
-    Color color,
-    bool isSmallScreen,
-  ) {
-    return Column(
-      children: [
-        Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-            fontSize: isSmallScreen ? 16 : 18,
+          const SizedBox(height: 16),
+          _actionTile(
+            icon: Icons.credit_card,
+            title: 'Visa Payment',
+            amount: '1,200 EGP',
+            color: Colors.red,
           ),
-        ),
-      ],
-    );
-  }
-
-  // Mock data مؤقتة لحين ربط Budget و Goals
-  final List<_PlanningItem> _budgetItems = const [
-    _PlanningItem(
-      icon: "🍔",
-      titleKey: "food",
-      percent: "80%",
-      isReserved: true,
-    ),
-    _PlanningItem(
-      icon: "👕",
-      titleKey: "shopping",
-      percent: "35%",
-      isReserved: false,
-    ),
-    _PlanningItem(
-      icon: "🚕",
-      titleKey: "transport",
-      percent: "90%",
-      isReserved: true,
-    ),
-  ];
-
-  final List<_PlanningItem> _goalItems = const [
-    _PlanningItem(
-      icon: "✈️",
-      titleKey: "travel",
-      percent: "30%",
-      isReserved: true,
-    ),
-    _PlanningItem(
-      icon: "🚗",
-      titleKey: "newCar",
-      percent: "10%",
-      isReserved: false,
-    ),
-    _PlanningItem(
-      icon: "🎓",
-      titleKey: "education",
-      percent: "7.5%",
-      isReserved: false,
-    ),
-  ];
-
-  Widget _budgetOverview(AppLocalizations t) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              t.budgetOverview,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            const LinearProgressIndicator(value: .61),
-            const SizedBox(height: 16),
-            ..._budgetItems.map((item) => _buildPlanningRow(t, item)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlanningRow(AppLocalizations t, _PlanningItem item) {
-    String title;
-    switch (item.titleKey) {
-      case "food":
-        title = t.food;
-        break;
-      case "shopping":
-        title = t.shopping;
-        break;
-      case "transport":
-        title = t.transport;
-        break;
-      case "travel":
-        title = t.travel;
-        break;
-      case "newCar":
-        title = t.newCar;
-        break;
-      case "education":
-        title = t.education;
-        break;
-      default:
-        title = item.titleKey;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Row(
-              children: [
-                Text(item.icon),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
+          const Divider(color: Colors.white12, height: 1),
+          _actionTile(
+            icon: Icons.flag,
+            title: 'Car Goal',
+            amount: '500 EGP',
+            color: Colors.orange,
           ),
-
-          SizedBox(
-            width: 110,
-            child: item.isReserved
-                ? Chip(
-                    label: Text(t.reserved),
-                    avatar: const Icon(Icons.lock, size: 14),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                  )
-                : const SizedBox(),
-          ),
-
-          const SizedBox(width: 12),
-
-          Text(
-            item.percent,
-            style: const TextStyle(fontWeight: FontWeight.w500),
+          const Divider(color: Colors.white12, height: 1),
+          _actionTile(
+            icon: Icons.repeat,
+            title: 'Netflix',
+            amount: '250 EGP',
+            color: Colors.purple,
           ),
         ],
       ),
     );
   }
 
-  Widget _goalsOverview(AppLocalizations t) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              t.goalsOverview,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            const LinearProgressIndicator(value: .24),
-            const SizedBox(height: 16),
-            ..._goalItems.map((item) => _buildPlanningRow(t, item)),
+  Widget _buildComingUpCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF0A1F2E).withOpacity(0.8),
+            const Color(0xFF0F2A3A).withOpacity(0.8),
           ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 12,
+            spreadRadius: 2,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.calendar_today,
+                  color: Colors.blue,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Coming Up',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _actionTile(
+            icon: Icons.payments,
+            title: 'Salary',
+            amount: '+12,000 EGP',
+            color: Colors.green,
+          ),
+          const Divider(color: Colors.white12, height: 1),
+          _actionTile(
+            icon: Icons.home,
+            title: 'Rent Income',
+            amount: '+3,500 EGP',
+            color: Colors.green,
+          ),
+          const Divider(color: Colors.white12, height: 1),
+          _actionTile(
+            icon: Icons.account_balance,
+            title: 'Loan Installment',
+            amount: '-800 EGP',
+            color: Colors.red,
+          ),
+        ],
       ),
     );
   }
-}
 
-class _PlanningItem {
-  final String icon;
-  final String titleKey;
-  final String percent;
-  final bool isReserved;
-
-  const _PlanningItem({
-    required this.icon,
-    required this.titleKey,
-    required this.percent,
-    required this.isReserved,
-  });
+  Widget _actionTile({
+    required IconData icon,
+    required String title,
+    required String amount,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: color.withOpacity(0.15),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            amount,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

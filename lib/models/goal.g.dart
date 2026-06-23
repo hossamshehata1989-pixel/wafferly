@@ -26,13 +26,17 @@ class GoalAdapter extends TypeAdapter<Goal> {
       status: fields[5] as GoalStatus,
       notes: fields[7] as String?,
       recurringRule: fields[8] as String?,
+      contributionAmount: fields[9] as double?,
+      nextDueDate: fields[10] as DateTime?,
+      preferredSourceAccountId: fields[11] as String?,
+      preferredSavingAccountId: fields[12] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Goal obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -50,7 +54,15 @@ class GoalAdapter extends TypeAdapter<Goal> {
       ..writeByte(7)
       ..write(obj.notes)
       ..writeByte(8)
-      ..write(obj.recurringRule);
+      ..write(obj.recurringRule)
+      ..writeByte(9)
+      ..write(obj.contributionAmount)
+      ..writeByte(10)
+      ..write(obj.nextDueDate)
+      ..writeByte(11)
+      ..write(obj.preferredSourceAccountId)
+      ..writeByte(12)
+      ..write(obj.preferredSavingAccountId);
   }
 
   @override

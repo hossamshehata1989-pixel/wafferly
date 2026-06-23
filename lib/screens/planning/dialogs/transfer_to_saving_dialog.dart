@@ -17,8 +17,14 @@ Future<TransferToSavingResult?> showTransferToSavingDialog({
 }) async {
   double percentage = 100;
   bool isValid = true;
-  String? selectedSavingId;
-  String? selectedSourceId;
+  String? selectedSavingId = savingAccounts.isNotEmpty
+      ? savingAccounts.first.id
+      : null;
+
+  String? selectedSourceId =
+      requireSourceAccount && liquidityAccounts.isNotEmpty
+      ? liquidityAccounts.first.id
+      : null;
 
   final controller = TextEditingController(
     text: availableAmount.toStringAsFixed(2),
@@ -32,16 +38,6 @@ Future<TransferToSavingResult?> showTransferToSavingDialog({
       ),
     );
     return null;
-  }
-
-  if (selectedSavingId == null && savingAccounts.isNotEmpty) {
-    selectedSavingId = savingAccounts.first.id;
-  }
-
-  if (requireSourceAccount &&
-      selectedSourceId == null &&
-      liquidityAccounts.isNotEmpty) {
-    selectedSourceId = liquidityAccounts.first.id;
   }
 
   return await showModalBottomSheet<TransferToSavingResult>(
