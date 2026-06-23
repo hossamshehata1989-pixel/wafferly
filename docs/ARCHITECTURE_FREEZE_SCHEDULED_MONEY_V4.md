@@ -366,6 +366,46 @@ Investment domain owns positions and valuations. Accounts own money location.
 
 ---
 
+# Current Legacy Exceptions
+
+Current Legacy Exceptions
+
+Goal
+├ recurringRule
+├ contributionAmount
+└ nextDueDate
+
+Reason:
+Schedule Engine not implemented yet.
+
+Migration:
+Deferred Migration #1
+
+
+---
+
+# Deferred Migrations
+
+## Goal Scheduling Migration
+
+Current State:
+Goal
+├ recurringRule
+├ contributionAmount
+└ nextDueDate
+
+Future State:
+Goal
+└ GoalContributionPlan
+      └ ScheduleRule
+            └ ScheduleOccurrence
+
+Status:
+Deferred
+
+Reason:
+Avoid premature refactor until Schedule Engine is implemented.
+
 # Final Rule
 
 Schedule Engine says WHEN.
