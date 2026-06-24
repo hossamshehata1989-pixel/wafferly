@@ -11,6 +11,7 @@ import 'planning/planning_screen.dart';
 import '../constants/transaction_constants.dart';
 import '../features/members/screens/members_screen.dart';
 import 'package:wafferly/features/settings/presentation/screens/settings_screen.dart';
+import 'manage/manage_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -26,7 +27,7 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _pages = const [
     AccountsScreen(),
     TransactionsScreen(),
-    PlanningScreen(),
+    ManageScreen(),
     AnalysisScreen(),
     SizedBox(),
   ];
@@ -98,8 +99,9 @@ class _MainNavigationState extends State<MainNavigation> {
             label: 'Transactions',
           ),
           const BottomNavigationBarItem(
-            icon: Icon(Icons.auto_graph),
-            label: 'Planning',
+            icon: Icon(Icons.dashboard_customize_outlined),
+            activeIcon: Icon(Icons.dashboard_customize),
+            label: 'Manage',
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.analytics_outlined),
