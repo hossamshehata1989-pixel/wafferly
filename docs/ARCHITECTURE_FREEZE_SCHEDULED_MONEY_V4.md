@@ -406,6 +406,222 @@ Deferred
 Reason:
 Avoid premature refactor until Schedule Engine is implemented.
 
+---
+# Financial Network Freeze
+
+Status: FROZEN
+
+## Core Rule
+
+Accounts are the financial network root.
+
+Accounts represent financial positions.
+
+Transactions change account balances.
+
+Ledger proves financial history.
+
+## Account Groups
+
+The Financial Network contains:
+
+- Money You Have
+- Liabilities
+- Investments
+- Receivables
+- Savings
+
+## Money You Have
+
+Represents liquid money controlled by the user.
+
+Examples:
+
+- Bank Account
+- Debit Card
+- Cash
+- Electronic Wallet
+
+Nature:
+Asset
+
+## Liabilities
+
+Represents money the user currently owes.
+
+Examples:
+
+- Credit Card
+- Loan
+- Borrowed Money
+- Temporary Debt
+
+Nature:
+Liability
+
+Liability accounts affect Net Worth.
+
+Liability accounts may be created and managed from Manage > Debts, but they appear in Accounts > Financial Network.
+
+## Investments
+
+Represents assets intended for growth or market exposure.
+
+Examples:
+
+- Gold
+- Stocks
+- Certificates
+
+Nature:
+Asset
+
+Investments are separate from Savings.
+
+Investment accounts may require investment-specific metadata later, but ownership remains rooted in Accounts.
+
+## Receivables
+
+Represents money the user expects to receive because another party owes the user.
+
+Examples:
+
+- Lent Money
+
+Nature:
+Asset
+
+Receivables are not income until money is actually received through a Transaction.
+
+## Savings
+
+Represents real saving accounts and virtual saving views.
+
+Examples:
+
+- Real Savings Account
+- Virtual Saving Goal
+- Virtual Reserve Bucket
+
+Rules:
+
+- Real Savings Account is an Account.
+- Virtual Saving Goal is not a real Account.
+- Virtual Reserve Bucket is not a real Account.
+- Virtual saving and reserve nodes are derived from Goals, Budgets, Allocations, and Reserved Money projections.
+
+## Financial Network Boundary
+
+Allowed:
+
+```text
+Manage > Debts
+  creates or manages liability Accounts
+
+Accounts > Financial Network
+  displays those Accounts structurally
+```
+
+Forbidden:
+
+```text
+Debt domain owns a separate balance disconnected from Account
+
+Virtual Goal owns real money
+
+Virtual Reserve Bucket becomes a real Account
+```
+
+## Final Financial Network Rule
+
+Account owns financial position.
+
+Domain-specific profiles own specialized rules.
+
+Commitments own future expectations.
+
+Transactions own actual movement.
+
+---
+
+# Saving Circle Lifecycle
+
+Status: FROZEN
+
+Official name:
+Saving Circle
+
+Internal/historical name:
+ROSCA
+
+## Core Rule
+
+Saving Circle is not automatically a liability.
+
+Saving Circle becomes a liability only after payout is received and future installments remain due.
+
+## Lifecycle States
+
+### Waiting
+
+The user is contributing to the circle.
+
+No payout has been received.
+
+No liability exists yet.
+
+Financial treatment:
+
+- Contributions are actual Transactions when paid.
+- No liability account is created only because the user joined the circle.
+
+### Received
+
+The user has received the payout.
+
+Remaining installments now represent a current obligation.
+
+Financial treatment:
+
+- Create or activate a Saving Circle Liability Account.
+- Future installment expectations may be represented as Commitments.
+- Actual installment payments are Transactions.
+
+### Completed
+
+All remaining installments have been paid.
+
+No outstanding obligation remains.
+
+Financial treatment:
+
+- Liability balance reaches zero.
+- Saving Circle may be archived.
+- Historical Transactions and Ledger entries remain.
+
+## Relationship With Schedule Engine
+
+ScheduleRule owns installment timing.
+
+Commitment owns future installment expectation.
+
+Transaction records each paid installment.
+
+Account represents the current liability only after payout is received.
+
+## Boundary Rule
+
+Before payout:
+Saving Circle is participation/history, not liability.
+
+After payout:
+Saving Circle may create a liability Account for remaining obligations.
+
+At completion:
+Liability is settled, history remains.
+
+---
+
 # Final Rule
 
 Schedule Engine says WHEN.
@@ -418,4 +634,3 @@ Ledger proves it.
 
 Status:
 FROZEN
-\
