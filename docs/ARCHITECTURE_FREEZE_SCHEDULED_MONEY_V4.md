@@ -447,14 +447,47 @@ Asset
 
 ## Liabilities
 
-Represents money the user currently owes.
+1) Liability Types
 
-Examples:
+Supported Liability Types
 
 - Credit Card
 - Loan
+- Installment
 - Borrowed Money
 - Temporary Debt
+
+2) Liability Metadata Rule
+Liability accounts may own:
+
+- Original Amount
+- Remaining Balance
+- Down Payment
+- Interest
+- Administrative Fees
+- Settlement Amount
+- Due Information
+- Provider Information
+
+3) Smart Import Future Rule
+
+Future Smart Import
+
+Liability accounts may be created or updated from:
+
+- Bank SMS
+- Email Statements
+- OCR Documents
+- PDF Contracts
+- AI Extraction Pipelines
+
+Imported data must be validated before affecting financial truth.
+
+
+
+Represents money the user currently owes.
+
+
 
 Nature:
 Liability

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../models/account.dart';
 import '../../services/account_service.dart';
 import '../../models/enums/account_enums.dart';
+import '../accounts/add_account/add_account_screen.dart';
+import '../../models/enums/section_type.dart';
 
 class DebtsScreen extends StatelessWidget {
   const DebtsScreen({super.key});
@@ -33,10 +35,7 @@ class DebtsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Debts')),
 
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // TODO:
-          // Open AddAccountScreen(sectionType: liability)
-        },
+        onPressed: () => _showAddDebtSheet(context),
         icon: const Icon(Icons.add),
         label: const Text('Add Debt'),
       ),
@@ -75,6 +74,118 @@ class DebtsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+void _showAddDebtSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    showDragHandle: true,
+    builder: (_) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _DebtOptionTile(
+              title: 'Credit Card',
+              icon: Icons.credit_card,
+              onTap: () {
+                Navigator.pop(context);
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AddAccountScreen(
+                      sectionType: SectionType.liability,
+                      initialAccountType: 'creditCard',
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            _DebtOptionTile(
+              title: 'Loan',
+              icon: Icons.account_balance,
+              onTap: () {
+                Navigator.pop(context);
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AddAccountScreen(
+                      sectionType: SectionType.liability,
+                      initialAccountType: 'loan',
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            _DebtOptionTile(
+              title: 'Installment',
+              icon: Icons.calendar_month,
+              onTap: () {
+                Navigator.pop(context);
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AddAccountScreen(
+                      sectionType: SectionType.liability,
+                      initialAccountType: 'installment',
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            _DebtOptionTile(
+              title: 'Borrowed Money',
+              icon: Icons.people,
+              onTap: () {
+                Navigator.pop(context);
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AddAccountScreen(
+                      sectionType: SectionType.liability,
+
+                      initialAccountType: 'debt',
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 16),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+class _DebtOptionTile extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _DebtOptionTile({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
     );
   }
 }

@@ -48,7 +48,16 @@ enum AccountTypeOption {
 class AddAccountScreen extends StatefulWidget {
   final SectionType? sectionType;
   final Account? accountToEdit;
-  const AddAccountScreen({super.key, this.sectionType, this.accountToEdit});
+
+  // NEW
+  final String? initialAccountType;
+
+  const AddAccountScreen({
+    super.key,
+    this.sectionType,
+    this.accountToEdit,
+    this.initialAccountType,
+  });
 
   @override
   State<AddAccountScreen> createState() => _AddAccountScreenState();
@@ -119,12 +128,15 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   @override
   void initState() {
     super.initState();
+
     if (widget.accountToEdit != null) {
       _nameController.text = widget.accountToEdit!.name;
       _selectedType = widget.accountToEdit!.type;
       _selectedCurrency = widget.accountToEdit!.currency;
       _notesController.text = widget.accountToEdit!.notes ?? '';
       _loadCurrentBalance();
+    } else {
+      _selectedType = widget.initialAccountType ?? '';
     }
   }
 
