@@ -126,6 +126,27 @@ Not actively used.
 
 Future review required.
 
+
+### Debt Domain Evolution
+
+Status:
+
+DOCUMENTED
+
+Current Understanding:
+
+Credit Cards, Loans, Borrowed Money,
+and Installments are implemented as
+Liability Accounts during MVP.
+
+Future contract-specific logic is expected
+to evolve without changing Financial Network ownership.
+
+Reference:
+
+ARCHITECTURE_FREEZE_SCHEDULED_MONEY_V4.md
+MANAGE_V1.md
+
 ---
 
 # Missing Domain Documents

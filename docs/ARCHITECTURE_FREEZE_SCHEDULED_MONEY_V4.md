@@ -411,6 +411,40 @@ Avoid premature refactor until Schedule Engine is implemented.
 
 Status: FROZEN
 
+## Liability Accounts (Transitional MVP Rule)
+
+Current MVP implementation represents:
+
+- Credit Card
+- Loan
+- Borrowed Money
+- Installment
+
+as Liability Accounts inside the Financial Network.
+
+Reason:
+
+- Accounts remain the Financial Truth source.
+- Net Worth requires obligations to be represented structurally.
+- Manage > Debts acts as a workflow layer, not a separate balance layer.
+
+Future Evolution:
+
+Liability Accounts may later gain domain-specific profiles:
+
+- Credit Card Profile
+- Loan Contract
+- Installment Contract
+- Borrowed Money Agreement
+
+without changing Financial Network ownership.
+
+Rule:
+
+Current obligation = Liability Account.
+
+Future payment expectation = Commitment.
+
 ## Core Rule
 
 Accounts are the financial network root.

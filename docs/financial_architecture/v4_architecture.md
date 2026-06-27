@@ -251,6 +251,22 @@ Examples:
 - Borrowed Money
 - Temporary Debt
 
+Current MVP Implementation
+
+The following obligation types are represented as
+Liability Accounts:
+
+- Credit Card
+- Loan
+- Borrowed Money
+- Installment
+- Temporary Debt
+
+Future debt-domain features may introduce specialized
+contract metadata and schedule logic while keeping
+Financial Truth ownership rooted in Accounts.
+
+
 Liabilities affect Net Worth.
 
 ---
@@ -268,6 +284,80 @@ Examples:
 - Loan Payments
 
 Commitments do not affect Net Worth directly.
+
+---
+
+# Commitment Foundation (Phase 0)
+
+Purpose:
+Represent future scheduled financial obligations.
+
+Examples:
+- Loan Payment
+- Credit Card Payment
+- Installment Payment
+- Rent
+- Subscription
+- Salary
+
+Core Models
+
+Commitment
+ScheduleRule
+
+Relationship
+
+Commitment
+    1
+    |
+    | scheduleRuleId
+    |
+    v
+ScheduleRule
+
+Account Relationship
+
+Commitment
+    |
+    | sourceAccountId
+    v
+Account
+
+Optional:
+
+Commitment
+    |
+    | liabilityAccountId
+    v
+Liability Account
+
+Commitment Types
+
+- income
+- expense
+- transfer
+- liabilityPayment
+
+Important Decision
+
+Debt payments are NOT expenses.
+
+Credit card payments,
+loan payments,
+installment payments,
+borrowed money repayments
+
+must use:
+
+CommitmentType.liabilityPayment
+
+Reason:
+
+Avoid double counting expenses.
+Preserve future forecasting.
+Preserve debt payoff workflows.
+Support OCR / SMS parsing.
+
 
 ---
 

@@ -20,6 +20,32 @@ If you are new to the project, read documents in this order:
 
 # Documentation Structure
 
+## Documentation Types
+
+Architecture
+
+Defines business architecture.
+
+Financial Rules
+
+Defines rules that must never be violated.
+
+Domains
+
+Defines business domains.
+
+Patterns
+
+Reserved for future cross-domain architectural patterns.
+
+Implementation
+
+Defines implementation guidance.
+
+Roadmap
+
+Defines future evolution.
+
 ## Financial Architecture
 
 High-level architecture.
@@ -119,6 +145,22 @@ Goals represent purpose.
 Budgets monitor spending.
 
 Liabilities represent obligations.
+
+Liability Accounts
+
+Current obligations are represented as Liability Accounts.
+
+Examples:
+
+- Credit Cards
+- Loans
+- Borrowed Money
+- Installments
+- Temporary Debt
+
+These accounts may later gain debt-specific contracts,
+schedules, OCR imports, SMS parsing, and AI-assisted metadata,
+while remaining rooted in the Financial Network.
 
 Commitments represent expectations.
 

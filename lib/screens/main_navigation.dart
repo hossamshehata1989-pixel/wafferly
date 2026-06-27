@@ -12,6 +12,7 @@ import '../constants/transaction_constants.dart';
 import '../features/members/screens/members_screen.dart';
 import 'package:wafferly/features/settings/presentation/screens/settings_screen.dart';
 import 'manage/manage_screen.dart';
+import 'package:wafferly/features/financial_action_center/financial_action_center.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -23,6 +24,7 @@ class MainNavigation extends StatefulWidget {
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
   bool _showMoreMenu = false;
+  bool _showFinancialActions = true;
 
   final List<Widget> _pages = const [
     AccountsScreen(),
@@ -58,69 +60,101 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          _pages[_selectedIndex],
-          if (_showMoreMenu)
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showMoreMenu = false;
-                });
-              },
-              child: Container(color: Colors.black54),
+    return Stack(
+      children: [
+        IgnorePointer(
+          ignoring: _showFinancialActions,
+          child: Scaffold(
+            body: Stack(
+              children: [
+                _pages[_selectedIndex],
+                if (_showMoreMenu)
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _showMoreMenu = false;
+                      });
+                    },
+                    child: Container(color: Colors.black54),
+                  ),
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  top: 0,
+                  bottom: 0,
+                  right: _showMoreMenu ? 0 : -320,
+                  child: const _MoreDrawer(),
+                ),
+              ],
             ),
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            top: 0,
-            bottom: 0,
-            right: _showMoreMenu ? 0 : -320,
-            child: const _MoreDrawer(),
+            bottomNavigationBar: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: const Color(0xFF3A7BFF),
+              unselectedItemColor: Colors.grey,
+              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+              showUnselectedLabels: true,
+              onTap: _onItemTapped,
+              items: [
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.account_balance_wallet),
+                  label: t.accounts,
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.receipt_long),
+                  label: 'Transactions',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.dashboard_customize_outlined),
+                  activeIcon: Icon(Icons.dashboard_customize),
+                  label: 'Manage',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.analytics_outlined),
+                  activeIcon: Icon(Icons.analytics),
+                  label: 'Analysis',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(_showMoreMenu ? Icons.close : Icons.more_horiz),
+                  label: 'More',
+                ),
+              ],
+            ),
+            floatingActionButton: FloatingActionButton(
+              heroTag: "mainNavigationFab",
+              onPressed: _showAddBottomSheet,
+              backgroundColor: const Color(0xFF3A7BFF),
+              child: const Icon(Icons.add, color: Colors.white),
+            ),
+            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF3A7BFF),
-        unselectedItemColor: Colors.grey,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-        showUnselectedLabels: true,
-        onTap: _onItemTapped,
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.account_balance_wallet),
-            label: t.accounts,
+        ),
+        if (_showFinancialActions)
+          Positioned.fill(
+            child: ModalBarrier(dismissible: false, color: Colors.black54),
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            label: 'Transactions',
+        if (_showFinancialActions)
+          Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: MediaQuery.of(context).size.width * .05,
+                vertical: MediaQuery.of(context).size.height * .08,
+              ),
+              child: Material(
+                elevation: 30,
+                borderRadius: BorderRadius.circular(28),
+                clipBehavior: Clip.antiAlias,
+                child: FinancialActionCenter(
+                  onSkip: () {
+                    setState(() {
+                      _showFinancialActions = false;
+                    });
+                  },
+                ),
+              ),
+            ),
           ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard_customize_outlined),
-            activeIcon: Icon(Icons.dashboard_customize),
-            label: 'Manage',
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.analytics_outlined),
-            activeIcon: Icon(Icons.analytics),
-            label: 'Analysis',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(_showMoreMenu ? Icons.close : Icons.more_horiz),
-            label: 'More',
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: "mainNavigationFab",
-        onPressed: _showAddBottomSheet,
-        backgroundColor: const Color(0xFF3A7BFF),
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      ],
     );
   }
 }
@@ -285,13 +319,9 @@ class _MoreDrawerState extends State<_MoreDrawer> {
             ..._sections.keys.map((title) {
               return _buildExpandableSection(title);
             }),
-
             const SizedBox(height: 12),
-
             Divider(color: Colors.white.withValues(alpha: 0.08)),
-
             settingsTile(),
-
             const SizedBox(height: 80),
           ],
         ),
@@ -306,7 +336,6 @@ class _MoreDrawerState extends State<_MoreDrawer> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // عنوان القسم الرئيسي (Expandable)
         Material(
           color: Colors.transparent,
           child: InkWell(
@@ -338,9 +367,7 @@ class _MoreDrawerState extends State<_MoreDrawer> {
             ),
           ),
         ),
-        // خط فاصل خفيف بين الأقسام
         Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
-        // العناصر الفرعية (تظهر فقط إذا كان القسم مفتوحاً)
         if (isExpanded)
           Padding(
             padding: const EdgeInsets.only(left: 8),

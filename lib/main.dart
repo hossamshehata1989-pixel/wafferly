@@ -42,6 +42,20 @@ import 'models/enums/goal_type.dart';
 
 import 'models/goal_activity.dart';
 
+import 'models/commitment.dart';
+import 'models/schedule_rule.dart';
+
+import 'models/enums/commitment_type.dart';
+import 'models/enums/commitment_status.dart';
+import 'models/enums/commitment_amount_mode.dart';
+import 'models/enums/frequency.dart';
+
+import 'services/financial_action_engine.dart';
+import 'services/providers/commitment_action_provider.dart';
+import 'services/schedule_evaluator.dart';
+
+import 'features/financial_action_center/financial_action_center.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -55,6 +69,7 @@ void main() async {
       false; // Set to true to clear all data on app start (for testing)
   const bool runStressTest = false;
   const bool runActorTest = false;
+  const bool runFinancialActionEngineTest = false;
 
   // ====================================================
   // Optional DB Reset
@@ -184,6 +199,34 @@ void main() async {
   }
 
   // ====================================================
+  // Commitment Foundation
+  // ====================================================
+
+  if (!Hive.isAdapterRegistered(91)) {
+    Hive.registerAdapter(CommitmentTypeAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(92)) {
+    Hive.registerAdapter(CommitmentStatusAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(93)) {
+    Hive.registerAdapter(CommitmentAmountModeAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(94)) {
+    Hive.registerAdapter(FrequencyAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(95)) {
+    Hive.registerAdapter(ScheduleRuleAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(96)) {
+    Hive.registerAdapter(CommitmentAdapter());
+  }
+
+  // ====================================================
   // Open Boxes
   // ====================================================
 
@@ -197,6 +240,9 @@ void main() async {
   await Hive.openBox<MemberModel>('members');
   await Hive.openBox<Allocation>('allocations');
   await Hive.openBox<GoalActivity>('goal_activities');
+  await Hive.openBox<Commitment>('commitments');
+
+  await Hive.openBox<ScheduleRule>('schedule_rules');
 
   // ====================================================
   // Ledger Stress Test
@@ -247,6 +293,38 @@ void main() async {
   // ====================================================
   // Initialize Registries
   // ====================================================
+
+  // ====================================================
+  // Financial Action Engine Test
+  // ====================================================
+
+  if (runFinancialActionEngineTest) {
+    {
+      final engine = FinancialActionEngine(
+        providers: [
+          CommitmentActionProvider(evaluator: const ScheduleEvaluator()),
+        ],
+      );
+
+      final contexts = await engine.getActions(today: DateTime.now());
+
+      debugPrint('');
+      debugPrint('========== FINANCIAL ACTION ENGINE ==========');
+      debugPrint('TOTAL ACTIONS: ${contexts.length}');
+      debugPrint('');
+
+      for (final context in contexts) {
+        debugPrint(
+          '${context.action.state.name.toUpperCase()} | '
+          '${context.action.kind.name} | '
+          '${context.action.title} | '
+          '${context.action.amount}',
+        );
+      }
+
+      debugPrint('=============================================');
+    }
+  }
 
   CategoryRegistry.initialize();
 

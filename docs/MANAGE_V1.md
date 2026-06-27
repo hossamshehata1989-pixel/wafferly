@@ -104,13 +104,17 @@ Allocations reserve planning intent.
 - Credit Cards
 - Loans
 - Borrowed Money
+- Installments
 - Temporary Debt
+- Saving Circle Liability (future)
 
 ## Domain Boundary
 
 Debts is a Manage workflow section.
 
 Internally, debt items are represented as liability Accounts where they represent current obligations.
+
+Debt-specific screens may create, edit, explain, and settle liability Accounts.
 
 Debt-specific screens may create, edit, explain, and settle liability Accounts.
 

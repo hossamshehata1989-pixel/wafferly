@@ -15,6 +15,7 @@ import 'package:wafferly/screens/accounts/group_accounts_screen.dart';
 import 'widgets/section_summary_card.dart';
 import 'widgets/net_worth_card.dart';
 import 'controllers/accounts_screen_controller.dart';
+import 'package:wafferly/features/financial_action_center/financial_action_center.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -128,115 +129,126 @@ class _AccountsScreenState extends State<AccountsScreen> {
     final isTablet = screenWidth >= 600;
     final isLargeTablet = screenWidth >= 900;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F1115),
-      appBar: AppBar(
-        title: Text(
-          t.accounts,
-          style: TextStyle(
-            fontSize: isSmallPhone ? 18 : 20,
-            fontWeight: FontWeight.bold,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: const Color(0xFF0F1115),
+          appBar: AppBar(
+            title: Text(
+              t.accounts,
+              style: TextStyle(
+                fontSize: isSmallPhone ? 18 : 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: false,
+            actions: [
+              IconButton(icon: const Icon(Icons.search), onPressed: () {}),
+            ],
+          ),
+
+          // TODO:
+          // Replace ValueListenableBuilder with AnimatedBuilder
+          // listening to Accounts + Transactions boxes.
+          body: ValueListenableBuilder(
+            valueListenable: _accountService.box.listenable(),
+            builder: (context, Box<Account> box, _) {
+              final accounts = _accountService.getAllActiveAccounts();
+
+              // DEBUG مؤقت
+              for (final a in accounts) {
+                print(
+                  'DEBUG: ${a.name} | '
+                  'type=${a.type} | '
+                  'storedGroup=${a.group} | '
+                  'resolvedGroup=${resolveGroup(a.type)}',
+                );
+              }
+
+              final data = _controller.buildScreenData(
+                accounts,
+                balanceService,
+              );
+
+              return CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: NetWorthCard(
+                      netWorth: data.netWorth,
+                      totalAssets: data.totalAssets,
+                      totalLiabilities: data.totalLiabilities,
+                      isTablet: isTablet,
+                    ),
+                  ),
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: 16),
+                  ), // Spacing
+                  _buildSection(
+                    // 💰 Money You Have
+                    t.moneyYouHave,
+                    Icons.account_balance_wallet,
+                    data.moneyHave,
+                    balanceService,
+                    Colors.green,
+                    isTablet,
+                    isLargeTablet,
+                    () => _addAccount('asset'),
+                    false,
+                  ),
+                  _buildSection(
+                    //
+                    t.savings,
+                    Icons.savings,
+                    data.savings,
+                    balanceService,
+                    Colors.teal,
+                    isTablet,
+                    isLargeTablet,
+                    () => _addAccount('saving'),
+                    false,
+                  ),
+                  _buildSection(
+                    t.investments,
+                    Icons.trending_up,
+                    data.investments,
+                    balanceService,
+                    Colors.orange,
+                    isTablet,
+                    isLargeTablet,
+                    () => _addAccount('investment'),
+                    false,
+                  ),
+                  _buildSection(
+                    t.moneyYouOwe,
+                    Icons.credit_card,
+                    data.liabilities,
+                    balanceService,
+                    Colors.red,
+                    isTablet,
+                    isLargeTablet,
+                    () => _addAccount('liability'),
+                    false,
+                  ),
+                  _buildSection(
+                    t.moneyYouWillGet,
+                    Icons.handshake,
+                    data.receivables,
+                    balanceService,
+                    Colors.blue,
+                    isTablet,
+                    isLargeTablet,
+                    () => _addAccount('receivable'),
+                    false,
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 80)),
+                ],
+              );
+            },
           ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: false,
-        actions: [IconButton(icon: const Icon(Icons.search), onPressed: () {})],
-      ),
-
-      // TODO:
-      // Replace ValueListenableBuilder with AnimatedBuilder
-      // listening to Accounts + Transactions boxes.
-      body: ValueListenableBuilder(
-        valueListenable: _accountService.box.listenable(),
-        builder: (context, Box<Account> box, _) {
-          final accounts = _accountService.getAllActiveAccounts();
-
-          // DEBUG مؤقت
-          for (final a in accounts) {
-            print(
-              'DEBUG: ${a.name} | '
-              'type=${a.type} | '
-              'storedGroup=${a.group} | '
-              'resolvedGroup=${resolveGroup(a.type)}',
-            );
-          }
-
-          final data = _controller.buildScreenData(accounts, balanceService);
-
-          return CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: NetWorthCard(
-                  netWorth: data.netWorth,
-                  totalAssets: data.totalAssets,
-                  totalLiabilities: data.totalLiabilities,
-                  isTablet: isTablet,
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)), // Spacing
-              _buildSection(
-                // 💰 Money You Have
-                t.moneyYouHave,
-                Icons.account_balance_wallet,
-                data.moneyHave,
-                balanceService,
-                Colors.green,
-                isTablet,
-                isLargeTablet,
-                () => _addAccount('asset'),
-                false,
-              ),
-              _buildSection(
-                //
-                t.savings,
-                Icons.savings,
-                data.savings,
-                balanceService,
-                Colors.teal,
-                isTablet,
-                isLargeTablet,
-                () => _addAccount('saving'),
-                false,
-              ),
-              _buildSection(
-                t.investments,
-                Icons.trending_up,
-                data.investments,
-                balanceService,
-                Colors.orange,
-                isTablet,
-                isLargeTablet,
-                () => _addAccount('investment'),
-                false,
-              ),
-              _buildSection(
-                t.moneyYouOwe,
-                Icons.credit_card,
-                data.liabilities,
-                balanceService,
-                Colors.red,
-                isTablet,
-                isLargeTablet,
-                () => _addAccount('liability'),
-                false,
-              ),
-              _buildSection(
-                t.moneyYouWillGet,
-                Icons.handshake,
-                data.receivables,
-                balanceService,
-                Colors.blue,
-                isTablet,
-                isLargeTablet,
-                () => _addAccount('receivable'),
-                false,
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 80)),
-            ],
-          );
-        },
-      ),
+      ],
     );
   }
 

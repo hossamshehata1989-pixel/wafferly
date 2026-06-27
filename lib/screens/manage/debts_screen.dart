@@ -5,6 +5,7 @@ import '../../services/account_service.dart';
 import '../../models/enums/account_enums.dart';
 import '../accounts/add_account/add_account_screen.dart';
 import '../../models/enums/section_type.dart';
+import '../accounts/account_details_screen.dart';
 
 class DebtsScreen extends StatelessWidget {
   const DebtsScreen({super.key});
@@ -240,11 +241,23 @@ class _DebtSection extends StatelessWidget {
               (account) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: Text(account.name),
-                subtitle: Text(account.type),
+                subtitle: Text(
+                  account.type
+                      .replaceAllMapped(
+                        RegExp(r'([A-Z])'),
+                        (m) => ' ${m.group(0)}',
+                      )
+                      .trim(),
+                ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () {
-                  // TODO:
-                  // Debt Details Screen
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AccountDetailsScreen(accountId: account.id),
+                    ),
+                  );
                 },
               ),
             ),

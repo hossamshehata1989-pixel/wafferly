@@ -356,6 +356,23 @@ Perform financial actions without confirmation
 
 User confirmation is always required.
 
+
+Rule 21
+
+Authorized Domain Operations
+
+Financial Truth may only be created or modified through authorized domain operations.
+
+Authorization may come from:
+
+- User Confirmation
+- Execution Policy
+- Verified Financial Evidence
+
+Time alone must never create or modify Financial Truth.
+
+-------------------------------------------------
+
 Final Principle
 Accounts own money.
 
@@ -384,3 +401,11 @@ Independent Computation Layers.
 Status:
 
 APPROVED ✅
+
+Note
+
+Verified Financial Evidence does not modify Financial Truth directly.
+
+Evidence may participate in authorization.
+
+Authorized domain operations modify Financial Truth.
