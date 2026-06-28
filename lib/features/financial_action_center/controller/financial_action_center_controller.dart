@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../models/scheduled_action_execution_context.dart';
-
 import '../../../services/financial_action_engine.dart';
 
 class FinancialActionCenterController extends ChangeNotifier {
@@ -27,6 +26,11 @@ class FinancialActionCenterController extends ChangeNotifier {
       ..addAll(await engine.getActions(today: DateTime.now()));
 
     _isLoading = false;
+    notifyListeners();
+  }
+
+  void removeAction(ScheduledActionExecutionContext context) {
+    _actions.removeWhere((item) => item.action.id == context.action.id);
     notifyListeners();
   }
 }

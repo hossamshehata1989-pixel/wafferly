@@ -286,3 +286,136 @@ APPROVED
 Reference:
 
 Financial Rules
+
+# ADR-018 — Startup Financial Processing Flow
+
+## Status
+
+Accepted
+
+---
+
+## Context
+
+Wafferly supports multiple execution policies for financial actions.
+
+Some actions can be executed automatically without user interaction
+(e.g. bank SMS confirms a successful payment).
+
+Other actions require explicit user confirmation
+(e.g. recurring payment waiting for approval).
+
+Showing both types inside Financial Action Center creates UX confusion.
+
+The application must distinguish between:
+
+- Actions already executed automatically.
+- Actions waiting for user confirmation.
+
+---
+
+## Decision 
+
+Application startup will follow this sequence:
+
+```
+App Launch
+      │
+      ▼
+Load Financial Action Engine
+      │
+      ▼
+Check Auto Executed Actions
+      │
+      ├── Any?
+      │      │
+      │      ▼
+      │ Auto Processing Screen
+      │
+      ▼
+Check Pending Actions
+      │
+      ├── Any?
+      │      │
+      │      ▼
+      │ Financial Action Center
+      │
+      ▼
+Home Screen
+```
+
+---
+
+### Auto Processing Screen
+
+This screen is transient.
+
+Its responsibility is only to inform the user about actions that have already
+been executed automatically.
+
+Examples:
+
+- Salary received
+- Electricity bill paid
+- Netflix payment detected
+- Transfer completed
+
+The screen automatically dismisses after processing.
+
+It is skipped completely when there are no auto-executed actions.
+
+---
+
+### Financial Action Center
+
+This screen contains ONLY actions requiring user interaction.
+
+Examples:
+
+- Pending payment
+- Goal contribution
+- Manual transfer
+- Investment confirmation
+
+Already executed actions MUST NEVER appear here.
+
+---
+
+### Home Screen
+
+The Home screen is shown only after:
+
+- Auto Processing Screen (if needed)
+- Financial Action Center (if needed)
+
+Otherwise it opens immediately.
+
+---
+
+## Consequences
+
+Advantages
+
+- Clear separation between automatic and manual workflows.
+- Financial Action Center remains focused only on pending actions.
+- Users always understand what happened automatically.
+- Startup flow remains deterministic.
+- Easy to extend with future execution policies.
+
+Trade-offs
+
+- One additional startup screen.
+- Startup coordinator becomes responsible for navigation order.
+
+---
+
+## Future Work
+
+Future versions may include:
+
+- Undo for selected automatic executions.
+- Auto Processing history.
+- User-configurable execution policies.
+- Smart batching for large numbers of automatic actions.
+
+This ADR defines navigation only. It does not define the execution engine itself.

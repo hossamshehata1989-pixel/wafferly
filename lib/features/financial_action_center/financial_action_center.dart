@@ -6,6 +6,7 @@ import '../../services/schedule_evaluator.dart';
 
 import 'controller/financial_action_center_controller.dart';
 import 'package:wafferly/features/financial_action_center/screens/financial_action_panel.dart';
+import 'services/financial_action_executor.dart';
 
 class FinancialActionCenter extends StatefulWidget {
   final VoidCallback onSkip;
@@ -18,6 +19,7 @@ class FinancialActionCenter extends StatefulWidget {
 
 class _FinancialActionCenterState extends State<FinancialActionCenter> {
   late final FinancialActionCenterController controller;
+  late final FinancialActionExecutor executor;
 
   @override
   void initState() {
@@ -31,6 +33,7 @@ class _FinancialActionCenterState extends State<FinancialActionCenter> {
       ),
     );
 
+    executor = const FinancialActionExecutor();
     controller.loadActions();
   }
 
@@ -46,8 +49,23 @@ class _FinancialActionCenterState extends State<FinancialActionCenter> {
       animation: controller,
       builder: (_, __) {
         return FinancialActionPanel(
+          isLoading: controller.isLoading,
           actions: controller.actions,
-          onExecute: (_) {},
+          onExecute: (action) async {
+            final success = await executor.execute(context, action);
+
+            if (success) {
+              controller.removeAction(action);
+
+              if (controller.actions.isEmpty) {
+                await Future.delayed(const Duration(milliseconds: 1500));
+
+                if (mounted) {
+                  widget.onSkip();
+                }
+              }
+            }
+          },
           onSkip: widget.onSkip,
         );
       },

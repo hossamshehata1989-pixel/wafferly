@@ -59,6 +59,8 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Stack(
       children: [
@@ -129,27 +131,78 @@ class _MainNavigationState extends State<MainNavigation> {
             floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           ),
         ),
+
+        // Modal Barrier
         if (_showFinancialActions)
           Positioned.fill(
-            child: ModalBarrier(dismissible: false, color: Colors.black54),
+            child: ModalBarrier(
+              dismissible: false,
+              color: isDark
+                  ? Colors.black.withOpacity(0.75)
+                  : Colors.black.withOpacity(0.45),
+            ),
           ),
+
+        // Financial Action Center Sheet
         if (_showFinancialActions)
           Center(
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: MediaQuery.of(context).size.width * .05,
-                vertical: MediaQuery.of(context).size.height * .08,
+                horizontal: MediaQuery.of(context).size.width * 0.05,
+                vertical: MediaQuery.of(context).size.height * 0.06,
               ),
-              child: Material(
-                elevation: 30,
-                borderRadius: BorderRadius.circular(28),
-                clipBehavior: Clip.antiAlias,
-                child: FinancialActionCenter(
-                  onSkip: () {
-                    setState(() {
-                      _showFinancialActions = false;
-                    });
-                  },
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? [
+                            const Color.fromARGB(255, 0, 42, 254),
+                            const Color.fromARGB(255, 64, 214, 9),
+                            const Color.fromARGB(255, 247, 23, 7),
+                          ]
+                        : [
+                            Colors.grey.shade50,
+                            Colors.white,
+                            Colors.grey.shade50,
+                          ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.06)
+                        : Colors.grey.shade300.withOpacity(0.4),
+                    width: 0.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.black.withOpacity(0.5)
+                          : Colors.grey.shade600.withOpacity(0.15),
+                      blurRadius: 60,
+                      offset: const Offset(0, 20),
+                      spreadRadius: 8,
+                    ),
+                    BoxShadow(
+                      color: isDark
+                          ? Colors.black.withOpacity(0.3)
+                          : Colors.grey.shade300.withOpacity(0.2),
+                      blurRadius: 30,
+                      offset: const Offset(0, 8),
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: FinancialActionCenter(
+                    onSkip: () {
+                      setState(() {
+                        _showFinancialActions = false;
+                      });
+                    },
+                  ),
                 ),
               ),
             ),
@@ -296,7 +349,7 @@ class _MoreDrawerState extends State<_MoreDrawer> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
+      color: const Color.fromARGB(0, 0, 0, 0),
       child: Container(
         width: 280,
         padding: const EdgeInsets.only(top: 50, left: 16, right: 16),

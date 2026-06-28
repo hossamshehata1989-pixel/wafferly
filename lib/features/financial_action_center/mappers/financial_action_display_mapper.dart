@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../models/scheduled_action_execution_context.dart';
 import '../../../models/enums/scheduled_action_kind.dart';
-
 import '../models/financial_action_display.dart';
 
 class FinancialActionDisplayMapper {
@@ -14,11 +13,14 @@ class FinancialActionDisplayMapper {
     return FinancialActionDisplay(
       title: action.title,
       subtitle: _subtitle(action.kind),
-      amount: _formatAmount(action.amount),
-      actionLabel: _button(action.kind),
+      amountText: _formatAmount(action.amount),
+      buttonText: _button(action.kind),
       icon: _icon(action.kind),
-      accountName: null,
-      dueLabel: 'Due Today',
+      sourceAccountName:
+          action.sourceAccountId, // مؤقتاً، سيتم استبداله بالاسم الفعلي
+      destinationAccountName: action.destinationAccountId,
+      dueDate: action.dueDate,
+      kind: action.kind,
     );
   }
 
@@ -36,6 +38,8 @@ class FinancialActionDisplayMapper {
         return 'Loan Payment';
       case ScheduledActionKind.budgetReset:
         return 'Budget Reset';
+      case ScheduledActionKind.investment:
+        return 'Investment';
     }
   }
 
@@ -53,6 +57,8 @@ class FinancialActionDisplayMapper {
         return 'Pay';
       case ScheduledActionKind.budgetReset:
         return 'Reset';
+      case ScheduledActionKind.investment:
+        return 'Invest';
     }
   }
 
@@ -70,6 +76,8 @@ class FinancialActionDisplayMapper {
         return Icons.credit_card;
       case ScheduledActionKind.budgetReset:
         return Icons.restart_alt;
+      case ScheduledActionKind.investment:
+        return Icons.trending_up;
     }
   }
 
