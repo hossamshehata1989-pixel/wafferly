@@ -29,13 +29,14 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _pages = const [
     AccountsScreen(),
     TransactionsScreen(),
+    PlanningScreen(),
     ManageScreen(),
     AnalysisScreen(),
     SizedBox(),
   ];
 
   void _onItemTapped(int index) {
-    if (index == 4) {
+    if (index == 5) {
       setState(() {
         _showMoreMenu = !_showMoreMenu;
       });
@@ -106,6 +107,13 @@ class _MainNavigationState extends State<MainNavigation> {
                   icon: Icon(Icons.receipt_long),
                   label: 'Transactions',
                 ),
+
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.flag_outlined),
+                  activeIcon: Icon(Icons.flag),
+                  label: 'Planning',
+                ),
+
                 const BottomNavigationBarItem(
                   icon: Icon(Icons.dashboard_customize_outlined),
                   activeIcon: Icon(Icons.dashboard_customize),

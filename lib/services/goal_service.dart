@@ -25,6 +25,10 @@ class GoalService {
     return _box.get(id);
   }
 
+  Future<void> clear() async {
+    await _box.clear();
+  }
+
   Future<void> delete(String id) async {
     await _box.delete(id);
   }

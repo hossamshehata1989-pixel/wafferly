@@ -2,27 +2,37 @@ import 'package:flutter/material.dart';
 
 import '../../../models/scheduled_action_execution_context.dart';
 
-import '../widgets/financial_action_card.dart';
 import '../mappers/financial_action_display_mapper.dart';
 import '../widgets/financial_action_footer.dart';
 import '../widgets/financial_action_filters.dart';
 import '../widgets/action_day_section.dart';
 import '../widgets/financial_action_card_v2.dart';
+import '../models/financial_action_filter.dart';
+import '../models/financial_action_day_group.dart';
 
 class FinancialActionPanel extends StatelessWidget {
   final VoidCallback onSkip;
 
-  final List<ScheduledActionExecutionContext> actions;
+  final List<FinancialActionDayGroup> groups;
 
   final void Function(ScheduledActionExecutionContext context) onExecute;
   final bool isLoading;
+  final FinancialActionFilter selectedFilter;
+
+  final ValueChanged<FinancialActionFilter> onFilterChanged;
+
+  // ⭐ المضافة
+  final Map<FinancialActionFilter, int> filterCounts;
 
   const FinancialActionPanel({
     super.key,
-    required this.actions,
+    required this.groups,
     required this.onExecute,
     required this.onSkip,
     required this.isLoading,
+    required this.selectedFilter,
+    required this.onFilterChanged,
+    required this.filterCounts, // ✅ إلزامي
   });
 
   @override
@@ -38,14 +48,22 @@ class FinancialActionPanel extends StatelessWidget {
           children: [
             // ========== HEADER ==========
             _FinancialActionHeader(
-              pendingCount: actions.length,
+              pendingCount: groups.fold(
+                0,
+                (sum, group) => sum + group.actions.length,
+              ),
               estimatedDuration: const Duration(seconds: 40),
             ),
-            const SizedBox(height: 8), // ✅ تقليل المسافة
+            const SizedBox(height: 8),
 
-            const FinancialActionFilters(),
+            // ⭐ تمرير filterCounts إلى الـ Filters
+            FinancialActionFilters(
+              selectedFilter: selectedFilter,
+              onFilterChanged: onFilterChanged,
+              counts: filterCounts, // ✅ تم التمرير
+            ),
 
-            const Divider(height: 0.5), // ✅ تقليل ارتفاع الفاصل
+            const Divider(height: 0.5),
             // ========== MAIN CONTENT ==========
             Expanded(
               child: Builder(
@@ -54,7 +72,7 @@ class FinancialActionPanel extends StatelessWidget {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  if (actions.isEmpty) {
+                  if (groups.isEmpty) {
                     return const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -70,13 +88,13 @@ class FinancialActionPanel extends StatelessWidget {
                   }
 
                   return ListView(
-                    padding: EdgeInsets.zero, // ✅ إزالة padding إضافي
-                    children: [
-                      ActionDaySection(
-                        title: 'Today',
-                        count: actions.length,
+                    padding: EdgeInsets.zero,
+                    children: groups.map((group) {
+                      return ActionDaySection(
+                        title: group.group.name.toUpperCase(),
+                        count: group.actions.length,
                         child: Column(
-                          children: actions.map((item) {
+                          children: group.actions.map((item) {
                             final display = mapper.fromContext(item);
 
                             return FinancialActionCardV2(
@@ -85,15 +103,15 @@ class FinancialActionPanel extends StatelessWidget {
                             );
                           }).toList(),
                         ),
-                      ),
-                    ],
+                      );
+                    }).toList(),
                   );
                 },
               ),
             ),
 
             // ========== FOOTER ==========
-            const Divider(height: 0.5), // ✅ تقليل ارتفاع الفاصل
+            const Divider(height: 0.5),
             FinancialActionFooter(onSkip: onSkip),
           ],
         ),
@@ -132,11 +150,11 @@ class _FinancialActionHeader extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(1, 1, 1, 1), // ✅ تقليل padding
+      padding: const EdgeInsets.fromLTRB(1, 1, 1, 1),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(15), // ✅ تصغير الأيقونة
+            padding: const EdgeInsets.all(15),
             child: const Icon(
               Icons.notifications_active_outlined,
               color: Color(0xFF3A7BFF),
@@ -152,7 +170,7 @@ class _FinancialActionHeader extends StatelessWidget {
                 Text(
                   'Financial Actions',
                   style: theme.textTheme.titleMedium?.copyWith(
-                    fontSize: 24, // ✅ تصغير الخط قليلاً
+                    fontSize: 24,
                     fontWeight: FontWeight.w800,
                   ),
                 ),

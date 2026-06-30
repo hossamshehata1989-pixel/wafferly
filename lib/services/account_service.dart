@@ -116,4 +116,10 @@ class AccountService {
   Account? getAccountById(String id) {
     return box.get(id);
   }
+
+  Future<void> clearAllAccounts() async {
+    if (box.isNotEmpty) {
+      await box.clear();
+    }
+  }
 }

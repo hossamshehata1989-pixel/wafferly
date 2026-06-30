@@ -49,8 +49,13 @@ class _FinancialActionCenterState extends State<FinancialActionCenter> {
       animation: controller,
       builder: (_, __) {
         return FinancialActionPanel(
+          filterCounts: controller.counts,
           isLoading: controller.isLoading,
-          actions: controller.actions,
+          groups: controller.visibleGroups,
+
+          selectedFilter: controller.selectedFilter,
+          onFilterChanged: controller.changeFilter,
+
           onExecute: (action) async {
             final success = await executor.execute(context, action);
 
@@ -66,6 +71,7 @@ class _FinancialActionCenterState extends State<FinancialActionCenter> {
               }
             }
           },
+
           onSkip: widget.onSkip,
         );
       },

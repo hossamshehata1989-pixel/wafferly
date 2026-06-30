@@ -123,6 +123,25 @@ Sync Services communicate with Supabase.
 
 ---
 
+## Financial Operation Engine
+
+The FinancialOperationEngine is the orchestration layer responsible for
+executing financial operations safely.
+
+Responsibilities:
+
+- Coordinate validation.
+- Apply execution policies.
+- Build execution plans.
+- Execute financial mutations.
+- Return OperationResult.
+
+The Engine is not a Domain Service.
+
+It orchestrates multiple services without becoming a source of financial truth.
+
+All financial mutations must pass through the FinancialOperationEngine.
+
 # Projection Services Rule
 
 Projection Services must remain synchronous.

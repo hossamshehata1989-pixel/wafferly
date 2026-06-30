@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
 import '../../models/commitment.dart';
@@ -24,13 +25,25 @@ class CommitmentActionProvider implements FinancialActionProvider {
     final commitmentBox = Hive.box<Commitment>('commitments');
     final scheduleBox = Hive.box<ScheduleRule>('schedule_rules');
 
+    debugPrint('============================');
+    debugPrint('Commitments: ${commitmentBox.length}');
+    debugPrint('Schedule Rules: ${scheduleBox.length}');
+    debugPrint('============================');
+
     final List<ScheduledActionExecutionContext> actions = [];
     for (final commitment in commitmentBox.values) {
-      if (commitment.isArchived) continue;
+      debugPrint('Checking: ${commitment.title}');
+      if (commitment.isArchived) {
+        debugPrint('${commitment.title} -> Archived');
+        continue;
+      }
 
       final rule = scheduleBox.get(commitment.scheduleRuleId);
 
-      if (rule == null) continue;
+      if (rule == null) {
+        debugPrint('${commitment.title} -> Missing Schedule Rule');
+        continue;
+      }
 
       final state = evaluator.evaluate(rule: rule, today: today);
 
@@ -47,6 +60,8 @@ class CommitmentActionProvider implements FinancialActionProvider {
         commitmentId: commitment.id,
         liabilityAccountId: commitment.liabilityAccountId,
       );
+
+      debugPrint('${commitment.title} -> Action Created');
 
       actions.add(
         ScheduledActionExecutionContext(

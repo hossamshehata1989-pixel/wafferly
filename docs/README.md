@@ -46,6 +46,8 @@ Roadmap
 
 Defines future evolution.
 
+Financial operations are executed through the Financial Operation Engine.
+
 ## Financial Architecture
 
 High-level architecture.
@@ -113,6 +115,7 @@ Implementation guidelines.
 Files:
 
 - service_architecture.md
+- ADR-003-financial-operation-engine.md
 - database_structure.md
 - folder_structure.md
 - migration_notes.md

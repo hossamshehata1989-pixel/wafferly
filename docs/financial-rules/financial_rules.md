@@ -371,6 +371,22 @@ Authorization may come from:
 
 Time alone must never create or modify Financial Truth.
 
+---
+
+Rule 22
+
+Financial Operation Engine
+
+Financial Truth may only be mutated through
+FinancialOperationEngine.execute().
+
+UI, Controllers, Features, and Domain Services
+must never create Transactions, Ledger entries,
+or other financial mutations directly.
+
+All financial execution must enter through the
+FinancialOperationEngine.
+
 -------------------------------------------------
 
 Final Principle

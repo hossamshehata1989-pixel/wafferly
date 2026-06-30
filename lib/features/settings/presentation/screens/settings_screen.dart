@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../../controller/settings_controller.dart';
 import '../widgets/settings_tile.dart';
 import '../widgets/settings_switch_tile.dart';
+import 'package:flutter/foundation.dart';
+import 'package:wafferly/development/developer_tools_page.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -108,6 +110,24 @@ class SettingsScreen extends StatelessWidget {
               ),
             ],
           ),
+
+          if (kDebugMode)
+            _buildSection(
+              title: 'Developer',
+              children: [
+                SettingsTile(
+                  icon: Icons.developer_mode,
+                  title: 'Developer Tools',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const DeveloperToolsPage(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
         ],
       ),
     );

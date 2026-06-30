@@ -23,22 +23,21 @@ class FinancialActionFilterCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
-        margin: const EdgeInsets.only(right: 1),
-        padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? color.withOpacity(0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected
-                ? color.withOpacity(.75)
-                : Colors.white.withOpacity(.08),
-            width: selected ? 1.0 : 0.5,
+            color: selected ? color : Colors.white.withOpacity(0.15),
+            width: selected ? 1.5 : 0.8,
           ),
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: color.withOpacity(0.2),
-                    blurRadius: 6,
-                    offset: const Offset(0, 1),
+                    color: color.withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ]
               : null,
@@ -49,18 +48,27 @@ class FinancialActionFilterCard extends StatelessWidget {
             Text(
               title,
               style: TextStyle(
-                color: selected ? Colors.white : Colors.white60,
-                fontSize: 10,
+                color: selected ? Colors.white : Colors.white70,
+                fontSize: 13,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
-            const SizedBox(width: 4),
-            Text(
-              '$count',
-              style: TextStyle(
-                color: selected ? color : Colors.white54,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: selected
+                    ? color.withOpacity(0.25)
+                    : Colors.white.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  color: selected ? Colors.white : Colors.white54,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
