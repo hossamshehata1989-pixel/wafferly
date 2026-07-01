@@ -66,50 +66,79 @@ class FinancialOperationEngine {
 
 ---
 
-### 3. Pipeline داخل الـ Engine
+### 3. Processing Pipeline
 
-```
+```text
 FinancialOperation
         │
         ▼
-   Validators             ← مجموعة Validators مستقلة (راجع القسم التالي)
-        │
+Interpretation
         ▼
-   Policy                 ← Execute / TempDebt / AddBalance / Cancel / RequireUserConfirmation
-        │
+Domain Guard
         ▼
-   PlanBuilder            ← يبني FinancialExecutionPlan
-        │
+Policy Engine
         ▼
-FinancialExecutionPlan
-   └── List<FinancialMutation>
-        │
+Engine Orchestration
+        ├─ Return UserConfirmationRequired
+        └─ Continue
         ▼
-   Executor               ← ينفذ الـ Plan عبر TransactionService + LedgerService
-        │
+Accounting Planner
         ▼
-OperationResult
+Accounting Integrity Validation
+        ▼
+Executor
+        ▼
+Result Builder
+        ▼
+Outbox Publisher
 ```
+---
+### Responsibilities
+
+- Interpretation translates FinancialOperation into an internal domain representation.
+- Domain Guard validates immutable domain facts only.
+- Policy Engine evaluates business rules only.
+- Engine Orchestration decides whether execution continues or returns an OperationResult.
+- Accounting Planner builds accounting mutations only.
+- Accounting Integrity Validation verifies accounting correctness only.
+- Executor performs persistence only.
+- Result Builder builds OperationResult only.
+- Outbox Publisher asynchronously publishes domain events after successful execution.
 
 **ملاحظة على الـ Policy:**
 `RequireUserConfirmation` هي نتيجة السياسة — وليست طلباً مباشراً من الـ Engine للمستخدم. الـ Engine يعيد `UserConfirmationRequired` كـ `OperationResult`، والـ UI هي التي تقرر كيف تتعامل معه.
 
 ---
 
-### 4. Validators — مستقلة وليست God Object
+### 4. Domain Guard
 
-الـ Validation ليست Validator واحداً ضخماً، بل مجموعة Validators مستقلة يُشغّلها الـ Engine بالتسلسل:
+Domain Guard is responsible for validating immutable domain facts before any business policy is evaluated.
 
-```
+Internally it may consist of multiple specialized validators, such as:
+
+- BalanceValidator
+- GoalValidator
+- CommitmentValidator
+- CurrencyValidator
+
+These validators are implementation details of the Domain Guard and are NOT independent pipeline stages.
+
+يعني:
+
+Domain Guard
+    ├── BalanceValidator
+    ├── GoalValidator
+    ├── CurrencyValidator
+
+وليس:
+
+Pipeline
+↓
+
 Validators
-    ├── BalanceValidator       ← هل الرصيد كافٍ؟
-    ├── AllocationValidator    ← هل الـ Allocation صحيحة؟
-    ├── GoalValidator          ← هل العملية تتوافق مع قواعد الـ Goal؟
-    ├── CommitmentValidator    ← هل تتوافق مع قواعد الـ Commitment؟
-    └── CurrencyValidator      ← هل العملات متوافقة؟
-```
+↓
 
-كل Validator مسؤول عن نطاق واحد فقط. إضافة قاعدة جديدة = إضافة Validator جديد — دون تعديل الموجود.
+Policy
 
 ---
 
@@ -178,7 +207,7 @@ class InsufficientBalance extends OperationResult {
   final List<Resolution> options;
 }
 
-class ValidationFailed extends OperationResult {
+class ValidationFailureResult extends OperationResult {
   final String reason;
 }
 
@@ -233,7 +262,7 @@ final result2 = await engine.execute(resolved);
 
 | الضمان | التفاصيل |
 |--------|----------|
-| **Validation First** | كل عملية تُفحص قبل التنفيذ — بدون استثناء |
+| **Domain Validation First** | كل عملية تُفحص قبل التنفيذ — بدون استثناء |
 | **No Partial Mutation** | إذا فشل الـ Validation، لا يُعدَّل أي Financial Truth |
 | **Deterministic** | نفس الـ `FinancialOperation` تنتج دائماً نفس الـ `OperationResult` في نفس الحالة |
 | **Stateless** | لا يحتفظ بأي حالة بين الـ Executions |
@@ -277,18 +306,23 @@ await FinancialOperationEngine.instance.execute(operation);
 
 ## Non-Goals
 
-`FinancialOperationEngine` **ليس** مسؤولاً عن:
+Its responsibility is limited to:
 
-- UI أو Dialogs أو Bottom Sheets أو Navigation
-- Toasts أو SnackBars
-- Analytics أو Logging للـ UI
-- اختيار المستخدم للـ Resolution — مسؤولية الـ Presentation Layer
-- حفظ الـ Workflow بين الجولتين — مسؤولية الـ UI
-
-مسؤوليته فقط:
-```
-Validate → Policy → PlanBuilder → Execute → OperationResult
-```
+```text
+Interpretation
+        ▼
+Domain Guard
+        ▼
+Policy Engine
+        ▼
+Accounting Planner
+        ▼
+Accounting Integrity Validation
+        ▼
+Executor
+        ▼
+Result Builder
+---
 
 ---
 
@@ -315,9 +349,10 @@ Validate → Policy → PlanBuilder → Execute → OperationResult
 - إصلاح `availableAmount` ليأتي من رصيد الحساب وليس `goal.targetAmount`
 
 **المرحلة الثانية — بناء الـ Engine:**
-- تعريف `FinancialOperation` و`FinancialExecutionPlan` و`OperationResult`
-- نقل منطق الـ Validation من `TransactionEntryController` إلى الـ Validators
-- نقل TempDebt إلى الـ Policy Layer
+- تعريف FinancialOperation...
+- نقل Validation إلى Domain Guard.
+- نقل TempDebt إلى Policy Engine.
+- Introduce the new processing pipeline incrementally without breaking existing features.
 
 **المرحلة الثالثة — Migration تدريجي:**
 - ربط كل Feature بالـ Engine واحدة تلو الأخرى
@@ -343,3 +378,6 @@ Validate → Policy → PlanBuilder → Execute → OperationResult
 
 > **`FinancialOperationEngine` is the only authority allowed to mutate Financial Truth.**  
 > Every financial feature, current or future, must enter the system through this engine.
+
+
+---
