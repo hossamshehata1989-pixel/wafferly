@@ -1,46 +1,35 @@
+import '../domain_guard/domain_guard_pipeline.dart';
+import '../interpretation/financial_interpreter.dart';
 import '../operations/financial_operation.dart';
+import '../results/operation_result.dart';
 import '../policies/policy_pipeline.dart';
 import '../policies/policy_result.dart';
-import '../results/operation_result.dart';
-import '../validators/validation_pipeline.dart';
-import '../validators/validation_result.dart';
 
 final class FinancialOperationEngine {
-  final ValidationPipeline _validationPipeline;
+  final FinancialInterpreter _interpreter;
+  final DomainGuardPipeline _domainGuardPipeline;
   final PolicyPipeline _policyPipeline;
 
   const FinancialOperationEngine({
-    required ValidationPipeline validationPipeline,
-    PolicyPipeline policyPipeline = const PolicyPipeline(),
-  }) : _validationPipeline = validationPipeline,
+    required FinancialInterpreter interpreter,
+    required DomainGuardPipeline domainGuardPipeline,
+    required PolicyPipeline policyPipeline,
+  }) : _interpreter = interpreter,
+       _domainGuardPipeline = domainGuardPipeline,
        _policyPipeline = policyPipeline;
 
   Future<OperationResult> execute(FinancialOperation operation) async {
-    // Step 1 — Validation
-    final validation = await _validationPipeline.validate(operation);
+    final intent = _interpreter.interpret(operation);
 
-    if (validation is ValidationFailureResult) {
-      // TODO(ADR):
-      // Convert ValidationFailureResult
-      // into the appropriate OperationResult.
-      throw UnimplementedError();
-    }
+    final domainResult = await _domainGuardPipeline.validate(intent);
 
-    // Step 2 — Policy
-    final policy = await _policyPipeline.evaluate(operation);
+    final policyResult = await _policyPipeline.evaluate(intent);
 
-    if (policy is! PolicyPassed) {
-      // TODO(ADR):
-      // Convert PolicyResult
-      // into the appropriate OperationResult.
-      throw UnimplementedError();
-    }
+    // TODO:
+    // Convert DomainGuardResult to OperationResult.
+    // Convert PolicyResult to OperationResult.
+    // Continue to Planner.
 
-    // Step 3 — Execution
-    // TODO(ADR):
-    // Build FinancialExecutionPlan.
-    // Execute FinancialMutations.
-    // Return OperationSucceeded.
     throw UnimplementedError();
   }
 }

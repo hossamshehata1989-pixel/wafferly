@@ -1,4 +1,4 @@
-import '../operations/financial_operation.dart';
+import '../interpretation/normalized_intent.dart';
 import 'policy_registry.dart';
 import 'policy_result.dart';
 
@@ -7,9 +7,9 @@ final class PolicyPipeline {
 
   const PolicyPipeline({this.registry = const PolicyRegistry()});
 
-  Future<PolicyResult> evaluate(FinancialOperation operation) async {
+  Future<PolicyResult> evaluate(NormalizedIntent intent) async {
     for (final policy in registry.policies) {
-      final result = await policy.evaluate(operation);
+      final result = await policy.evaluate(intent);
 
       if (result is! PolicyPassed) {
         return result;

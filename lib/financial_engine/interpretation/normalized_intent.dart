@@ -1,16 +1,21 @@
-/// A source-independent description of a financial intent.
+import 'financial_action_type.dart';
+
+/// Canonical, source-independent representation
+/// of a financial intent.
 ///
-/// It represents WHAT the financial domain is asked to do,
-/// without carrying:
-///
-/// - the origin of the request
-/// - business decisions
-/// - accounting mutations
-/// - world state
-/// - user resolutions
-///
-/// It forms the boundary between heterogeneous input sources
-/// and the unified financial domain pipeline.
+/// The model intentionally starts small and evolves
+/// only when new pipeline stages require additional
+/// information.
 final class NormalizedIntent {
-  const NormalizedIntent();
+  final FinancialActionType action;
+
+  final double amount;
+
+  final String sourceAccountId;
+
+  const NormalizedIntent({
+    required this.action,
+    required this.amount,
+    required this.sourceAccountId,
+  });
 }
