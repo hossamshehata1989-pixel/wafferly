@@ -10,7 +10,7 @@ final class FinancialOperationEngine {
   final PolicyPipeline _policyPipeline;
 
   const FinancialOperationEngine({
-    ValidationPipeline validationPipeline = const ValidationPipeline(),
+    required ValidationPipeline validationPipeline,
     PolicyPipeline policyPipeline = const PolicyPipeline(),
   }) : _validationPipeline = validationPipeline,
        _policyPipeline = policyPipeline;

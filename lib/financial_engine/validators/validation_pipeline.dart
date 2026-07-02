@@ -5,7 +5,7 @@ import 'validator_registry.dart';
 final class ValidationPipeline {
   final ValidatorRegistry registry;
 
-  const ValidationPipeline({this.registry = const ValidatorRegistry()});
+  const ValidationPipeline({required this.registry});
 
   Future<ValidationResult> validate(FinancialOperation operation) async {
     for (final validator in registry.validators) {

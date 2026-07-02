@@ -1,8 +1,7 @@
-import 'balance_validator.dart';
 import 'financial_validator.dart';
 
 final class ValidatorRegistry {
-  const ValidatorRegistry();
+  final List<FinancialValidator> validators;
 
-  List<FinancialValidator> get validators => const [BalanceValidator()];
+  const ValidatorRegistry({required this.validators});
 }
