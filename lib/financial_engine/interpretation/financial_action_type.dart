@@ -1,1 +1,7 @@
-enum FinancialActionType { expense, income, transfer, commitmentPayment }
+enum FinancialActionType {
+  expense,
+  income,
+  transfer,
+  commitmentPayment,
+  goalTransfer,
+}

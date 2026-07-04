@@ -1,18 +1,16 @@
 import '../resolution/resolution.dart';
 import 'financial_operation.dart';
 
-final class GoalTransferOperation extends FinancialOperation {
+final class TransferOperation extends FinancialOperation {
   final String sourceAccountId;
-  final String savingsAccountId;
-  final String goalId;
+  final String destinationAccountId;
   final double amount;
-  final DateTime occurredAt;
   final String? note;
+  final DateTime occurredAt;
 
-  const GoalTransferOperation({
+  const TransferOperation({
     required this.sourceAccountId,
-    required this.savingsAccountId,
-    required this.goalId,
+    required this.destinationAccountId,
     required this.amount,
     required this.occurredAt,
     this.note,
@@ -20,11 +18,10 @@ final class GoalTransferOperation extends FinancialOperation {
   });
 
   @override
-  GoalTransferOperation resolve(Resolution resolution) {
-    return GoalTransferOperation(
+  TransferOperation resolve(Resolution resolution) {
+    return TransferOperation(
       sourceAccountId: sourceAccountId,
-      savingsAccountId: savingsAccountId,
-      goalId: goalId,
+      destinationAccountId: destinationAccountId,
       amount: amount,
       occurredAt: occurredAt,
       note: note,

@@ -11,10 +11,16 @@ final class OperationSucceeded extends OperationResult {
   const OperationSucceeded({required this.summary});
 }
 
-final class ValidationFailed extends OperationResult {
+final class OperationFailed extends OperationResult {
+  final Object error;
+
+  const OperationFailed({required this.error});
+}
+
+final class DomainViolationResult extends OperationResult {
   final String reason;
 
-  const ValidationFailed({required this.reason});
+  const DomainViolationResult({required this.reason});
 }
 
 final class InsufficientBalance extends OperationResult {
@@ -29,8 +35,14 @@ final class InsufficientBalance extends OperationResult {
   });
 }
 
-final class UserConfirmationRequired extends OperationResult {
+final class OperationRejected extends OperationResult {
+  final String reason;
+
+  const OperationRejected({required this.reason});
+}
+
+final class ConfirmationRequired extends OperationResult {
   final List<Resolution> options;
 
-  const UserConfirmationRequired({required this.options});
+  const ConfirmationRequired({required this.options});
 }
