@@ -1,17 +1,16 @@
-import '../accounting/journal_entry_repository.dart';
 import '../planning/journal_entry_mutation.dart';
 import 'financial_mutation_handler.dart';
+import '../ports/journal_entry_port.dart';
 
 final class JournalEntryMutationHandler
     implements FinancialMutationHandler<JournalEntryMutation> {
-  final JournalEntryRepository _repository;
+  final JournalEntryPort _port;
 
-  const JournalEntryMutationHandler({
-    required JournalEntryRepository repository,
-  }) : _repository = repository;
+  const JournalEntryMutationHandler({required JournalEntryPort port})
+    : _port = port;
 
   @override
   Future<void> execute(JournalEntryMutation mutation) {
-    return _repository.save(mutation);
+    return _port.persist(mutation);
   }
 }

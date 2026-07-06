@@ -1,25 +1,18 @@
-import '../../models/goal_activity.dart';
-import '../../services/goal_activity_service.dart';
 import '../planning/goal_activity_mutation.dart';
+import '../ports/goal_activity_port.dart';
 import 'financial_mutation_handler.dart';
 
 final class GoalActivityMutationHandler
     implements FinancialMutationHandler<GoalActivityMutation> {
-  final GoalActivityService _service;
+  final GoalActivityPort _port;
 
-  const GoalActivityMutationHandler({required GoalActivityService service})
-    : _service = service;
+  const GoalActivityMutationHandler({required GoalActivityPort port})
+    : _port = port;
 
   @override
-  Future<void> execute(GoalActivityMutation mutation) async {
-    await _service.addActivity(
-      GoalActivity.create(
-        goalId: mutation.goalId,
-        type: mutation.activityType,
-        amount: mutation.amount,
-        sourceAccountId: mutation.sourceAccountId,
-        destinationAccountId: mutation.destinationAccountId,
-      ),
-    );
-  }
+Future<void> execute(
+  GoalActivityMutation mutation,
+) {
+  return _port.recordActivity(mutation);
+}
 }

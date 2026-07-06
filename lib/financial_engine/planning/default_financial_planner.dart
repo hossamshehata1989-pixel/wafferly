@@ -8,6 +8,7 @@ import 'journal_entry_mutation.dart';
 import 'goal_activity_mutation.dart';
 import 'release_allocation_mutation.dart';
 import '../../models/goal_activity.dart';
+import '../operations/create_allocation_mutation.dart';
 
 final class DefaultFinancialPlanner implements FinancialPlanner {
   final ChartOfAccounts _chartOfAccounts;
@@ -29,7 +30,8 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
 
       case FinancialActionType.goalTransfer:
         return _planGoalTransfer(intent);
-
+      case FinancialActionType.createGoalAllocation:
+        return _planGoalAllocation(intent);
       default:
         throw UnimplementedError(
           'Planner not implemented for ${intent.action}',
@@ -114,8 +116,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
         intent.destinationAccountId ??
         (throw StateError('Savings account is required'));
 
-    final goalId =
-        intent.categoryId ?? (throw StateError('Goal id is required'));
+    final goalId = intent.goalId ?? (throw StateError('Goal id is required'));
 
     return FinancialExecutionPlan(
       planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
@@ -138,7 +139,6 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
           accountId: intent.sourceAccountId,
           amount: intent.amount,
         ),
-
         // 3. Immutable activity
         GoalActivityMutation(
           goalId: goalId,
@@ -146,6 +146,23 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
           destinationAccountId: destinationAccountId,
           amount: intent.amount,
           activityType: GoalActivityType.transferToSaving,
+        ),
+      ],
+    );
+  }
+
+  FinancialExecutionPlan _planGoalAllocation(NormalizedIntent intent) {
+    final goalId = intent.goalId ?? (throw StateError('Goal id is required'));
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [
+        CreateAllocationMutation(
+          accountId: intent.sourceAccountId,
+          goalId: goalId,
+          amount: intent.amount,
         ),
       ],
     );

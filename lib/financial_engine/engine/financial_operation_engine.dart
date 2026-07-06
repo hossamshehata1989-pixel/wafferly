@@ -1,5 +1,8 @@
 import '../domain_guard/domain_guard_pipeline.dart';
 import '../domain_guard/domain_guard_result.dart';
+import '../execution/financial_executor.dart';
+import '../execution_context/execution_context.dart';
+import '../idempotency/idempotency_guard.dart';
 import '../integrity/financial_integrity_checker.dart';
 import '../interpretation/financial_interpreter.dart';
 import '../operations/financial_operation.dart';
@@ -7,7 +10,6 @@ import '../planning/financial_planner.dart';
 import '../policies/policy_pipeline.dart';
 import '../policies/policy_result.dart';
 import '../results/operation_result.dart';
-import '../execution/financial_executor.dart';
 
 final class FinancialOperationEngine {
   final FinancialInterpreter _interpreter;
@@ -16,6 +18,7 @@ final class FinancialOperationEngine {
   final FinancialPlanner _planner;
   final FinancialIntegrityChecker _integrityChecker;
   final FinancialExecutor _executor;
+  final IdempotencyGuard _idempotencyGuard;
 
   const FinancialOperationEngine({
     required FinancialInterpreter interpreter,
@@ -23,15 +26,27 @@ final class FinancialOperationEngine {
     required FinancialPlanner planner,
     required FinancialIntegrityChecker integrityChecker,
     required FinancialExecutor executor,
+    required IdempotencyGuard idempotencyGuard,
     PolicyPipeline policyPipeline = const PolicyPipeline(),
   }) : _interpreter = interpreter,
        _domainGuardPipeline = domainGuardPipeline,
        _policyPipeline = policyPipeline,
        _planner = planner,
        _integrityChecker = integrityChecker,
-       _executor = executor;
+       _executor = executor,
+       _idempotencyGuard = idempotencyGuard;
 
-  Future<OperationResult> execute(FinancialOperation operation) async {
+  Future<OperationResult> execute(
+    FinancialOperation operation,
+    ExecutionContext context,
+  ) async {
+    // Step 0 — Idempotency
+    final cached = await _idempotencyGuard.check(context);
+
+    if (cached != null) {
+      return cached;
+    }
+
     // Step 1 — Interpretation
     final intent = _interpreter.interpret(operation);
 
@@ -64,6 +79,12 @@ final class FinancialOperationEngine {
     // Publish Outbox Events.
     // Return OperationSucceeded.
 
-    return _executor.execute(plan);
+    final result = await _executor.execute(plan);
+
+    if (result is OperationSucceeded) {
+      await _idempotencyGuard.remember(context, result);
+    }
+
+    return result;
   }
 }

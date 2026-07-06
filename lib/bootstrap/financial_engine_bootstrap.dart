@@ -1,15 +1,20 @@
 import '../financial_engine/domain_guard/domain_guard_pipeline.dart';
 import '../financial_engine/engine/financial_operation_engine.dart';
+import '../financial_engine/execution/create_allocation_mutation_handler.dart';
 import '../financial_engine/execution/default_financial_executor.dart';
 import '../financial_engine/execution/journal_entry_mutation_handler.dart';
 import '../financial_engine/execution/memory_financial_unit_of_work.dart';
 import '../financial_engine/execution/mutation_handler_registry.dart';
+import '../financial_engine/idempotency/idempotency_guard.dart';
 import '../financial_engine/integrity/default_financial_integrity_checker.dart';
 import '../financial_engine/interpretation/default_financial_interpreter.dart';
+import '../financial_engine/memory/memory_idempotency_store.dart';
 import '../financial_engine/planning/account_mapping.dart';
 import '../financial_engine/planning/chart_of_accounts.dart';
+import '../financial_engine/operations/create_allocation_mutation.dart';
 import '../financial_engine/planning/default_financial_planner.dart';
 import '../financial_engine/planning/journal_entry_mutation.dart';
+import '../infrastructure/memory/memory_allocation_repository.dart';
 import '../infrastructure/memory/memory_journal_entry_repository.dart';
 import 'financial_engine_context.dart';
 
@@ -19,10 +24,23 @@ final class FinancialEngineBootstrap {
   static FinancialEngineContext create() {
     final repository = MemoryJournalEntryRepository();
 
-    final handler = JournalEntryMutationHandler(repository: repository);
+    final idempotencyStore = MemoryIdempotencyStore();
+
+    final idempotencyGuard = IdempotencyGuard(store: idempotencyStore);
+
+    final journalHandler = JournalEntryMutationHandler(port: repository);
+
+    final createAllocationRepository = MemoryAllocationRepository();
+
+    final createAllocationHandler = CreateAllocationMutationHandler(
+      port: createAllocationRepository,
+    );
 
     final registry = MutationHandlerRegistry(
-      handlers: {JournalEntryMutation: handler},
+      handlers: {
+        JournalEntryMutation: journalHandler,
+        CreateAllocationMutation: createAllocationHandler,
+      },
     );
 
     final executor = DefaultFinancialExecutor(
@@ -45,8 +63,13 @@ final class FinancialEngineBootstrap {
       planner: planner,
       integrityChecker: const DefaultFinancialIntegrityChecker(),
       executor: executor,
+      idempotencyGuard: idempotencyGuard,
     );
 
-    return FinancialEngineContext(engine: engine, repository: repository);
+    return FinancialEngineContext(
+      engine: engine,
+      repository: repository,
+      allocationRepository: createAllocationRepository,
+    );
   }
 }

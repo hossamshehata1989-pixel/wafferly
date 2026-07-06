@@ -1,4 +1,5 @@
 import 'financial_action_type.dart';
+import '../resolution/resolution.dart';
 
 /// Canonical, source-independent representation
 /// of a financial intent.
@@ -13,7 +14,11 @@ final class NormalizedIntent {
   /// Used by expense/income operations.
   final String? categoryId;
 
+  /// Used only by goal operations.
+  final String? goalId;
+
   final double amount;
+  final Resolution resolution;
 
   const NormalizedIntent({
     required this.action,
@@ -21,5 +26,7 @@ final class NormalizedIntent {
     required this.sourceAccountId,
     this.destinationAccountId,
     this.categoryId,
+    this.goalId,
+    required this.resolution,
   });
 }
