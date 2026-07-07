@@ -1,3 +1,4 @@
+import '../domain_guard/financial_constraint.dart';
 import '../interpretation/normalized_intent.dart';
 import 'policy_registry.dart';
 import 'policy_result.dart';
@@ -7,9 +8,12 @@ final class PolicyPipeline {
 
   const PolicyPipeline({this.registry = const PolicyRegistry()});
 
-  Future<PolicyResult> evaluate(NormalizedIntent intent) async {
+  Future<PolicyResult> evaluate(
+    NormalizedIntent intent,
+    List<FinancialConstraint> constraints,
+  ) async {
     for (final policy in registry.policies) {
-      final result = await policy.evaluate(intent);
+      final result = await policy.evaluate(intent, constraints);
 
       if (result is! PolicyPassed) {
         return result;

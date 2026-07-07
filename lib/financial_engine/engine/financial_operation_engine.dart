@@ -1,5 +1,4 @@
 import '../domain_guard/domain_guard_pipeline.dart';
-import '../domain_guard/domain_guard_result.dart';
 import '../execution/financial_executor.dart';
 import '../execution_context/execution_context.dart';
 import '../idempotency/idempotency_guard.dart';
@@ -51,19 +50,25 @@ final class FinancialOperationEngine {
     final intent = _interpreter.interpret(operation);
 
     // Step 2 — Domain Guard
+    // Step 2 — Domain Guard
     final domainResult = await _domainGuardPipeline.validate(intent);
 
-    if (domainResult is DomainViolation) {
-      return DomainViolationResult(reason: domainResult.reason);
+    if (domainResult.hasViolation) {
+      return OperationFailed(error: domainResult.violation!.reason);
     }
 
     // Step 3 — Policy
-    final policyResult = await _policyPipeline.evaluate(intent);
+    final policyResult = await _policyPipeline.evaluate(
+      intent,
+      domainResult.constraints,
+    );
 
-    if (policyResult is! PolicyPassed) {
-      // TODO:
-      // Convert PolicyResult into OperationResult.
-      throw UnimplementedError();
+    if (policyResult is PolicyRejected) {
+      return OperationFailed(error: policyResult.reason);
+    }
+
+    if (policyResult is PolicyRequiresConfirmation) {
+      return OperationFailed(error: 'Confirmation required');
     }
 
     // Step 4 — Planning

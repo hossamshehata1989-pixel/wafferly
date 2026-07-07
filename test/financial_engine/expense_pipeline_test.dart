@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wafferly/bootstrap/financial_engine_bootstrap.dart';
 import 'package:wafferly/financial_engine/operations/expense_operation.dart';
 import 'package:wafferly/financial_engine/results/operation_result.dart';
+import 'package:wafferly/financial_engine/execution_context/execution_context.dart';
 
 void main() {
   test('Expense operation creates one journal entry', () async {
@@ -15,6 +16,7 @@ void main() {
         amount: 50,
         occurredAt: DateTime.now(),
       ),
+      const ExecutionContext(idempotencyKey: 'expense-test'),
     );
 
     expect(result, isA<OperationSucceeded>());

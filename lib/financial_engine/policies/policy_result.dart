@@ -1,3 +1,5 @@
+import '../resolution/resolution.dart';
+
 sealed class PolicyResult {
   const PolicyResult();
 }
@@ -13,5 +15,7 @@ final class PolicyRejected extends PolicyResult {
 }
 
 final class PolicyRequiresConfirmation extends PolicyResult {
-  const PolicyRequiresConfirmation();
+  final List<Resolution> options;
+
+  const PolicyRequiresConfirmation({required this.options});
 }

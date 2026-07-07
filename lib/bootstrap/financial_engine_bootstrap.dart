@@ -1,3 +1,4 @@
+import '../financial_engine/domain_guard/balance_domain_guard.dart';
 import '../financial_engine/domain_guard/domain_guard_pipeline.dart';
 import '../financial_engine/engine/financial_operation_engine.dart';
 import '../financial_engine/execution/create_allocation_mutation_handler.dart';
@@ -9,12 +10,13 @@ import '../financial_engine/idempotency/idempotency_guard.dart';
 import '../financial_engine/integrity/default_financial_integrity_checker.dart';
 import '../financial_engine/interpretation/default_financial_interpreter.dart';
 import '../financial_engine/memory/memory_idempotency_store.dart';
+import '../financial_engine/operations/create_allocation_mutation.dart';
 import '../financial_engine/planning/account_mapping.dart';
 import '../financial_engine/planning/chart_of_accounts.dart';
-import '../financial_engine/operations/create_allocation_mutation.dart';
 import '../financial_engine/planning/default_financial_planner.dart';
 import '../financial_engine/planning/journal_entry_mutation.dart';
 import '../infrastructure/memory/memory_allocation_repository.dart';
+import '../infrastructure/memory/memory_balance_port.dart';
 import '../infrastructure/memory/memory_journal_entry_repository.dart';
 import 'financial_engine_context.dart';
 
@@ -35,6 +37,16 @@ final class FinancialEngineBootstrap {
     final createAllocationHandler = CreateAllocationMutationHandler(
       port: createAllocationRepository,
     );
+
+    final balancePort = MemoryBalancePort(
+      balances: {
+        'cash': 100000,
+        'wallet': 100000,
+        'bank': 100000,
+        'saving': 100000,
+      },
+    );
+    final balanceGuard = BalanceDomainGuard(balancePort: balancePort);
 
     final registry = MutationHandlerRegistry(
       handlers: {
@@ -59,7 +71,7 @@ final class FinancialEngineBootstrap {
 
     final engine = FinancialOperationEngine(
       interpreter: const DefaultFinancialInterpreter(),
-      domainGuardPipeline: const DomainGuardPipeline(),
+      domainGuardPipeline: DomainGuardPipeline(guards: [balanceGuard]),
       planner: planner,
       integrityChecker: const DefaultFinancialIntegrityChecker(),
       executor: executor,
@@ -70,6 +82,7 @@ final class FinancialEngineBootstrap {
       engine: engine,
       repository: repository,
       allocationRepository: createAllocationRepository,
+      balancePort: balancePort,
     );
   }
 }

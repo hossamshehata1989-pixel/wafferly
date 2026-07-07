@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wafferly/bootstrap/financial_engine_bootstrap.dart';
 import 'package:wafferly/financial_engine/operations/transfer_operation.dart';
 import 'package:wafferly/financial_engine/results/operation_result.dart';
+import 'package:wafferly/financial_engine/execution_context/execution_context.dart';
 
 void main() {
   test('Transfer operation creates one balanced journal entry', () async {
@@ -15,6 +16,7 @@ void main() {
         amount: 100,
         occurredAt: DateTime.now(),
       ),
+      const ExecutionContext(idempotencyKey: 'transfer-test'),
     );
 
     expect(result, isA<OperationSucceeded>());
