@@ -1,6 +1,6 @@
-import '../interpretation/normalized_intent.dart';
 import 'financial_execution_plan.dart';
+import 'planning_context.dart';
 
 abstract interface class FinancialPlanner {
-  Future<FinancialExecutionPlan> build(NormalizedIntent intent);
+  Future<FinancialExecutionPlan> build(PlanningContext context);
 }

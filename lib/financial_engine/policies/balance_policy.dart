@@ -3,6 +3,7 @@ import '../interpretation/normalized_intent.dart';
 import '../resolution/resolution.dart';
 import 'financial_policy.dart';
 import 'policy_result.dart';
+import '../interpretation/financial_action_type.dart';
 
 final class BalancePolicy implements FinancialPolicy {
   const BalancePolicy();
@@ -31,6 +32,12 @@ final class BalancePolicy implements FinancialPolicy {
         );
 
       case Resolution.tempDebt:
+        if (intent.action != FinancialActionType.expense) {
+          return const PolicyRejected(
+            reason: 'Temp Debt is not allowed for this operation.',
+          );
+        }
+
         return const PolicyPassed();
 
       case Resolution.addBalance:

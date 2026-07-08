@@ -9,6 +9,8 @@ import 'goal_activity_mutation.dart';
 import 'release_allocation_mutation.dart';
 import '../../models/goal_activity.dart';
 import '../operations/create_allocation_mutation.dart';
+import 'planning_context.dart';
+import '../domain_guard/financial_constraint.dart';
 
 final class DefaultFinancialPlanner implements FinancialPlanner {
   final ChartOfAccounts _chartOfAccounts;
@@ -17,10 +19,11 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     : _chartOfAccounts = chartOfAccounts;
 
   @override
-  Future<FinancialExecutionPlan> build(NormalizedIntent intent) async {
+  Future<FinancialExecutionPlan> build(PlanningContext context) async {
+    final intent = context.intent;
     switch (intent.action) {
       case FinancialActionType.expense:
-        return _planExpense(intent);
+        return _planExpense(context);
 
       case FinancialActionType.income:
         return _planIncome(intent);
@@ -29,7 +32,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
         return _planTransfer(intent);
 
       case FinancialActionType.goalTransfer:
-        return _planGoalTransfer(intent);
+        return _planGoalTransfer(context);
       case FinancialActionType.createGoalAllocation:
         return _planGoalAllocation(intent);
       default:
@@ -39,7 +42,11 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     }
   }
 
-  FinancialExecutionPlan _planExpense(NormalizedIntent intent) {
+  FinancialExecutionPlan _planExpense(PlanningContext context) {
+    final intent = context.intent;
+
+    final balanceConstraint = context
+        .constraint<InsufficientBalanceConstraint>();
     final categoryId =
         intent.categoryId ?? (throw StateError('Category is required'));
 
@@ -111,7 +118,8 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     );
   }
 
-  FinancialExecutionPlan _planGoalTransfer(NormalizedIntent intent) {
+  FinancialExecutionPlan _planGoalTransfer(PlanningContext context) {
+    final intent = context.intent;
     final destinationAccountId =
         intent.destinationAccountId ??
         (throw StateError('Savings account is required'));

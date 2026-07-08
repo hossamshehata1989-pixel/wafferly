@@ -9,6 +9,7 @@ import '../planning/financial_planner.dart';
 import '../policies/policy_pipeline.dart';
 import '../policies/policy_result.dart';
 import '../results/operation_result.dart';
+import '../planning/planning_context.dart';
 
 final class FinancialOperationEngine {
   final FinancialInterpreter _interpreter;
@@ -72,8 +73,9 @@ final class FinancialOperationEngine {
     }
 
     // Step 4 — Planning
-    final plan = await _planner.build(intent);
-
+    final plan = await _planner.build(
+      PlanningContext(intent: intent, constraints: domainResult.constraints),
+    );
     // Step 5 — Integrity
     _integrityChecker.validate(plan);
 
