@@ -8,8 +8,9 @@ import '../../theme/responsive_metrics.dart';
 import 'package:provider/provider.dart';
 import '../../features/settings/controller/settings_controller.dart';
 import '../../features/transactions/models/expense_resolution_analysis.dart';
-
+import '../../financial_engine/resolution/resolution.dart';
 import '../../services/sound_service.dart';
+import '../../financial_engine/resolution/resolution_label_extension.dart';
 
 class AmountInputPanel extends StatelessWidget {
   final TransactionEntryController controller;
@@ -362,6 +363,7 @@ class AmountInputPanel extends StatelessWidget {
     ResponsiveMetrics metrics,
   ) {
     final double height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
+
     return SizedBox(
       height: height,
       child: Container(
@@ -415,7 +417,7 @@ class AmountInputPanel extends StatelessWidget {
                     isExceptional: controller.isExceptional,
                   );
 
-                  // Handle simple errors
+                  // Handle simple validation errors
                   if (!result.success) {
                     switch (result.action) {
                       case SaveAction.invalidAmount:
@@ -425,6 +427,7 @@ class AmountInputPanel extends StatelessWidget {
                           ),
                         );
                         return;
+
                       case SaveAction.noCategorySelected:
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -432,6 +435,7 @@ class AmountInputPanel extends StatelessWidget {
                           ),
                         );
                         return;
+
                       case SaveAction.noAccountSelected:
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -439,163 +443,58 @@ class AmountInputPanel extends StatelessWidget {
                           ),
                         );
                         return;
+
                       default:
                         break;
                     }
                   }
 
-                  // If insufficient balance, show resolution dialog
-                  if (!result.success &&
-                      result.action == SaveAction.insufficientBalance) {
-                    final analysis =
-                        result.data?['analysis'] as ExpenseResolutionAnalysis?;
+                  debugPrint(
+                    'SAVE RESULT => '
+                    'success=${result.success}, '
+                    'requiresConfirmation=${result.requiresConfirmation}, '
+                    'error=${result.errorMessage}, '
+                    'action=${result.action}',
+                  );
 
-                    for (final item in analysis?.reservedOptions ?? []) {
-                      debugPrint('RESERVED => ${item.name} = ${item.amount}');
-                    }
+                  if (result.requiresConfirmation) {
+                    debugPrint("OPENING CONFIRMATION DIALOG");
 
-                    debugPrint('================');
-                    debugPrint('SAVINGS = ${analysis?.totalSavings}');
-                    debugPrint('RESERVED = ${analysis?.totalReserved}');
-                    debugPrint(
-                      'LIQUIDITY = ${analysis?.otherLiquidityBalance}',
-                    );
-                    debugPrint('================');
-
-                    final shortage = result.data?['shortage'] ?? 0;
-
-                    final hasOtherLiquidity =
-                        (analysis?.otherLiquidityBalance ?? 0) > 0;
-                    final hasSavings = (analysis?.totalSavings ?? 0) > 0;
-                    final hasReserved = (analysis?.totalReserved ?? 0) > 0;
-
-                    final action = await showDialog<String>(
+                    final resolution = await showDialog<Resolution>(
                       context: context,
                       builder: (_) => AlertDialog(
                         title: const Text('Insufficient Balance'),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Shortage: ${shortage.toInt()}'),
-                            const SizedBox(height: 12),
-                            if (hasOtherLiquidity)
-                              Text(
-                                'Other Liquidity: '
-                                '${analysis!.otherLiquidityBalance.toInt()}',
-                              ),
-                            if (hasSavings)
-                              Text(
-                                'Savings: ${analysis!.totalSavings.toInt()}',
-                              ),
-                            if (hasReserved)
-                              Text(
-                                'Reserved: ${analysis!.totalReserved.toInt()}',
-                              ),
-                          ],
-                        ),
+                        content: const Text('Choose how you want to continue.'),
                         actions: [
                           TextButton(
-                            onPressed: () => Navigator.pop(context, 'cancel'),
-                            child: const Text('Cancel'),
-                          ),
-                          if (hasOtherLiquidity)
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(context, 'other_accounts'),
-                              child: const Text('Other Accounts'),
-                            ),
-                          if (hasSavings)
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(context, 'savings'),
-                              child: const Text('Savings'),
-                            ),
-                          if (hasReserved)
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(context, 'reserved'),
-                              child: const Text('Reserved'),
-                            ),
-                          TextButton(
-                            onPressed: () =>
-                                Navigator.pop(context, 'temp_debt'),
-                            child: const Text('Temp Debt'),
+                            onPressed: () {
+                              debugPrint("BUTTON PRESSED");
+                              Navigator.pop(context);
+                            },
+                            child: const Text("OK"),
                           ),
                         ],
                       ),
                     );
 
-                    // Handle user choice
-                    if (action == 'other_accounts') {
-                      await showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text('Other Accounts'),
-                          content: SizedBox(
-                            width: double.maxFinite,
-                            child: ListView.builder(
-                              shrinkWrap: true,
-                              itemCount: analysis?.liquidityOptions.length ?? 0,
-                              itemBuilder: (_, index) {
-                                final option =
-                                    analysis!.liquidityOptions[index];
-                                return ListTile(
-                                  title: Text(option.name),
-                                  trailing: Text(
-                                    option.amount.toStringAsFixed(0),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    if (action == 'savings') {
-                      await showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text('Savings'),
-                          content: Text(
-                            'Available savings: '
-                            '${analysis?.totalSavings ?? 0}',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    if (action == 'reserved') {
-                      await showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text('Reserved Money'),
-                          content: Text(
-                            'Reserved amount: '
-                            '${analysis?.totalReserved ?? 0}',
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    if (action == 'temp_debt') {
-                      await controller.addBalanceAndRetry(shortage);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Temporary debt created'),
-                          ),
-                        );
-                      }
-                      return;
-                    }
+                    debugPrint("DIALOG CLOSED");
+                    debugPrint("USER CHOICE = $resolution");
+
                     return;
                   }
 
-                  // Success case
+                  if (result.errorMessage != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(result.errorMessage!)),
+                    );
+                    return;
+                  }
+
+                  // Success
                   if (result.success) {
-                    if (context.mounted) Navigator.pop(context);
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                    }
                   }
                 },
                 child: const Center(

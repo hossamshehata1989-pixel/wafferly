@@ -55,6 +55,14 @@ import 'services/providers/commitment_action_provider.dart';
 import 'services/schedule_evaluator.dart';
 
 import 'features/financial_action_center/financial_action_center.dart';
+import 'services/transaction_service.dart';
+
+// NEW imports for Engine and Application Service
+import 'bootstrap/financial_engine_bootstrap.dart';
+import 'financial_engine/engine/financial_operation_engine.dart';
+import 'services/transaction_application_service.dart';
+
+import 'services/balance_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -291,10 +299,6 @@ void main() async {
   }
 
   // ====================================================
-  // Initialize Registries
-  // ====================================================
-
-  // ====================================================
   // Financial Action Engine Test
   // ====================================================
 
@@ -326,15 +330,37 @@ void main() async {
     }
   }
 
+  // ====================================================
+  // Initialize Registries
+  // ====================================================
+
   CategoryRegistry.initialize();
+
+  // Create shared services
+  final balanceService = BalanceService();
+
+  // Create engine once
+  final engineContext = FinancialEngineBootstrap.create(
+    balanceService: balanceService,
+  );
+
+  final engine = engineContext.engine;
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => MembersController()),
-
         ChangeNotifierProvider(
           create: (_) => SettingsController()..loadSettings(),
+        ),
+
+        Provider<FinancialOperationEngine>(create: (_) => engine),
+
+        Provider<TransactionApplicationService>(
+          create: (_) => TransactionApplicationService(
+            engine: engine,
+            legacyTransactionService: TransactionService.instance,
+          ),
         ),
       ],
       child: const WafferlyApp(),

@@ -19,11 +19,15 @@ import '../infrastructure/memory/memory_allocation_repository.dart';
 import '../infrastructure/memory/memory_balance_port.dart';
 import '../infrastructure/memory/memory_journal_entry_repository.dart';
 import 'financial_engine_context.dart';
+import '../services/balance_service.dart';
+import '../infrastructure/hive/hive_balance_port.dart';
 
 final class FinancialEngineBootstrap {
   const FinancialEngineBootstrap._();
 
-  static FinancialEngineContext create() {
+  static FinancialEngineContext create({
+    required BalanceService balanceService,
+  }) {
     final repository = MemoryJournalEntryRepository();
 
     final idempotencyStore = MemoryIdempotencyStore();
@@ -37,15 +41,7 @@ final class FinancialEngineBootstrap {
     final createAllocationHandler = CreateAllocationMutationHandler(
       port: createAllocationRepository,
     );
-
-    final balancePort = MemoryBalancePort(
-      balances: {
-        'cash': 100000,
-        'wallet': 100000,
-        'bank': 100000,
-        'saving': 100000,
-      },
-    );
+    final balancePort = HiveBalancePort(balanceService: balanceService);
     final balanceGuard = BalanceDomainGuard(balancePort: balancePort);
 
     final registry = MutationHandlerRegistry(

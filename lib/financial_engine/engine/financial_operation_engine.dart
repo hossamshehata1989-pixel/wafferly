@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../domain_guard/domain_guard_pipeline.dart';
 import '../execution/financial_executor.dart';
 import '../execution_context/execution_context.dart';
@@ -6,10 +8,10 @@ import '../integrity/financial_integrity_checker.dart';
 import '../interpretation/financial_interpreter.dart';
 import '../operations/financial_operation.dart';
 import '../planning/financial_planner.dart';
+import '../planning/planning_context.dart';
 import '../policies/policy_pipeline.dart';
 import '../policies/policy_result.dart';
 import '../results/operation_result.dart';
-import '../planning/planning_context.dart';
 
 final class FinancialOperationEngine {
   final FinancialInterpreter _interpreter;
@@ -40,58 +42,104 @@ final class FinancialOperationEngine {
     FinancialOperation operation,
     ExecutionContext context,
   ) async {
+    // ====================================================
     // Step 0 — Idempotency
+    // ====================================================
+
     final cached = await _idempotencyGuard.check(context);
 
     if (cached != null) {
+      debugPrint('ENGINE: Idempotency cache hit');
       return cached;
     }
 
+    // ====================================================
     // Step 1 — Interpretation
+    // ====================================================
+
     final intent = _interpreter.interpret(operation);
 
+    debugPrint('ENGINE: Interpreter ✓');
+
+    // ====================================================
     // Step 2 — Domain Guard
-    // Step 2 — Domain Guard
+    // ====================================================
+
     final domainResult = await _domainGuardPipeline.validate(intent);
 
     if (domainResult.hasViolation) {
-      return OperationFailed(error: domainResult.violation!.reason);
+      return DomainViolationResult(reason: domainResult.violation!.reason);
     }
 
+    debugPrint('ENGINE: DomainGuard ✓');
+    for (final c in domainResult.constraints) {
+      debugPrint(c.runtimeType.toString());
+    }
+    // ====================================================
     // Step 3 — Policy
-    final policyResult = await _policyPipeline.evaluate(
-      intent,
-      domainResult.constraints,
-    );
+    // ====================================================
 
-    if (policyResult is PolicyRejected) {
-      return OperationFailed(error: policyResult.reason);
+    try {
+      final policyResult = await _policyPipeline.evaluate(
+        intent,
+        domainResult.constraints,
+      );
+
+      debugPrint('ENGINE: Policy result = ${policyResult.runtimeType}');
+
+      if (policyResult is PolicyRejected) {
+        return OperationRejected(reason: policyResult.reason);
+      }
+
+      if (policyResult is PolicyRequiresConfirmation) {
+        return ConfirmationRequired(options: policyResult.options);
+      }
+
+      debugPrint('ENGINE: Policy ✓');
+
+      // ====================================================
+      // Step 4 — Planning
+      // ====================================================
+
+      final plan = await _planner.build(
+        PlanningContext(intent: intent, constraints: domainResult.constraints),
+      );
+
+      debugPrint('ENGINE: Planner ✓');
+
+      // ====================================================
+      // Step 5 — Integrity
+      // ====================================================
+
+      _integrityChecker.validate(plan);
+
+      debugPrint('ENGINE: Integrity ✓');
+
+      // ====================================================
+      // Step 6 — Execution
+      // ====================================================
+
+      debugPrint('ENGINE: Executor...');
+
+      final result = await _executor.execute(plan);
+
+      debugPrint('ENGINE RESULT = ${result.runtimeType}');
+
+      if (result is OperationFailed) {
+        debugPrint(result.toString());
+      }
+
+      if (result is OperationSucceeded) {
+        await _idempotencyGuard.remember(context, result);
+      }
+
+      return result;
+    } catch (e, s) {
+      debugPrint('POLICY EXCEPTION:');
+      debugPrint(e.toString());
+      debugPrint(s.toString());
+
+      return OperationFailed(error: e.toString());
     }
-
-    if (policyResult is PolicyRequiresConfirmation) {
-      return OperationFailed(error: 'Confirmation required');
-    }
-
-    // Step 4 — Planning
-    final plan = await _planner.build(
-      PlanningContext(intent: intent, constraints: domainResult.constraints),
-    );
-    // Step 5 — Integrity
-    _integrityChecker.validate(plan);
-
-    // Step 6 — Execution
-    // TODO:
-    // Execute FinancialExecutionPlan.
-    // Persist Journal Entries.
-    // Publish Outbox Events.
-    // Return OperationSucceeded.
-
-    final result = await _executor.execute(plan);
-
-    if (result is OperationSucceeded) {
-      await _idempotencyGuard.remember(context, result);
-    }
-
-    return result;
   }
 }

@@ -5,21 +5,20 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../models/account.dart';
 import '../models/transaction.dart';
 import '../services/balance_service.dart';
-import '../services/transaction_service.dart';
-import '../services/account_service.dart';
+import '../services/transaction_application_service.dart';
 import '../constants/transaction_constants.dart';
 import '../config/category_config.dart';
 import '../config/category_type.dart';
 import '../features/analysis/registry/category_registry.dart';
 import '../features/members/models/member_model.dart';
 import 'package:math_expressions/math_expressions.dart';
-import '../constants/temp_debt_constants.dart';
 import '../models/enums/account_enums.dart';
 import '../services/reserved_money_service.dart';
-import '../features/transactions/models/expense_resolution_analysis.dart';
-import '../features/transactions/services/expense_resolution_analyzer.dart';
 import '../features/transactions/models/expense_resolution_option.dart';
 import '../services/reserved_money_projection_service.dart';
+import '../financial_engine/results/operation_result.dart';
+import '../constants/temp_debt_constants.dart';
+import '../financial_engine/resolution/resolution.dart';
 
 enum SaveStatus { idle, saving }
 
@@ -28,9 +27,7 @@ enum SaveAction {
   invalidAmount,
   noCategorySelected,
   noAccountSelected,
-
   insufficientBalance,
-
   showTempDebtSuccess,
   showNormalSuccess,
 }
@@ -40,15 +37,27 @@ class SaveResult {
   final SaveAction action;
   final Map<String, dynamic>? data;
 
+  // NEW
+  final bool requiresConfirmation;
+  final List<Resolution> resolutions;
+  final String? errorMessage;
+
   const SaveResult({
     required this.success,
     this.action = SaveAction.none,
     this.data,
+    this.requiresConfirmation = false,
+    this.resolutions = const [],
+    this.errorMessage,
   });
 }
 
 class TransactionEntryController extends ChangeNotifier {
-  TransactionEntryController() {
+  final TransactionApplicationService _transactionService;
+
+  TransactionEntryController({
+    required TransactionApplicationService transactionService,
+  }) : _transactionService = transactionService {
     _initializeDefaultMember();
   }
 
@@ -86,8 +95,6 @@ class TransactionEntryController extends ChangeNotifier {
   String _selectedFromAccountName = "اختر حساب المصدر";
   String _selectedToAccountId = "";
   String _selectedToAccountName = "اختر حساب الوجهة";
-
-  static const String tempDebtAccountName = 'دين مؤقت';
 
   // ==============================
   // Getters
@@ -407,6 +414,7 @@ class TransactionEntryController extends ChangeNotifier {
 
     notifyListeners();
   }
+
   // ==============================
   // Calculator
   // ==============================
@@ -489,6 +497,13 @@ class TransactionEntryController extends ChangeNotifier {
   // ==============================
 
   Future<SaveResult> validateAndSave({required bool isExceptional}) async {
+    debugPrint('========== VALIDATE ==========');
+    debugPrint('Category = $_selectedCategoryId');
+    debugPrint('Account  = $_selectedAccountId');
+    debugPrint('Amount   = $amount');
+    debugPrint('Type     = $selectedTransactionType');
+    debugPrint('==============================');
+
     if (_saveStatus == SaveStatus.saving) {
       return const SaveResult(success: false);
     }
@@ -497,13 +512,23 @@ class TransactionEntryController extends ChangeNotifier {
     notifyListeners();
 
     final amountValue = double.tryParse(_amount) ?? 0;
-
+    debugPrint('========== VALIDATE ==========');
+    debugPrint('Category = $_selectedCategoryId');
+    debugPrint('Account  = $_selectedAccountId');
+    debugPrint('Amount   = $amount');
+    debugPrint('Type     = $selectedTransactionType');
+    debugPrint('==============================');
     if (amountValue == 0) {
       _saveStatus = SaveStatus.idle;
       notifyListeners();
       return const SaveResult(success: false, action: SaveAction.invalidAmount);
     }
-
+    debugPrint('========== VALIDATE ==========');
+    debugPrint('Category = $_selectedCategoryId');
+    debugPrint('Account  = $_selectedAccountId');
+    debugPrint('Amount   = $amount');
+    debugPrint('Type     = $selectedTransactionType');
+    debugPrint('==============================');
     if (_selectedAccountId.isEmpty) {
       _saveStatus = SaveStatus.idle;
       notifyListeners();
@@ -512,7 +537,12 @@ class TransactionEntryController extends ChangeNotifier {
         action: SaveAction.noAccountSelected,
       );
     }
-
+    debugPrint('========== VALIDATE ==========');
+    debugPrint('Category = $_selectedCategoryId');
+    debugPrint('Account  = $_selectedAccountId');
+    debugPrint('Amount   = $amount');
+    debugPrint('Type     = $selectedTransactionType');
+    debugPrint('==============================');
     if (_selectedCategoryId.isEmpty) {
       _saveStatus = SaveStatus.idle;
       notifyListeners();
@@ -521,36 +551,90 @@ class TransactionEntryController extends ChangeNotifier {
         action: SaveAction.noCategorySelected,
       );
     }
-
+    debugPrint('========== VALIDATE ==========');
+    debugPrint('Category = $_selectedCategoryId');
+    debugPrint('Account  = $_selectedAccountId');
+    debugPrint('Amount   = $amount');
+    debugPrint('Type     = $selectedTransactionType');
+    debugPrint('==============================');
+    // ✅ Expense → goes through TransactionApplicationService (which uses Engine)
     if (isExpense) {
-      final balance = BalanceService().getBalance(_selectedAccountId);
+      final result = await _transactionService.addExpense(
+        sourceAccountId: _selectedAccountId,
+        amount: amountValue,
+        categoryId: _getMainCategoryId(_selectedCategoryId),
+        occurredAt: _selectedDate,
+        note: _note.isEmpty ? null : _note,
+      );
 
-      if (amountValue > balance) {
-        final analysis = ExpenseResolutionAnalyzer().analyze(
-          expenseAmount: amountValue,
-          selectedAccountBalance: balance,
+      notifyListeners();
+      debugPrint("========== ENGINE RESULT ==========");
 
-          totalLiquidity: getTotalLiquidityBalance(),
-          totalSavings: getTotalSavingsBalance(),
-          totalReserved: getTotalReservedBalance(),
+      if (result is OperationSucceeded) {
+        debugPrint("SUCCESS");
+      }
 
-          liquidityOptions: getLiquidityOptions(),
-          savingsOptions: getSavingsOptions(),
-          reservedOptions: getReservedOptions(),
+      if (result is OperationFailed) {}
+
+      debugPrint("==============================");
+      if (result is OperationSucceeded) {
+        final wasEditing = _editingTransaction != null;
+
+        _editingTransaction = null;
+
+        if (!wasEditing) {
+          _resetExpenseForm();
+        }
+
+        return const SaveResult(
+          success: true,
+          action: SaveAction.showNormalSuccess,
         );
+      }
 
+      if (result is ConfirmationRequired) {
         _saveStatus = SaveStatus.idle;
         notifyListeners();
 
         return SaveResult(
           success: false,
-          action: SaveAction.insufficientBalance,
-          data: {'shortage': amountValue - balance, 'analysis': analysis},
+          requiresConfirmation: true,
+          resolutions: result.options,
         );
       }
+
+      if (result is OperationRejected) {
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+
+        return SaveResult(success: false, errorMessage: result.reason);
+      }
+
+      if (result is DomainViolationResult) {
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+
+        return SaveResult(success: false, errorMessage: result.reason);
+      }
+
+      if (result is OperationFailed) {
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+
+        return SaveResult(
+          success: false,
+          errorMessage: result.error.toString(),
+        );
+      }
+
+      _saveStatus = SaveStatus.idle;
+      notifyListeners();
+
+      return const SaveResult(success: false);
     }
 
-    final success = await _saveTransaction(amountValue, isExceptional);
+    // ✅ Income, Transfer, Update → still go through TransactionApplicationService (legacy delegate)
+    final success = await _saveTransactionLegacy(amountValue, isExceptional);
 
     if (success) {
       _saveStatus = SaveStatus.idle;
@@ -559,7 +643,6 @@ class TransactionEntryController extends ChangeNotifier {
 
       _editingTransaction = null;
 
-      // Reset فقط أثناء إنشاء معاملة جديدة
       if (!wasEditing) {
         _resetExpenseForm();
       }
@@ -600,10 +683,10 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   // ==============================
-  // Save Transaction
+  // Legacy Save Transaction (delegated to ApplicationService)
   // ==============================
 
-  Future<bool> _saveTransaction(double amount, bool isExceptional) async {
+  Future<bool> _saveTransactionLegacy(double amount, bool isExceptional) async {
     final mainCategoryId = _getMainCategoryId(_selectedCategoryId);
     final subCategoryId = _isSubCategory(_selectedCategoryId)
         ? _selectedCategoryId
@@ -630,27 +713,19 @@ class TransactionEntryController extends ChangeNotifier {
         amount: amount,
         type: _selectedTransactionType,
         fromAccountId: isIncome ? null : _selectedAccountId,
-
         toAccountId: isIncome ? _selectedAccountId : null,
-
         categoryId: mainCategoryId,
-
         subCategoryId: subCategoryId,
-
         date: _selectedDate,
-
         note: _note.isEmpty ? null : _note,
-
         paymentMethod: _paymentMethod,
-
         isExceptional: isExceptional,
-
         actorMemberId: _selectedMemberId,
       );
 
-      await TransactionService.instance.updateTransaction(updated);
+      await _transactionService.updateTransaction(updated);
     } else {
-      await TransactionService.instance.addTransaction(tx);
+      await _transactionService.addTransaction(tx);
     }
 
     return true;
@@ -695,7 +770,7 @@ class TransactionEntryController extends ChangeNotifier {
         source: TransactionSource.manual,
       );
 
-      await TransactionService.instance.addTransaction(tx);
+      await _transactionService.addTransaction(tx);
       _resetTransferForm();
       return true;
     } catch (e) {
@@ -746,70 +821,5 @@ class TransactionEntryController extends ChangeNotifier {
     _selectedToAccountName = "اختر حساب الوجهة";
     _paymentMethod = "cash";
     notifyListeners();
-  }
-
-  // ==============================
-  // Temp Debt Helpers
-  // ==============================
-
-  Future<void> saveAsTempDebt(double shortage) async {
-    // TODO: Implement temp debt logic when needed
-  }
-
-  Future<void> addBalanceAndRetry(double shortage) async {
-    try {
-      final amountValue = double.tryParse(_amount) ?? 0;
-      if (amountValue <= 0) return;
-
-      final tempAccount = await _getOrCreateTempDebtAccount();
-
-      await TransactionService.instance.addTransaction(
-        Transaction.create(
-          amount: shortage,
-          type: TransactionType.transfer,
-          fromAccountId: tempAccount.id,
-          toAccountId: _selectedAccountId,
-          categoryId: "debt",
-          date: _selectedDate,
-          note: "Auto temp debt",
-          currencyCode: currentCurrency,
-          source: TransactionSource.tempDebt,
-        ),
-      );
-
-      await _saveTransaction(amountValue, false);
-      _resetExpenseForm();
-    } catch (e) {
-      debugPrint("❌ Error: $e");
-    } finally {
-      _saveStatus = SaveStatus.idle;
-      notifyListeners();
-    }
-  }
-
-  void switchToIncomeMode() {
-    _saveStatus = SaveStatus.idle;
-    setTransactionType(TransactionType.income);
-    notifyListeners();
-  }
-
-  Future<Account> _getOrCreateTempDebtAccount() async {
-    final box = Hive.box<Account>('accounts');
-
-    final existing = box.get(tempDebtAccountId);
-
-    if (existing != null && !existing.isArchived) {
-      print('TEMP DEBT FOUND');
-
-      return existing;
-    }
-    print('TEMP DEBT CREATED');
-
-    return await AccountService().createSystemAccount(
-      id: tempDebtAccountId,
-      name: tempDebtAccountName,
-      type: 'liability',
-      currency: currentCurrency,
-    );
   }
 }

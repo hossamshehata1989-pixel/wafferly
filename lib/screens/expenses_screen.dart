@@ -13,7 +13,7 @@ import '../constants/transaction_constants.dart';
 import '../models/transaction.dart';
 import '../theme/responsive_metrics.dart';
 import '../widgets/expense_entry/account_picker_sheet.dart';
-import '../widgets/expense_entry/recent_transactions_preview.dart';
+import '../services/transaction_application_service.dart';
 
 class ExpensesScreen extends StatelessWidget {
   final String initialType;
@@ -28,23 +28,16 @@ class ExpensesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = ResponsiveMetrics.of(context);
+    final transactionService = context.read<TransactionApplicationService>();
 
     final isCompactScreen = metrics.width < 360 || metrics.height < 700;
 
     return ChangeNotifierProvider(
-      create: (_) {
-        final controller = TransactionEntryController();
-        if (transactionToEdit != null) {
-          controller.loadTransaction(transactionToEdit!);
-        } else {
-          controller.setTransactionType(initialType);
-        }
-        return controller;
-      },
+      create: (_) =>
+          TransactionEntryController(transactionService: transactionService),
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         appBar: PreferredSize(
-          // AppBar responsive: 56px مرجع → 42px على iPhone SE
           preferredSize: Size.fromHeight(metrics.h(45)),
           child: AppBar(
             title: Text(
