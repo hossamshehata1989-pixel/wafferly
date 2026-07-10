@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'account_mapping.dart';
 
 final class ChartOfAccounts {
@@ -12,6 +13,21 @@ final class ChartOfAccounts {
       }
     }
 
-    return null;
+    // ============================================================
+    // TODO(ADR-0010)
+    //
+    // Temporary implementation.
+    //
+    // Remove after LedgerAccountResolver integration.
+    //
+    // Sprint 6.
+    // ============================================================
+
+    debugPrint(
+      '[TEMP] No mapping found for "$categoryId". '
+      'Using default expense ledger.',
+    );
+
+    return 'expense_default';
   }
 }
