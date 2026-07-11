@@ -11,6 +11,8 @@ import '../../models/goal_activity.dart';
 import '../operations/create_allocation_mutation.dart';
 import 'planning_context.dart';
 import '../domain_guard/financial_constraint.dart';
+import '../domain/financial_transaction_record.dart';
+import '../mutations/create_transaction_mutation.dart';
 
 final class DefaultFinancialPlanner implements FinancialPlanner {
   final ChartOfAccounts _chartOfAccounts;
@@ -53,7 +55,22 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     final expenseAccountId =
         _chartOfAccounts.accountForCategory(categoryId) ??
         (throw StateError('No account mapping found for category $categoryId'));
-
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'expense',
+      primaryAccountId: intent.sourceAccountId,
+      secondaryAccountId: null,
+      categoryId: categoryId,
+      subCategoryId: null,
+      amount: intent.amount,
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: false,
+      source: 'manual',
+      actorMemberId: null,
+    );
     return FinancialExecutionPlan(
       planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
       operationId: 'operation',
@@ -67,6 +84,8 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
             EntryLine(accountId: intent.sourceAccountId, credit: intent.amount),
           ],
         ),
+
+        CreateTransactionMutation(record: transactionRecord),
       ],
     );
   }

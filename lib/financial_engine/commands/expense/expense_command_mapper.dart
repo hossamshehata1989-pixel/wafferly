@@ -6,11 +6,9 @@ final class ExpenseCommandMapper {
 
   ExpenseOperation map(ExpenseCommand command) {
     return ExpenseOperation(
-      sourceAccountId: command.intent.sourceAccountId,
-      amount: command.intent.amount,
-      categoryId: command.intent.categoryId,
-      occurredAt: command.metadata.occurredAt,
-      note: command.metadata.note,
+      intent: command.intent,
+      metadata: command.metadata,
+      context: command.context,
     );
   }
 }

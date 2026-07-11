@@ -8,7 +8,6 @@ import '../integrity/financial_integrity_checker.dart';
 import '../interpretation/financial_interpreter.dart';
 import '../operations/financial_operation.dart';
 import '../planning/financial_planner.dart';
-import '../planning/planning_context.dart';
 import '../policies/policy_pipeline.dart';
 import '../policies/policy_result.dart';
 import '../results/operation_result.dart';
@@ -72,9 +71,11 @@ final class FinancialOperationEngine {
     }
 
     debugPrint('ENGINE: DomainGuard ✓');
-    for (final c in domainResult.constraints) {
-      debugPrint(c.runtimeType.toString());
+
+    for (final constraint in domainResult.constraints) {
+      debugPrint(constraint.runtimeType.toString());
     }
+
     // ====================================================
     // Step 3 — Policy
     // ====================================================
@@ -101,9 +102,12 @@ final class FinancialOperationEngine {
       // Step 4 — Planning
       // ====================================================
 
-      final plan = await _planner.build(
-        PlanningContext(intent: intent, constraints: domainResult.constraints),
+      final planningContext = operation.createPlanningContext(
+        intent: intent,
+        constraints: domainResult.constraints,
       );
+
+      final plan = await _planner.build(planningContext);
 
       debugPrint('ENGINE: Planner ✓');
 

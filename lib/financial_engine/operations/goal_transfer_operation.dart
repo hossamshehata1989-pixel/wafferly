@@ -1,5 +1,8 @@
 import '../resolution/resolution.dart';
 import 'financial_operation.dart';
+import '../domain_guard/financial_constraint.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/planning_context.dart';
 
 final class GoalTransferOperation extends FinancialOperation {
   final String sourceAccountId;
@@ -29,6 +32,16 @@ final class GoalTransferOperation extends FinancialOperation {
       occurredAt: occurredAt,
       note: note,
       resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    throw UnimplementedError(
+      'GoalTransferOperation has not been migrated to the Financial Command Model yet.',
     );
   }
 }

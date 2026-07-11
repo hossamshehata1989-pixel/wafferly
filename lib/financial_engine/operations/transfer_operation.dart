@@ -1,3 +1,6 @@
+import '../domain_guard/financial_constraint.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/planning_context.dart';
 import '../resolution/resolution.dart';
 import 'financial_operation.dart';
 
@@ -26,6 +29,16 @@ final class TransferOperation extends FinancialOperation {
       occurredAt: occurredAt,
       note: note,
       resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    throw UnimplementedError(
+      'TransferOperation has not been migrated to the Financial Command Model yet.',
     );
   }
 }

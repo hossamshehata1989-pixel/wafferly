@@ -1,0 +1,18 @@
+/// Identifiers generated before planning.
+///
+/// The Planner consumes these identifiers but never generates them.
+///
+/// ADR-0013
+final class PlanningIds {
+  final String operationId;
+  final String planId;
+  final String transactionId;
+  final String journalEntryId;
+
+  const PlanningIds({
+    required this.operationId,
+    required this.planId,
+    required this.transactionId,
+    required this.journalEntryId,
+  });
+}

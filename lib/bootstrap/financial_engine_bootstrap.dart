@@ -16,17 +16,22 @@ import '../financial_engine/planning/chart_of_accounts.dart';
 import '../financial_engine/planning/default_financial_planner.dart';
 import '../financial_engine/planning/journal_entry_mutation.dart';
 import '../infrastructure/memory/memory_allocation_repository.dart';
-import '../infrastructure/memory/memory_balance_port.dart';
 import '../infrastructure/memory/memory_journal_entry_repository.dart';
 import 'financial_engine_context.dart';
 import '../services/balance_service.dart';
 import '../infrastructure/hive/hive_balance_port.dart';
+import '../financial_engine/adapters/hive_transaction_port.dart';
+import '../financial_engine/handlers/create_transaction_mutation_handler.dart';
+import '../financial_engine/mutations/create_transaction_mutation.dart';
+import 'package:hive/hive.dart';
+import '../models/transaction.dart';
 
 final class FinancialEngineBootstrap {
   const FinancialEngineBootstrap._();
 
   static FinancialEngineContext create({
     required BalanceService balanceService,
+    required Box<Transaction> transactionBox,
   }) {
     final repository = MemoryJournalEntryRepository();
 
@@ -41,6 +46,11 @@ final class FinancialEngineBootstrap {
     final createAllocationHandler = CreateAllocationMutationHandler(
       port: createAllocationRepository,
     );
+    final transactionPort = HiveTransactionPort(transactionBox);
+
+    final createTransactionHandler = CreateTransactionMutationHandler(
+      transactionPort,
+    );
     final balancePort = HiveBalancePort(balanceService: balanceService);
     final balanceGuard = BalanceDomainGuard(balancePort: balancePort);
 
@@ -48,6 +58,7 @@ final class FinancialEngineBootstrap {
       handlers: {
         JournalEntryMutation: journalHandler,
         CreateAllocationMutation: createAllocationHandler,
+        CreateTransactionMutation: createTransactionHandler,
       },
     );
 

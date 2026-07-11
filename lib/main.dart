@@ -338,10 +338,11 @@ void main() async {
 
   // Create shared services
   final balanceService = BalanceService();
-
+  final transactionBox = Hive.box<Transaction>('transactions');
   // Create engine once
   final engineContext = FinancialEngineBootstrap.create(
     balanceService: balanceService,
+    transactionBox: transactionBox,
   );
 
   final engine = engineContext.engine;
