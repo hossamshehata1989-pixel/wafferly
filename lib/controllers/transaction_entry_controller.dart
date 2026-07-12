@@ -140,6 +140,27 @@ class TransactionEntryController extends ChangeNotifier {
     return acc?.currency ?? "EGP";
   }
 
+  // NEW getter for dynamic date label
+  String get transactionDateLabel {
+    final now = DateTime.now();
+
+    if (_selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day) {
+      return 'Today';
+    }
+
+    final yesterday = now.subtract(const Duration(days: 1));
+
+    if (_selectedDate.year == yesterday.year &&
+        _selectedDate.month == yesterday.month &&
+        _selectedDate.day == yesterday.day) {
+      return 'Yesterday';
+    }
+
+    return '${_selectedDate.day}/${_selectedDate.month}';
+  }
+
   // ==============================
   // Accounts
   // ==============================

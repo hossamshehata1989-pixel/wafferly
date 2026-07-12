@@ -6,6 +6,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
 import '../../financial_engine/resolution/resolution.dart';
 import '../../features/transactions/models/entry_mode.dart';
+import '../../features/transactions/models/entry_mode_extension.dart'; // 👈 استيراد جديد
 
 class EntryBottomActions extends StatelessWidget {
   final TransactionEntryController controller;
@@ -82,6 +83,7 @@ class EntryBottomActions extends StatelessWidget {
   // 2) _buildExpenseAction – UI only (الزر الخاص بالمصروفات)
   // ============================================================
   Widget _buildExpenseAction(BuildContext context, ResponsiveMetrics metrics) {
+    final config = mode.config; // 👈 استخدام extension
     final double height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
 
     return SizedBox(
@@ -133,14 +135,14 @@ class EntryBottomActions extends StatelessWidget {
                   bottomRight: Radius.circular(10),
                 ),
                 onTap: () => _submitEntry(context),
-                child: const Center(
+                child: Center(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.add, color: Colors.white),
                       SizedBox(width: 4),
                       Text(
-                        'Add',
+                        config.submitButtonTitle,
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -158,10 +160,39 @@ class EntryBottomActions extends StatelessWidget {
   }
 
   // ============================================================
-  // 3) _buildIncomeAction (مؤقتاً تعيد نفس الـ Expense)
+  // 3) _buildIncomeAction – UI جديدة للدخل (بدون Exceptional)
   // ============================================================
   Widget _buildIncomeAction(BuildContext context, ResponsiveMetrics metrics) {
-    return _buildExpenseAction(context, metrics);
+    final config = mode.config; // 👈 استخدام extension
+    final double height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
+
+    return SizedBox(
+      height: height,
+      child: ElevatedButton(
+        onPressed: () => _submitEntry(context),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.add, color: Colors.white),
+            SizedBox(width: metrics.spacing(6)),
+            Text(
+              config.submitButtonTitle,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: metrics.text(14),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ============================================================
@@ -174,9 +205,12 @@ class EntryBottomActions extends StatelessWidget {
   // ============================================================
   // 5) _submitEntry – منطق الحفظ المستخرج
   // ============================================================
+
+  bool get _isExceptionalEnabled => mode == EntryMode.expense;
+
   Future<void> _submitEntry(BuildContext context) async {
     final result = await controller.validateAndSave(
-      isExceptional: controller.isExceptional,
+      isExceptional: _isExceptionalEnabled ? controller.isExceptional : false,
     );
 
     // Handle simple validation errors

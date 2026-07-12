@@ -5,12 +5,15 @@ import '../../controllers/transaction_entry_controller.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
 import '../../features/transactions/models/entry_mode.dart';
+import '../../features/transactions/models/entry_mode_extension.dart';
+import 'date_picker_sheet.dart';
 
 class EntryContextRow extends StatelessWidget {
   final TransactionEntryController controller;
   final ResponsiveMetrics metrics;
   final VoidCallback? onAccountTap;
   final EntryMode mode;
+
   const EntryContextRow({
     super.key,
     required this.controller,
@@ -21,16 +24,29 @@ class EntryContextRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final config = mode.config;
+
     return Row(
       children: [
         Expanded(
-          child: _infoButton(metrics, Icons.calendar_today_outlined, 'Today'),
+          child: _infoButton(
+            metrics,
+            Icons.calendar_today_outlined,
+            controller.transactionDateLabel,
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                showDragHandle: true,
+                builder: (_) => DatePickerSheet(controller: controller),
+              );
+            },
+          ),
         ),
         SizedBox(width: metrics.spacing(6)),
         Expanded(
           child: _infoButton(
             metrics,
-            Icons.account_balance_wallet_outlined,
+            config.accountIcon,
             controller.selectedAccountName,
             onTap: onAccountTap,
           ),
@@ -39,7 +55,14 @@ class EntryContextRow extends StatelessWidget {
         Expanded(child: _infoButton(metrics, Icons.person_outline, 'Me')),
         SizedBox(width: metrics.spacing(6)),
         Expanded(
-          child: _infoButton(metrics, Icons.check_circle_outline, 'Done'),
+          child: _infoButton(
+            metrics,
+            Icons.check_circle_outline,
+            'Done',
+            onTap: () {
+              debugPrint('Done tapped');
+            },
+          ),
         ),
       ],
     );
