@@ -28,7 +28,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
         return _planExpense(context);
 
       case FinancialActionType.income:
-        return _planIncome(intent);
+        return _planIncome(context);
 
       case FinancialActionType.transfer:
         return _planTransfer(intent);
@@ -90,13 +90,31 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     );
   }
 
-  FinancialExecutionPlan _planIncome(NormalizedIntent intent) {
+  FinancialExecutionPlan _planIncome(PlanningContext context) {
+    final intent = context.intent;
     final categoryId =
         intent.categoryId ?? (throw StateError('Category is required'));
 
     final incomeAccountId =
         _chartOfAccounts.accountForCategory(categoryId) ??
         (throw StateError('No account mapping found for category $categoryId'));
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'income',
+      primaryAccountId: intent.sourceAccountId,
+      secondaryAccountId: null,
+      categoryId: categoryId,
+      subCategoryId: null,
+      amount: intent.amount,
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: false,
+      source: 'manual',
+      actorMemberId: null,
+    );
 
     return FinancialExecutionPlan(
       planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
@@ -111,6 +129,8 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
             EntryLine(accountId: incomeAccountId, credit: intent.amount),
           ],
         ),
+
+        CreateTransactionMutation(record: transactionRecord),
       ],
     );
   }

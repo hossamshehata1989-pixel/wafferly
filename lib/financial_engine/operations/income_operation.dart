@@ -1,33 +1,41 @@
-import '../resolution/resolution.dart';
-import 'financial_operation.dart';
+import '../commands/income/income_intent.dart';
+import '../commands/shared/transaction_metadata.dart';
 import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
 import '../interpretation/normalized_intent.dart';
 import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
 
+/// Rich Income Operation.
+///
+/// Carries the complete business operation through the Financial Engine.
+///
+/// ADR-0011
+/// ADR-0013
 final class IncomeOperation extends FinancialOperation {
-  final String destinationAccountId;
-  final double amount;
-  final String categoryId;
-  final String? note;
-  final DateTime occurredAt;
+  /// Financial intent.
+  final IncomeIntent intent;
+
+  /// Transaction metadata.
+  final TransactionMetadata metadata;
+
+  /// Execution context.
+  final ExecutionContext context;
 
   const IncomeOperation({
-    required this.destinationAccountId,
-    required this.amount,
-    required this.categoryId,
-    required this.occurredAt,
-    this.note,
+    required this.intent,
+    required this.metadata,
+    required this.context,
     super.resolution,
   });
 
   @override
   IncomeOperation resolve(Resolution resolution) {
     return IncomeOperation(
-      destinationAccountId: destinationAccountId,
-      amount: amount,
-      categoryId: categoryId,
-      occurredAt: occurredAt,
-      note: note,
+      intent: intent,
+      metadata: metadata,
+      context: context,
       resolution: resolution,
     );
   }
@@ -37,8 +45,11 @@ final class IncomeOperation extends FinancialOperation {
     required NormalizedIntent intent,
     required List<FinancialConstraint> constraints,
   }) {
-    throw UnimplementedError(
-      'IncomeOperation has not been migrated to the Financial Command Model yet.',
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
     );
   }
 }

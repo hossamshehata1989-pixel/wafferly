@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import '../domain/financial_transaction_record.dart';
 import '../mutations/create_transaction_mutation.dart';
 import '../ports/transaction_port.dart';
 import '../execution/financial_mutation_handler.dart';

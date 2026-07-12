@@ -633,6 +633,65 @@ class TransactionEntryController extends ChangeNotifier {
       return const SaveResult(success: false);
     }
 
+    if (isIncome) {
+      final result = await _transactionService.addIncome(
+        sourceAccountId: _selectedAccountId,
+        amount: amountValue,
+        categoryId: _getMainCategoryId(_selectedCategoryId),
+        occurredAt: _selectedDate,
+        note: _note.isEmpty ? null : _note,
+      );
+
+      if (result is OperationSucceeded) {
+        _saveStatus = SaveStatus.idle;
+
+        final wasEditing = _editingTransaction != null;
+        _editingTransaction = null;
+
+        if (!wasEditing) {
+          _resetExpenseForm();
+        }
+
+        notifyListeners();
+
+        return const SaveResult(
+          success: true,
+          action: SaveAction.showNormalSuccess,
+        );
+      }
+
+      if (result is ConfirmationRequired) {
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+
+        return SaveResult(
+          success: false,
+          requiresConfirmation: true,
+          resolutions: result.options,
+        );
+      }
+
+      _saveStatus = SaveStatus.idle;
+      notifyListeners();
+
+      if (result is OperationRejected) {
+        return SaveResult(success: false, errorMessage: result.reason);
+      }
+
+      if (result is DomainViolationResult) {
+        return SaveResult(success: false, errorMessage: result.reason);
+      }
+
+      if (result is OperationFailed) {
+        return SaveResult(
+          success: false,
+          errorMessage: result.error.toString(),
+        );
+      }
+
+      return const SaveResult(success: false);
+    }
+
     // ✅ Income, Transfer, Update → still go through TransactionApplicationService (legacy delegate)
     final success = await _saveTransactionLegacy(amountValue, isExceptional);
 

@@ -25,12 +25,12 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
           resolution: operation.resolution ?? Resolution.execute,
         );
 
-      case IncomeOperation operation:
+      case IncomeOperation():
         return NormalizedIntent(
           action: FinancialActionType.income,
-          sourceAccountId: operation.destinationAccountId,
-          amount: operation.amount,
-          categoryId: operation.categoryId,
+          sourceAccountId: operation.intent.sourceAccountId,
+          amount: operation.intent.amount,
+          categoryId: operation.intent.categoryId,
           resolution: operation.resolution ?? Resolution.execute,
         );
 
