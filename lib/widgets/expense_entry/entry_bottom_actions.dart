@@ -1,4 +1,4 @@
-// lib/widgets/expense_entry/entry_actions_row.dart
+// lib/widgets/expense_entry/entry_bottom_actions.dart
 
 import 'package:flutter/material.dart';
 import '../../controllers/transaction_entry_controller.dart';
@@ -62,7 +62,26 @@ class EntryBottomActions extends StatelessWidget {
     );
   }
 
+  // ============================================================
+  // 1) _buildPrimaryAction – يختار الدالة المناسبة حسب mode
+  // ============================================================
   Widget _buildPrimaryAction(BuildContext context, ResponsiveMetrics metrics) {
+    switch (mode) {
+      case EntryMode.expense:
+        return _buildExpenseAction(context, metrics);
+
+      case EntryMode.income:
+        return _buildIncomeAction(context, metrics);
+
+      case EntryMode.transfer:
+        return _buildTransferAction(context, metrics);
+    }
+  }
+
+  // ============================================================
+  // 2) _buildExpenseAction – UI only (الزر الخاص بالمصروفات)
+  // ============================================================
+  Widget _buildExpenseAction(BuildContext context, ResponsiveMetrics metrics) {
     final double height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
 
     return SizedBox(
@@ -113,91 +132,7 @@ class EntryBottomActions extends StatelessWidget {
                   topRight: Radius.circular(10),
                   bottomRight: Radius.circular(10),
                 ),
-                onTap: () async {
-                  final result = await controller.validateAndSave(
-                    isExceptional: controller.isExceptional,
-                  );
-
-                  // Handle simple validation errors
-                  if (!result.success) {
-                    switch (result.action) {
-                      case SaveAction.invalidAmount:
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please enter a valid amount'),
-                          ),
-                        );
-                        return;
-
-                      case SaveAction.noCategorySelected:
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please select category'),
-                          ),
-                        );
-                        return;
-
-                      case SaveAction.noAccountSelected:
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please select account'),
-                          ),
-                        );
-                        return;
-
-                      default:
-                        break;
-                    }
-                  }
-
-                  debugPrint(
-                    'SAVE RESULT => '
-                    'success=${result.success}, '
-                    'requiresConfirmation=${result.requiresConfirmation}, '
-                    'error=${result.errorMessage}, '
-                    'action=${result.action}',
-                  );
-
-                  if (result.requiresConfirmation) {
-                    debugPrint("OPENING CONFIRMATION DIALOG");
-
-                    final resolution = await showDialog<Resolution>(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: const Text('Insufficient Balance'),
-                        content: const Text('Choose how you want to continue.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              debugPrint("BUTTON PRESSED");
-                              Navigator.pop(context);
-                            },
-                            child: const Text("OK"),
-                          ),
-                        ],
-                      ),
-                    );
-
-                    debugPrint("DIALOG CLOSED");
-                    debugPrint("USER CHOICE = $resolution");
-
-                    return;
-                  }
-
-                  if (result.errorMessage != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(result.errorMessage!)),
-                    );
-                    return;
-                  }
-
-                  // Success
-                  if (result.success) {
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                    }
-                  }
-                },
+                onTap: () => _submitEntry(context),
                 child: const Center(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -220,5 +155,102 @@ class EntryBottomActions extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // ============================================================
+  // 3) _buildIncomeAction (مؤقتاً تعيد نفس الـ Expense)
+  // ============================================================
+  Widget _buildIncomeAction(BuildContext context, ResponsiveMetrics metrics) {
+    return _buildExpenseAction(context, metrics);
+  }
+
+  // ============================================================
+  // 4) _buildTransferAction (مؤقتاً تعيد نفس الـ Expense)
+  // ============================================================
+  Widget _buildTransferAction(BuildContext context, ResponsiveMetrics metrics) {
+    return _buildExpenseAction(context, metrics);
+  }
+
+  // ============================================================
+  // 5) _submitEntry – منطق الحفظ المستخرج
+  // ============================================================
+  Future<void> _submitEntry(BuildContext context) async {
+    final result = await controller.validateAndSave(
+      isExceptional: controller.isExceptional,
+    );
+
+    // Handle simple validation errors
+    if (!result.success) {
+      switch (result.action) {
+        case SaveAction.invalidAmount:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please enter a valid amount')),
+          );
+          return;
+
+        case SaveAction.noCategorySelected:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select category')),
+          );
+          return;
+
+        case SaveAction.noAccountSelected:
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select account')),
+          );
+          return;
+
+        default:
+          break;
+      }
+    }
+
+    debugPrint(
+      'SAVE RESULT => '
+      'success=${result.success}, '
+      'requiresConfirmation=${result.requiresConfirmation}, '
+      'error=${result.errorMessage}, '
+      'action=${result.action}',
+    );
+
+    if (result.requiresConfirmation) {
+      debugPrint("OPENING CONFIRMATION DIALOG");
+
+      final resolution = await showDialog<Resolution>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Insufficient Balance'),
+          content: const Text('Choose how you want to continue.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                debugPrint("BUTTON PRESSED");
+                Navigator.pop(context);
+              },
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+
+      debugPrint("DIALOG CLOSED");
+      debugPrint("USER CHOICE = $resolution");
+
+      return;
+    }
+
+    if (result.errorMessage != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.errorMessage!)));
+      return;
+    }
+
+    // Success
+    if (result.success) {
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
+    }
   }
 }
