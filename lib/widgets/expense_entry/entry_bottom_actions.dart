@@ -1,0 +1,224 @@
+// lib/widgets/expense_entry/entry_actions_row.dart
+
+import 'package:flutter/material.dart';
+import '../../controllers/transaction_entry_controller.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/responsive_metrics.dart';
+import '../../financial_engine/resolution/resolution.dart';
+import '../../features/transactions/models/entry_mode.dart';
+
+class EntryBottomActions extends StatelessWidget {
+  final TransactionEntryController controller;
+  final ResponsiveMetrics metrics;
+  final EntryMode mode;
+
+  const EntryBottomActions({
+    super.key,
+    required this.controller,
+    required this.metrics,
+    required this.mode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: _bottomActionButton(metrics, '', Icons.more_horiz)),
+        SizedBox(width: metrics.spacing(6)),
+        Expanded(flex: 2, child: _buildPrimaryAction(context, metrics)),
+        SizedBox(width: metrics.spacing(6)),
+        Expanded(child: _bottomActionButton(metrics, '', Icons.mic)),
+      ],
+    );
+  }
+
+  Widget _bottomActionButton(
+    ResponsiveMetrics metrics,
+    String text,
+    IconData icon,
+  ) {
+    final isSmallScreen = metrics.width < 360;
+    final double height = isSmallScreen ? metrics.h(38) : metrics.h(45);
+    return SizedBox(
+      height: height,
+      child: ElevatedButton(
+        onPressed: () {},
+        style: ElevatedButton.styleFrom(
+          padding: EdgeInsets.symmetric(horizontal: metrics.spacing(8)),
+        ),
+        child: FittedBox(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: metrics.size(15)),
+              if (text.isNotEmpty) ...[
+                SizedBox(width: metrics.spacing(4)),
+                Text(text, style: TextStyle(fontSize: metrics.text(13))),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPrimaryAction(BuildContext context, ResponsiveMetrics metrics) {
+    final double height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
+
+    return SizedBox(
+      height: height,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(4),
+              child: InkWell(
+                onTap: controller.toggleExceptional,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  height: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: controller.isExceptional
+                        ? Colors.amber.withOpacity(0.35)
+                        : AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Exceptional',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(Icons.help_outline, size: 13, color: Colors.amber),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: InkWell(
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(10),
+                  bottomRight: Radius.circular(10),
+                ),
+                onTap: () async {
+                  final result = await controller.validateAndSave(
+                    isExceptional: controller.isExceptional,
+                  );
+
+                  // Handle simple validation errors
+                  if (!result.success) {
+                    switch (result.action) {
+                      case SaveAction.invalidAmount:
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please enter a valid amount'),
+                          ),
+                        );
+                        return;
+
+                      case SaveAction.noCategorySelected:
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please select category'),
+                          ),
+                        );
+                        return;
+
+                      case SaveAction.noAccountSelected:
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Please select account'),
+                          ),
+                        );
+                        return;
+
+                      default:
+                        break;
+                    }
+                  }
+
+                  debugPrint(
+                    'SAVE RESULT => '
+                    'success=${result.success}, '
+                    'requiresConfirmation=${result.requiresConfirmation}, '
+                    'error=${result.errorMessage}, '
+                    'action=${result.action}',
+                  );
+
+                  if (result.requiresConfirmation) {
+                    debugPrint("OPENING CONFIRMATION DIALOG");
+
+                    final resolution = await showDialog<Resolution>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Insufficient Balance'),
+                        content: const Text('Choose how you want to continue.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              debugPrint("BUTTON PRESSED");
+                              Navigator.pop(context);
+                            },
+                            child: const Text("OK"),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    debugPrint("DIALOG CLOSED");
+                    debugPrint("USER CHOICE = $resolution");
+
+                    return;
+                  }
+
+                  if (result.errorMessage != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(result.errorMessage!)),
+                    );
+                    return;
+                  }
+
+                  // Success
+                  if (result.success) {
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                    }
+                  }
+                },
+                child: const Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text(
+                        'Add',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

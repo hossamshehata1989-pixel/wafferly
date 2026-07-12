@@ -14,6 +14,7 @@ import '../models/transaction.dart';
 import '../theme/responsive_metrics.dart';
 import '../widgets/expense_entry/account_picker_sheet.dart';
 import '../services/transaction_application_service.dart';
+import '../features/transactions/models/entry_mode.dart';
 
 class ExpensesScreen extends StatelessWidget {
   final String initialType;
@@ -164,6 +165,7 @@ class ExpensesScreen extends StatelessWidget {
         // AMOUNT INPUT PANEL
         AmountInputPanel(
           controller: controller,
+          mode: EntryMode.expense,
           onAccountTap: () {
             showAccountPickerSheet(context, controller);
           },

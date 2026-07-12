@@ -11,14 +11,18 @@ import '../../features/transactions/models/expense_resolution_analysis.dart';
 import '../../financial_engine/resolution/resolution.dart';
 import '../../services/sound_service.dart';
 import '../../financial_engine/resolution/resolution_label_extension.dart';
+import 'entry_bottom_actions.dart'; // يحتوي على EntryBottomActions
+import 'entry_context_row.dart'; // NEW import
+import '../../features/transactions/models/entry_mode.dart';
 
 class AmountInputPanel extends StatelessWidget {
   final TransactionEntryController controller;
   final VoidCallback? onAccountTap;
-
+  final EntryMode mode;
   const AmountInputPanel({
     super.key,
     required this.controller,
+    required this.mode,
     this.onAccountTap,
   });
 
@@ -123,52 +127,19 @@ class AmountInputPanel extends StatelessWidget {
             SizedBox(height: metrics.h(4)),
             _buildCalculator(context, metrics, buttonSize),
             SizedBox(height: metrics.h(3)),
-            Row(
-              children: [
-                Expanded(
-                  child: _infoButton(
-                    metrics,
-                    Icons.calendar_today_outlined,
-                    'Today',
-                  ),
-                ),
-                SizedBox(width: metrics.spacing(6)),
-                Expanded(
-                  child: _infoButton(
-                    metrics,
-                    Icons.account_balance_wallet_outlined,
-                    controller.selectedAccountName,
-                    onTap: onAccountTap,
-                  ),
-                ),
-                SizedBox(width: metrics.spacing(6)),
-                Expanded(
-                  child: _infoButton(metrics, Icons.person_outline, 'Me'),
-                ),
-                SizedBox(width: metrics.spacing(6)),
-                Expanded(
-                  child: _infoButton(
-                    metrics,
-                    Icons.check_circle_outline,
-                    'Done',
-                  ),
-                ),
-              ],
+            // 🔁 REPLACED WITH EntryContextRow
+            EntryContextRow(
+              controller: controller,
+              metrics: metrics,
+              mode: mode,
+              onAccountTap: onAccountTap,
             ),
             SizedBox(height: metrics.h(6)),
-            Row(
-              children: [
-                Expanded(
-                  child: _bottomActionButton(metrics, '', Icons.more_horiz),
-                ),
-                SizedBox(width: metrics.spacing(6)),
-                Expanded(
-                  flex: 2,
-                  child: _addExceptionalButton(context, metrics),
-                ),
-                SizedBox(width: metrics.spacing(6)),
-                Expanded(child: _bottomActionButton(metrics, '', Icons.mic)),
-              ],
+            // 🔁 REPLACED WITH EntryBottomActions
+            EntryBottomActions(
+              controller: controller,
+              metrics: metrics,
+              mode: mode,
             ),
           ],
         ),
@@ -290,234 +261,5 @@ class AmountInputPanel extends StatelessWidget {
     );
   }
 
-  Widget _infoButton(
-    ResponsiveMetrics metrics,
-    IconData icon,
-    String text, {
-    VoidCallback? onTap,
-  }) {
-    final isSmallScreen = metrics.width < 360;
-    final double height = isSmallScreen ? metrics.h(38) : metrics.h(45);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        height: height,
-        decoration: BoxDecoration(
-          color: AppColors.calculatorButton,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: metrics.size(15), color: Colors.white70),
-            SizedBox(width: metrics.spacing(4)),
-            Flexible(
-              child: Text(
-                text,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: metrics.text(11),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _bottomActionButton(
-    ResponsiveMetrics metrics,
-    String text,
-    IconData icon,
-  ) {
-    final isSmallScreen = metrics.width < 360;
-    final double height = isSmallScreen ? metrics.h(38) : metrics.h(45);
-    return SizedBox(
-      height: height,
-      child: ElevatedButton(
-        onPressed: () {},
-        style: ElevatedButton.styleFrom(
-          padding: EdgeInsets.symmetric(horizontal: metrics.spacing(8)),
-        ),
-        child: FittedBox(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: metrics.size(15)),
-              if (text.isNotEmpty) ...[
-                SizedBox(width: metrics.spacing(4)),
-                Text(text, style: TextStyle(fontSize: metrics.text(13))),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _addExceptionalButton(
-    BuildContext context,
-    ResponsiveMetrics metrics,
-  ) {
-    final double height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
-
-    return SizedBox(
-      height: height,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(4),
-              child: InkWell(
-                onTap: controller.toggleExceptional,
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  height: 32,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: controller.isExceptional
-                        ? Colors.amber.withOpacity(0.35)
-                        : AppColors.background,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Exceptional',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Icon(Icons.help_outline, size: 13, color: Colors.amber),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: InkWell(
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(10),
-                  bottomRight: Radius.circular(10),
-                ),
-                onTap: () async {
-                  final result = await controller.validateAndSave(
-                    isExceptional: controller.isExceptional,
-                  );
-
-                  // Handle simple validation errors
-                  if (!result.success) {
-                    switch (result.action) {
-                      case SaveAction.invalidAmount:
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please enter a valid amount'),
-                          ),
-                        );
-                        return;
-
-                      case SaveAction.noCategorySelected:
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please select category'),
-                          ),
-                        );
-                        return;
-
-                      case SaveAction.noAccountSelected:
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please select account'),
-                          ),
-                        );
-                        return;
-
-                      default:
-                        break;
-                    }
-                  }
-
-                  debugPrint(
-                    'SAVE RESULT => '
-                    'success=${result.success}, '
-                    'requiresConfirmation=${result.requiresConfirmation}, '
-                    'error=${result.errorMessage}, '
-                    'action=${result.action}',
-                  );
-
-                  if (result.requiresConfirmation) {
-                    debugPrint("OPENING CONFIRMATION DIALOG");
-
-                    final resolution = await showDialog<Resolution>(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: const Text('Insufficient Balance'),
-                        content: const Text('Choose how you want to continue.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              debugPrint("BUTTON PRESSED");
-                              Navigator.pop(context);
-                            },
-                            child: const Text("OK"),
-                          ),
-                        ],
-                      ),
-                    );
-
-                    debugPrint("DIALOG CLOSED");
-                    debugPrint("USER CHOICE = $resolution");
-
-                    return;
-                  }
-
-                  if (result.errorMessage != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(result.errorMessage!)),
-                    );
-                    return;
-                  }
-
-                  // Success
-                  if (result.success) {
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                    }
-                  }
-                },
-                child: const Center(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text(
-                        'Add',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // _infoButton and _bottomActionButton and _addExceptionalButton( have been removed.
 }
