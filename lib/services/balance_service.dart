@@ -2,7 +2,6 @@
 
 import 'package:hive/hive.dart';
 import '../models/transaction.dart';
-import '../models/account.dart';
 import '../constants/transaction_constants.dart';
 import 'reserved_money_service.dart';
 

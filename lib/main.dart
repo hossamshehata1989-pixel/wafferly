@@ -1,7 +1,6 @@
 // main.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -54,7 +53,6 @@ import 'services/financial_action_engine.dart';
 import 'services/providers/commitment_action_provider.dart';
 import 'services/schedule_evaluator.dart';
 
-import 'features/financial_action_center/financial_action_center.dart';
 import 'services/transaction_service.dart';
 
 // NEW imports for Engine and Application Service
@@ -73,7 +71,7 @@ void main() async {
   // Debug Flags
   // ====================================================
 
-  const bool RESET_DB =
+  const bool resetDb =
       true; // Set to true to clear all data on app start (for testing)
   const bool runStressTest = false;
   const bool runActorTest = false;
@@ -83,7 +81,7 @@ void main() async {
   // Optional DB Reset
   // ====================================================
 
-  if (RESET_DB) {
+  if (resetDb) {
     await Hive.deleteBoxFromDisk('accounts');
     await Hive.deleteBoxFromDisk('transactions');
     await Hive.deleteBoxFromDisk('ledger_entries');

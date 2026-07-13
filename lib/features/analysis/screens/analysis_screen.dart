@@ -1,9 +1,6 @@
 // lib/features/analysis/screens/analysis_screen.dart
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import '../../../services/transaction_service.dart';
-import '../../../constants/transaction_constants.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/transaction.dart';
 import '../models/time_period.dart';

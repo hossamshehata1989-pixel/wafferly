@@ -1,7 +1,6 @@
 // lib/screens/planning/dialogs/reserve_goal_dialog.dart
 
 import 'package:flutter/material.dart';
-import '../../../models/account.dart';
 import '../../../models/enums/account_enums.dart';
 import '../../../services/account_service.dart';
 import '../../../services/goal_allocation_service.dart';
@@ -85,7 +84,7 @@ Future<bool?> showReserveGoalDialog(
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: selectedAccountId,
+                initialValue: selectedAccountId,
                 decoration: const InputDecoration(labelText: 'Source Account'),
                 items: accounts.map((a) {
                   return DropdownMenuItem(value: a.id, child: Text(a.name));

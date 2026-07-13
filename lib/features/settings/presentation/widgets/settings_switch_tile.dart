@@ -22,7 +22,7 @@ class SettingsSwitchTile extends StatelessWidget {
       title: Text(title, style: const TextStyle(color: AppColors.textPrimary)),
       value: value,
       onChanged: onChanged,
-      activeColor: AppColors.primary,
+      activeThumbColor: AppColors.primary,
     );
   }
 }

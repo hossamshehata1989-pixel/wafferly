@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../../models/goal.dart';
 import '../../services/goal_projection_service.dart';
 import 'widgets/goal_progress_card.dart';
-import 'widgets/goal_action_tile.dart';
 import 'dialogs/reserve_goal_dialog.dart';
 import '../../services/goal_activity_service.dart';
 import '../../models/goal_activity.dart';

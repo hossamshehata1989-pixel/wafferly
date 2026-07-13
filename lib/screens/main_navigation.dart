@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:wafferly/features/analysis/screens/analysis_screen.dart';
 import '../l10n/app_localizations.dart';
-import '../theme/app_colors.dart';
 import 'accounts/accounts_screen.dart';
 import 'expenses_screen.dart';
 import 'transactions/transactions_screen.dart';
@@ -559,7 +558,7 @@ class _AddTransactionBottomSheetState
               ),
               onTap: () => _navigateToExpensesScreen(option['type']),
             );
-          }).toList(),
+          }),
           const SizedBox(height: 24),
         ],
       ),

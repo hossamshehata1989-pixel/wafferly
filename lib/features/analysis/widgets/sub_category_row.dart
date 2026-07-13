@@ -87,7 +87,7 @@ class SubCategoryRow extends StatelessWidget {
               width: 24,
               height: 24,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
+              errorBuilder: (_, _, _) =>
                   Icon(Icons.category, size: 24, color: color),
             ),
     );

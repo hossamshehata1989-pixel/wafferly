@@ -1,7 +1,6 @@
 import 'package:hive/hive.dart';
 
 import 'package:wafferly/models/enums/frequency.dart';
-import 'package:wafferly/models/enums/account_enums.dart';
 
 part 'schedule_rule.g.dart';
 

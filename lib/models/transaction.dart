@@ -109,7 +109,7 @@ class Transaction extends HiveObject {
       subCategoryId: subCategoryId ?? this.subCategoryId,
       currencyCode: currencyCode ?? this.currencyCode,
       source: source ?? this.source,
-      createdAt: this.createdAt,
+      createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
       actorMemberId: actorMemberId ?? this.actorMemberId,
     );

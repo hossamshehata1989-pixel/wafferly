@@ -106,7 +106,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
   String get _sectionTitle => widget.accountToEdit != null
       ? 'Edit Account'
-      : 'Add Account - ${_sectionName}';
+      : 'Add Account - $_sectionName';
   String get _sectionName {
     switch (widget.sectionType ?? SectionType.asset) {
       case SectionType.asset:
@@ -245,8 +245,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       validator: (v) {
                         if (v != null &&
                             v.isNotEmpty &&
-                            double.tryParse(v) == null)
+                            double.tryParse(v) == null) {
                           return 'Please enter a valid number';
+                        }
                         return null;
                       },
                     ),
@@ -567,13 +568,14 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error archiving account: $e'),
             backgroundColor: Colors.red,
           ),
         );
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -654,17 +656,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         currency: _selectedCurrency,
         notes: notes,
       );
-      if (newAccount == null) {
-        if (mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to create account'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        setState(() => _isSaving = false);
-        return;
-      }
 
       if (balanceValue != 0) {
         final isLiability = widget.sectionType == SectionType.liability;

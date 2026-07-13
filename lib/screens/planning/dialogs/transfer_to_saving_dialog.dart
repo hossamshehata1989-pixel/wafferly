@@ -85,7 +85,7 @@ Future<TransferToSavingResult?> showTransferToSavingDialog({
 
                 if (requireSourceAccount) ...[
                   DropdownButtonFormField<String>(
-                    value: selectedSourceId,
+                    initialValue: selectedSourceId,
                     decoration: const InputDecoration(
                       labelText: 'Source Account',
                     ),
@@ -107,7 +107,7 @@ Future<TransferToSavingResult?> showTransferToSavingDialog({
 
                 const SizedBox(height: 24),
                 DropdownButtonFormField<String>(
-                  value: selectedSavingId,
+                  initialValue: selectedSavingId,
                   decoration: const InputDecoration(
                     labelText: 'Saving Account',
                   ),

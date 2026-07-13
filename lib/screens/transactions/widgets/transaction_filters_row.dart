@@ -23,7 +23,7 @@ class _TransactionFiltersRowState extends State<TransactionFiltersRow> {
   String _selectedDate = 'This Month';
   String _selectedMembers = 'All Members';
   String _selectedAccount = 'All Accounts';
-  String _selectedCategory = 'All Categories';
+  final String _selectedCategory = 'All Categories';
   String _selectedSort = 'Recent First';
 
   List<String> _getAccountNames() {

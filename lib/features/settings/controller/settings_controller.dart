@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/settings_state.dart';
 import '../services/settings_storage_service.dart';
-import 'package:provider/provider.dart';
 
 class SettingsController extends ChangeNotifier {
   SettingsState _state = const SettingsState();

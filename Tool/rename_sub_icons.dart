@@ -1,5 +1,5 @@
 import 'dart:io';
-import '../lib/data/categories_data.dart';
+import 'package:wafferly/data/categories_data.dart';
 
 void main() {
   final dir = Directory('assets/icons/subcategories');

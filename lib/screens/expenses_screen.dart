@@ -12,7 +12,7 @@ import '../l10n/app_localizations.dart';
 import '../constants/transaction_constants.dart';
 import '../models/transaction.dart';
 import '../theme/responsive_metrics.dart';
-import '../widgets/expense_entry/account_picker_sheet.dart';
+import '../widgets/expense_entry/account/account_picker_sheet.dart';
 import '../services/transaction_application_service.dart';
 import '../features/transactions/models/entry_mode.dart';
 

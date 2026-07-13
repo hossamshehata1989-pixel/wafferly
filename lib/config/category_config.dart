@@ -1,6 +1,5 @@
 // lib/config/category_config.dart
 
-import 'package:flutter/material.dart';
 import '../core/app_assets.dart';
 import '../l10n/app_localizations.dart';
 import 'category_type.dart';

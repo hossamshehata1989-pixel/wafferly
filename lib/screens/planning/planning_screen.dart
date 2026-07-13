@@ -2,11 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
-import '../../services/balance_service.dart';
-import '../../services/reserved_money_service.dart';
 import '../../services/current_account_service.dart';
-import '../../models/reserved_money.dart';
-import '../../models/enums/reserved_money_type.dart';
 import 'goals_screen.dart';
 import '../../services/goal_schedule_service.dart';
 

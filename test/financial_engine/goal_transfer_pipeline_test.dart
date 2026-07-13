@@ -3,9 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wafferly/bootstrap/financial_engine_bootstrap.dart';
 import 'package:wafferly/financial_engine/execution_context/execution_context.dart';
 import 'package:wafferly/financial_engine/operations/goal_transfer_operation.dart';
-import 'package:wafferly/financial_engine/planning/goal_activity_mutation.dart';
-import 'package:wafferly/financial_engine/planning/journal_entry_mutation.dart';
-import 'package:wafferly/financial_engine/planning/release_allocation_mutation.dart';
 import 'package:wafferly/financial_engine/resolution/resolution.dart';
 
 void main() {

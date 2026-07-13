@@ -15,7 +15,6 @@ import 'package:wafferly/screens/accounts/group_accounts_screen.dart';
 import 'widgets/section_summary_card.dart';
 import 'widgets/net_worth_card.dart';
 import 'controllers/accounts_screen_controller.dart';
-import 'package:wafferly/features/financial_action_center/financial_action_center.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});

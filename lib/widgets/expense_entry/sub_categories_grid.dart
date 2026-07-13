@@ -6,7 +6,6 @@ import 'package:auto_size_text/auto_size_text.dart';
 import '../../config/category_config.dart';
 import '../../l10n/app_localizations.dart';
 import '../../utils/category_icons.dart';
-import '../../theme/app_colors.dart';
 
 class SubCategoriesGrid extends StatelessWidget {
   final List<SubCategoryConfig> subCategories;

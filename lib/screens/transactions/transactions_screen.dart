@@ -111,18 +111,21 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   List<Transaction> _filterByTab(List<Transaction> transactions, int tabIndex) {
     if (tabIndex == 0) return transactions;
-    if (tabIndex == 1)
+    if (tabIndex == 1) {
       return transactions
           .where((t) => t.type == TransactionType.expense)
           .toList();
-    if (tabIndex == 2)
+    }
+    if (tabIndex == 2) {
       return transactions
           .where((t) => t.type == TransactionType.income)
           .toList();
-    if (tabIndex == 3)
+    }
+    if (tabIndex == 3) {
       return transactions
           .where((t) => t.type == TransactionType.transfer)
           .toList();
+    }
     if (tabIndex == 4) return [];
     if (tabIndex == 5) return [];
     return transactions;

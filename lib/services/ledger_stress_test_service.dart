@@ -144,7 +144,7 @@ class LedgerStressTestService {
     int delayMs = 0,
     bool verbose = false,
   }) async {
-    print("\n" + "=" * 70);
+    print("\n${"=" * 70}");
     print("🧪 LEDGER STRESS TEST STARTED");
     print("=" * 70);
     print("📊 Target Transactions: $transactionCount");
@@ -217,7 +217,7 @@ class LedgerStressTestService {
       print("\n⚠️ ORPHAN LEDGER ENTRIES DETECTED: ${report.orphanLedgerEntries.length}");
     }
     
-    print("\n" + "=" * 70);
+    print("\n${"=" * 70}");
     print("✅ STRESS TEST COMPLETED");
     print("=" * 70 + "\n");
     

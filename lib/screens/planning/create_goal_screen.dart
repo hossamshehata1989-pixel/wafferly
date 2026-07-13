@@ -42,8 +42,9 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
         name.contains('vehicle') ||
         name.contains('سيارة') ||
         name.contains('عربية') ||
-        name.contains('عربيه'))
+        name.contains('عربيه')) {
       return '🚗';
+    }
     if (name.contains('travel') ||
         name.contains('trip') ||
         name.contains('vacation') ||
@@ -51,31 +52,35 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
         name.contains('سفر') ||
         name.contains('رحلة') ||
         name.contains('رحله') ||
-        name.contains('مصيف'))
+        name.contains('مصيف')) {
       return '✈️';
+    }
     if (name.contains('house') ||
         name.contains('home') ||
         name.contains('apartment') ||
         name.contains('بيت') ||
         name.contains('منزل') ||
         name.contains('شقة') ||
-        name.contains('شقه'))
+        name.contains('شقه')) {
       return '🏠';
+    }
     if (name.contains('phone') ||
         name.contains('mobile') ||
         name.contains('iphone') ||
         name.contains('android') ||
         name.contains('تليفون') ||
         name.contains('موبايل') ||
-        name.contains('هاتف'))
+        name.contains('هاتف')) {
       return '📱';
+    }
     if (name.contains('laptop') ||
         name.contains('computer') ||
         name.contains('pc') ||
         name.contains('كمبيوتر') ||
         name.contains('لاب') ||
-        name.contains('لابتوب'))
+        name.contains('لابتوب')) {
       return '💻';
+    }
     if (name.contains('education') ||
         name.contains('study') ||
         name.contains('course') ||
@@ -83,29 +88,35 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
         name.contains('جامعه') ||
         name.contains('تعليم') ||
         name.contains('دراسة') ||
-        name.contains('دراسه'))
+        name.contains('دراسه')) {
       return '🎓';
+    }
     if (name.contains('wedding') ||
         name.contains('marriage') ||
         name.contains('زواج') ||
-        name.contains('جواز'))
+        name.contains('جواز')) {
       return '💍';
+    }
     if (name.contains('baby') ||
         name.contains('child') ||
         name.contains('طفل') ||
-        name.contains('بيبي'))
+        name.contains('بيبي')) {
       return '👶';
+    }
     if (name.contains('investment') ||
         name.contains('invest') ||
-        name.contains('استثمار'))
+        name.contains('استثمار')) {
       return '📈';
+    }
     if (name.contains('emergency') ||
         name.contains('emergency fund') ||
         name.contains('طوارئ') ||
-        name.contains('طارئ'))
+        name.contains('طارئ')) {
       return '🛟';
-    if (name.contains('gift') || name.contains('هدية') || name.contains('هديه'))
+    }
+    if (name.contains('gift') || name.contains('هدية') || name.contains('هديه')) {
       return '🎁';
+    }
     return '🎯';
   }
 

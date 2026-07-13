@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/screens/transactions/widgets/transaction_card.dart';
-import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/screens/transactions/widgets/day_section_header.dart';
 
 class TransactionSection extends StatefulWidget {

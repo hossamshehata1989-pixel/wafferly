@@ -224,7 +224,7 @@ class TransactionCard extends StatelessWidget {
                     width: 18,
                     height: 18,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) =>
+                    errorBuilder: (_, _, _) =>
                         Icon(Icons.category, size: 18, color: Colors.white54),
                   ),
                 ),

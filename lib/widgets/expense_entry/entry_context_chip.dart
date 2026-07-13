@@ -112,7 +112,7 @@ class EntryContextChip extends StatelessWidget {
                 style: labelStyle,
               ),
             ),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
       ),

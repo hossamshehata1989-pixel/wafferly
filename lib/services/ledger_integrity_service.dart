@@ -102,7 +102,7 @@ class LedgerIntegrityService {
   Future<void> printValidationReport() async {
     final report = await runFullValidation();
     
-    print("\n" + "=" * 60);
+    print("\n${"=" * 60}");
     print("🔍 LEDGER INTEGRITY REPORT (Sprint 4A)");
     print("=" * 60);
     print("📊 Total Transactions: ${report.totalTransactions}");

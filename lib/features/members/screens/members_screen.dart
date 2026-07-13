@@ -26,7 +26,7 @@ class MembersScreen extends StatelessWidget {
         title: const Text("Members"),
       ),
       body: Consumer<MembersController>(
-        builder: (_, controller, __) {
+        builder: (_, controller, _) {
           final members = controller.members;
 
           if (members.isEmpty) {

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../models/account.dart';
 import '../../services/account_service.dart';
 
 class AccountDetailsScreen extends StatelessWidget {

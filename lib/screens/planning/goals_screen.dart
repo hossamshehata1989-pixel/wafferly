@@ -5,7 +5,6 @@ import '../../models/goal.dart';
 import '../../services/goal_service.dart';
 import '../../services/goal_funding_projection_service.dart'; // ✅ استبدال import
 import '../../services/goal_allocation_service.dart';
-import '../../models/account.dart';
 import '../../services/account_service.dart';
 import '../../models/enums/account_enums.dart';
 import '../../models/enums/goal_type.dart';
@@ -532,7 +531,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: selectedAccountId,
+                  initialValue: selectedAccountId,
                   decoration: const InputDecoration(
                     labelText: 'Source Account',
                   ),

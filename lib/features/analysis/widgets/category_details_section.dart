@@ -5,9 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'custom_donut_chart.dart';
 import '../../../utils/category_icons.dart';
-import '../../../config/category_config.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../utils/category_helper.dart';
 
 class MainCategoryData {
   final String id;

@@ -33,7 +33,6 @@ class WafferlyDatePicker extends StatelessWidget {
             colorScheme: const ColorScheme.dark(
               primary: AppColors.primary,
               surface: AppColors.card,
-              background: AppColors.background,
               onSurface: AppColors.textPrimary,
             ),
           ),
