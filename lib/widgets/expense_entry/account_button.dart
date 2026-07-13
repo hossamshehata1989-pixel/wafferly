@@ -2,11 +2,13 @@
 
 import 'package:flutter/material.dart';
 import '../../controllers/transaction_entry_controller.dart';
-import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
 import '../../features/transactions/models/entry_mode.dart';
 import '../../models/account_display_extension.dart';
 import 'account_selector.dart';
+import 'entry_context_chip.dart';
+import 'no_account_sheet.dart';
+import '../../widgets/bottom_sheet/wafferly_bottom_sheet.dart';
 
 class AccountButton extends StatefulWidget {
   final TransactionEntryController controller;
@@ -36,35 +38,17 @@ class _AccountButtonState extends State<AccountButton> {
         final accounts = widget.controller.availableAccounts;
         final selectedId = widget.controller.selectedAccountId;
 
-        // البحث عن الحساب المحدد
         final selectedAccount = accounts
             .where((acc) => acc.id == selectedId)
             .firstOrNull;
 
-        // إذا لم يكن هناك أي حساب، نعرض عنصرًا احتياطيًا
         if (selectedAccount == null) {
-          return Container(
+          return EntryContextChip(
             key: _anchorKey,
-            height: widget.metrics.width < 360
-                ? widget.metrics.h(38)
-                : widget.metrics.h(45),
-            decoration: BoxDecoration(
-              color: AppColors.calculatorButton,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Icon(
-                  Icons.account_balance_wallet_outlined,
-                  size: 16,
-                  color: Colors.white54,
-                ),
-                SizedBox(width: 6),
-                Text('No Account', style: TextStyle(color: Colors.white54)),
-              ],
-            ),
+            metrics: widget.metrics,
+            label: 'No Account',
+            iconColor: Colors.white54, // ✅ تم توفير اللون
+            onTap: _showNoAccountSheet,
           );
         }
 
@@ -75,98 +59,21 @@ class _AccountButtonState extends State<AccountButton> {
           scale: _pressed ? 0.97 : 1,
           duration: const Duration(milliseconds: 80),
           curve: Curves.easeOut,
-          child: Container(
+          child: EntryContextChip(
             key: _anchorKey,
-            child: InkWell(
-              onTap: _handleTap,
-              splashColor: display.color.withValues(alpha: 0.18),
-              highlightColor: display.color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-
-                height: widget.metrics.width < 360
-                    ? widget.metrics.h(38)
-                    : widget.metrics.h(45),
-
-                decoration: BoxDecoration(
-                  color: AppColors.calculatorButton,
-
-                  borderRadius: BorderRadius.circular(10),
-
-                  border: Border.all(
-                    color: display.color.withValues(alpha: 0.20),
-                  ),
-                ),
-
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // ✅ أيقونة الحساب المحدد بلونه
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 180),
-                      transitionBuilder: (child, animation) {
-                        return FadeTransition(
-                          opacity: animation,
-                          child: ScaleTransition(
-                            scale: Tween<double>(
-                              begin: 0.85,
-                              end: 1,
-                            ).animate(animation),
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Icon(
-                        display.icon,
-                        key: ValueKey(selectedAccount.id),
-                        size: widget.metrics.size(15),
-                        color: display.color,
-                      ),
-                    ),
-                    SizedBox(width: widget.metrics.spacing(4)),
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 180),
-                        switchInCurve: Curves.easeOut,
-                        switchOutCurve: Curves.easeIn,
-                        transitionBuilder: (child, animation) {
-                          return SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0.08, 0),
-                              end: Offset.zero,
-                            ).animate(animation),
-                            child: FadeTransition(
-                              opacity: animation,
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: Text(
-                          selectedAccount.name,
-                          key: ValueKey(selectedAccount.id),
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: widget.metrics.text(11),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (accountCount > 1) ...[
-                      const SizedBox(width: 4),
-                      // ✅ سهم بلون الحساب مع شفافية
-                      Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: display.color.withValues(alpha: 0.7),
-                        size: 18,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+            metrics: widget.metrics,
+            icon: display.icon,
+            iconColor: display.color,
+            label: selectedAccount.name,
+            trailing: accountCount > 1
+                ? Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: display.color,
+                  )
+                : null,
+            borderColor: display.color.withValues(alpha: 0.20),
+            onTap: _handleTap,
           ),
         );
       },
@@ -188,6 +95,13 @@ class _AccountButtonState extends State<AccountButton> {
       context: context,
       controller: widget.controller,
       anchorKey: _anchorKey,
+    );
+  }
+
+  Future<void> _showNoAccountSheet() async {
+    await WafferlyBottomSheet.show(
+      context: context,
+      child: const NoAccountSheet(),
     );
   }
 }
