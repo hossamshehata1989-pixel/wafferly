@@ -7,10 +7,7 @@ import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
 import 'package:provider/provider.dart';
 import '../../features/settings/controller/settings_controller.dart';
-import '../../features/transactions/models/expense_resolution_analysis.dart';
-import '../../financial_engine/resolution/resolution.dart';
 import '../../services/sound_service.dart';
-import '../../financial_engine/resolution/resolution_label_extension.dart';
 import 'entry_bottom_actions.dart'; // يحتوي على EntryBottomActions
 import 'entry_context_row.dart'; // NEW import
 import '../../features/transactions/models/entry_mode.dart';
@@ -132,7 +129,6 @@ class AmountInputPanel extends StatelessWidget {
               controller: controller,
               metrics: metrics,
               mode: mode,
-              onAccountTap: onAccountTap,
             ),
             SizedBox(height: metrics.h(6)),
             // 🔁 REPLACED WITH EntryBottomActions

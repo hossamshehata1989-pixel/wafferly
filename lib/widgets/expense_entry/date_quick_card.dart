@@ -26,7 +26,7 @@ class DateQuickCard extends StatelessWidget {
         height: 68,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: AppColors.cardSecondary, // أو Colors.white12 حسب التصميم
+          color: AppColors.cardSecondary,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
         ),
@@ -49,6 +49,9 @@ class DateQuickCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: false,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -58,6 +61,8 @@ class DateQuickCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: Colors.white60, fontSize: 13),
                   ),
                 ],

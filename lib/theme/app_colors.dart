@@ -36,6 +36,16 @@ class AppColors {
   static const Color debt = Color(0xFFFF8A4C);
 
   // =========================
+  // Account Identity Colors (NEW)
+  // =========================
+
+  static const Color accountCash = Color(0xFF43A047);
+  static const Color accountWallet = Color(0xFF00ACC1);
+  static const Color accountBank = Color(0xFF3F51B5);
+  static const Color accountSaving = Color(0xFF8E24AA);
+  static const Color accountCredit = Color(0xFFFB8C00);
+
+  // =========================
   // Status Colors
   // =========================
 

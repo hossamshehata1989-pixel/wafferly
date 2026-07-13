@@ -7,25 +7,23 @@ import '../../theme/responsive_metrics.dart';
 import '../../features/transactions/models/entry_mode.dart';
 import '../../features/transactions/models/entry_mode_extension.dart';
 import 'date_picker_sheet.dart';
+import '../../widgets/bottom_sheet/wafferly_bottom_sheet.dart';
+import 'account_button.dart'; // ✅ استيراد AccountButton
 
 class EntryContextRow extends StatelessWidget {
   final TransactionEntryController controller;
   final ResponsiveMetrics metrics;
-  final VoidCallback? onAccountTap;
   final EntryMode mode;
 
   const EntryContextRow({
     super.key,
     required this.controller,
     required this.metrics,
-    this.onAccountTap,
     required this.mode,
   });
 
   @override
   Widget build(BuildContext context) {
-    final config = mode.config;
-
     return Row(
       children: [
         Expanded(
@@ -34,21 +32,19 @@ class EntryContextRow extends StatelessWidget {
             Icons.calendar_today_outlined,
             controller.transactionDateLabel,
             onTap: () {
-              showModalBottomSheet(
+              WafferlyBottomSheet.show(
                 context: context,
-                showDragHandle: true,
-                builder: (_) => DatePickerSheet(controller: controller),
+                child: DatePickerSheet(controller: controller),
               );
             },
           ),
         ),
         SizedBox(width: metrics.spacing(6)),
         Expanded(
-          child: _infoButton(
-            metrics,
-            config.accountIcon,
-            controller.selectedAccountName,
-            onTap: onAccountTap,
+          child: AccountButton(
+            controller: controller,
+            metrics: metrics,
+            mode: mode,
           ),
         ),
         SizedBox(width: metrics.spacing(6)),
@@ -90,7 +86,7 @@ class EntryContextRow extends StatelessWidget {
           children: [
             Icon(icon, size: metrics.size(15), color: Colors.white70),
             SizedBox(width: metrics.spacing(4)),
-            Flexible(
+            Expanded(
               child: Text(
                 text,
                 overflow: TextOverflow.ellipsis,

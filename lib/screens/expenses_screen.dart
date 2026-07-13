@@ -163,13 +163,7 @@ class ExpensesScreen extends StatelessWidget {
         const Spacer(),
 
         // AMOUNT INPUT PANEL
-        AmountInputPanel(
-          controller: controller,
-          mode: EntryMode.expense,
-          onAccountTap: () {
-            showAccountPickerSheet(context, controller);
-          },
-        ),
+        AmountInputPanel(controller: controller, mode: EntryMode.expense),
       ],
     );
   }

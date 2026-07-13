@@ -19,6 +19,7 @@ import '../services/reserved_money_projection_service.dart';
 import '../financial_engine/results/operation_result.dart';
 import '../constants/temp_debt_constants.dart';
 import '../financial_engine/resolution/resolution.dart';
+import '../services/account_service.dart';
 
 enum SaveStatus { idle, saving }
 
@@ -37,7 +38,6 @@ class SaveResult {
   final SaveAction action;
   final Map<String, dynamic>? data;
 
-  // NEW
   final bool requiresConfirmation;
   final List<Resolution> resolutions;
   final String? errorMessage;
@@ -54,11 +54,21 @@ class SaveResult {
 
 class TransactionEntryController extends ChangeNotifier {
   final TransactionApplicationService _transactionService;
+  final AccountService _accountService = AccountService();
 
   TransactionEntryController({
     required TransactionApplicationService transactionService,
   }) : _transactionService = transactionService {
     _initializeDefaultMember();
+    // ✅ الاستماع لتغييرات الحسابات عبر AccountService
+    _accountService.accountsListenable.addListener(_syncAccountSelection);
+    _syncAccountSelection();
+  }
+
+  @override
+  void dispose() {
+    _accountService.accountsListenable.removeListener(_syncAccountSelection);
+    super.dispose();
   }
 
   void _initializeDefaultMember() {
@@ -66,11 +76,31 @@ class TransactionEntryController extends ChangeNotifier {
       final owner = Hive.box<MemberModel>(
         'members',
       ).values.firstWhere((m) => m.isOwner && !m.isArchived);
-
       _selectedMemberId = owner.id;
     } catch (_) {
       _selectedMemberId = null;
     }
+  }
+
+  // ✅ مزامنة الحساب المختار مع القائمة الحالية
+  void _syncAccountSelection() {
+    _selectBestAccount();
+    // _refreshBalance(); // مستقبلاً
+    // _refreshWarnings(); // مستقبلاً
+    notifyListeners();
+  }
+
+  // ✅ اختيار أفضل حساب (قابلة للتوسع)
+  void _selectBestAccount() {
+    final accounts = availableAccounts;
+    if (accounts.isEmpty) return;
+
+    final exists = accounts.any((a) => a.id == _selectedAccountId);
+    if (exists) return;
+
+    final account = accounts.first;
+    _selectedAccountId = account.id;
+    _selectedAccountName = account.name;
   }
 
   String _amount = "0";
@@ -140,7 +170,6 @@ class TransactionEntryController extends ChangeNotifier {
     return acc?.currency ?? "EGP";
   }
 
-  // NEW getter for dynamic date label
   String get transactionDateLabel {
     final now = DateTime.now();
 
@@ -167,7 +196,6 @@ class TransactionEntryController extends ChangeNotifier {
 
   List<Account> get availableAccounts {
     final box = Hive.box<Account>('accounts');
-
     return box.values
         .where(
           (acc) =>
@@ -181,7 +209,6 @@ class TransactionEntryController extends ChangeNotifier {
 
   List<Account> get activeAccounts {
     final box = Hive.box<Account>('accounts');
-
     return box.values
         .where(
           (acc) =>
@@ -194,25 +221,21 @@ class TransactionEntryController extends ChangeNotifier {
 
   double getTotalLiquidityBalance() {
     double total = 0;
-
     for (final account in availableAccounts) {
       if (account.group == AccountGroup.liquidity) {
         total += BalanceService().getAvailableBalance(account.id);
       }
     }
-
     return total;
   }
 
   double getTotalSavingsBalance() {
     double total = 0;
-
     for (final account in activeAccounts) {
       if (account.group == AccountGroup.savings) {
         total += BalanceService().getAvailableBalance(account.id);
       }
     }
-
     return total;
   }
 
@@ -222,22 +245,11 @@ class TransactionEntryController extends ChangeNotifier {
 
   List<ExpenseResolutionOption> getLiquidityOptions() {
     final options = <ExpenseResolutionOption>[];
-
     for (final account in availableAccounts) {
-      if (account.group != AccountGroup.liquidity) {
-        continue;
-      }
-
-      if (account.id == _selectedAccountId) {
-        continue;
-      }
-
+      if (account.group != AccountGroup.liquidity) continue;
+      if (account.id == _selectedAccountId) continue;
       final balance = BalanceService().getAvailableBalance(account.id);
-
-      if (balance <= 0) {
-        continue;
-      }
-
+      if (balance <= 0) continue;
       options.add(
         ExpenseResolutionOption(
           id: account.id,
@@ -246,24 +258,15 @@ class TransactionEntryController extends ChangeNotifier {
         ),
       );
     }
-
     return options;
   }
 
   List<ExpenseResolutionOption> getSavingsOptions() {
     final options = <ExpenseResolutionOption>[];
-
     for (final account in activeAccounts) {
-      if (account.group != AccountGroup.savings) {
-        continue;
-      }
-
+      if (account.group != AccountGroup.savings) continue;
       final balance = BalanceService().getAvailableBalance(account.id);
-
-      if (balance <= 0) {
-        continue;
-      }
-
+      if (balance <= 0) continue;
       options.add(
         ExpenseResolutionOption(
           id: account.id,
@@ -272,13 +275,11 @@ class TransactionEntryController extends ChangeNotifier {
         ),
       );
     }
-
     return options;
   }
 
   List<ExpenseResolutionOption> getReservedOptions() {
     final reservedItems = ReservedMoneyService().getAll();
-
     return reservedItems
         .map(
           (item) => ExpenseResolutionOption(
@@ -290,19 +291,11 @@ class TransactionEntryController extends ChangeNotifier {
         .toList();
   }
 
-  // TODO(Wafferly V2)
-  // Deprecated.
-  // Use:
-  // getTotalLiquidityBalance()
-  // getTotalSavingsBalance()
-  // getTotalReservedBalance()
   double getTotalAvailableBalance() {
     double total = 0;
-
     for (final account in availableAccounts) {
       total += BalanceService().getAvailableBalance(account.id);
     }
-
     return total;
   }
 
@@ -385,14 +378,11 @@ class TransactionEntryController extends ChangeNotifier {
   void setTransactionType(String type) {
     _selectedTransactionType = type;
     _selectedCategoryId = "";
-
-    // Default actor selection
     if (type == TransactionType.expense || type == TransactionType.income) {
       try {
         final owner = Hive.box<MemberModel>(
           'members',
         ).values.firstWhere((m) => m.isOwner && !m.isArchived);
-
         _selectedMemberId = owner.id;
       } catch (_) {
         _selectedMemberId = null;
@@ -400,25 +390,21 @@ class TransactionEntryController extends ChangeNotifier {
     } else {
       _selectedMemberId = null;
     }
-
     notifyListeners();
   }
 
   void loadTransaction(Transaction tx) {
     _editingTransaction = tx;
-
     _amount = tx.amount.toString();
     _selectedDate = tx.date;
     _note = tx.note ?? '';
     _paymentMethod = tx.paymentMethod;
-
     _selectedTransactionType = tx.type;
     _selectedMemberId = tx.actorMemberId;
 
     final categoryId = (tx.subCategoryId?.isNotEmpty == true)
         ? tx.subCategoryId!
         : tx.categoryId;
-
     _selectedCategoryId = categoryId;
 
     if (tx.type == TransactionType.income) {
@@ -426,13 +412,9 @@ class TransactionEntryController extends ChangeNotifier {
     } else {
       _selectedAccountId = tx.fromAccountId ?? '';
     }
-
     final box = Hive.box<Account>('accounts');
-
     final account = box.get(_selectedAccountId);
-
     _selectedAccountName = account?.name ?? "اختر حساب";
-
     notifyListeners();
   }
 
@@ -464,17 +446,13 @@ class TransactionEntryController extends ChangeNotifier {
     } else if (value == "=") {
       try {
         final parser = Parser();
-
         final expression = parser.parse(_amount.replaceAll('x', '*'));
-
         final result = expression.evaluate(EvaluationType.REAL, ContextModel());
-
         if (result % 1 == 0) {
           _amount = result.toInt().toString();
         } else {
           _amount = result.toString();
         }
-
         _expression = "";
         _justCalculated = true;
       } catch (_) {
@@ -483,25 +461,19 @@ class TransactionEntryController extends ChangeNotifier {
         _justCalculated = false;
       }
     } else {
-      // بعد =
       if (_justCalculated) {
         if (_isOperator(value)) {
           _amount += value;
         } else {
           _amount = value;
         }
-
         _justCalculated = false;
-      }
-      // منع operator في البداية
-      else if (_amount == "0") {
+      } else if (_amount == "0") {
         if (!_isOperator(value)) {
           _amount = value;
         }
       } else {
-        // منع ++ و ** و //
         final lastChar = _amount[_amount.length - 1];
-
         if (_isOperator(lastChar) && _isOperator(value)) {
           _amount = _amount.substring(0, _amount.length - 1) + value;
         } else {
@@ -509,7 +481,6 @@ class TransactionEntryController extends ChangeNotifier {
         }
       }
     }
-
     notifyListeners();
   }
 
@@ -518,13 +489,6 @@ class TransactionEntryController extends ChangeNotifier {
   // ==============================
 
   Future<SaveResult> validateAndSave({required bool isExceptional}) async {
-    debugPrint('========== VALIDATE ==========');
-    debugPrint('Category = $_selectedCategoryId');
-    debugPrint('Account  = $_selectedAccountId');
-    debugPrint('Amount   = $amount');
-    debugPrint('Type     = $selectedTransactionType');
-    debugPrint('==============================');
-
     if (_saveStatus == SaveStatus.saving) {
       return const SaveResult(success: false);
     }
@@ -533,23 +497,13 @@ class TransactionEntryController extends ChangeNotifier {
     notifyListeners();
 
     final amountValue = double.tryParse(_amount) ?? 0;
-    debugPrint('========== VALIDATE ==========');
-    debugPrint('Category = $_selectedCategoryId');
-    debugPrint('Account  = $_selectedAccountId');
-    debugPrint('Amount   = $amount');
-    debugPrint('Type     = $selectedTransactionType');
-    debugPrint('==============================');
+
     if (amountValue == 0) {
       _saveStatus = SaveStatus.idle;
       notifyListeners();
       return const SaveResult(success: false, action: SaveAction.invalidAmount);
     }
-    debugPrint('========== VALIDATE ==========');
-    debugPrint('Category = $_selectedCategoryId');
-    debugPrint('Account  = $_selectedAccountId');
-    debugPrint('Amount   = $amount');
-    debugPrint('Type     = $selectedTransactionType');
-    debugPrint('==============================');
+
     if (_selectedAccountId.isEmpty) {
       _saveStatus = SaveStatus.idle;
       notifyListeners();
@@ -558,12 +512,7 @@ class TransactionEntryController extends ChangeNotifier {
         action: SaveAction.noAccountSelected,
       );
     }
-    debugPrint('========== VALIDATE ==========');
-    debugPrint('Category = $_selectedCategoryId');
-    debugPrint('Account  = $_selectedAccountId');
-    debugPrint('Amount   = $amount');
-    debugPrint('Type     = $selectedTransactionType');
-    debugPrint('==============================');
+
     if (_selectedCategoryId.isEmpty) {
       _saveStatus = SaveStatus.idle;
       notifyListeners();
@@ -572,13 +521,7 @@ class TransactionEntryController extends ChangeNotifier {
         action: SaveAction.noCategorySelected,
       );
     }
-    debugPrint('========== VALIDATE ==========');
-    debugPrint('Category = $_selectedCategoryId');
-    debugPrint('Account  = $_selectedAccountId');
-    debugPrint('Amount   = $amount');
-    debugPrint('Type     = $selectedTransactionType');
-    debugPrint('==============================');
-    // ✅ Expense → goes through TransactionApplicationService (which uses Engine)
+
     if (isExpense) {
       final result = await _transactionService.addExpense(
         sourceAccountId: _selectedAccountId,
@@ -587,26 +530,14 @@ class TransactionEntryController extends ChangeNotifier {
         occurredAt: _selectedDate,
         note: _note.isEmpty ? null : _note,
       );
-
       notifyListeners();
-      debugPrint("========== ENGINE RESULT ==========");
 
-      if (result is OperationSucceeded) {
-        debugPrint("SUCCESS");
-      }
-
-      if (result is OperationFailed) {}
-
-      debugPrint("==============================");
       if (result is OperationSucceeded) {
         final wasEditing = _editingTransaction != null;
-
         _editingTransaction = null;
-
         if (!wasEditing) {
           _resetExpenseForm();
         }
-
         return const SaveResult(
           success: true,
           action: SaveAction.showNormalSuccess,
@@ -616,7 +547,6 @@ class TransactionEntryController extends ChangeNotifier {
       if (result is ConfirmationRequired) {
         _saveStatus = SaveStatus.idle;
         notifyListeners();
-
         return SaveResult(
           success: false,
           requiresConfirmation: true,
@@ -627,21 +557,18 @@ class TransactionEntryController extends ChangeNotifier {
       if (result is OperationRejected) {
         _saveStatus = SaveStatus.idle;
         notifyListeners();
-
         return SaveResult(success: false, errorMessage: result.reason);
       }
 
       if (result is DomainViolationResult) {
         _saveStatus = SaveStatus.idle;
         notifyListeners();
-
         return SaveResult(success: false, errorMessage: result.reason);
       }
 
       if (result is OperationFailed) {
         _saveStatus = SaveStatus.idle;
         notifyListeners();
-
         return SaveResult(
           success: false,
           errorMessage: result.error.toString(),
@@ -650,7 +577,6 @@ class TransactionEntryController extends ChangeNotifier {
 
       _saveStatus = SaveStatus.idle;
       notifyListeners();
-
       return const SaveResult(success: false);
     }
 
@@ -665,16 +591,12 @@ class TransactionEntryController extends ChangeNotifier {
 
       if (result is OperationSucceeded) {
         _saveStatus = SaveStatus.idle;
-
         final wasEditing = _editingTransaction != null;
         _editingTransaction = null;
-
         if (!wasEditing) {
           _resetExpenseForm();
         }
-
         notifyListeners();
-
         return const SaveResult(
           success: true,
           action: SaveAction.showNormalSuccess,
@@ -684,7 +606,6 @@ class TransactionEntryController extends ChangeNotifier {
       if (result is ConfirmationRequired) {
         _saveStatus = SaveStatus.idle;
         notifyListeners();
-
         return SaveResult(
           success: false,
           requiresConfirmation: true,
@@ -713,20 +634,15 @@ class TransactionEntryController extends ChangeNotifier {
       return const SaveResult(success: false);
     }
 
-    // ✅ Income, Transfer, Update → still go through TransactionApplicationService (legacy delegate)
     final success = await _saveTransactionLegacy(amountValue, isExceptional);
 
     if (success) {
       _saveStatus = SaveStatus.idle;
-
       final wasEditing = _editingTransaction != null;
-
       _editingTransaction = null;
-
       if (!wasEditing) {
         _resetExpenseForm();
       }
-
       return const SaveResult(
         success: true,
         action: SaveAction.showNormalSuccess,
@@ -735,7 +651,6 @@ class TransactionEntryController extends ChangeNotifier {
 
     _saveStatus = SaveStatus.idle;
     notifyListeners();
-
     return const SaveResult(success: false);
   }
 
@@ -747,14 +662,12 @@ class TransactionEntryController extends ChangeNotifier {
     if (CategoryRegistry.isMainCategory(selectedId)) {
       return selectedId;
     }
-
     if (CategoryRegistry.isSubCategory(selectedId)) {
       final parentId = CategoryRegistry.getParentMainId(selectedId);
       if (parentId != null) {
         return parentId;
       }
     }
-
     return selectedId;
   }
 
@@ -763,7 +676,7 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   // ==============================
-  // Legacy Save Transaction (delegated to ApplicationService)
+  // Legacy Save Transaction
   // ==============================
 
   Future<bool> _saveTransactionLegacy(double amount, bool isExceptional) async {
@@ -802,7 +715,6 @@ class TransactionEntryController extends ChangeNotifier {
         isExceptional: isExceptional,
         actorMemberId: _selectedMemberId,
       );
-
       await _transactionService.updateTransaction(updated);
     } else {
       await _transactionService.addTransaction(tx);
@@ -873,8 +785,8 @@ class TransactionEntryController extends ChangeNotifier {
 
     _selectedCategoryId = "";
 
-    _selectedAccountId = "";
-    _selectedAccountName = "اختر حساب";
+    // ✅ تم استبدال إعادة تعيين الحساب بـ _selectBestAccount()
+    _selectBestAccount();
 
     _paymentMethod = "cash";
 
@@ -882,7 +794,6 @@ class TransactionEntryController extends ChangeNotifier {
       final owner = Hive.box<MemberModel>(
         'members',
       ).values.firstWhere((m) => m.isOwner && !m.isArchived);
-
       _selectedMemberId = owner.id;
     } catch (_) {
       _selectedMemberId = null;
