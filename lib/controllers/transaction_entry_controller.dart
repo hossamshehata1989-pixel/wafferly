@@ -194,19 +194,7 @@ class TransactionEntryController extends ChangeNotifier {
   // Accounts
   // ==============================
 
-  List<Account> get availableAccounts {
-    final box = Hive.box<Account>('accounts');
-    return box.values
-        .where(
-          (acc) =>
-              acc.bookId == 'default' &&
-              !acc.isArchived &&
-              acc.id != tempDebtAccountId &&
-              acc.group == AccountGroup.liquidity,
-        )
-        .toList();
-  }
-
+  // جميع الحسابات النشطة (غير المؤرشفة، وليست الدين المؤقت)
   List<Account> get activeAccounts {
     final box = Hive.box<Account>('accounts');
     return box.values
@@ -217,6 +205,23 @@ class TransactionEntryController extends ChangeNotifier {
               acc.id != tempDebtAccountId,
         )
         .toList();
+  }
+
+  // حسابات السيولة فقط (مشتقة من activeAccounts)
+  List<Account> get availableAccounts {
+    return activeAccounts
+        .where((acc) => acc.group == AccountGroup.liquidity)
+        .toList();
+  }
+
+  // ==============================
+  // Members
+  // ==============================
+
+  List<MemberModel> get availableMembers {
+    return Hive.box<MemberModel>(
+      'members',
+    ).values.where((m) => !m.isArchived).toList();
   }
 
   double getTotalLiquidityBalance() {
@@ -365,8 +370,10 @@ class TransactionEntryController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void selectMember(String? id) {
-    _selectedMemberId = id;
+  void selectMember(String memberId) {
+    if (_selectedMemberId == memberId) return;
+
+    _selectedMemberId = memberId;
     notifyListeners();
   }
 

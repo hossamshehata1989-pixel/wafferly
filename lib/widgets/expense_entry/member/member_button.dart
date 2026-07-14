@@ -3,23 +3,20 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/responsive_metrics.dart';
-import '../../../models/member.dart';
-import '../entry_context_chip.dart'; // تم تعديل المسار
+import '../../../controllers/transaction_entry_controller.dart';
+import '../../../features/members/models/member_model.dart';
+import '../entry_context_chip.dart';
 import 'member_selector.dart';
 import 'no_member_sheet.dart';
 import '../../bottom_sheet/wafferly_bottom_sheet.dart';
 
 class MemberButton extends StatefulWidget {
-  final List<Member> members;
-  final String? selectedMemberId;
-  final ValueChanged<String> onSelected;
+  final TransactionEntryController controller;
   final ResponsiveMetrics metrics;
 
   const MemberButton({
     super.key,
-    required this.members,
-    required this.selectedMemberId,
-    required this.onSelected,
+    required this.controller,
     required this.metrics,
   });
 
@@ -31,44 +28,54 @@ class _MemberButtonState extends State<MemberButton> {
   final GlobalKey _anchorKey = GlobalKey();
   bool _pressed = false;
 
-  Member? get selectedMember =>
-      widget.members.firstWhereOrNull((m) => m.id == widget.selectedMemberId);
+  MemberModel? get selectedMember {
+    final members = widget.controller.availableMembers;
+    return members.cast<MemberModel?>().firstWhere(
+      (m) => m?.id == widget.controller.selectedMemberId,
+      orElse: () => null,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final member = selectedMember;
+    return ListenableBuilder(
+      listenable: widget.controller,
+      builder: (context, _) {
+        final member = selectedMember;
+        final members = widget.controller.availableMembers;
+        final count = members.length;
 
-    if (member == null) {
-      return EntryContextChip(
-        key: _anchorKey,
-        metrics: widget.metrics,
-        label: 'Add Member',
-        onTap: _showNoMemberSheet,
-      );
-    }
+        if (member == null) {
+          return EntryContextChip(
+            key: _anchorKey,
+            metrics: widget.metrics,
+            label: 'No Member',
+            onTap: _showNoMemberSheet,
+          );
+        }
 
-    final count = widget.members.length;
-
-    return AnimatedScale(
-      scale: _pressed ? 0.97 : 1,
-      duration: const Duration(milliseconds: 80),
-      curve: Curves.easeOut,
-      child: EntryContextChip(
-        key: _anchorKey,
-        metrics: widget.metrics,
-        icon: Icons.person,
-        iconColor: AppColors.primary,
-        label: member.name,
-        trailing: count > 1
-            ? Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 16,
-                color: AppColors.primary,
-              )
-            : null,
-        borderColor: AppColors.primary.withValues(alpha: 0.20),
-        onTap: _handleTap,
-      ),
+        return AnimatedScale(
+          scale: _pressed ? 0.97 : 1,
+          duration: const Duration(milliseconds: 80),
+          curve: Curves.easeOut,
+          child: EntryContextChip(
+            key: _anchorKey,
+            metrics: widget.metrics,
+            icon: Icons.person,
+            iconColor: AppColors.primary,
+            label: member.name,
+            trailing: count > 1
+                ? Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 16,
+                    color: AppColors.primary,
+                  )
+                : null,
+            borderColor: AppColors.primary.withValues(alpha: 0.20),
+            onTap: _handleTap,
+          ),
+        );
+      },
     );
   }
 
@@ -85,9 +92,9 @@ class _MemberButtonState extends State<MemberButton> {
 
     await MemberSelector.show(
       context: context,
-      members: widget.members,
-      selectedMemberId: widget.selectedMemberId,
-      onSelected: widget.onSelected,
+      members: widget.controller.availableMembers,
+      selectedMemberId: widget.controller.selectedMemberId,
+      onSelected: widget.controller.selectMember,
       anchorKey: _anchorKey,
     );
   }

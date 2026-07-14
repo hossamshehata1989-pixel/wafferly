@@ -1,7 +1,7 @@
 // lib/widgets/expense_entry/member/member_picker_sheet.dart
 
 import 'package:flutter/material.dart';
-import '../../../models/member.dart';
+import '../../../features/members/models/member_model.dart';
 import '../../../theme/app_colors.dart';
 import '../../bottom_sheet/wafferly_bottom_sheet.dart';
 import '../../bottom_sheet/sheet_header.dart';
@@ -10,9 +10,9 @@ import 'member_card.dart';
 
 Future<void> showMemberPickerSheet({
   required BuildContext context,
-  required List<Member> members,
+  required List<MemberModel> members,
   required String? selectedMemberId,
-  required Function(String) onSelected,
+  required ValueChanged<String> onSelected,
 }) async {
   await WafferlyBottomSheet.show(
     context: context,
@@ -50,7 +50,7 @@ Future<void> showMemberPickerSheet({
         const SizedBox(height: 16),
         SheetFooter(
           actions: [
-            ElevatedButton.icon(
+            FilledButton.icon(
               onPressed: () {
                 Navigator.pop(context);
                 // TODO: navigate to AddMemberScreen

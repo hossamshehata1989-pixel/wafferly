@@ -1,13 +1,13 @@
 // lib/widgets/expense_entry/member/member_selector.dart
 
 import 'package:flutter/material.dart';
-import '../../../models/member.dart';
+import '../../../features/members/models/member_model.dart';
 import 'member_picker_sheet.dart';
 
 class MemberSelector {
   static Future<void> show({
     required BuildContext context,
-    required List<Member> members,
+    required List<MemberModel> members,
     required String? selectedMemberId,
     required Function(String) onSelected,
     required GlobalKey anchorKey,

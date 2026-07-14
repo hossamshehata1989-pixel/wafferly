@@ -111,7 +111,7 @@ Future<void> showAccountPickerSheet(
 
         SheetFooter(
           actions: [
-            ElevatedButton.icon(
+            FilledButton.icon(
               onPressed: () async {
                 Navigator.pop(context);
                 await Navigator.push(

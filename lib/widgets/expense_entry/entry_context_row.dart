@@ -8,6 +8,7 @@ import 'date_picker_sheet.dart';
 import '../../widgets/bottom_sheet/wafferly_bottom_sheet.dart';
 import 'account/account_button.dart';
 import 'entry_context_chip.dart';
+import 'member/member_button.dart';
 
 class EntryContextRow extends StatelessWidget {
   final TransactionEntryController controller;
@@ -49,12 +50,7 @@ class EntryContextRow extends StatelessWidget {
         ),
         SizedBox(width: metrics.spacing(6)),
         Expanded(
-          child: EntryContextChip(
-            metrics: metrics,
-            icon: Icons.person_outline,
-            iconColor: Colors.white70,
-            label: 'Me',
-          ),
+          child: MemberButton(controller: controller, metrics: metrics),
         ),
         SizedBox(width: metrics.spacing(6)),
         Expanded(

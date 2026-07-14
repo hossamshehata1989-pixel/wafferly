@@ -2,10 +2,10 @@
 
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
-import '../../../models/member.dart';
+import '../../../features/members/models/member_model.dart';
 
 class MemberCard extends StatelessWidget {
-  final Member member;
+  final MemberModel member;
   final bool selected;
   final VoidCallback onTap;
 
