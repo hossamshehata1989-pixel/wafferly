@@ -5,6 +5,7 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/responsive_metrics.dart';
 import '../../../controllers/transaction_entry_controller.dart';
 import '../../../features/members/models/member_model.dart';
+import 'member_avatar.dart';
 import '../entry_context_chip.dart';
 import 'member_selector.dart';
 import 'no_member_sheet.dart';
@@ -46,14 +47,9 @@ class _MemberButtonState extends State<MemberButton> {
         final count = members.length;
 
         if (member == null) {
-          return EntryContextChip(
-            key: _anchorKey,
-            metrics: widget.metrics,
-            label: 'No Member',
-            onTap: _showNoMemberSheet,
-          );
+          debugPrint('ERROR: No default member found');
+          return const SizedBox.shrink();
         }
-
         return AnimatedScale(
           scale: _pressed ? 0.97 : 1,
           duration: const Duration(milliseconds: 80),
@@ -61,13 +57,13 @@ class _MemberButtonState extends State<MemberButton> {
           child: EntryContextChip(
             key: _anchorKey,
             metrics: widget.metrics,
-            icon: Icons.person,
+            leading: MemberAvatar(member: member, radius: 12),
             iconColor: AppColors.primary,
             label: member.name,
             trailing: count > 1
                 ? Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    size: 16,
+                    size: 8,
                     color: AppColors.primary,
                   )
                 : null,

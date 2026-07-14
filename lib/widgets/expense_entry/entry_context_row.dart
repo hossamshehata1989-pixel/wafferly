@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../controllers/transaction_entry_controller.dart';
 import '../../theme/responsive_metrics.dart';
 import '../../features/transactions/models/entry_mode.dart';
-import 'date_picker_sheet.dart';
+import 'date/date_picker_sheet.dart';
 import '../../widgets/bottom_sheet/wafferly_bottom_sheet.dart';
 import 'account/account_button.dart';
 import 'entry_context_chip.dart';
@@ -29,7 +29,11 @@ class EntryContextRow extends StatelessWidget {
         Expanded(
           child: EntryContextChip(
             metrics: metrics,
-            icon: Icons.calendar_today_outlined,
+            leading: Icon(
+              Icons.calendar_today_outlined,
+              color: Colors.white70,
+              size: 17,
+            ),
             iconColor: Colors.white70,
             label: controller.transactionDateLabel,
             onTap: () {
@@ -56,7 +60,11 @@ class EntryContextRow extends StatelessWidget {
         Expanded(
           child: EntryContextChip(
             metrics: metrics,
-            icon: Icons.check_circle_outline,
+            leading: Icon(
+              Icons.check_circle_outline,
+              color: Colors.white70,
+              size: 17,
+            ),
             iconColor: Colors.white70,
             label: 'Done',
             onTap: () {

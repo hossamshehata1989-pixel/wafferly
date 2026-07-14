@@ -61,6 +61,7 @@ import 'financial_engine/engine/financial_operation_engine.dart';
 import 'services/transaction_application_service.dart';
 
 import 'services/balance_service.dart';
+import 'features/members/services/member_seeder.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -244,6 +245,7 @@ void main() async {
   await Hive.openBox<ReservedMoney>('reserved_money');
   await Hive.openBox<Goal>('goals');
   await Hive.openBox<MemberModel>('members');
+  await MemberSeeder.ensureOwnerExists();
   await Hive.openBox<Allocation>('allocations');
   await Hive.openBox<GoalActivity>('goal_activities');
   await Hive.openBox<Commitment>('commitments');

@@ -28,7 +28,7 @@ class QuickActionsRow extends StatelessWidget {
     } catch (_) {
       member = null;
     }
-    final memberLabel = member?.name ?? "No Member";
+    final memberLabel = member?.name ?? "Assss Member";
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -238,20 +238,6 @@ class QuickActionsRow extends StatelessWidget {
               child: ListView(
                 shrinkWrap: true,
                 children: [
-                  ListTile(
-                    leading: const Icon(
-                      Icons.person_off,
-                      color: Colors.white54,
-                    ),
-                    title: const Text(
-                      "No Member",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    onTap: () {
-                      controller.selectMember(null);
-                      Navigator.pop(context);
-                    },
-                  ),
                   ...members.map(
                     (member) => ListTile(
                       leading: const Icon(Icons.person, color: Colors.white70),

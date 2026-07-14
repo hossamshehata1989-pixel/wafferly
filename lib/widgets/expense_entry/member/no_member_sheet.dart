@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../../bottom_sheet/sheet_header.dart';
+import '../../../features/members/screens/add_member_screen.dart';
 
 class NoMemberSheet extends StatelessWidget {
   const NoMemberSheet({super.key});
@@ -13,7 +14,7 @@ class NoMemberSheet extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SheetHeader(
-          title: 'No Members',
+          title: 'Add Members',
           icon: Icons.people_outlined,
           onClose: () => Navigator.pop(context),
         ),
@@ -36,9 +37,15 @@ class NoMemberSheet extends StatelessWidget {
               label: const Text('Add Member'),
               onPressed: () async {
                 Navigator.of(context).pop();
+
                 await Future.delayed(const Duration(milliseconds: 180));
+
                 if (!context.mounted) return;
-                // TODO: navigate to AddMemberScreen
+
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddMemberScreen()),
+                );
               },
               style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
             ),

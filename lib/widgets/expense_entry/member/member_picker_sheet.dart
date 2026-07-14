@@ -57,9 +57,7 @@ Future<void> showMemberPickerSheet({
               },
               icon: const Icon(Icons.add),
               label: const Text('Add Member'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-              ),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
             ),
           ],
         ),

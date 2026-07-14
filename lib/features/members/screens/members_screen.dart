@@ -1,7 +1,5 @@
 // lib/features/members/screens/members_screen.dart
 
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +10,7 @@ import '../utils/relationship_mapper.dart';
 import 'add_member_screen.dart';
 import '../../../theme/app_colors.dart';
 import '../../../shared/constants/app_spacing.dart';
+import '../../../widgets/expense_entry/member/member_avatar.dart'; // ✅ استيراد جديد
 
 class MembersScreen extends StatelessWidget {
   const MembersScreen({super.key});
@@ -26,7 +25,7 @@ class MembersScreen extends StatelessWidget {
         title: const Text("Members"),
       ),
       body: Consumer<MembersController>(
-        builder: (_, controller, _) {
+        builder: (_, controller, __) {
           final members = controller.members;
 
           if (members.isEmpty) {
@@ -116,31 +115,8 @@ class MembersScreen extends StatelessWidget {
   ) {
     final isOwner = member.isOwner;
 
-    final avatar = CircleAvatar(
-      radius: 20,
-      backgroundColor: AppColors.cardSecondary,
-      child: ClipOval(
-        child: SizedBox(
-          width: 45,
-          height: 45,
-          child: member.photoUrl != null
-              ? Image.file(File(member.photoUrl!), fit: BoxFit.cover)
-              : member.avatarAsset != null
-              ? SvgPicture.asset(member.avatarAsset!, fit: BoxFit.cover)
-              : Center(
-                  child: Text(
-                    (member.name.isNotEmpty ? member.name[0] : "?")
-                        .toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-        ),
-      ),
-    );
+    // ✅ استخدم MemberAvatar بدلاً من CircleAvatar
+    final avatar = MemberAvatar(member: member, radius: 20);
 
     return Container(
       padding: const EdgeInsets.all(5),

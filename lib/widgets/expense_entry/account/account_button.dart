@@ -5,11 +5,9 @@ import '../../../controllers/transaction_entry_controller.dart';
 import '../../../theme/responsive_metrics.dart';
 import '../../../features/transactions/models/entry_mode.dart';
 import '../../../models/account_display_extension.dart';
-
 import '../entry_context_chip.dart';
 import 'account_selector.dart';
 import 'no_account_sheet.dart';
-
 import '../../bottom_sheet/wafferly_bottom_sheet.dart';
 
 class AccountButton extends StatefulWidget {
@@ -49,7 +47,7 @@ class _AccountButtonState extends State<AccountButton> {
             key: _anchorKey,
             metrics: widget.metrics,
             label: 'No Account',
-            iconColor: Colors.white54, // ✅ تم توفير اللون
+            iconColor: Colors.white54,
             onTap: _showNoAccountSheet,
           );
         }
@@ -64,7 +62,7 @@ class _AccountButtonState extends State<AccountButton> {
           child: EntryContextChip(
             key: _anchorKey,
             metrics: widget.metrics,
-            icon: display.icon,
+            leading: Icon(display.icon, color: display.color, size: 17),
             iconColor: display.color,
             label: selectedAccount.name,
             trailing: accountCount > 1

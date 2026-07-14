@@ -7,7 +7,7 @@ import '../../theme/responsive_metrics.dart';
 class EntryContextChip extends StatelessWidget {
   final ResponsiveMetrics metrics;
 
-  final IconData? icon;
+  final Widget? leading;
   final Color? iconColor;
 
   final String label;
@@ -23,7 +23,7 @@ class EntryContextChip extends StatelessWidget {
   const EntryContextChip({
     super.key,
     required this.metrics,
-    this.icon,
+    this.leading,
     this.iconColor,
     required this.label,
     this.trailing,
@@ -44,18 +44,15 @@ class EntryContextChip extends StatelessWidget {
     final effectivePadding =
         padding ?? const EdgeInsets.symmetric(horizontal: 10);
 
-    // ✅ استخراج BorderRadius
     final borderRadius = BorderRadius.circular(10);
-
-    // ✅ استخراج TextStyle
     final labelStyle = TextStyle(
       fontSize: metrics.text(12),
       fontWeight: FontWeight.w500,
       color: Colors.white.withValues(alpha: .90),
     );
 
-    // الحالة الأولى: لا يوجد أيقونة ولا عنصر تابع → نص فقط في المنتصف
-    if (icon == null && trailing == null) {
+    // الحالة الأولى: لا يوجد leading ولا trailing → نص فقط في المنتصف
+    if (leading == null && trailing == null) {
       return InkWell(
         onTap: onTap,
         borderRadius: borderRadius,
@@ -82,7 +79,7 @@ class EntryContextChip extends StatelessWidget {
       );
     }
 
-    // الحالة الثانية: أيقونة و/أو عنصر تابع → تخطيط Row
+    // الحالة الثانية: يوجد leading أو trailing → تخطيط Row
     return InkWell(
       onTap: onTap,
       borderRadius: borderRadius,
@@ -100,8 +97,8 @@ class EntryContextChip extends StatelessWidget {
         padding: effectivePadding,
         child: Row(
           children: [
-            if (icon != null) ...[
-              Icon(icon!, color: effectiveIconColor, size: metrics.size(17)),
+            if (leading != null) ...[
+              leading!,
               SizedBox(width: metrics.spacing(6)),
             ],
             Expanded(
@@ -112,7 +109,7 @@ class EntryContextChip extends StatelessWidget {
                 style: labelStyle,
               ),
             ),
-            ?trailing,
+            if (trailing != null) trailing!,
           ],
         ),
       ),

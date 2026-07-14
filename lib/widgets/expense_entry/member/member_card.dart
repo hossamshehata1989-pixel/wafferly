@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../../../theme/app_colors.dart';
 import '../../../features/members/models/member_model.dart';
+import 'member_avatar.dart';
 
 class MemberCard extends StatelessWidget {
   final MemberModel member;
@@ -47,15 +48,7 @@ class MemberCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.person, color: AppColors.primary, size: 26),
-            ),
+            MemberAvatar(member: member, radius: 27),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
