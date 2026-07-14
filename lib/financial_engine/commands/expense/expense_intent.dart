@@ -28,10 +28,13 @@ final class ExpenseIntent {
   /// therefore it belongs to the Intent.
   final bool isExceptional;
 
+  final String? actorMemberId;
+
   const ExpenseIntent({
     required this.sourceAccountId,
     required this.amount,
     required this.categoryId,
     required this.isExceptional,
+    this.actorMemberId,
   });
 }

@@ -14,6 +14,9 @@ final class NormalizedIntent {
   /// Used by expense/income operations.
   final String? categoryId;
 
+  final String? actorMemberId;
+  final bool isExceptional;
+
   /// Used only by goal operations.
   final String? goalId;
 
@@ -27,6 +30,10 @@ final class NormalizedIntent {
     this.destinationAccountId,
     this.categoryId,
     this.goalId,
+
+    this.actorMemberId,
+    this.isExceptional = false,
+
     required this.resolution,
   });
 }

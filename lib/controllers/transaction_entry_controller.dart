@@ -536,6 +536,8 @@ class TransactionEntryController extends ChangeNotifier {
         categoryId: _getMainCategoryId(_selectedCategoryId),
         occurredAt: _selectedDate,
         note: _note.isEmpty ? null : _note,
+        isExceptional: isExceptional,
+        actorMemberId: _selectedMemberId,
       );
       notifyListeners();
 
@@ -594,6 +596,8 @@ class TransactionEntryController extends ChangeNotifier {
         categoryId: _getMainCategoryId(_selectedCategoryId),
         occurredAt: _selectedDate,
         note: _note.isEmpty ? null : _note,
+        isExceptional: isExceptional,
+        actorMemberId: _selectedMemberId,
       );
 
       if (result is OperationSucceeded) {

@@ -22,6 +22,10 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
           sourceAccountId: operation.intent.sourceAccountId,
           amount: operation.intent.amount,
           categoryId: operation.intent.categoryId,
+
+          actorMemberId: operation.intent.actorMemberId,
+          isExceptional: operation.intent.isExceptional,
+
           resolution: operation.resolution ?? Resolution.execute,
         );
 
@@ -31,6 +35,8 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
           sourceAccountId: operation.intent.sourceAccountId,
           amount: operation.intent.amount,
           categoryId: operation.intent.categoryId,
+          actorMemberId: operation.intent.actorMemberId,
+          isExceptional: operation.intent.isExceptional,
           resolution: operation.resolution ?? Resolution.execute,
         );
 

@@ -35,6 +35,8 @@ class TransactionApplicationService {
     required double amount,
     required String categoryId,
     required DateTime occurredAt,
+    required bool isExceptional,
+    String? actorMemberId,
     String? note,
   }) async {
     // TODO(V4):
@@ -48,7 +50,8 @@ class TransactionApplicationService {
         sourceAccountId: sourceAccountId,
         amount: amount,
         categoryId: categoryId,
-        isExceptional: false, // Temporary
+        isExceptional: isExceptional,
+        actorMemberId: actorMemberId,
       ),
       metadata: TransactionMetadata(
         occurredAt: occurredAt,
@@ -71,6 +74,8 @@ class TransactionApplicationService {
     required double amount,
     required String categoryId,
     required DateTime occurredAt,
+    required bool isExceptional,
+    String? actorMemberId,
     String? note,
   }) async {
     // TODO(V4):
@@ -84,7 +89,8 @@ class TransactionApplicationService {
         sourceAccountId: sourceAccountId,
         amount: amount,
         categoryId: categoryId,
-        isExceptional: false, // Temporary
+        isExceptional: isExceptional,
+        actorMemberId: actorMemberId,
       ),
       metadata: TransactionMetadata(
         occurredAt: occurredAt,

@@ -67,9 +67,9 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
       note: context.metadata.note,
-      isExceptional: false,
+      isExceptional: intent.isExceptional,
       source: 'manual',
-      actorMemberId: null,
+      actorMemberId: intent.actorMemberId,
     );
     return FinancialExecutionPlan(
       planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
@@ -111,9 +111,9 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
       note: context.metadata.note,
-      isExceptional: false,
+      isExceptional: intent.isExceptional,
       source: 'manual',
-      actorMemberId: null,
+      actorMemberId: intent.actorMemberId,
     );
 
     return FinancialExecutionPlan(
