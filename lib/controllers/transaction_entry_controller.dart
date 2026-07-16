@@ -556,6 +556,10 @@ class TransactionEntryController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<SaveResult> submitEntry() async {
+    return await saveEntry();
+  }
+
   Future<SaveResult> saveEntry() {
     return validateAndSave(isExceptional: isExpense ? isExceptional : false);
   }

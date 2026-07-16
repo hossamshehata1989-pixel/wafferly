@@ -55,7 +55,9 @@ class DiscardEntrySheet extends StatelessWidget {
 
               Expanded(
                 child: FilledButton(
-                  style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 234, 107, 98),
+                  ),
                   onPressed: () {
                     Navigator.pop(context);
                     onDiscard();

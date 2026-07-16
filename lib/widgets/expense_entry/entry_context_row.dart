@@ -83,67 +83,61 @@ class EntryContextRow extends StatelessWidget {
   }
 
   Future<void> _handleDone(BuildContext context) async {
-    // شاشة فاضية -> اقفل
-    if (controller.entryState == EntryState.empty) {
-      Navigator.pop(context);
-      return;
-    }
+    switch (controller.entryState) {
+      case EntryState.empty:
+        Navigator.pop(context);
+        return;
 
-    // حاول تحفظ أولاً
-    final result = await controller.saveEntry();
-
-    if (!context.mounted) return;
-
-    // نجح -> اقفل الشاشة
-    if (result.success) {
-      Navigator.pop(context);
-      return;
-    }
-
-    // Validation Errors
-    switch (result.action) {
-      case SaveAction.invalidAmount:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid amount')),
+      case EntryState.draft:
+        await WafferlyBottomSheet.show(
+          context: context,
+          child: DiscardEntrySheet(
+            onDiscard: () {
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            },
+          ),
         );
         return;
 
-      case SaveAction.noCategorySelected:
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Please select category')));
+      case EntryState.readyToSave:
+        final result = await controller.submitEntry();
+
+        if (!context.mounted) return;
+
+        if (!result.success) {
+          switch (result.action) {
+            case SaveAction.invalidAmount:
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please enter a valid amount')),
+              );
+              return;
+
+            case SaveAction.noCategorySelected:
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please select category')),
+              );
+              return;
+
+            case SaveAction.noAccountSelected:
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please select account')),
+              );
+              return;
+
+            default:
+              if (result.errorMessage != null) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(result.errorMessage!)));
+              }
+              return;
+          }
+        }
+
+        Navigator.pop(context);
         return;
-
-      case SaveAction.noAccountSelected:
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Please select account')));
-        return;
-
-      default:
-        break;
-    }
-
-    // لو فيه Draft اعرض شاشة Discard
-    if (controller.entryState == EntryState.draft) {
-      await WafferlyBottomSheet.show(
-        context: context,
-        child: DiscardEntrySheet(
-          onDiscard: () {
-            if (context.mounted) {
-              Navigator.of(context).pop();
-            }
-          },
-        ),
-      );
-      return;
-    }
-
-    // أي Error آخر
-    if (result.errorMessage != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(result.errorMessage!)));
     }
   }
 }

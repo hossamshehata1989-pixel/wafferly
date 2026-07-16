@@ -209,7 +209,7 @@ class EntryBottomActions extends StatelessWidget {
   bool get _isExceptionalEnabled => mode == EntryMode.expense;
 
   Future<void> _submitEntry(BuildContext context) async {
-    final result = await controller.saveEntry();
+    final result = await controller.submitEntry();
 
     // Handle simple validation errors
     if (!result.success) {
