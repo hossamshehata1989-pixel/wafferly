@@ -11,7 +11,8 @@ import '../config/category_config.dart';
 import '../config/category_type.dart';
 import '../features/analysis/registry/category_registry.dart';
 import '../features/members/models/member_model.dart';
-import 'package:math_expressions/math_expressions.dart';
+import '../features/transactions/calculator/calculator_engine.dart';
+import '../features/transactions/calculator/calculator_state.dart';
 import '../models/enums/account_enums.dart';
 import '../services/reserved_money_service.dart';
 import '../features/transactions/models/expense_resolution_option.dart';
@@ -57,6 +58,8 @@ class SaveResult {
 class TransactionEntryController extends ChangeNotifier {
   final TransactionApplicationService _transactionService;
   final AccountService _accountService = AccountService();
+  final CalculatorEngine _calculatorEngine = CalculatorEngine();
+  CalculatorState _calculatorState = CalculatorState.initial;
 
   TransactionEntryController({
     required TransactionApplicationService transactionService,
@@ -107,7 +110,6 @@ class TransactionEntryController extends ChangeNotifier {
 
   String _amount = "0";
   String _expression = "";
-  bool _justCalculated = false;
   DateTime _selectedDate = DateTime.now();
   String _note = "";
   String _paymentMethod = "cash";
@@ -127,6 +129,15 @@ class TransactionEntryController extends ChangeNotifier {
   String _selectedFromAccountName = "اختر حساب المصدر";
   String _selectedToAccountId = "";
   String _selectedToAccountName = "اختر حساب الوجهة";
+
+  // ===========================================
+
+  void _syncCalculatorState() {
+    _calculatorState = CalculatorState(
+      expression: _amount,
+      justCalculated: false,
+    );
+  }
 
   // ==============================
   // Getters
@@ -326,6 +337,7 @@ class TransactionEntryController extends ChangeNotifier {
 
   void setAmount(String v) {
     _amount = v;
+    _syncCalculatorState();
     notifyListeners();
   }
 
@@ -398,7 +410,7 @@ class TransactionEntryController extends ChangeNotifier {
       default:
         return EntryState.draft;
     }
-  } // ======================================================
+  }
 
   bool get hasAmount {
     final amount = double.tryParse(_amount);
@@ -468,6 +480,7 @@ class TransactionEntryController extends ChangeNotifier {
   void loadTransaction(Transaction tx) {
     _editingTransaction = tx;
     _amount = tx.amount.toString();
+    _syncCalculatorState();
     _selectedDate = tx.date;
     _note = tx.note ?? '';
     _paymentMethod = tx.paymentMethod;
@@ -490,69 +503,12 @@ class TransactionEntryController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ==============================
-  // Calculator
-  // ==============================
-
-  bool _isOperator(String value) {
-    return value == "+" ||
-        value == "-" ||
-        value == "*" ||
-        value == "/" ||
-        value == "x";
-  }
-
   void onCalculatorTap(String value) {
-    if (value == "C") {
-      _amount = "0";
-      _expression = "";
-      _justCalculated = false;
-    } else if (value == "⌫") {
-      if (_amount.length > 1) {
-        _amount = _amount.substring(0, _amount.length - 1);
-      } else {
-        _amount = "0";
-        _expression = "";
-        _justCalculated = false;
-      }
-    } else if (value == "=") {
-      try {
-        final parser = Parser();
-        final expression = parser.parse(_amount.replaceAll('x', '*'));
-        final result = expression.evaluate(EvaluationType.REAL, ContextModel());
-        if (result % 1 == 0) {
-          _amount = result.toInt().toString();
-        } else {
-          _amount = result.toString();
-        }
-        _expression = "";
-        _justCalculated = true;
-      } catch (_) {
-        _amount = "0";
-        _expression = "";
-        _justCalculated = false;
-      }
-    } else {
-      if (_justCalculated) {
-        if (_isOperator(value)) {
-          _amount += value;
-        } else {
-          _amount = value;
-        }
-        _justCalculated = false;
-      } else if (_amount == "0") {
-        if (!_isOperator(value)) {
-          _amount = value;
-        }
-      } else {
-        final lastChar = _amount[_amount.length - 1];
-        if (_isOperator(lastChar) && _isOperator(value)) {
-          _amount = _amount.substring(0, _amount.length - 1) + value;
-        } else {
-          _amount += value;
-        }
-      }
-    }
+    final newState = _calculatorEngine.press(_calculatorState, value);
+
+    _calculatorState = newState;
+    _amount = newState.expression;
+
     notifyListeners();
   }
 
@@ -852,13 +808,14 @@ class TransactionEntryController extends ChangeNotifier {
 
   void _resetExpenseForm() {
     _amount = "0";
+    _syncCalculatorState();
     _expression = "";
     _note = "";
 
     _selectedCategoryId = "";
 
-    _isExceptional = false; // <-- أضف ده
-    _selectedDate = DateTime.now(); // <-- وأضف ده
+    _isExceptional = false;
+    _selectedDate = DateTime.now();
 
     _selectBestAccount();
 
@@ -878,6 +835,7 @@ class TransactionEntryController extends ChangeNotifier {
 
   void _resetTransferForm() {
     _amount = "0";
+    _syncCalculatorState();
     _expression = "";
     _note = "";
     _selectedFromAccountId = "";
