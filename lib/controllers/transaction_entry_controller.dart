@@ -20,6 +20,8 @@ import '../financial_engine/results/operation_result.dart';
 import '../constants/temp_debt_constants.dart';
 import '../financial_engine/resolution/resolution.dart';
 import '../services/account_service.dart';
+import '../features/transactions/models/entry_state.dart';
+import '../features/transactions/models/entry_validation_result.dart';
 
 enum SaveStatus { idle, saving }
 
@@ -382,6 +384,69 @@ class TransactionEntryController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ==============================
+  // Entry State
+
+  EntryState get entryState {
+    switch (validationResult) {
+      case EntryValidationResult.empty:
+        return EntryState.empty;
+
+      case EntryValidationResult.ready:
+        return EntryState.readyToSave;
+
+      default:
+        return EntryState.draft;
+    }
+  } // ======================================================
+
+  bool get hasAmount {
+    final amount = double.tryParse(_amount);
+    return amount != null && amount > 0;
+  }
+
+  bool get hasCategory => _selectedCategoryId.isNotEmpty;
+
+  bool get hasAccount => _selectedAccountId.isNotEmpty;
+
+  bool get hasDraftData {
+    return _amount != "0" ||
+        _selectedCategoryId.isNotEmpty ||
+        _note.trim().isNotEmpty ||
+        _isExceptional;
+  }
+
+  bool get hasValidExpression {
+    if (_amount.trim().isEmpty) return false;
+
+    return !RegExp(r'[+\-x*/]$').hasMatch(_amount.trim());
+  }
+
+  EntryValidationResult get validationResult {
+    if (!hasDraftData) {
+      return EntryValidationResult.empty;
+    }
+
+    if (!hasValidExpression) {
+      return EntryValidationResult.invalidExpression;
+    }
+
+    if (!hasAmount) {
+      return EntryValidationResult.invalidAmount;
+    }
+
+    if (!hasCategory) {
+      return EntryValidationResult.noCategory;
+    }
+
+    if (!hasAccount) {
+      return EntryValidationResult.noAccount;
+    }
+
+    return EntryValidationResult.ready;
+  }
+
+  // =======================================================
   void setTransactionType(String type) {
     _selectedTransactionType = type;
     _selectedCategoryId = "";
@@ -495,6 +560,50 @@ class TransactionEntryController extends ChangeNotifier {
   // Save Logic
   // ==============================
 
+  SaveResult _handleOperationFailure(Object result) {
+    _saveStatus = SaveStatus.idle;
+    notifyListeners();
+
+    if (result is ConfirmationRequired) {
+      return SaveResult(
+        success: false,
+        requiresConfirmation: true,
+        resolutions: result.options,
+      );
+    }
+
+    if (result is OperationRejected) {
+      return SaveResult(success: false, errorMessage: result.reason);
+    }
+
+    if (result is DomainViolationResult) {
+      return SaveResult(success: false, errorMessage: result.reason);
+    }
+
+    if (result is OperationFailed) {
+      return SaveResult(success: false, errorMessage: result.error.toString());
+    }
+
+    return const SaveResult(success: false);
+  }
+
+  void _onSuccessfulSave() {
+    _saveStatus = SaveStatus.idle;
+
+    final wasEditing = _editingTransaction != null;
+    _editingTransaction = null;
+
+    if (!wasEditing) {
+      _resetExpenseForm();
+    }
+
+    notifyListeners();
+  }
+
+  Future<SaveResult> saveEntry() {
+    return validateAndSave(isExceptional: isExpense ? isExceptional : false);
+  }
+
   Future<SaveResult> validateAndSave({required bool isExceptional}) async {
     if (_saveStatus == SaveStatus.saving) {
       return const SaveResult(success: false);
@@ -503,31 +612,48 @@ class TransactionEntryController extends ChangeNotifier {
     _saveStatus = SaveStatus.saving;
     notifyListeners();
 
-    final amountValue = double.tryParse(_amount) ?? 0;
+    switch (validationResult) {
+      case EntryValidationResult.empty:
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+        return const SaveResult(success: false, action: SaveAction.none);
 
-    if (amountValue == 0) {
-      _saveStatus = SaveStatus.idle;
-      notifyListeners();
-      return const SaveResult(success: false, action: SaveAction.invalidAmount);
-    }
+      case EntryValidationResult.invalidExpression:
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+        return const SaveResult(
+          success: false,
+          action: SaveAction.invalidAmount,
+        );
 
-    if (_selectedAccountId.isEmpty) {
-      _saveStatus = SaveStatus.idle;
-      notifyListeners();
-      return const SaveResult(
-        success: false,
-        action: SaveAction.noAccountSelected,
-      );
-    }
+      case EntryValidationResult.invalidAmount:
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+        return const SaveResult(
+          success: false,
+          action: SaveAction.invalidAmount,
+        );
 
-    if (_selectedCategoryId.isEmpty) {
-      _saveStatus = SaveStatus.idle;
-      notifyListeners();
-      return const SaveResult(
-        success: false,
-        action: SaveAction.noCategorySelected,
-      );
+      case EntryValidationResult.noCategory:
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+        return const SaveResult(
+          success: false,
+          action: SaveAction.noCategorySelected,
+        );
+
+      case EntryValidationResult.noAccount:
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+        return const SaveResult(
+          success: false,
+          action: SaveAction.noAccountSelected,
+        );
+
+      case EntryValidationResult.ready:
+        break;
     }
+    final amountValue = double.parse(_amount);
 
     if (isExpense) {
       final result = await _transactionService.addExpense(
@@ -542,51 +668,15 @@ class TransactionEntryController extends ChangeNotifier {
       notifyListeners();
 
       if (result is OperationSucceeded) {
-        final wasEditing = _editingTransaction != null;
-        _editingTransaction = null;
-        if (!wasEditing) {
-          _resetExpenseForm();
-        }
+        _onSuccessfulSave();
+
         return const SaveResult(
           success: true,
           action: SaveAction.showNormalSuccess,
         );
       }
 
-      if (result is ConfirmationRequired) {
-        _saveStatus = SaveStatus.idle;
-        notifyListeners();
-        return SaveResult(
-          success: false,
-          requiresConfirmation: true,
-          resolutions: result.options,
-        );
-      }
-
-      if (result is OperationRejected) {
-        _saveStatus = SaveStatus.idle;
-        notifyListeners();
-        return SaveResult(success: false, errorMessage: result.reason);
-      }
-
-      if (result is DomainViolationResult) {
-        _saveStatus = SaveStatus.idle;
-        notifyListeners();
-        return SaveResult(success: false, errorMessage: result.reason);
-      }
-
-      if (result is OperationFailed) {
-        _saveStatus = SaveStatus.idle;
-        notifyListeners();
-        return SaveResult(
-          success: false,
-          errorMessage: result.error.toString(),
-        );
-      }
-
-      _saveStatus = SaveStatus.idle;
-      notifyListeners();
-      return const SaveResult(success: false);
+      return _handleOperationFailure(result);
     }
 
     if (isIncome) {
@@ -601,59 +691,29 @@ class TransactionEntryController extends ChangeNotifier {
       );
 
       if (result is OperationSucceeded) {
-        _saveStatus = SaveStatus.idle;
-        final wasEditing = _editingTransaction != null;
-        _editingTransaction = null;
-        if (!wasEditing) {
-          _resetExpenseForm();
-        }
-        notifyListeners();
+        _onSuccessfulSave();
+
         return const SaveResult(
           success: true,
           action: SaveAction.showNormalSuccess,
         );
       }
 
-      if (result is ConfirmationRequired) {
-        _saveStatus = SaveStatus.idle;
-        notifyListeners();
-        return SaveResult(
-          success: false,
-          requiresConfirmation: true,
-          resolutions: result.options,
-        );
-      }
-
-      _saveStatus = SaveStatus.idle;
-      notifyListeners();
-
-      if (result is OperationRejected) {
-        return SaveResult(success: false, errorMessage: result.reason);
-      }
-
-      if (result is DomainViolationResult) {
-        return SaveResult(success: false, errorMessage: result.reason);
-      }
-
-      if (result is OperationFailed) {
-        return SaveResult(
-          success: false,
-          errorMessage: result.error.toString(),
-        );
-      }
-
-      return const SaveResult(success: false);
+      return _handleOperationFailure(result);
     }
 
     final success = await _saveTransactionLegacy(amountValue, isExceptional);
 
     if (success) {
       _saveStatus = SaveStatus.idle;
+
       final wasEditing = _editingTransaction != null;
       _editingTransaction = null;
+
       if (!wasEditing) {
         _resetExpenseForm();
       }
+
       return const SaveResult(
         success: true,
         action: SaveAction.showNormalSuccess,
@@ -662,6 +722,7 @@ class TransactionEntryController extends ChangeNotifier {
 
     _saveStatus = SaveStatus.idle;
     notifyListeners();
+
     return const SaveResult(success: false);
   }
 
@@ -796,7 +857,9 @@ class TransactionEntryController extends ChangeNotifier {
 
     _selectedCategoryId = "";
 
-    // ✅ تم استبدال إعادة تعيين الحساب بـ _selectBestAccount()
+    _isExceptional = false; // <-- أضف ده
+    _selectedDate = DateTime.now(); // <-- وأضف ده
+
     _selectBestAccount();
 
     _paymentMethod = "cash";
