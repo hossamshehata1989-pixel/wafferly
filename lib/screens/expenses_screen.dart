@@ -15,6 +15,7 @@ import '../theme/responsive_metrics.dart';
 import '../widgets/expense_entry/account/account_picker_sheet.dart';
 import '../services/transaction_application_service.dart';
 import '../features/transactions/models/entry_mode.dart';
+import '../services/toast_service.dart';
 
 class ExpensesScreen extends StatelessWidget {
   final String initialType;
@@ -64,49 +65,70 @@ class ExpensesScreen extends StatelessWidget {
             final isExpense = controller.isExpense;
 
             return SafeArea(
-              child: Column(
+              child: Stack(
                 children: [
-                  // TABS
-                  if (!controller.isEditing) ...[
-                    ExpenseEntryTabs(controller: controller),
-                    SizedBox(height: metrics.h(3)),
-                  ] else ...[
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: metrics.h(10)),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.edit_outlined,
-                            color: Colors.white70,
-                            size: metrics.size(18),
+                  Column(
+                    children: [
+                      // TABS
+                      if (!controller.isEditing) ...[
+                        ExpenseEntryTabs(controller: controller),
+                        SizedBox(height: metrics.h(3)),
+                      ] else ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            vertical: metrics.h(10),
                           ),
-                          SizedBox(width: metrics.spacing(8)),
-                          Text(
-                            'Edit Transaction',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: metrics.text(16),
-                              fontWeight: FontWeight.bold,
-                            ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.edit_outlined,
+                                color: Colors.white70,
+                                size: metrics.size(18),
+                              ),
+                              SizedBox(width: metrics.spacing(8)),
+                              Text(
+                                'Edit Transaction',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: metrics.text(16),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
+                        ),
+                      ],
 
-                  // TRANSFER
-                  if (isTransfer)
-                    Expanded(child: TransferForm(controller: controller))
-                  else
-                    Expanded(
-                      child: _buildExpenseIncomeContent(
-                        context: context,
-                        controller: controller,
-                        isKeyboardOpen: isKeyboardOpen,
-                        isExpense: isExpense,
-                      ),
-                    ),
+                      // TRANSFER
+                      if (isTransfer)
+                        Expanded(child: TransferForm(controller: controller))
+                      else
+                        Expanded(
+                          child: _buildExpenseIncomeContent(
+                            context: context,
+                            controller: controller,
+                            isKeyboardOpen: isKeyboardOpen,
+                            isExpense: isExpense,
+                          ),
+                        ),
+                    ],
+                  ),
+                  ValueListenableBuilder<ToastData?>(
+                    valueListenable: ToastService.toast,
+                    builder: (context, toast, _) {
+                      if (toast == null) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return Positioned(
+                        left: 16,
+                        right: 16,
+                        bottom: 180, // مؤقتًا
+                        child: toast.child,
+                      );
+                    },
+                  ),
                 ],
               ),
             );

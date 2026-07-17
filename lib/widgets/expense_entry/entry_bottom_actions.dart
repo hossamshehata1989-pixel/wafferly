@@ -240,8 +240,6 @@ class EntryBottomActions extends StatelessWidget {
 
       if (confirmed == true) {
         WafferlyToast.showSuccess(context, message: "Transaction saved");
-
-        Navigator.pop(context);
       }
 
       return;
@@ -249,7 +247,6 @@ class EntryBottomActions extends StatelessWidget {
 
     if (result.success) {
       WafferlyToast.showSuccess(context, message: "Transaction saved");
-      Navigator.pop(context);
     }
   }
 }

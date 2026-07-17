@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../expense_entry/amount_input_panel.dart';
 import '../../theme/responsive_metrics.dart';
+import '../../services/toast_service.dart';
 
 class WafferlyToast {
   static OverlayEntry? _currentToast;
@@ -57,15 +58,10 @@ class WafferlyToast {
       ),
     );
 
-    _currentToast = entry;
-
-    overlay.insert(entry);
+    ToastService.show(ToastData(child: child, duration: duration));
 
     Timer(duration, () {
-      if (_currentToast == entry) {
-        entry.remove();
-        _currentToast = null;
-      }
+      ToastService.hide();
     });
   }
 
