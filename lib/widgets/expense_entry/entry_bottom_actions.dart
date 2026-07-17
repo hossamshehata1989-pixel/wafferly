@@ -6,7 +6,8 @@ import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
 import '../../financial_engine/resolution/resolution.dart';
 import '../../features/transactions/models/entry_mode.dart';
-import '../../features/transactions/models/entry_mode_extension.dart'; // 👈 استيراد جديد
+import '../../features/transactions/models/entry_mode_extension.dart';
+import '../notifications/wafferly_toast.dart';
 
 class EntryBottomActions extends StatelessWidget {
   final TransactionEntryController controller;
@@ -63,27 +64,19 @@ class EntryBottomActions extends StatelessWidget {
     );
   }
 
-  // ============================================================
-  // 1) _buildPrimaryAction – يختار الدالة المناسبة حسب mode
-  // ============================================================
   Widget _buildPrimaryAction(BuildContext context, ResponsiveMetrics metrics) {
     switch (mode) {
       case EntryMode.expense:
         return _buildExpenseAction(context, metrics);
-
       case EntryMode.income:
         return _buildIncomeAction(context, metrics);
-
       case EntryMode.transfer:
         return _buildTransferAction(context, metrics);
     }
   }
 
-  // ============================================================
-  // 2) _buildExpenseAction – UI only (الزر الخاص بالمصروفات)
-  // ============================================================
   Widget _buildExpenseAction(BuildContext context, ResponsiveMetrics metrics) {
-    final config = mode.config; // 👈 استخدام extension
+    final config = mode.config;
     final double height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
 
     return SizedBox(
@@ -159,11 +152,8 @@ class EntryBottomActions extends StatelessWidget {
     );
   }
 
-  // ============================================================
-  // 3) _buildIncomeAction – UI جديدة للدخل (بدون Exceptional)
-  // ============================================================
   Widget _buildIncomeAction(BuildContext context, ResponsiveMetrics metrics) {
-    final config = mode.config; // 👈 استخدام extension
+    final config = mode.config;
     final double height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
 
     return SizedBox(
@@ -195,92 +185,71 @@ class EntryBottomActions extends StatelessWidget {
     );
   }
 
-  // ============================================================
-  // 4) _buildTransferAction (مؤقتاً تعيد نفس الـ Expense)
-  // ============================================================
   Widget _buildTransferAction(BuildContext context, ResponsiveMetrics metrics) {
     return _buildExpenseAction(context, metrics);
   }
 
-  // ============================================================
-  // 5) _submitEntry – منطق الحفظ المستخرج
-  // ============================================================
-
-  bool get _isExceptionalEnabled => mode == EntryMode.expense;
-
   Future<void> _submitEntry(BuildContext context) async {
     final result = await controller.submitEntry();
 
-    // Handle simple validation errors
     if (!result.success) {
       switch (result.action) {
         case SaveAction.invalidAmount:
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please enter a valid amount')),
+          WafferlyToast.showError(
+            context,
+            message: "Please enter a valid amount",
           );
           return;
 
         case SaveAction.noCategorySelected:
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please select category')),
-          );
+          WafferlyToast.showError(context, message: "Please select a category");
           return;
 
         case SaveAction.noAccountSelected:
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please select account')),
-          );
+          WafferlyToast.showError(context, message: "Please select an account");
           return;
 
         default:
-          break;
+          if (result.errorMessage != null) {
+            WafferlyToast.showError(context, message: result.errorMessage!);
+          }
+          return;
       }
     }
 
-    debugPrint(
-      'SAVE RESULT => '
-      'success=${result.success}, '
-      'requiresConfirmation=${result.requiresConfirmation}, '
-      'error=${result.errorMessage}, '
-      'action=${result.action}',
-    );
+    // داخل _submitEntry()
 
     if (result.requiresConfirmation) {
-      debugPrint("OPENING CONFIRMATION DIALOG");
-
-      final resolution = await showDialog<Resolution>(
+      final confirmed = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
           title: const Text('Insufficient Balance'),
           content: const Text('Choose how you want to continue.'),
           actions: [
             TextButton(
-              onPressed: () {
-                debugPrint("BUTTON PRESSED");
-                Navigator.pop(context);
-              },
-              child: const Text("OK"),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('OK'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
             ),
           ],
         ),
       );
 
-      debugPrint("DIALOG CLOSED");
-      debugPrint("USER CHOICE = $resolution");
+      if (confirmed == true) {
+        WafferlyToast.showSuccess(context, message: "Transaction saved");
+
+        Navigator.pop(context);
+      }
 
       return;
     }
 
-    if (result.errorMessage != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(result.errorMessage!)));
-      return;
-    }
-
-    // Success
     if (result.success) {
-      return;
+      WafferlyToast.showSuccess(context, message: "Transaction saved");
+      Navigator.pop(context);
     }
   }
 }

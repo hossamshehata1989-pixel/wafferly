@@ -12,6 +12,7 @@ import 'discard_entry_sheet.dart';
 import 'entry_context_chip.dart';
 import 'member/member_button.dart';
 import '../bottom_sheet/bottom_sheet_theme.dart';
+import '../notifications/wafferly_toast.dart';
 
 class EntryContextRow extends StatelessWidget {
   final TransactionEntryController controller;
@@ -112,28 +113,30 @@ class EntryContextRow extends StatelessWidget {
         if (!result.success) {
           switch (result.action) {
             case SaveAction.invalidAmount:
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please enter a valid amount')),
+              WafferlyToast.showError(
+                context,
+                message: "Please enter a valid amount",
               );
               return;
 
             case SaveAction.noCategorySelected:
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please select category')),
+              WafferlyToast.showError(
+                context,
+                message: "Please enter a valid amount",
               );
               return;
 
             case SaveAction.noAccountSelected:
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please select account')),
+              WafferlyToast.showError(
+                context,
+                message: "Please select an account",
               );
+              (const SnackBar(content: Text('Please select account')),);
               return;
 
             default:
               if (result.errorMessage != null) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text(result.errorMessage!)));
+                WafferlyToast.showError(context, message: result.errorMessage!);
               }
               return;
           }
