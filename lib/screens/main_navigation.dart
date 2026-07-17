@@ -12,6 +12,8 @@ import '../features/members/screens/members_screen.dart';
 import 'package:wafferly/features/settings/presentation/screens/settings_screen.dart';
 import 'manage/manage_screen.dart';
 import 'package:wafferly/features/financial_action_center/financial_action_center.dart';
+import '../widgets/notifications/wafferly_toast.dart';
+import '../widgets/common/expense_toast_layer.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -214,6 +216,7 @@ class _MainNavigationState extends State<MainNavigation> {
               ),
             ),
           ),
+        const ExpenseToastLayer(),
       ],
     );
   }
@@ -511,14 +514,21 @@ class _AddTransactionBottomSheetState
     },
   ];
 
-  void _navigateToExpensesScreen(String type) {
+  Future<void> _navigateToExpensesScreen(String type) async {
     Navigator.pop(context);
-    Navigator.push(
+
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ExpensesScreen(initialType: type),
       ),
     );
+
+    if (!mounted) return;
+
+    if (result == true) {
+      WafferlyToast.showSuccess(context, message: "Transaction saved");
+    }
   }
 
   @override

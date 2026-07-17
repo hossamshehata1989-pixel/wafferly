@@ -87,7 +87,7 @@ class EntryContextRow extends StatelessWidget {
   Future<void> _handleDone(BuildContext context) async {
     switch (controller.entryState) {
       case EntryState.empty:
-        Navigator.pop(context);
+        Navigator.pop(context, true);
         return;
 
       case EntryState.draft:
@@ -142,7 +142,13 @@ class EntryContextRow extends StatelessWidget {
           }
         }
 
-        Navigator.pop(context);
+        WafferlyToast.showSuccess(context, message: "Transaction saved");
+
+        await Future.delayed(const Duration(milliseconds: 1200));
+
+        if (!context.mounted) return;
+
+        Navigator.pop(context, true);
         return;
     }
   }

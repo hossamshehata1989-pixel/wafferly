@@ -199,6 +199,7 @@ class EntryBottomActions extends StatelessWidget {
             context,
             message: "Please enter a valid amount",
           );
+
           return;
 
         case SaveAction.noCategorySelected:
@@ -216,6 +217,8 @@ class EntryBottomActions extends StatelessWidget {
           return;
       }
     }
+
+    WafferlyToast.showSuccess(context, message: "Transaction saved");
 
     // داخل _submitEntry()
 
@@ -239,14 +242,10 @@ class EntryBottomActions extends StatelessWidget {
       );
 
       if (confirmed == true) {
-        WafferlyToast.showSuccess(context, message: "Transaction saved");
+        Navigator.pop(context, true);
       }
 
       return;
-    }
-
-    if (result.success) {
-      WafferlyToast.showSuccess(context, message: "Transaction saved");
     }
   }
 }
