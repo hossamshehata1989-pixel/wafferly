@@ -21,10 +21,13 @@ class _ExpenseToastLayerState extends State<ExpenseToastLayer> {
     return ValueListenableBuilder<ToastData?>(
       valueListenable: ToastService.toast,
       builder: (context, toast, _) {
-        if (toast != null && toast != _lastToast) {
+        if (toast != null &&
+            toast != _lastToast &&
+            toast.type != ToastType.success) {
           _lastToast = toast;
 
           _timer?.cancel();
+
           _timer = Timer(toast.duration, () {
             ToastService.hide();
           });
@@ -56,13 +59,17 @@ class _ExpenseToastLayerState extends State<ExpenseToastLayer> {
             break;
         }
 
+        if (toast.type == ToastType.success) {
+          return const _SuccessBanner();
+        }
+
         return Positioned(
           left: 16,
           right: 16,
           top: top,
           bottom: bottom,
           child: TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 220),
+            duration: const Duration(milliseconds: 300), // Error
             tween: Tween(begin: 20.0, end: 0.0),
             builder: (context, value, child) {
               return Transform.translate(
@@ -75,12 +82,6 @@ class _ExpenseToastLayerState extends State<ExpenseToastLayer> {
         );
       },
     );
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
   }
 }
 
@@ -104,9 +105,15 @@ class _SuccessBannerState extends State<_SuccessBanner> {
       }
     });
 
-    Future.delayed(const Duration(milliseconds: 800), () {
+    Future.delayed(const Duration(milliseconds: 2000), () async {
+      if (!mounted) return;
+
+      setState(() => _visible = false);
+
+      await Future.delayed(const Duration(milliseconds: 2000));
+
       if (mounted) {
-        setState(() => _visible = false);
+        ToastService.hide();
       }
     });
   }
@@ -116,23 +123,23 @@ class _SuccessBannerState extends State<_SuccessBanner> {
     final toast = ToastService.toast.value!;
 
     return AnimatedSlide(
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 0), // Not error
       curve: Curves.easeOut,
-      offset: _visible ? Offset.zero : const Offset(0, -1),
+      offset: _visible ? Offset.zero : const Offset(0, -1.3),
 
       child: Align(
         alignment: Alignment.topCenter,
 
         child: Material(
-          color: const Color.fromARGB(238, 255, 1, 1),
+          color: Colors.transparent,
 
           child: Container(
             width: double.infinity,
             padding: EdgeInsets.only(
               top: MediaQuery.of(context).padding.top,
               bottom: 14,
-              left: 18,
-              right: 18,
+              left: 0,
+              right: 0,
             ),
             color: const Color(0xFF2DBE74),
 
