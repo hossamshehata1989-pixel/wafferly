@@ -18,7 +18,7 @@ class DiscardEntrySheet extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         SheetHeader(
-          title: 'Discard Changes?',
+          title: 'Discard Changes ?',
           icon: Icons.warning_amber_rounded,
           onClose: () => Navigator.pop(context),
         ),
@@ -29,40 +29,63 @@ class DiscardEntrySheet extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 20),
           child: Text(
             'You have an unfinished transaction.\n'
-            'If you discard now, all entered data will be lost.',
+            'If you discard now, the current entered data will be lost.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.45),
           ),
         ),
 
-        const SizedBox(height: 28),
+        // ✅ مسافة إضافية بعد البطاقة
+        const SizedBox(height: 32),
 
+        // ✅ الأزرار المعدلة
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
           child: Row(
             children: [
-              Expanded(
+              Flexible(
+                flex: 6,
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.pop(context);
                     onContinueEditing?.call();
                   },
-                  child: const Text('Continue Editing'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(56),
+                    side: const BorderSide(color: Color(0xFF7D73FF)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  child: const Text(
+                    'Keep Editing',
+                    maxLines: 1,
+                    overflow: TextOverflow.fade,
+                    softWrap: false,
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
-
               const SizedBox(width: 12),
-
-              Expanded(
+              Flexible(
+                flex: 5,
                 child: FilledButton(
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(255, 234, 107, 98),
+                    minimumSize: const Size.fromHeight(56),
+                    backgroundColor: const Color(0xFFEF6A5F),
+                    foregroundColor: Colors.white, // ← ده لون النص والأيقونة
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                   ),
                   onPressed: () {
                     Navigator.pop(context);
                     onDiscard();
                   },
-                  child: const Text('Discard'),
+                  child: const Text(
+                    'Discard',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
             ],

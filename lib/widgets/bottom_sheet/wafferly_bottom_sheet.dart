@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'sheet_background.dart';
 import 'sheet_drag_handle.dart';
 import 'sheet_body.dart';
+import 'bottom_sheet_theme.dart';
 
 class WafferlyBottomSheet {
   static Future<T?> show<T>({
@@ -18,10 +19,10 @@ class WafferlyBottomSheet {
     bool showDragHandle = true,
     Duration transitionDuration = const Duration(milliseconds: 350),
     Curve transitionCurve = Curves.easeOut,
-    bool enableGlass = false,
+    BottomSheetTheme theme = BottomSheetTheme.solid,
     EdgeInsetsGeometry bodyPadding = const EdgeInsets.all(16),
     bool scrollable = false,
-    double maxWidth = 600,
+    double maxWidth = 700,
   }) {
     final effectiveBarrierLabel =
         barrierLabel ?? (barrierDismissible ? 'Dismiss' : null);
@@ -40,11 +41,13 @@ class WafferlyBottomSheet {
               // خلفية التطبيق
               BackdropFilter(
                 filter: ImageFilter.blur(
-                  sigmaX: enableGlass ? 18 : 0,
-                  sigmaY: enableGlass ? 18 : 0,
+                  sigmaX: theme == BottomSheetTheme.glass ? 18 : 0,
+                  sigmaY: theme == BottomSheetTheme.glass ? 18 : 0,
                 ),
                 child: Container(
-                  color: Colors.black.withOpacity(enableGlass ? 0.18 : 0.0),
+                  color: Colors.black.withOpacity(
+                    theme == BottomSheetTheme.glass ? 0.18 : 0.0,
+                  ),
                 ),
               ),
 
@@ -69,7 +72,7 @@ class WafferlyBottomSheet {
                         ),
                     child: SheetBackground(
                       radius: radius,
-                      enableGlass: enableGlass,
+                      theme: theme, // ✅
                       child: Container(
                         margin: const EdgeInsets.symmetric(
                           horizontal: 16, // 🔹 تم تعديل الهوامش

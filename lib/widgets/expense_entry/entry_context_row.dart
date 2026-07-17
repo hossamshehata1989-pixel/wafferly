@@ -11,6 +11,7 @@ import 'date/date_picker_sheet.dart';
 import 'discard_entry_sheet.dart';
 import 'entry_context_chip.dart';
 import 'member/member_button.dart';
+import '../bottom_sheet/bottom_sheet_theme.dart';
 
 class EntryContextRow extends StatelessWidget {
   final TransactionEntryController controller;
@@ -91,6 +92,8 @@ class EntryContextRow extends StatelessWidget {
       case EntryState.draft:
         await WafferlyBottomSheet.show(
           context: context,
+          theme: BottomSheetTheme.glass,
+
           child: DiscardEntrySheet(
             onDiscard: () {
               if (context.mounted) {
