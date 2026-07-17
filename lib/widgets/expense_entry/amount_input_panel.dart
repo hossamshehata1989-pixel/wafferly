@@ -13,6 +13,7 @@ import 'entry_context_row.dart'; // NEW import
 import '../../features/transactions/models/entry_mode.dart';
 
 class AmountInputPanel extends StatelessWidget {
+  static final GlobalKey panelKey = GlobalKey();
   final TransactionEntryController controller;
   final VoidCallback? onAccountTap;
   final EntryMode mode;
@@ -36,6 +37,7 @@ class AmountInputPanel extends StatelessWidget {
         vertical: metrics.h(0),
       ),
       child: Container(
+        key: panelKey,
         padding: EdgeInsets.all(
           isSmallScreen ? metrics.spacing(6) : metrics.spacing(6),
         ),

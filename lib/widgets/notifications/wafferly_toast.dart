@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../expense_entry/amount_input_panel.dart';
+import '../../theme/responsive_metrics.dart';
 
 class WafferlyToast {
   static OverlayEntry? _currentToast;
@@ -9,16 +11,34 @@ class WafferlyToast {
     required BuildContext context,
     required Widget child,
     Duration duration = const Duration(milliseconds: 1500),
-    double bottom = 140,
+    double? top,
+    double? bottom,
   }) {
     _currentToast?.remove();
 
     final overlay = Overlay.of(context);
 
+    double? resolvedTop = top;
+
+    if (resolvedTop == null && bottom == null) {
+      final panelContext = AmountInputPanel.panelKey.currentContext;
+
+      if (panelContext != null) {
+        final box = panelContext.findRenderObject() as RenderBox;
+
+        final offset = box.localToGlobal(Offset.zero);
+
+        const toastHeight = 56.0;
+
+        resolvedTop = offset.dy - toastHeight - 8;
+      }
+    }
+
     final entry = OverlayEntry(
       builder: (_) => Positioned(
         left: 16,
         right: 16,
+        top: resolvedTop,
         bottom: bottom,
         child: Material(
           color: Colors.transparent,
@@ -98,8 +118,14 @@ class _ToastCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
+    final isCompact = metrics.width < 360 || metrics.height < 700;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 12 : 16,
+        vertical: isCompact ? 10 : 14,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xFF2A2F3D),
         borderRadius: BorderRadius.circular(16),
@@ -114,14 +140,14 @@ class _ToastCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 12),
+          Icon(icon, color: color, size: isCompact ? 18 : 22),
+          SizedBox(width: isCompact ? 8 : 12),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
-                fontSize: 15,
+                fontSize: isCompact ? 13 : 15,
                 fontWeight: FontWeight.w600,
               ),
             ),
