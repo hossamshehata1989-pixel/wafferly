@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 
+enum ToastType { success, error, warning }
+
 class ToastData {
-  final Widget child;
+  final String message;
+  final ToastType type;
   final Duration duration;
 
-  const ToastData({required this.child, required this.duration});
+  ToastData({
+    required this.message,
+    required this.type,
+    required this.duration,
+  });
 }
 
 class ToastService {

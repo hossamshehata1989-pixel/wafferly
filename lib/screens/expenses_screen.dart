@@ -15,7 +15,7 @@ import '../theme/responsive_metrics.dart';
 import '../widgets/expense_entry/account/account_picker_sheet.dart';
 import '../services/transaction_application_service.dart';
 import '../features/transactions/models/entry_mode.dart';
-import '../services/toast_service.dart';
+import '../widgets/common/expense_toast_layer.dart';
 
 class ExpensesScreen extends StatelessWidget {
   final String initialType;
@@ -114,21 +114,7 @@ class ExpensesScreen extends StatelessWidget {
                         ),
                     ],
                   ),
-                  ValueListenableBuilder<ToastData?>(
-                    valueListenable: ToastService.toast,
-                    builder: (context, toast, _) {
-                      if (toast == null) {
-                        return const SizedBox.shrink();
-                      }
-
-                      return Positioned(
-                        left: 16,
-                        right: 16,
-                        bottom: 180, // مؤقتًا
-                        child: toast.child,
-                      );
-                    },
-                  ),
+                  const ExpenseToastLayer(),
                 ],
               ),
             );
