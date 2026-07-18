@@ -58,8 +58,8 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     final transactionRecord = FinancialTransactionRecord(
       transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
       type: 'expense',
-      primaryAccountId: intent.sourceAccountId,
-      secondaryAccountId: null,
+      fromAccountId: intent.sourceAccountId,
+      toAccountId: null,
       categoryId: categoryId,
       subCategoryId: null,
       amount: intent.amount,
@@ -102,8 +102,8 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     final transactionRecord = FinancialTransactionRecord(
       transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
       type: 'income',
-      primaryAccountId: intent.sourceAccountId,
-      secondaryAccountId: null,
+      fromAccountId: null,
+      toAccountId: intent.sourceAccountId,
       categoryId: categoryId,
       subCategoryId: null,
       amount: intent.amount,

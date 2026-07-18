@@ -22,13 +22,15 @@ final class FinancialTransactionRecord {
   /// transfer
   final String type;
 
-  /// Primary account.
-  final String primaryAccountId;
-
-  /// Optional secondary account.
+  /// Account money moved from.
   ///
-  /// Used by transfers.
-  final String? secondaryAccountId;
+  /// Null for Income.
+  final String? fromAccountId;
+
+  /// Account money moved to.
+  ///
+  /// Null for Expense.
+  final String? toAccountId;
 
   /// Main category.
   final String categoryId;
@@ -68,8 +70,8 @@ final class FinancialTransactionRecord {
   const FinancialTransactionRecord({
     required this.transactionId,
     required this.type,
-    required this.primaryAccountId,
-    this.secondaryAccountId,
+    this.fromAccountId,
+    this.toAccountId,
     required this.categoryId,
     this.subCategoryId,
     required this.amount,

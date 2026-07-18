@@ -18,8 +18,8 @@ final class HiveTransactionPort implements TransactionPort {
       id: record.transactionId,
       amount: record.amount,
       type: record.type,
-      fromAccountId: record.primaryAccountId,
-      toAccountId: record.secondaryAccountId,
+      fromAccountId: record.fromAccountId,
+      toAccountId: record.toAccountId,
       categoryId: record.categoryId,
       date: record.occurredAt,
       note: record.note,
@@ -33,6 +33,6 @@ final class HiveTransactionPort implements TransactionPort {
 
     await _box.put(transaction.id, transaction);
 
-    print('TX PORT: Saved ${transaction.id} (box count = ${_box.length})');
+    debugPrint('TX PORT: Saved ${transaction.id} (box count = ${_box.length})');
   }
 }
