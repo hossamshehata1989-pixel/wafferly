@@ -15,6 +15,10 @@ import '../financial_engine/commands/income/income_command.dart';
 import '../financial_engine/commands/income/income_intent.dart';
 import '../financial_engine/commands/income/income_command_mapper.dart';
 
+import '../financial_engine/commands/transfer/transfer_command.dart';
+import '../financial_engine/commands/transfer/transfer_intent.dart';
+import '../financial_engine/commands/transfer/transfer_command_mapper.dart';
+
 /// Application Orchestrator for transaction-related operations.
 /// This is the single entry point for the UI and other clients.
 /// It delegates to the appropriate underlying service (Engine or Legacy).
@@ -105,6 +109,38 @@ class TransactionApplicationService {
 
     return await _engine.execute(operation, context);
   }
+  // ====================== Transfer  (via Engine) ====================
+
+  Future<OperationResult> addTransfer({
+    required String fromAccountId,
+    required String toAccountId,
+    required double amount,
+    required DateTime occurredAt,
+    String? note,
+  }) async {
+    final context = ExecutionContext(
+      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
+    final command = TransferCommand(
+      intent: TransferIntent(
+        fromAccountId: fromAccountId,
+        toAccountId: toAccountId,
+        amount: amount,
+      ),
+      metadata: TransactionMetadata(
+        occurredAt: occurredAt,
+        note: note,
+        paymentMethod: 'default',
+        currencyCode: 'EGP',
+      ),
+      context: context,
+    );
+
+    final operation = _transferCommandMapper.map(command);
+
+    return await _engine.execute(operation, context);
+  }
 
   // ==================== Legacy operations (delegated to TransactionService) ====================
 
@@ -186,4 +222,6 @@ class TransactionApplicationService {
       const ExpenseCommandMapper();
 
   final IncomeCommandMapper _incomeCommandMapper = const IncomeCommandMapper();
+  final TransferCommandMapper _transferCommandMapper =
+      const TransferCommandMapper();
 }
