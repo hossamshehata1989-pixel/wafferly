@@ -43,9 +43,9 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
       case TransferOperation operation:
         return NormalizedIntent(
           action: FinancialActionType.transfer,
-          sourceAccountId: operation.sourceAccountId,
-          destinationAccountId: operation.destinationAccountId,
-          amount: operation.amount,
+          sourceAccountId: operation.intent.fromAccountId,
+          destinationAccountId: operation.intent.toAccountId,
+          amount: operation.intent.amount,
           resolution: operation.resolution ?? Resolution.execute,
         );
 

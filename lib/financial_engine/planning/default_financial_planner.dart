@@ -31,12 +31,14 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
         return _planIncome(context);
 
       case FinancialActionType.transfer:
-        return _planTransfer(intent);
+        return _planTransfer(context);
 
       case FinancialActionType.goalTransfer:
         return _planGoalTransfer(context);
+
       case FinancialActionType.createGoalAllocation:
         return _planGoalAllocation(intent);
+
       default:
         throw UnimplementedError(
           'Planner not implemented for ${intent.action}',
@@ -135,10 +137,28 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     );
   }
 
-  FinancialExecutionPlan _planTransfer(NormalizedIntent intent) {
+  FinancialExecutionPlan _planTransfer(PlanningContext context) {
+    final intent = context.intent;
     final destinationAccountId =
         intent.destinationAccountId ??
         (throw StateError('Destination account is required'));
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'transfer',
+      fromAccountId: intent.sourceAccountId,
+      toAccountId: destinationAccountId,
+      categoryId: null,
+      subCategoryId: null,
+      amount: intent.amount,
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: intent.isExceptional,
+      source: 'manual',
+      actorMemberId: intent.actorMemberId,
+    );
 
     return FinancialExecutionPlan(
       planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
@@ -153,6 +173,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
             EntryLine(accountId: intent.sourceAccountId, credit: intent.amount),
           ],
         ),
+        CreateTransactionMutation(record: transactionRecord),
       ],
     );
   }

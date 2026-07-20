@@ -1,33 +1,30 @@
+import '../commands/shared/transaction_metadata.dart';
+import '../commands/transfer/transfer_intent.dart';
 import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
 import '../interpretation/normalized_intent.dart';
 import '../planning/planning_context.dart';
 import '../resolution/resolution.dart';
 import 'financial_operation.dart';
 
 final class TransferOperation extends FinancialOperation {
-  final String sourceAccountId;
-  final String destinationAccountId;
-  final double amount;
-  final String? note;
-  final DateTime occurredAt;
+  final TransferIntent intent;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
 
   const TransferOperation({
-    required this.sourceAccountId,
-    required this.destinationAccountId,
-    required this.amount,
-    required this.occurredAt,
-    this.note,
+    required this.intent,
+    required this.metadata,
+    required this.context,
     super.resolution,
   });
 
   @override
   TransferOperation resolve(Resolution resolution) {
     return TransferOperation(
-      sourceAccountId: sourceAccountId,
-      destinationAccountId: destinationAccountId,
-      amount: amount,
-      occurredAt: occurredAt,
-      note: note,
+      intent: intent,
+      metadata: metadata,
+      context: context,
       resolution: resolution,
     );
   }
@@ -37,8 +34,11 @@ final class TransferOperation extends FinancialOperation {
     required NormalizedIntent intent,
     required List<FinancialConstraint> constraints,
   }) {
-    throw UnimplementedError(
-      'TransferOperation has not been migrated to the Financial Command Model yet.',
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
     );
   }
 }
