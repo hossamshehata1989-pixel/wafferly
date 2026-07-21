@@ -23,7 +23,7 @@ class Transaction extends HiveObject {
   final String? toAccountId;
 
   @HiveField(5)
-  final String categoryId;
+  final String? categoryId;
 
   @HiveField(6)
   final DateTime date;
@@ -61,7 +61,7 @@ class Transaction extends HiveObject {
     required this.type,
     this.fromAccountId,
     this.toAccountId,
-    required this.categoryId,
+    this.categoryId,
     required this.date,
     this.note,
     this.paymentMethod = 'cash',
@@ -121,7 +121,7 @@ class Transaction extends HiveObject {
     required String type,
     String? fromAccountId,
     String? toAccountId,
-    required String categoryId,
+    String? categoryId,
     required DateTime date,
     String? note,
     String paymentMethod = 'cash',

@@ -33,7 +33,11 @@ final class FinancialTransactionRecord {
   final String? toAccountId;
 
   /// Main category.
-  final String categoryId;
+
+  /// Required for expense and income.
+  /// Null for transfers.
+  ///
+  final String? categoryId;
 
   /// Optional sub-category.
   final String? subCategoryId;
@@ -72,7 +76,7 @@ final class FinancialTransactionRecord {
     required this.type,
     this.fromAccountId,
     this.toAccountId,
-    required this.categoryId,
+    this.categoryId,
     this.subCategoryId,
     required this.amount,
     required this.currencyCode,

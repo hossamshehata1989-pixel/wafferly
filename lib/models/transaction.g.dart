@@ -22,7 +22,7 @@ class TransactionAdapter extends TypeAdapter<Transaction> {
       type: fields[2] as String,
       fromAccountId: fields[3] as String?,
       toAccountId: fields[4] as String?,
-      categoryId: fields[5] as String,
+      categoryId: fields[5] as String?,
       date: fields[6] as DateTime,
       note: fields[7] as String?,
       paymentMethod: fields[8] as String,
