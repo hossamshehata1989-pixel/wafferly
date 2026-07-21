@@ -74,6 +74,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       result = result.where((tx) {
         final id = tx.subCategoryId ?? tx.categoryId;
 
+        if (id == null) return false;
+
         return _selectedCategoryIds.contains(id);
       }).toList();
     }
@@ -151,7 +153,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final List<Transaction> contains = [];
 
     for (final tx in transactions) {
-      final categoryMatch = _normalize(tx.categoryId);
+      final categoryMatch = _normalize(tx.categoryId ?? '');
       final subCategoryMatch = _normalize(tx.subCategoryId ?? '');
       final noteMatch = _normalize(tx.note ?? '');
       final accountMatch = _normalize(_getAccountNameForTransaction(tx));

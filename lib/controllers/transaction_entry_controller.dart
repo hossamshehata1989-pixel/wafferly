@@ -489,7 +489,8 @@ class TransactionEntryController extends ChangeNotifier {
 
     final categoryId = (tx.subCategoryId?.isNotEmpty == true)
         ? tx.subCategoryId!
-        : tx.categoryId;
+        : (tx.categoryId ?? '');
+
     _selectedCategoryId = categoryId;
 
     if (tx.type == TransactionType.income) {

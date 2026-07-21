@@ -77,11 +77,16 @@ class TransactionCard extends StatelessWidget {
         transaction.subCategoryId!.isNotEmpty) {
       return transaction.subCategoryId!;
     }
-    return transaction.categoryId;
+
+    return transaction.categoryId ?? '';
   }
 
   String _getMainCategory() {
-    return transaction.categoryId;
+    if (transaction.type == TransactionType.transfer) {
+      return 'Transfer';
+    }
+
+    return transaction.categoryId ?? '';
   }
 
   String _getCategoryIconPath() {

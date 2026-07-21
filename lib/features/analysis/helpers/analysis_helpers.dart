@@ -11,9 +11,13 @@ import '../../../constants/transaction_constants.dart';
 /// categoryId is ALWAYS the main category - no fallback
 Map<String, double> groupByMainCategory(List<Transaction> transactions) {
   final result = <String, double>{};
+
   for (final tx in transactions) {
-    result[tx.categoryId] = (result[tx.categoryId] ?? 0) + tx.amount;
+    if (tx.categoryId == null) continue;
+
+    result[tx.categoryId!] = (result[tx.categoryId!] ?? 0) + tx.amount;
   }
+
   return result;
 }
 
@@ -26,6 +30,7 @@ Map<String, double> groupBySubCategory(
 ) {
   final result = <String, double>{};
   for (final tx in transactions) {
+    if (tx.categoryId == null) continue;
     if (tx.categoryId != mainCategoryId) continue;
     final subId = tx.subCategoryId;
     if (subId != null) {

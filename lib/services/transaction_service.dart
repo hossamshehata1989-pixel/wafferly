@@ -109,8 +109,12 @@ class TransactionService {
         if (transaction.fromAccountId == null) {
           throw Exception("Expense transaction missing fromAccountId");
         }
+        if (transaction.categoryId == null) {
+          throw Exception("Expense transaction missing categoryId");
+        }
+
         final expenseLedgerId = _categoryMapper.getLedgerAccountIdForCategory(
-          transaction.categoryId,
+          transaction.categoryId!,
         );
         if (expenseLedgerId == null) {
           // Missing mapping: transaction succeeds, ledger entry skipped
@@ -133,8 +137,12 @@ class TransactionService {
         if (transaction.toAccountId == null) {
           throw Exception("Income transaction missing toAccountId");
         }
+        if (transaction.categoryId == null) {
+          throw Exception("Income transaction missing categoryId");
+        }
+
         final incomeLedgerId = _categoryMapper.getLedgerAccountIdForCategory(
-          transaction.categoryId,
+          transaction.categoryId!,
         );
         if (incomeLedgerId == null) {
           // Missing mapping: transaction succeeds, ledger entry skipped
@@ -317,7 +325,9 @@ class TransactionService {
 
     for (final tx in transactions) {
       if (tx.type == TransactionType.expense) {
-        result[tx.categoryId] = (result[tx.categoryId] ?? 0) + tx.amount;
+        if (tx.categoryId != null) {
+          result[tx.categoryId!] = (result[tx.categoryId!] ?? 0) + tx.amount;
+        }
       }
     }
 
