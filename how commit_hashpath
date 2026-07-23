@@ -1,0 +1,12 @@
+[33mcommit 8973af2412814edf83fb80ac1c48a02a1faa45df[m
+Author: Hossam Shehata <hossamshehata1989@gmail.com>
+Date:   Wed May 27 21:38:44 2026 +0300
+
+     default member done next member budget check if possible b4 starting member linking
+
+[33mcommit e2b819f11e8ba46cc93eaaac4c90cb6abb8e4147[m
+Author: Hossam Shehata <hossamshehata1989@gmail.com>
+Date:   Thu May 21 21:43:57 2026 +0300
+
+    feat(transactions): integrate transactions foundation and fix runtime blockers- add TransactionsScreen to main navigation- add global FAB entry flow
+    - fix transaction widgets imports- fix Transaction model references - fix transaction section typing- resolve transaction card layout/render issues - stabilize transactions runtime build - keep ExpensesScreen as transaction entry form

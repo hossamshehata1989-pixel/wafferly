@@ -162,6 +162,28 @@ class TransactionApplicationService {
     await _legacyTransactionService.deleteAllTransactions();
   }
 
+  // ==================== Update (Temporary Legacy Delegation) ====================
+
+  Future<void> updateExpense(Transaction transaction) async {
+    await _legacyTransactionService.updateTransaction(transaction);
+  }
+
+  Future<void> updateIncome(Transaction transaction) async {
+    await _legacyTransactionService.updateTransaction(transaction);
+  }
+
+  Future<void> updateTransfer(Transaction transaction) async {
+    await _legacyTransactionService.updateTransaction(transaction);
+  }
+
+  // ==================== Delete (Temporary Legacy Delegation) ====================
+
+  Future<void> delete(String transactionId) async {
+    await _legacyTransactionService.deleteTransaction(transactionId);
+  }
+
+  // =======================================================
+
   // ==================== Query methods (delegated to legacy) ====================
 
   List<Transaction> getAllTransactions() =>

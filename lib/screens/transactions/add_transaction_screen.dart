@@ -7,8 +7,10 @@ import '../../models/transaction.dart';
 import '../../services/account_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/balance_service.dart';
-import 'add_account_screen.dart';
-import '../add_transaction_screen.dart';
+import '../accounts/add_account/add_account_screen.dart';
+import '../../models/enums/section_type.dart';
+import '../../models/enums/account_enums.dart';
+import '../transactions/add_transaction_screen.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});

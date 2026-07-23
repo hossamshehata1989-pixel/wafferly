@@ -748,7 +748,13 @@ class TransactionEntryController extends ChangeNotifier {
         isExceptional: isExceptional,
         actorMemberId: _selectedMemberId,
       );
-      await _transactionService.updateTransaction(updated);
+      if (updated.type == TransactionType.expense) {
+        await _transactionService.updateExpense(updated);
+      } else if (updated.type == TransactionType.income) {
+        await _transactionService.updateIncome(updated);
+      } else if (updated.type == TransactionType.transfer) {
+        await _transactionService.updateTransfer(updated);
+      }
     } else {
       await _transactionService.addTransaction(tx);
     }
@@ -781,23 +787,20 @@ class TransactionEntryController extends ChangeNotifier {
         return false;
       }
 
-      final tx = Transaction.create(
-        amount: amountValue,
-        type: TransactionType.transfer,
+      final result = await _transactionService.addTransfer(
         fromAccountId: _selectedFromAccountId,
         toAccountId: _selectedToAccountId,
-        categoryId: "",
-        date: _selectedDate,
+        amount: amountValue,
+        occurredAt: _selectedDate,
         note: _note.isEmpty ? null : _note,
-        paymentMethod: _paymentMethod,
-        isExceptional: false,
-        currencyCode: transferCurrency,
-        source: TransactionSource.manual,
       );
 
-      await _transactionService.addTransaction(tx);
-      _resetTransferForm();
-      return true;
+      if (result is OperationSucceeded) {
+        _resetTransferForm();
+        return true;
+      }
+
+      return false;
     } catch (e) {
       debugPrint("❌ Transfer save failed: $e");
       return false;
