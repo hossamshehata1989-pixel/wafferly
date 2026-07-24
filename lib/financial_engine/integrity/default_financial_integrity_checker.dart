@@ -1,5 +1,5 @@
 import '../planning/financial_execution_plan.dart';
-import '../planning/journal_entry_mutation.dart';
+import '../mutations/journal_entry_mutation.dart';
 import 'financial_integrity_checker.dart';
 
 final class DefaultFinancialIntegrityChecker

@@ -1,4 +1,4 @@
-import '../planning/goal_activity_mutation.dart';
+import '../mutations/goal_activity_mutation.dart';
 import '../ports/goal_activity_port.dart';
 import 'financial_mutation_handler.dart';
 
@@ -10,9 +10,7 @@ final class GoalActivityMutationHandler
     : _port = port;
 
   @override
-Future<void> execute(
-  GoalActivityMutation mutation,
-) {
-  return _port.recordActivity(mutation);
-}
+  Future<void> execute(GoalActivityMutation mutation) {
+    return _port.recordActivity(mutation);
+  }
 }

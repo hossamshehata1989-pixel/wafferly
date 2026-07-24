@@ -4,21 +4,26 @@ import 'chart_of_accounts.dart';
 import 'entry_line.dart';
 import 'financial_execution_plan.dart';
 import 'financial_planner.dart';
-import 'journal_entry_mutation.dart';
-import 'goal_activity_mutation.dart';
-import 'release_allocation_mutation.dart';
+import '../mutations/journal_entry_mutation.dart';
+import '../mutations/goal_activity_mutation.dart';
+import '../mutations/release_allocation_mutation.dart';
 import '../../models/goal_activity.dart';
 import '../operations/create_allocation_mutation.dart';
 import 'planning_context.dart';
 import '../domain_guard/financial_constraint.dart';
 import '../domain/financial_transaction_record.dart';
 import '../mutations/create_transaction_mutation.dart';
+import '../ports/transaction_lookup_port.dart';
 
 final class DefaultFinancialPlanner implements FinancialPlanner {
   final ChartOfAccounts _chartOfAccounts;
+  final TransactionLookupPort _transactionLookupPort;
 
-  const DefaultFinancialPlanner({required ChartOfAccounts chartOfAccounts})
-    : _chartOfAccounts = chartOfAccounts;
+  const DefaultFinancialPlanner({
+    required ChartOfAccounts chartOfAccounts,
+    required TransactionLookupPort transactionLookupPort,
+  }) : _chartOfAccounts = chartOfAccounts,
+       _transactionLookupPort = transactionLookupPort;
 
   @override
   Future<FinancialExecutionPlan> build(PlanningContext context) async {
@@ -38,6 +43,9 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
 
       case FinancialActionType.createGoalAllocation:
         return _planGoalAllocation(intent);
+
+      case FinancialActionType.correction:
+        return await _planCorrection(context);
 
       default:
         throw UnimplementedError(
@@ -234,5 +242,21 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
         ),
       ],
     );
+  }
+
+  Future<FinancialExecutionPlan> _planCorrection(
+    PlanningContext context,
+  ) async {
+    final correction = context.correction!;
+
+    final transaction = await _transactionLookupPort.findById(
+      correction.transactionId,
+    );
+
+    if (transaction == null) {
+      throw StateError('Transaction not found: ${correction.transactionId}');
+    }
+
+    throw UnimplementedError('Correction mutations are not implemented yet.');
   }
 }

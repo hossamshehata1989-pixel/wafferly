@@ -1,5 +1,5 @@
 import '../../financial_engine/ports/journal_entry_port.dart';
-import '../../financial_engine/planning/journal_entry_mutation.dart';
+import '../../financial_engine/mutations/journal_entry_mutation.dart';
 import '../memory/memory_journal_entry_repository.dart';
 
 final class MemoryJournalEntryAdapter implements JournalEntryPort {

@@ -1,4 +1,4 @@
-import '../planning/journal_entry_mutation.dart';
+import '../mutations/journal_entry_mutation.dart';
 import 'financial_mutation_handler.dart';
 import '../ports/journal_entry_port.dart';
 

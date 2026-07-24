@@ -4,8 +4,10 @@ import 'package:hive/hive.dart';
 import '../../models/transaction.dart';
 import '../domain/financial_transaction_record.dart';
 import '../ports/transaction_port.dart';
+import '../ports/transaction_lookup_port.dart';
 
-final class HiveTransactionPort implements TransactionPort {
+final class HiveTransactionPort
+    implements TransactionPort, TransactionLookupPort {
   final Box<Transaction> _box;
 
   const HiveTransactionPort(this._box);
@@ -34,5 +36,31 @@ final class HiveTransactionPort implements TransactionPort {
     await _box.put(transaction.id, transaction);
 
     debugPrint('TX PORT: Saved ${transaction.id} (box count = ${_box.length})');
+  }
+
+  @override
+  Future<FinancialTransactionRecord?> findById(String transactionId) async {
+    final transaction = _box.get(transactionId);
+
+    if (transaction == null) {
+      return null;
+    }
+
+    return FinancialTransactionRecord(
+      transactionId: transaction.id,
+      type: transaction.type,
+      fromAccountId: transaction.fromAccountId,
+      toAccountId: transaction.toAccountId,
+      categoryId: transaction.categoryId,
+      subCategoryId: transaction.subCategoryId,
+      amount: transaction.amount,
+      currencyCode: transaction.currencyCode,
+      paymentMethod: transaction.paymentMethod,
+      occurredAt: transaction.date,
+      note: transaction.note,
+      isExceptional: transaction.isExceptional,
+      source: transaction.source,
+      actorMemberId: transaction.actorMemberId,
+    );
   }
 }

@@ -1,4 +1,4 @@
-import '../planning/release_allocation_mutation.dart';
+import '../mutations/release_allocation_mutation.dart';
 import '../ports/allocation_port.dart';
 import 'financial_mutation_handler.dart';
 

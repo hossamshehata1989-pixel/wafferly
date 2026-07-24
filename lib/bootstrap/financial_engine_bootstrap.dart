@@ -14,7 +14,7 @@ import '../financial_engine/operations/create_allocation_mutation.dart';
 import '../financial_engine/planning/account_mapping.dart';
 import '../financial_engine/planning/chart_of_accounts.dart';
 import '../financial_engine/planning/default_financial_planner.dart';
-import '../financial_engine/planning/journal_entry_mutation.dart';
+import '../financial_engine/mutations/journal_entry_mutation.dart';
 import '../infrastructure/memory/memory_allocation_repository.dart';
 import '../infrastructure/memory/memory_journal_entry_repository.dart';
 import 'financial_engine_context.dart';

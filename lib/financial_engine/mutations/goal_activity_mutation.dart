@@ -1,4 +1,4 @@
-import 'financial_mutation.dart';
+import '../planning/financial_mutation.dart';
 
 final class GoalActivityMutation extends FinancialMutation {
   final String goalId;

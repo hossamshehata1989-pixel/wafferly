@@ -1,5 +1,5 @@
-import 'entry_line.dart';
-import 'financial_mutation.dart';
+import '../planning/entry_line.dart';
+import '../planning/financial_mutation.dart';
 
 final class JournalEntryMutation extends AccountingMutation {
   final String journalEntryId;
