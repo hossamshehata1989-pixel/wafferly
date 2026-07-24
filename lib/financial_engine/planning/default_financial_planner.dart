@@ -14,6 +14,7 @@ import '../domain_guard/financial_constraint.dart';
 import '../domain/financial_transaction_record.dart';
 import '../mutations/create_transaction_mutation.dart';
 import '../ports/transaction_lookup_port.dart';
+import '../mutations/update_transaction_mutation.dart';
 
 final class DefaultFinancialPlanner implements FinancialPlanner {
   final ChartOfAccounts _chartOfAccounts;
@@ -249,14 +250,21 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
   ) async {
     final correction = context.correction!;
 
-    final transaction = await _transactionLookupPort.findById(
+    final before = await _transactionLookupPort.findById(
       correction.transactionId,
     );
 
-    if (transaction == null) {
+    if (before == null) {
       throw StateError('Transaction not found: ${correction.transactionId}');
     }
 
-    throw UnimplementedError('Correction mutations are not implemented yet.');
+    final after = correction.after;
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [UpdateTransactionMutation(before: before, after: after)],
+    );
   }
 }

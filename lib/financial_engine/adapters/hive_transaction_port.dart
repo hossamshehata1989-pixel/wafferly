@@ -5,9 +5,10 @@ import '../../models/transaction.dart';
 import '../domain/financial_transaction_record.dart';
 import '../ports/transaction_port.dart';
 import '../ports/transaction_lookup_port.dart';
+import '../ports/transaction_update_port.dart';
 
 final class HiveTransactionPort
-    implements TransactionPort, TransactionLookupPort {
+    implements TransactionPort, TransactionLookupPort, TransactionUpdatePort {
   final Box<Transaction> _box;
 
   const HiveTransactionPort(this._box);
@@ -62,5 +63,36 @@ final class HiveTransactionPort
       source: transaction.source,
       actorMemberId: transaction.actorMemberId,
     );
+  }
+
+  @override
+  Future<void> update(
+    FinancialTransactionRecord before,
+    FinancialTransactionRecord after,
+  ) async {
+    final existing = _box.get(before.transactionId);
+
+    if (existing == null) {
+      throw StateError('Transaction not found: ${before.transactionId}');
+    }
+
+    final updated = Transaction(
+      id: after.transactionId,
+      amount: after.amount,
+      type: after.type,
+      fromAccountId: after.fromAccountId,
+      toAccountId: after.toAccountId,
+      categoryId: after.categoryId,
+      subCategoryId: after.subCategoryId,
+      date: after.occurredAt,
+      note: after.note,
+      paymentMethod: after.paymentMethod,
+      isExceptional: after.isExceptional,
+      currencyCode: after.currencyCode,
+      source: after.source,
+      actorMemberId: after.actorMemberId,
+    );
+
+    await _box.put(updated.id, updated);
   }
 }

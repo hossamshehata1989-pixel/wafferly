@@ -1,8 +1,9 @@
 import '../domain/financial_transaction_record.dart';
 import '../planning/financial_mutation.dart';
 
-final class UpdateTransactionMutation extends FinancialMutation {
-  final FinancialTransactionRecord record;
+final class UpdateTransactionMutation extends AccountingMutation {
+  const UpdateTransactionMutation({required this.before, required this.after});
 
-  const UpdateTransactionMutation({required this.record});
+  final FinancialTransactionRecord before;
+  final FinancialTransactionRecord after;
 }

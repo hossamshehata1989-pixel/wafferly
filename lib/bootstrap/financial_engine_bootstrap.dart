@@ -25,6 +25,8 @@ import '../financial_engine/handlers/create_transaction_mutation_handler.dart';
 import '../financial_engine/mutations/create_transaction_mutation.dart';
 import 'package:hive/hive.dart';
 import '../models/transaction.dart';
+import '../financial_engine/mutations/update_transaction_mutation.dart';
+import '../financial_engine/execution/update_transaction_mutation_handler.dart';
 
 final class FinancialEngineBootstrap {
   const FinancialEngineBootstrap._();
@@ -51,6 +53,11 @@ final class FinancialEngineBootstrap {
     final createTransactionHandler = CreateTransactionMutationHandler(
       transactionPort,
     );
+
+    final updateTransactionHandler = UpdateTransactionMutationHandler(
+      port: transactionPort,
+    );
+
     final balancePort = HiveBalancePort(balanceService: balanceService);
     final balanceGuard = BalanceDomainGuard(balancePort: balancePort);
 
@@ -59,6 +66,7 @@ final class FinancialEngineBootstrap {
         JournalEntryMutation: journalHandler,
         CreateAllocationMutation: createAllocationHandler,
         CreateTransactionMutation: createTransactionHandler,
+        UpdateTransactionMutation: updateTransactionHandler,
       },
     );
 
@@ -74,8 +82,8 @@ final class FinancialEngineBootstrap {
           AccountMapping(categoryId: 'salary', accountId: 'income_account'),
         ],
       ),
+      transactionLookupPort: transactionPort,
     );
-
     final engine = FinancialOperationEngine(
       interpreter: const DefaultFinancialInterpreter(),
       domainGuardPipeline: DomainGuardPipeline(guards: [balanceGuard]),
