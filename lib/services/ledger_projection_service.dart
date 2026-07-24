@@ -2,7 +2,8 @@ import '../constants/transaction_constants.dart';
 import '../models/ledger_entry.dart';
 import '../models/transaction.dart';
 import 'category_ledger_mapper.dart';
-import 'ledger_service.dart';
+import '../ports/ledger_port.dart';
+import '../infrastructure/ports/hive_ledger_port.dart';
 import 'transaction_ledger_builder.dart';
 
 /// مسؤول عن إنشاء الـ Ledger Projection من Transaction.
@@ -15,18 +16,14 @@ class LedgerProjectionService {
 
   final TransactionLedgerBuilder _builder = TransactionLedgerBuilder();
 
-  final LedgerService _ledgerService = LedgerService();
+  final LedgerPort _ledgerPort = HiveLedgerPort();
 
   Future<void> project(Transaction transaction) async {
     // ==============================
     // Idempotency
     // ==============================
 
-    final existingEntries = await _ledgerService.getEntriesByTransactionId(
-      transaction.id,
-    );
-
-    if (existingEntries.isNotEmpty) {
+    if (await _alreadyProjected(transaction.id)) {
       print(
         "ℹ️ Ledger entries already exist for transaction ${transaction.id} – skipping duplicate creation",
       );
@@ -133,6 +130,12 @@ class LedgerProjectionService {
       return;
     }
 
-    await _ledgerService.createEntries(entries);
+    await _ledgerPort.createEntries(entries);
+  }
+
+  Future<bool> _alreadyProjected(String transactionId) async {
+    final entries = await _ledgerPort.getEntriesByTransactionId(transactionId);
+
+    return entries.isNotEmpty;
   }
 }
