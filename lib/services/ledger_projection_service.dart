@@ -33,31 +33,9 @@ class LedgerProjectionService {
       return;
     }
 
-    List<LedgerEntry> entries = [];
+    final entries = _buildEntries(transaction);
 
-    switch (transaction.type) {
-      case TransactionType.transfer:
-        entries = _buildTransferEntries(transaction);
-        break;
-
-      case TransactionType.expense:
-        entries = _buildExpenseEntries(transaction);
-        break;
-
-      case TransactionType.income:
-        entries = _buildIncomeEntries(transaction);
-        break;
-
-      default:
-        print(
-          "ℹ️ Ledger entries not created for transaction type: ${transaction.type}",
-        );
-        return;
-    }
-
-    if (entries.isNotEmpty) {
-      await _ledgerService.createEntries(entries);
-    }
+    await _persistEntries(entries);
   }
 
   List<LedgerEntry> _buildTransferEntries(Transaction transaction) {
@@ -132,5 +110,29 @@ class LedgerProjectionService {
       amount: transaction.amount,
       date: transaction.date,
     );
+  }
+
+  List<LedgerEntry> _buildEntries(Transaction transaction) {
+    switch (transaction.type) {
+      case TransactionType.expense:
+        return _buildExpenseEntries(transaction);
+
+      case TransactionType.income:
+        return _buildIncomeEntries(transaction);
+
+      case TransactionType.transfer:
+        return _buildTransferEntries(transaction);
+
+      default:
+        return [];
+    }
+  }
+
+  Future<void> _persistEntries(List<LedgerEntry> entries) async {
+    if (entries.isEmpty) {
+      return;
+    }
+
+    await _ledgerService.createEntries(entries);
   }
 }
