@@ -617,16 +617,35 @@ class TransactionEntryController extends ChangeNotifier {
     final amountValue = double.parse(_amount);
 
     if (isExpense) {
-      final result = await _transactionService.addExpense(
-        sourceAccountId: _selectedAccountId,
-        amount: amountValue,
-        categoryId: _getMainCategoryId(_selectedCategoryId),
-        occurredAt: _selectedDate,
-        note: _note.isEmpty ? null : _note,
-        isExceptional: isExceptional,
-        actorMemberId: _selectedMemberId,
-      );
-      notifyListeners();
+      late final OperationResult result;
+
+      if (_editingTransaction != null) {
+        final updated = _editingTransaction!.copyWith(
+          amount: amountValue,
+          fromAccountId: _selectedAccountId,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          subCategoryId: _isSubCategory(_selectedCategoryId)
+              ? _selectedCategoryId
+              : null,
+          date: _selectedDate,
+          note: _note.isEmpty ? null : _note,
+          paymentMethod: _paymentMethod,
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+
+        result = await _transactionService.updateExpense(updated);
+      } else {
+        result = await _transactionService.addExpense(
+          sourceAccountId: _selectedAccountId,
+          amount: amountValue,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          occurredAt: _selectedDate,
+          note: _note.isEmpty ? null : _note,
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+      }
 
       if (result is OperationSucceeded) {
         _onSuccessfulSave();
@@ -641,15 +660,35 @@ class TransactionEntryController extends ChangeNotifier {
     }
 
     if (isIncome) {
-      final result = await _transactionService.addIncome(
-        sourceAccountId: _selectedAccountId,
-        amount: amountValue,
-        categoryId: _getMainCategoryId(_selectedCategoryId),
-        occurredAt: _selectedDate,
-        note: _note.isEmpty ? null : _note,
-        isExceptional: isExceptional,
-        actorMemberId: _selectedMemberId,
-      );
+      late final OperationResult result;
+
+      if (_editingTransaction != null) {
+        final updated = _editingTransaction!.copyWith(
+          amount: amountValue,
+          toAccountId: _selectedAccountId,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          subCategoryId: _isSubCategory(_selectedCategoryId)
+              ? _selectedCategoryId
+              : null,
+          date: _selectedDate,
+          note: _note.isEmpty ? null : _note,
+          paymentMethod: _paymentMethod,
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+
+        result = await _transactionService.updateIncome(updated);
+      } else {
+        result = await _transactionService.addIncome(
+          sourceAccountId: _selectedAccountId,
+          amount: amountValue,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          occurredAt: _selectedDate,
+          note: _note.isEmpty ? null : _note,
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+      }
 
       if (result is OperationSucceeded) {
         _onSuccessfulSave();
@@ -733,6 +772,8 @@ class TransactionEntryController extends ChangeNotifier {
       source: TransactionSource.manual,
       actorMemberId: _selectedMemberId,
     );
+
+    debugPrint('EDIT DEBUG: editingTransaction = ${_editingTransaction?.id}');
 
     if (_editingTransaction != null) {
       final updated = _editingTransaction!.copyWith(

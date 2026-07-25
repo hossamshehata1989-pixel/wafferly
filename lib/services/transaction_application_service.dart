@@ -168,21 +168,21 @@ class TransactionApplicationService {
     await _legacyTransactionService.deleteAllTransactions();
   }
 
-  // ==================== Update (Temporary Legacy Delegation) ====================
+  // ==================== Update (Engine-based) ====================
 
-  Future<void> updateExpense(Transaction transaction) async {
-    await _updateViaEngine(transaction);
+  Future<OperationResult> updateExpense(Transaction transaction) async {
+    return await _updateViaEngine(transaction);
   }
 
-  Future<void> updateIncome(Transaction transaction) async {
-    await _updateViaEngine(transaction);
+  Future<OperationResult> updateIncome(Transaction transaction) async {
+    return await _updateViaEngine(transaction);
   }
 
-  Future<void> updateTransfer(Transaction transaction) async {
-    await _updateViaEngine(transaction);
+  Future<OperationResult> updateTransfer(Transaction transaction) async {
+    return await _updateViaEngine(transaction);
   }
 
-  Future<void> _updateViaEngine(Transaction transaction) async {
+  Future<OperationResult> _updateViaEngine(Transaction transaction) async {
     final context = ExecutionContext(
       idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
     );
@@ -202,11 +202,7 @@ class TransactionApplicationService {
 
     final operation = _correctionCommandMapper.map(command);
 
-    final result = await _engine.execute(operation, context);
-
-    if (result is! OperationSucceeded) {
-      throw StateError('Transaction update failed: $result');
-    }
+    return await _engine.execute(operation, context);
   }
 
   // ==================== Delete (Temporary Legacy Delegation) ====================
