@@ -3,6 +3,7 @@ import '../models/ledger_entry.dart';
 import '../models/transaction.dart';
 import 'category_ledger_mapper.dart';
 import '../ports/ledger_port.dart';
+import '../infrastructure/ports/hive_ledger_port.dart';
 import 'transaction_ledger_builder.dart';
 
 /// مسؤول عن إنشاء الـ Ledger Projection من Transaction.
@@ -11,14 +12,11 @@ import 'transaction_ledger_builder.dart';
 /// ولا تحتوي على CRUD.
 /// ولا تُستدعى إلا بعد نجاح حفظ Transaction.
 class LedgerProjectionService {
-  LedgerProjectionService({required LedgerPort ledgerPort})
-    : _ledgerPort = ledgerPort;
-
-  final LedgerPort _ledgerPort;
-
   final CategoryLedgerMapper _categoryMapper = CategoryLedgerMapper();
 
   final TransactionLedgerBuilder _builder = TransactionLedgerBuilder();
+
+  final LedgerPort _ledgerPort = HiveLedgerPort();
 
   Future<void> project(Transaction transaction) async {
     // ==============================

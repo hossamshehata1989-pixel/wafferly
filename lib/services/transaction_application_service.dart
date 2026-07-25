@@ -19,6 +19,12 @@ import '../financial_engine/commands/transfer/transfer_command.dart';
 import '../financial_engine/commands/transfer/transfer_intent.dart';
 import '../financial_engine/commands/transfer/transfer_command_mapper.dart';
 
+import '../financial_engine/commands/correction/correction_command.dart';
+import '../financial_engine/commands/correction/correction_intent.dart';
+import '../financial_engine/commands/correction/correction_command_mapper.dart';
+
+import '../financial_engine/adapters/transaction_record_mapper.dart';
+
 /// Application Orchestrator for transaction-related operations.
 /// This is the single entry point for the UI and other clients.
 /// It delegates to the appropriate underlying service (Engine or Legacy).
@@ -165,15 +171,42 @@ class TransactionApplicationService {
   // ==================== Update (Temporary Legacy Delegation) ====================
 
   Future<void> updateExpense(Transaction transaction) async {
-    await _legacyTransactionService.updateTransaction(transaction);
+    await _updateViaEngine(transaction);
   }
 
   Future<void> updateIncome(Transaction transaction) async {
-    await _legacyTransactionService.updateTransaction(transaction);
+    await _updateViaEngine(transaction);
   }
 
   Future<void> updateTransfer(Transaction transaction) async {
-    await _legacyTransactionService.updateTransaction(transaction);
+    await _updateViaEngine(transaction);
+  }
+
+  Future<void> _updateViaEngine(Transaction transaction) async {
+    final context = ExecutionContext(
+      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
+    final record = _transactionRecordMapper.fromTransaction(transaction);
+
+    final command = CorrectionCommand(
+      intent: CorrectionIntent(transactionId: transaction.id, after: record),
+      metadata: TransactionMetadata(
+        occurredAt: transaction.date,
+        note: transaction.note,
+        paymentMethod: transaction.paymentMethod,
+        currencyCode: transaction.currencyCode,
+      ),
+      context: context,
+    );
+
+    final operation = _correctionCommandMapper.map(command);
+
+    final result = await _engine.execute(operation, context);
+
+    if (result is! OperationSucceeded) {
+      throw StateError('Transaction update failed: $result');
+    }
   }
 
   // ==================== Delete (Temporary Legacy Delegation) ====================
@@ -246,4 +279,10 @@ class TransactionApplicationService {
   final IncomeCommandMapper _incomeCommandMapper = const IncomeCommandMapper();
   final TransferCommandMapper _transferCommandMapper =
       const TransferCommandMapper();
+
+  final CorrectionCommandMapper _correctionCommandMapper =
+      const CorrectionCommandMapper();
+
+  final TransactionRecordMapper _transactionRecordMapper =
+      const TransactionRecordMapper();
 }
