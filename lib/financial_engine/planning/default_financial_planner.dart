@@ -15,6 +15,7 @@ import '../domain/financial_transaction_record.dart';
 import '../mutations/create_transaction_mutation.dart';
 import '../ports/transaction_lookup_port.dart';
 import '../mutations/update_transaction_mutation.dart';
+import '../mutations/deletion_transaction_mutation.dart';
 
 final class DefaultFinancialPlanner implements FinancialPlanner {
   final ChartOfAccounts _chartOfAccounts;
@@ -47,6 +48,9 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
 
       case FinancialActionType.correction:
         return await _planCorrection(context);
+
+      case FinancialActionType.deletion:
+        return await _planDeletion(context);
 
       default:
         throw UnimplementedError(
@@ -265,6 +269,25 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       operationId: 'operation',
       idempotencyKey: 'temporary',
       mutations: [UpdateTransactionMutation(before: before, after: after)],
+    );
+  }
+
+  Future<FinancialExecutionPlan> _planDeletion(PlanningContext context) async {
+    final deletion = context.deletion!;
+
+    final before = await _transactionLookupPort.findById(
+      deletion.transactionId,
+    );
+
+    if (before == null) {
+      throw StateError('Transaction not found: ${deletion.transactionId}');
+    }
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [DeleteTransactionMutation(record: before)],
     );
   }
 }

@@ -27,6 +27,8 @@ import 'package:hive/hive.dart';
 import '../models/transaction.dart';
 import '../financial_engine/mutations/update_transaction_mutation.dart';
 import '../financial_engine/execution/update_transaction_mutation_handler.dart';
+import '../financial_engine/mutations/deletion_transaction_mutation.dart';
+import '../financial_engine/mutations/deletion_transaction_mutation_handler.dart';
 
 final class FinancialEngineBootstrap {
   const FinancialEngineBootstrap._();
@@ -58,6 +60,10 @@ final class FinancialEngineBootstrap {
       port: transactionPort,
     );
 
+    final deleteTransactionHandler = DeleteTransactionMutationHandler(
+      transactionPort: transactionPort,
+    );
+
     final balancePort = HiveBalancePort(balanceService: balanceService);
     final balanceGuard = BalanceDomainGuard(balancePort: balancePort);
 
@@ -67,6 +73,7 @@ final class FinancialEngineBootstrap {
         CreateAllocationMutation: createAllocationHandler,
         CreateTransactionMutation: createTransactionHandler,
         UpdateTransactionMutation: updateTransactionHandler,
+        DeleteTransactionMutation: deleteTransactionHandler,
       },
     );
 

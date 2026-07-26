@@ -17,4 +17,6 @@ import '../domain/financial_transaction_record.dart';
 abstract interface class TransactionPort {
   /// Persists a financial transaction record.
   Future<void> save(FinancialTransactionRecord record);
+
+  Future<void> delete(String transactionId);
 }

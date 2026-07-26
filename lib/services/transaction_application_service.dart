@@ -25,6 +25,10 @@ import '../financial_engine/commands/correction/correction_command_mapper.dart';
 
 import '../financial_engine/adapters/transaction_record_mapper.dart';
 
+import '../financial_engine/commands/correction/delete_transaction_command.dart';
+import '../financial_engine/commands/correction/delete_transaction_command_mapper.dart';
+import '../financial_engine/commands/correction/deletion_transaction_intent.dart';
+
 /// Application Orchestrator for transaction-related operations.
 /// This is the single entry point for the UI and other clients.
 /// It delegates to the appropriate underlying service (Engine or Legacy).
@@ -207,8 +211,24 @@ class TransactionApplicationService {
 
   // ==================== Delete (Temporary Legacy Delegation) ====================
 
-  Future<void> delete(String transactionId) async {
-    await _legacyTransactionService.deleteTransaction(transactionId);
+  Future<OperationResult> delete(String transactionId) async {
+    final context = ExecutionContext(
+      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
+    final command = DeleteTransactionCommand(
+      intent: DeleteTransactionIntent(transactionId: transactionId),
+      metadata: TransactionMetadata(
+        occurredAt: DateTime.now(),
+        paymentMethod: 'default',
+        currencyCode: 'EGP',
+      ),
+      context: context,
+    );
+
+    final operation = _deleteTransactionCommandMapper.map(command);
+
+    return await _engine.execute(operation, context);
   }
 
   // =======================================================
@@ -281,4 +301,7 @@ class TransactionApplicationService {
 
   final TransactionRecordMapper _transactionRecordMapper =
       const TransactionRecordMapper();
+
+  final DeleteTransactionCommandMapper _deleteTransactionCommandMapper =
+      const DeleteTransactionCommandMapper();
 }

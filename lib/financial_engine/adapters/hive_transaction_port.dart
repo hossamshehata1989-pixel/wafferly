@@ -108,4 +108,23 @@ final class HiveTransactionPort
     debugPrint('box length after = ${_box.length}');
     debugPrint('================ UPDATE END ==================');
   }
+
+  @override
+  Future<void> delete(String transactionId) async {
+    debugPrint('================ DELETE START ================');
+    debugPrint('transaction.id = $transactionId');
+    debugPrint('box length before = ${_box.length}');
+    debugPrint('contains = ${_box.containsKey(transactionId)}');
+
+    final existing = _box.get(transactionId);
+
+    if (existing == null) {
+      throw StateError('Transaction not found: $transactionId');
+    }
+
+    await _box.delete(transactionId);
+
+    debugPrint('box length after = ${_box.length}');
+    debugPrint('================ DELETE END ==================');
+  }
 }
