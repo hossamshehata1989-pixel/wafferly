@@ -216,12 +216,19 @@ class TransactionApplicationService {
       idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
     );
 
+    final transaction = _legacyTransactionService.getById(transactionId);
+
+    if (transaction == null) {
+      throw Exception('Transaction not found: $transactionId');
+    }
+
     final command = DeleteTransactionCommand(
-      intent: DeleteTransactionIntent(transactionId: transactionId),
+      intent: DeleteTransactionIntent(transaction: transaction),
       metadata: TransactionMetadata(
-        occurredAt: DateTime.now(),
-        paymentMethod: 'default',
-        currencyCode: 'EGP',
+        occurredAt: transaction.date,
+        note: transaction.note,
+        paymentMethod: transaction.paymentMethod,
+        currencyCode: transaction.currencyCode,
       ),
       context: context,
     );
@@ -230,7 +237,6 @@ class TransactionApplicationService {
 
     return await _engine.execute(operation, context);
   }
-
   // =======================================================
 
   // ==================== Query methods (delegated to legacy) ====================

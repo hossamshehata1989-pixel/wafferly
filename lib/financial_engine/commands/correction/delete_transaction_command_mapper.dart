@@ -1,5 +1,5 @@
 import 'delete_transaction_command.dart';
-import '../../operations/delete_operation.dart';
+import '../../operations/deletion_operation.dart';
 
 final class DeleteTransactionCommandMapper {
   const DeleteTransactionCommandMapper();

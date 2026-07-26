@@ -40,7 +40,7 @@ final class DeleteOperation extends FinancialOperation {
       metadata: metadata,
       executionContext: context,
       constraints: constraints,
-      deletion: DeletionContext(transactionId: this.intent.transactionId),
+      deletion: DeletionContext(transactionId: this.intent.transaction.id),
     );
   }
 }

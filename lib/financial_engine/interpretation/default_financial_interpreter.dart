@@ -10,6 +10,7 @@ import 'normalized_intent.dart';
 import '../resolution/resolution.dart';
 import '../operations/create_goal_allocation_operation.dart';
 import '../operations/correction_financial_operation.dart';
+import '../operations/deletion_operation.dart';
 
 final class DefaultFinancialInterpreter implements FinancialInterpreter {
   const DefaultFinancialInterpreter();
@@ -84,6 +85,19 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
           categoryId: after.categoryId,
           actorMemberId: after.actorMemberId,
           isExceptional: after.isExceptional,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case DeleteOperation():
+        final tx = operation.intent.transaction;
+
+        return NormalizedIntent(
+          action: FinancialActionType.deletion,
+          amount: tx.amount,
+          sourceAccountId: tx.fromAccountId ?? '',
+          categoryId: tx.categoryId,
+          actorMemberId: tx.actorMemberId,
+          isExceptional: tx.isExceptional,
           resolution: operation.resolution ?? Resolution.execute,
         );
 

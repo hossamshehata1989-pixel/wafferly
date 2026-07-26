@@ -1,7 +1,7 @@
-final class DeleteTransactionIntent {
-  final String transactionId;
+import '../../../models/transaction.dart';
 
-  const DeleteTransactionIntent({
-    required this.transactionId,
-  });
+final class DeleteTransactionIntent {
+  final Transaction transaction;
+
+  const DeleteTransactionIntent({required this.transaction});
 }

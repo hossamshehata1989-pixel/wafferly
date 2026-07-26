@@ -14,6 +14,8 @@ import '../expenses_screen.dart';
 import '../../widgets/transactions/category_filter_sheet.dart';
 import '../../config/category_config.dart';
 import '../../config/category_type.dart';
+import 'package:provider/provider.dart';
+import '../../services/transaction_application_service.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -30,6 +32,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   final TransactionService _transactionService = TransactionService.instance;
   final AccountService _accountService = AccountService();
+  late final TransactionApplicationService _transactionApplicationService;
 
   String _searchQuery = '';
   Map<String, dynamic> _filters = {
@@ -45,8 +48,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   double _netBalance = 0;
   List<String> _selectedCategoryIds = [];
   @override
+  @override
   void initState() {
     super.initState();
+
+    _transactionApplicationService = context
+        .read<TransactionApplicationService>();
+
     _loadTransactions();
   }
 
@@ -386,9 +394,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   void _handleDeleteTransaction(String transactionId) async {
-    await TransactionService.instance.deleteTransaction(transactionId);
+    try {
+      final result = await _transactionApplicationService.delete(transactionId);
 
-    _refreshTransactions();
+      debugPrint('DELETE RESULT: $result');
+
+      _refreshTransactions();
+    } catch (e, st) {
+      debugPrint('DELETE ERROR: $e');
+      debugPrint('$st');
+    }
   }
 
   void _handleEditTransaction(Transaction transaction) {
