@@ -9,6 +9,7 @@ import 'financial_interpreter.dart';
 import 'normalized_intent.dart';
 import '../resolution/resolution.dart';
 import '../operations/create_goal_allocation_operation.dart';
+import '../operations/correction_financial_operation.dart';
 
 final class DefaultFinancialInterpreter implements FinancialInterpreter {
   const DefaultFinancialInterpreter();
@@ -65,6 +66,24 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
           amount: operation.amount,
           sourceAccountId: operation.accountId,
           goalId: operation.goalId,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case CorrectionOperation():
+        final after = operation.intent.after;
+
+        final sourceAccountId =
+            after.fromAccountId ??
+            after.toAccountId ??
+            (throw StateError('Correction transaction has no source account'));
+
+        return NormalizedIntent(
+          action: FinancialActionType.correction,
+          sourceAccountId: sourceAccountId,
+          amount: after.amount,
+          categoryId: after.categoryId,
+          actorMemberId: after.actorMemberId,
+          isExceptional: after.isExceptional,
           resolution: operation.resolution ?? Resolution.execute,
         );
 

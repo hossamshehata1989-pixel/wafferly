@@ -30,10 +30,8 @@ final class NormalizedIntent {
     this.destinationAccountId,
     this.categoryId,
     this.goalId,
-
     this.actorMemberId,
     this.isExceptional = false,
-
     required this.resolution,
   });
 }

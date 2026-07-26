@@ -70,6 +70,14 @@ final class HiveTransactionPort
     FinancialTransactionRecord before,
     FinancialTransactionRecord after,
   ) async {
+    debugPrint('================ UPDATE START ================');
+    debugPrint('before.id = ${before.transactionId}');
+    debugPrint('after.id  = ${after.transactionId}');
+    debugPrint('ids match = ${before.transactionId == after.transactionId}');
+    debugPrint('box length before = ${_box.length}');
+    debugPrint('contains before = ${_box.containsKey(before.transactionId)}');
+    debugPrint('contains after  = ${_box.containsKey(after.transactionId)}');
+
     final existing = _box.get(before.transactionId);
 
     if (existing == null) {
@@ -93,6 +101,11 @@ final class HiveTransactionPort
       actorMemberId: after.actorMemberId,
     );
 
+    debugPrint('writing key = ${updated.id}');
+
     await _box.put(updated.id, updated);
+
+    debugPrint('box length after = ${_box.length}');
+    debugPrint('================ UPDATE END ==================');
   }
 }

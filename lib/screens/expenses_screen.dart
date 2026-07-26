@@ -35,8 +35,19 @@ class ExpensesScreen extends StatelessWidget {
     final isCompactScreen = metrics.width < 360 || metrics.height < 700;
 
     return ChangeNotifierProvider(
-      create: (_) =>
-          TransactionEntryController(transactionService: transactionService),
+      create: (_) {
+        final controller = TransactionEntryController(
+          transactionService: transactionService,
+        );
+
+        controller.setTransactionType(initialType);
+
+        if (transactionToEdit != null) {
+          controller.loadTransaction(transactionToEdit!);
+        }
+
+        return controller;
+      },
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         appBar: PreferredSize(
