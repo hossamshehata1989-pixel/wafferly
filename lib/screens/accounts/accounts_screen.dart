@@ -3,18 +3,19 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/intl.dart';
+
 import '../../models/account.dart';
 import 'package:wafferly/models/enums/account_enums.dart';
 import '../../services/account_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/balance_service.dart';
-import 'add_account/add_account_screen.dart';
 import '../../models/enums/section_type.dart';
-import '../../utils/account_mapper.dart';
-import 'package:wafferly/screens/accounts/group_accounts_screen.dart';
 import 'widgets/section_summary_card.dart';
 import 'widgets/net_worth_card.dart';
 import 'controllers/accounts_screen_controller.dart';
+import 'navigation/accounts_navigator.dart';
+import 'actions/account_action_handler.dart';
+import 'presentation/account_section_definition.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -24,7 +25,6 @@ class AccountsScreen extends StatefulWidget {
 
 class _AccountsScreenState extends State<AccountsScreen> {
   final AccountService _accountService = AccountService();
-
   final AccountsScreenController _controller = AccountsScreenController();
 
   static const String TEMP_DEBT_ACCOUNT_NAME = 'دين مؤقت';
@@ -55,23 +55,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
     );
   }
 
-  SectionType _getSectionTypeFromString(String sectionType) {
-    switch (sectionType) {
-      case 'asset':
-        return SectionType.asset;
-      case 'liability':
-        return SectionType.liability;
-      case 'investment':
-        return SectionType.investment;
-      case 'receivable':
-        return SectionType.receivable;
-      case 'saving':
-        return SectionType.saving;
-      default:
-        return SectionType.asset;
-    }
-  }
-
   SectionType _getSectionTypeFromAccount(Account account) {
     if (account.group == AccountGroup.savings) {
       return SectionType.saving;
@@ -88,36 +71,47 @@ class _AccountsScreenState extends State<AccountsScreen> {
     return SectionType.asset;
   }
 
-  void _addAccount(String sectionType) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddAccountScreen(
-          sectionType: _getSectionTypeFromString(sectionType),
-        ),
-      ),
-    ).then((_) {
-      if (mounted) setState(() {});
-    });
+  // ============================================================
+  // 🔹 Navigation Methods (Refactored)
+  // ============================================================
+
+  Future<void> _addAccount(SectionType sectionType) async {
+    final result = await AccountActionHandler.addAccount(
+      context: context,
+      sectionType: sectionType,
+    );
+    if (result == true && mounted) {
+      setState(() {});
+    }
   }
 
-  void _editAccount(Account account) {
+  Future<void> _editAccount(Account account) async {
     if (account.name == TEMP_DEBT_ACCOUNT_NAME) {
       _showSimpleTempDebtDialog();
       return;
     }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddAccountScreen(
-          sectionType: _getSectionTypeFromAccount(account),
-          accountToEdit: account,
-        ),
-      ),
-    ).then((_) {
-      if (mounted) setState(() {});
-    });
+    final result = await AccountActionHandler.editAccount(
+      context: context,
+      sectionType: _getSectionTypeFromAccount(account),
+      account: account,
+    );
+    if (result == true && mounted) {
+      setState(() {});
+    }
   }
+
+  // ============================================================
+  // 🔹 Helpers
+  // ============================================================
+
+  String _formatCurrency(double amount) {
+    final formatter = NumberFormat("#,###");
+    return formatter.format(amount.toInt());
+  }
+
+  // ============================================================
+  // 🔹 Build
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +120,53 @@ class _AccountsScreenState extends State<AccountsScreen> {
     final balanceService = BalanceService();
     final isSmallPhone = screenWidth < 380;
     final isTablet = screenWidth >= 600;
-    final isLargeTablet = screenWidth >= 900;
+
+    // ============================================================
+    // 🔹 Section Definitions (Data-Driven)
+    // ============================================================
+
+    final sections = [
+      AccountSectionDefinition(
+        title: t.moneyYouHave,
+        icon: Icons.account_balance_wallet,
+        color: Colors.green,
+        sectionType: SectionType.asset,
+        isSavings: false,
+        selector: (data) => data.moneyHave,
+      ),
+      AccountSectionDefinition(
+        title: t.savings,
+        icon: Icons.savings,
+        color: Colors.teal,
+        sectionType: SectionType.saving,
+        isSavings: true,
+        selector: (data) => data.savings,
+      ),
+      AccountSectionDefinition(
+        title: t.investments,
+        icon: Icons.trending_up,
+        color: Colors.orange,
+        sectionType: SectionType.investment,
+        isSavings: false,
+        selector: (data) => data.investments,
+      ),
+      AccountSectionDefinition(
+        title: t.moneyYouOwe,
+        icon: Icons.credit_card,
+        color: Colors.red,
+        sectionType: SectionType.liability,
+        isSavings: false,
+        selector: (data) => data.liabilities,
+      ),
+      AccountSectionDefinition(
+        title: t.moneyYouWillGet,
+        icon: Icons.handshake,
+        color: Colors.blue,
+        sectionType: SectionType.receivable,
+        isSavings: false,
+        selector: (data) => data.receivables,
+      ),
+    ];
 
     return Stack(
       children: [
@@ -147,25 +187,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
               IconButton(icon: const Icon(Icons.search), onPressed: () {}),
             ],
           ),
-
-          // TODO:
-          // Replace ValueListenableBuilder with AnimatedBuilder
-          // listening to Accounts + Transactions boxes.
           body: ValueListenableBuilder(
             valueListenable: _accountService.box.listenable(),
             builder: (context, Box<Account> box, _) {
               final accounts = _accountService.getAllActiveAccounts();
-
-              // DEBUG مؤقت
-              for (final a in accounts) {
-                print(
-                  'DEBUG: ${a.name} | '
-                  'type=${a.type} | '
-                  'storedGroup=${a.group} | '
-                  'resolvedGroup=${resolveGroup(a.type)}',
-                );
-              }
-
               final data = _controller.buildScreenData(
                 accounts,
                 balanceService,
@@ -181,66 +206,31 @@ class _AccountsScreenState extends State<AccountsScreen> {
                       isTablet: isTablet,
                     ),
                   ),
-                  const SliverToBoxAdapter(
-                    child: SizedBox(height: 16),
-                  ), // Spacing
-                  _buildSection(
-                    // 💰 Money You Have
-                    t.moneyYouHave,
-                    Icons.account_balance_wallet,
-                    data.moneyHave,
-                    balanceService,
-                    Colors.green,
-                    isTablet,
-                    isLargeTablet,
-                    () => _addAccount('asset'),
-                    false,
-                  ),
-                  _buildSection(
-                    //
-                    t.savings,
-                    Icons.savings,
-                    data.savings,
-                    balanceService,
-                    Colors.teal,
-                    isTablet,
-                    isLargeTablet,
-                    () => _addAccount('saving'),
-                    false,
-                  ),
-                  _buildSection(
-                    t.investments,
-                    Icons.trending_up,
-                    data.investments,
-                    balanceService,
-                    Colors.orange,
-                    isTablet,
-                    isLargeTablet,
-                    () => _addAccount('investment'),
-                    false,
-                  ),
-                  _buildSection(
-                    t.moneyYouOwe,
-                    Icons.credit_card,
-                    data.liabilities,
-                    balanceService,
-                    Colors.red,
-                    isTablet,
-                    isLargeTablet,
-                    () => _addAccount('liability'),
-                    false,
-                  ),
-                  _buildSection(
-                    t.moneyYouWillGet,
-                    Icons.handshake,
-                    data.receivables,
-                    balanceService,
-                    Colors.blue,
-                    isTablet,
-                    isLargeTablet,
-                    () => _addAccount('receivable'),
-                    false,
-                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  ...sections.map((section) {
+                    final accountsList = section.selector(data);
+                    final total = _controller.calculateSectionTotal(
+                      accountsList,
+                      balanceService,
+                    );
+                    return SliverToBoxAdapter(
+                      child: SectionSummaryCard(
+                        title: section.title,
+                        icon: section.icon,
+                        amountText: '${_formatCurrency(total)} ${t.currency}',
+                        accountsCount: accountsList.length,
+                        color: section.color,
+                        onTap: () {
+                          AccountsNavigator.showGroupAccounts(
+                            context: context,
+                            title: section.title,
+                            sectionType: section.sectionType,
+                            isSavings: section.isSavings,
+                          );
+                        },
+                      ),
+                    );
+                  }),
                   const SliverToBoxAdapter(child: SizedBox(height: 80)),
                 ],
               );
@@ -248,46 +238,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSection(
-    String title,
-    IconData icon,
-    List<Account> accounts,
-    BalanceService balanceService,
-    Color color,
-    bool isTablet,
-    bool isLargeTablet,
-    VoidCallback onAddTap,
-    bool showAddButton,
-  ) {
-    final t = AppLocalizations.of(context)!;
-    final sectionTotal = _controller.calculateSectionTotal(
-      accounts,
-      balanceService,
-    );
-    final formatter = NumberFormat("#,###");
-    return SliverToBoxAdapter(
-      child: SectionSummaryCard(
-        title: title,
-        icon: icon,
-        amountText: '${formatter.format(sectionTotal.toInt())} ${t.currency}',
-        accountsCount: accounts.length,
-        color: color,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => GroupAccountsScreen(
-                title: title,
-                isSavings: _controller.isSavingsSection(title),
-                sectionType: _controller.getSectionType(title),
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 }
