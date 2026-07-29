@@ -50,7 +50,7 @@ class NoAccountSheet extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) =>
-                        AddAccountScreen(sectionType: SectionType.asset),
+                        AddAccountScreen(sectionType: SectionType.liquidity),
                   ),
                 );
               },

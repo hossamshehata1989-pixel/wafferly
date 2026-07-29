@@ -15,7 +15,7 @@ class Account {
   String name;
 
   @HiveField(3)
-  String type;          // يبقى String حالياً
+  String type; // يبقى String حالياً
 
   @HiveField(5)
   String currency;

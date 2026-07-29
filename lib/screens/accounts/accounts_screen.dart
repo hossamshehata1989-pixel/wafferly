@@ -10,12 +10,14 @@ import '../../services/account_service.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/balance_service.dart';
 import '../../models/enums/section_type.dart';
-import 'widgets/section_summary_card.dart';
 import 'widgets/net_worth_card.dart';
+
 import 'controllers/accounts_screen_controller.dart';
 import 'navigation/accounts_navigator.dart';
 import 'actions/account_action_handler.dart';
 import 'presentation/account_section_definition.dart';
+import 'widgets/financial_group_card.dart';
+import '../../theme/financial_group_visual_resolver.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -57,18 +59,18 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
   SectionType _getSectionTypeFromAccount(Account account) {
     if (account.group == AccountGroup.savings) {
-      return SectionType.saving;
+      return SectionType.savings;
     }
     if (account.group == AccountGroup.investments) {
-      return SectionType.investment;
+      return SectionType.investments;
     }
     if (account.group == AccountGroup.receivable) {
       return SectionType.receivable;
     }
     if (account.group == AccountGroup.liabilities) {
-      return SectionType.liability;
+      return SectionType.liabilities;
     }
-    return SectionType.asset;
+    return SectionType.liquidity;
   }
 
   // ============================================================
@@ -109,6 +111,25 @@ class _AccountsScreenState extends State<AccountsScreen> {
     return formatter.format(amount.toInt());
   }
 
+  String _getSectionSubtitle(SectionType sectionType) {
+    switch (sectionType) {
+      case SectionType.liquidity:
+        return 'Cash • Wallet • +2';
+
+      case SectionType.savings:
+        return 'Real • Virtual • Circle';
+
+      case SectionType.investments:
+        return 'Gold • Stocks • +2';
+
+      case SectionType.liabilities:
+        return 'Loans • Cards • +1';
+
+      case SectionType.receivable:
+        return 'Friends • Family';
+    }
+  }
+
   // ============================================================
   // 🔹 Build
   // ============================================================
@@ -128,43 +149,38 @@ class _AccountsScreenState extends State<AccountsScreen> {
     final sections = [
       AccountSectionDefinition(
         title: t.moneyYouHave,
-        icon: Icons.account_balance_wallet,
-        color: Colors.green,
-        sectionType: SectionType.asset,
+        visual: FinancialGroupVisualResolver.resolve(SectionType.liquidity),
+        sectionType: SectionType.liquidity,
         isSavings: false,
-        selector: (data) => data.moneyHave,
+        selector: (data) => data.liquidity,
       ),
       AccountSectionDefinition(
         title: t.savings,
-        icon: Icons.savings,
-        color: Colors.teal,
-        sectionType: SectionType.saving,
+        visual: FinancialGroupVisualResolver.resolve(SectionType.savings),
+        sectionType: SectionType.savings,
         isSavings: true,
         selector: (data) => data.savings,
       ),
       AccountSectionDefinition(
         title: t.investments,
-        icon: Icons.trending_up,
-        color: Colors.orange,
-        sectionType: SectionType.investment,
+        visual: FinancialGroupVisualResolver.resolve(SectionType.investments),
+        sectionType: SectionType.investments,
         isSavings: false,
         selector: (data) => data.investments,
       ),
       AccountSectionDefinition(
         title: t.moneyYouOwe,
-        icon: Icons.credit_card,
-        color: Colors.red,
-        sectionType: SectionType.liability,
+        visual: FinancialGroupVisualResolver.resolve(SectionType.liabilities),
+        sectionType: SectionType.liabilities,
         isSavings: false,
         selector: (data) => data.liabilities,
       ),
       AccountSectionDefinition(
         title: t.moneyYouWillGet,
-        icon: Icons.handshake,
-        color: Colors.blue,
+        visual: FinancialGroupVisualResolver.resolve(SectionType.receivable),
         sectionType: SectionType.receivable,
         isSavings: false,
-        selector: (data) => data.receivables,
+        selector: (data) => data.receivable,
       ),
     ];
 
@@ -213,13 +229,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
                       accountsList,
                       balanceService,
                     );
+
                     return SliverToBoxAdapter(
-                      child: SectionSummaryCard(
+                      child: FinancialGroupCard(
                         title: section.title,
-                        icon: section.icon,
+                        subtitle: _getSectionSubtitle(section.sectionType),
+                        visual: section.visual,
                         amountText: '${_formatCurrency(total)} ${t.currency}',
-                        accountsCount: accountsList.length,
-                        color: section.color,
                         onTap: () {
                           AccountsNavigator.showGroupAccounts(
                             context: context,

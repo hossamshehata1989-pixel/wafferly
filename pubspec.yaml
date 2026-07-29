@@ -62,3 +62,5 @@ flutter:
     - assets/icons/ui/
     - assets/avatars/
     - assets/sounds/
+    - assets/icons/financial/financial_groups/
+    - assets/illustrations/financial_groups/

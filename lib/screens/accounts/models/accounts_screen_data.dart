@@ -5,20 +5,20 @@ class AccountsScreenData {
   final double totalAssets;
   final double totalLiabilities;
 
-  final List<Account> moneyHave;
+  final List<Account> liquidity;
   final List<Account> savings;
   final List<Account> investments;
   final List<Account> liabilities;
-  final List<Account> receivables;
+  final List<Account> receivable;
 
   const AccountsScreenData({
     required this.netWorth,
     required this.totalAssets,
     required this.totalLiabilities,
-    required this.moneyHave,
+    required this.liquidity,
     required this.savings,
     required this.investments,
     required this.liabilities,
-    required this.receivables,
+    required this.receivable,
   });
 }

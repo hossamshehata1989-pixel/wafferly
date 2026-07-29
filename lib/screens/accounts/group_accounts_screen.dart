@@ -33,13 +33,13 @@ class GroupAccountsScreen extends StatelessWidget {
 
           final accounts = allAccounts.where((a) {
             switch (sectionType) {
-              case SectionType.asset:
+              case SectionType.liquidity:
                 return a.group == AccountGroup.liquidity;
-              case SectionType.saving:
+              case SectionType.savings:
                 return a.group == AccountGroup.savings;
-              case SectionType.investment:
+              case SectionType.investments:
                 return a.group == AccountGroup.investments;
-              case SectionType.liability:
+              case SectionType.liabilities:
                 return a.group == AccountGroup.liabilities;
               case SectionType.receivable:
                 return a.group == AccountGroup.receivable;

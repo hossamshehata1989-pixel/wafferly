@@ -87,19 +87,19 @@ class AccountsScreenController {
   SectionType getSectionType(String title) {
     switch (title) {
       case 'Savings':
-        return SectionType.saving;
+        return SectionType.savings;
 
       case 'Investments':
-        return SectionType.investment;
+        return SectionType.investments;
 
-      case 'Money You Owe':
-        return SectionType.liability;
+      case 'liabilities':
+        return SectionType.liabilities;
 
-      case 'Money You Will Get':
+      case 'Receivable':
         return SectionType.receivable;
 
       default:
-        return SectionType.asset;
+        return SectionType.liquidity;
     }
   }
 
@@ -126,15 +126,14 @@ class AccountsScreenController {
         AccountNature.liability,
       ),
 
-      moneyHave: getLiquidityAccounts(accounts),
+      liquidity: getLiquidityAccounts(accounts),
 
       savings: getSavingsAccounts(accounts),
 
       investments: getInvestmentAccounts(accounts),
 
       liabilities: getLiabilityAccounts(accounts),
-
-      receivables: getReceivableAccounts(accounts),
+      receivable: getReceivableAccounts(accounts),
     );
   }
 }

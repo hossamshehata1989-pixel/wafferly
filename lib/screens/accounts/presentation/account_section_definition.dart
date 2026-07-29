@@ -1,10 +1,10 @@
 // lib/screens/accounts/presentation/account_section_definition.dart
 
-import 'package:flutter/material.dart';
-
 import '../../../models/account.dart';
 import '../../../models/enums/section_type.dart';
 import '../models/accounts_screen_data.dart';
+
+import '../../../theme/financial_group_visual.dart';
 
 /// تعريف ثابت لقسم واحد في شاشة Accounts.
 ///
@@ -18,16 +18,14 @@ import '../models/accounts_screen_data.dart';
 class AccountSectionDefinition {
   const AccountSectionDefinition({
     required this.title,
-    required this.icon,
-    required this.color,
+    required this.visual,
     required this.sectionType,
     required this.isSavings,
     required this.selector,
   });
 
   final String title;
-  final IconData icon;
-  final Color color;
+  final FinancialGroupVisual visual;
   final SectionType sectionType;
   final bool isSavings;
   final List<Account> Function(AccountsScreenData data) selector;

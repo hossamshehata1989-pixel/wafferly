@@ -49,7 +49,7 @@ void main() {
           type: 'creditCard',
           currency: 'EGP',
           createdAt: DateTime.now(),
-          group: AccountGroup.moneyYouHave,
+          group: AccountGroup.liquidity,
           nature: AccountNature.asset,
           isArchived: false,
         );
@@ -60,7 +60,7 @@ void main() {
             .migrateLegacyAccountClassification();
 
         final migrated = testBox.get(legacyAccount.id);
-        expect(migrated!.group, AccountGroup.moneyYouOwe);
+        expect(migrated!.group, AccountGroup.liabilities);
         expect(migrated.nature, AccountNature.liability);
         expect(fixedCount, 1);
       },
@@ -75,7 +75,7 @@ void main() {
         type: 'gold',
         currency: 'EGP',
         createdAt: DateTime.now(),
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
         nature: AccountNature.asset,
         isArchived: false,
       );
@@ -97,7 +97,7 @@ void main() {
         type: 'lent',
         currency: 'EGP',
         createdAt: DateTime.now(),
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
         nature: AccountNature.asset,
         isArchived: false,
       );
@@ -107,7 +107,7 @@ void main() {
       await migrationService.migrateLegacyAccountClassification();
 
       final migrated = testBox.get(legacyAccount.id);
-      expect(migrated!.group, AccountGroup.moneyYouWillGet);
+      expect(migrated!.group, AccountGroup.receivable);
     });
 
     test('Already correct account is not modified', () async {
@@ -119,7 +119,7 @@ void main() {
         type: 'cash',
         currency: 'EGP',
         createdAt: DateTime.now(),
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
         nature: AccountNature.asset,
         isArchived: false,
       );

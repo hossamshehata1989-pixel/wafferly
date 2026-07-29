@@ -98,7 +98,7 @@ void _showAddDebtSheet(BuildContext context) {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const AddAccountScreen(
-                      sectionType: SectionType.liability,
+                      sectionType: SectionType.liabilities,
                       initialAccountType: 'creditCard',
                     ),
                   ),
@@ -116,7 +116,7 @@ void _showAddDebtSheet(BuildContext context) {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const AddAccountScreen(
-                      sectionType: SectionType.liability,
+                      sectionType: SectionType.liabilities,
                       initialAccountType: 'loan',
                     ),
                   ),
@@ -134,7 +134,7 @@ void _showAddDebtSheet(BuildContext context) {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const AddAccountScreen(
-                      sectionType: SectionType.liability,
+                      sectionType: SectionType.liquidity,
                       initialAccountType: 'installment',
                     ),
                   ),
@@ -152,7 +152,7 @@ void _showAddDebtSheet(BuildContext context) {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const AddAccountScreen(
-                      sectionType: SectionType.liability,
+                      sectionType: SectionType.liabilities,
 
                       initialAccountType: 'debt',
                     ),

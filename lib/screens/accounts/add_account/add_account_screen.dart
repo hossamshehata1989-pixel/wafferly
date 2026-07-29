@@ -74,23 +74,23 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   double _oldBalance = 0;
 
   List<AccountTypeOption> get _accountTypes {
-    final section = widget.sectionType ?? SectionType.asset;
+    final section = widget.sectionType ?? SectionType.liquidity;
     switch (section) {
-      case SectionType.asset:
+      case SectionType.liquidity:
         return [
           AccountTypeOption.cash,
           AccountTypeOption.bank,
           AccountTypeOption.wallet,
           AccountTypeOption.debitCard,
         ];
-      case SectionType.liability:
+      case SectionType.liabilities:
         return [
           AccountTypeOption.debt,
           AccountTypeOption.loan,
           AccountTypeOption.creditCard,
           AccountTypeOption.installment,
         ];
-      case SectionType.investment:
+      case SectionType.investments:
         return [
           AccountTypeOption.investment,
           AccountTypeOption.gold,
@@ -99,7 +99,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         ];
       case SectionType.receivable:
         return [AccountTypeOption.lent, AccountTypeOption.rosca];
-      case SectionType.saving:
+      case SectionType.savings:
         return [AccountTypeOption.realSaving, AccountTypeOption.savingCircle];
     }
   }
@@ -108,16 +108,16 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       ? 'Edit Account'
       : 'Add Account - $_sectionName';
   String get _sectionName {
-    switch (widget.sectionType ?? SectionType.asset) {
-      case SectionType.asset:
-        return 'Money You Have';
-      case SectionType.liability:
-        return 'Money You Owe';
-      case SectionType.investment:
+    switch (widget.sectionType ?? SectionType.liquidity) {
+      case SectionType.liquidity:
+        return 'Liquidity ';
+      case SectionType.liabilities:
+        return 'liabilities';
+      case SectionType.investments:
         return 'Investments';
       case SectionType.receivable:
-        return 'Money You Will Get';
-      case SectionType.saving:
+        return 'Recievable';
+      case SectionType.savings:
         return 'Savings';
     }
   }
@@ -350,16 +350,16 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   }
 
   Color _getButtonColor() {
-    switch (widget.sectionType ?? SectionType.asset) {
-      case SectionType.asset:
+    switch (widget.sectionType ?? SectionType.liquidity) {
+      case SectionType.liquidity:
         return Colors.green;
-      case SectionType.liability:
+      case SectionType.liabilities:
         return Colors.red;
-      case SectionType.investment:
+      case SectionType.investments:
         return Colors.orange;
       case SectionType.receivable:
         return Colors.cyan;
-      case SectionType.saving:
+      case SectionType.savings:
         return Colors.teal;
     }
   }
@@ -658,7 +658,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       );
 
       if (balanceValue != 0) {
-        final isLiability = widget.sectionType == SectionType.liability;
+        final isLiability = widget.sectionType == SectionType.liabilities;
         final initialBalanceAmount = isLiability ? -balanceValue : balanceValue;
         final initialTransaction = Transaction.create(
           amount: initialBalanceAmount.abs(),
@@ -682,7 +682,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         final formattedAmount = NumberFormat(
           "#,###",
         ).format(balanceValue.toInt());
-        final amountText = widget.sectionType == SectionType.liability
+        final amountText = widget.sectionType == SectionType.liabilities
             ? '$formattedAmount EGP (Debt)'
             : '$formattedAmount EGP';
         ScaffoldMessenger.of(context).showSnackBar(

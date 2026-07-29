@@ -42,7 +42,7 @@ Future<void> showAccountPickerSheet(
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => AddAccountScreen(sectionType: SectionType.asset),
+          builder: (_) => AddAccountScreen(sectionType: SectionType.liquidity),
         ),
       );
 
@@ -118,7 +118,7 @@ Future<void> showAccountPickerSheet(
                   context,
                   MaterialPageRoute(
                     builder: (_) =>
-                        AddAccountScreen(sectionType: SectionType.asset),
+                        AddAccountScreen(sectionType: SectionType.liquidity),
                   ),
                 );
               },
