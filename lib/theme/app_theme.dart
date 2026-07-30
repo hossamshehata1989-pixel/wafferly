@@ -11,9 +11,7 @@ class AppTheme {
       primaryColor: AppColors.primary,
 
       // ✅ Global Font Family
-      fontFamily: 'Cairo',
-
-      // ✅ Input Decoration Theme
+      fontFamily: 'Almarai', // ✅ Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.card,

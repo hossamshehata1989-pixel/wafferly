@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
+import '../../../theme/financial_entity_visual.dart';
 import '../../../theme/responsive_metrics.dart';
-import '../../../theme/financial_group_visual.dart';
 import 'shared/financial_entity_card.dart';
 
-class FinancialGroupCard extends StatelessWidget {
-  const FinancialGroupCard({
+class AccountCard extends StatelessWidget {
+  const AccountCard({
     super.key,
-    required this.title,
+    required this.name,
     required this.subtitle,
-    required this.amountText,
+    required this.balanceText,
+    required this.iconAsset,
     required this.visual,
     this.onTap,
   });
 
-  final String title;
+  final String name;
   final String subtitle;
-  final String amountText;
-  final FinancialGroupVisual visual;
+  final String balanceText;
+  final String iconAsset;
+  final FinancialEntityVisual visual;
   final VoidCallback? onTap;
 
   @override
@@ -26,35 +29,38 @@ class FinancialGroupCard extends StatelessWidget {
     final metrics = ResponsiveMetrics.of(context);
 
     return FinancialEntityCard(
-      visual: visual.toEntityVisual(),
+      visual: visual,
       onTap: onTap,
       child: Row(
         children: [
-          // Icon container
+          // Account Icon
           Container(
             width: metrics.size(55),
             height: metrics.size(55),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
-              color: visual.color.withOpacity(0.15),
+              border: Border.all(color: Colors.white.withOpacity(.05)),
+              color: visual.surfaceAccent.withOpacity(.15),
               borderRadius: BorderRadius.circular(metrics.size(12)),
             ),
             child: Padding(
               padding: EdgeInsets.all(metrics.size(5)),
               child: SvgPicture.asset(
-                visual.icon,
+                iconAsset,
                 width: metrics.size(22),
                 height: metrics.size(22),
               ),
             ),
           ),
+
           SizedBox(width: metrics.spacing(12)),
+
+          // Account Information
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -63,7 +69,9 @@ class FinancialGroupCard extends StatelessWidget {
                     fontSize: metrics.text(14),
                   ),
                 ),
+
                 SizedBox(height: metrics.spacing(2)),
+
                 Text(
                   subtitle,
                   maxLines: 1,
@@ -76,19 +84,24 @@ class FinancialGroupCard extends StatelessWidget {
               ],
             ),
           ),
+
           SizedBox(width: metrics.spacing(8)),
+
+          // Balance + Chevron
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                amountText,
+                balanceText,
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                   fontSize: metrics.text(14),
                 ),
               ),
+
               SizedBox(height: metrics.spacing(4)),
+
               Icon(
                 Icons.chevron_right_rounded,
                 color: Colors.white54,

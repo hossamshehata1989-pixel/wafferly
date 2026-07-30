@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'financial_entity_visual.dart';
 
 class FinancialGroupVisual {
   final String icon;
@@ -10,4 +11,13 @@ class FinancialGroupVisual {
     required this.background,
     required this.color,
   });
+}
+
+extension FinancialGroupVisualMapper on FinancialGroupVisual {
+  FinancialEntityVisual toEntityVisual() {
+    return FinancialEntityVisual(
+      backgroundSvg: background,
+      surfaceAccent: color,
+    );
+  }
 }

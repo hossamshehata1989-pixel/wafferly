@@ -10,40 +10,13 @@ import 'package:wafferly/services/balance_service.dart';
 import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/models/enums/section_type.dart';
 import 'package:wafferly/l10n/app_localizations.dart';
-import '../../../utils/account_type_helper.dart';
 
-enum AccountTypeOption {
-  cash('cash', 'Cash', Icons.attach_money, Colors.green),
-  bank('bank', 'Bank', Icons.account_balance, Colors.blue),
-  wallet('wallet', 'Wallet', Icons.account_balance_wallet, Colors.orange),
-  debitCard('debitCard', 'Debit Card', Icons.credit_card, Colors.teal),
-
-  debt('debt', 'Debt', Icons.money_off, Colors.red),
-  loan('loan', 'Loan', Icons.request_page, Colors.deepOrange),
-  creditCard('creditCard', 'Credit Card Due', Icons.credit_card, Colors.pink),
-  installment(
-    'installment',
-    'Installments',
-    Icons.calendar_month,
-    Colors.purple,
-  ),
-
-  investment('investment', 'Investment', Icons.trending_up, Colors.teal),
-  gold('gold', 'Gold', Icons.workspace_premium, Colors.amber),
-  stocks('stocks', 'Stocks', Icons.show_chart, Colors.green),
-  certificates('certificates', 'Certificates', Icons.description, Colors.blue),
-  lent('lent', 'Money Lent', Icons.handshake, Colors.cyan),
-  rosca('rosca', 'ROSCA', Icons.group, Colors.indigo),
-  realSaving('realSaving', 'Real Saving', Icons.savings, Colors.teal),
-  savingCircle('savingCircle', 'Saving Circle', Icons.group, Colors.indigo);
-
-  final String id;
-  final String name;
-  final IconData icon;
-  final Color color;
-
-  const AccountTypeOption(this.id, this.name, this.icon, this.color);
-}
+import '../../../theme/account_asset_resolver.dart';
+import '../../../widgets/accounts/account_icon_picker.dart';
+import '../../../widgets/accounts/account_type_section.dart';
+import 'package:wafferly/models/enums/account_type_option.dart';
+import '../../../widgets/accounts/account_details_section.dart';
+import '../../../widgets/accounts/account_preview_card.dart';
 
 class AddAccountScreen extends StatefulWidget {
   final SectionType? sectionType;
@@ -68,7 +41,10 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   final _nameController = TextEditingController();
   final _balanceController = TextEditingController();
   final _notesController = TextEditingController();
+
   String _selectedType = '';
+  String? _selectedIcon;
+
   String _selectedCurrency = 'EGP';
   bool _isSaving = false;
   double _oldBalance = 0;
@@ -132,11 +108,13 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     if (widget.accountToEdit != null) {
       _nameController.text = widget.accountToEdit!.name;
       _selectedType = widget.accountToEdit!.type;
+      _selectedIcon = widget.accountToEdit!.icon;
       _selectedCurrency = widget.accountToEdit!.currency;
       _notesController.text = widget.accountToEdit!.notes ?? '';
       _loadCurrentBalance();
     } else {
       _selectedType = widget.initialAccountType ?? '';
+      _selectedIcon = null;
     }
   }
 
@@ -203,100 +181,52 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    _buildAccountTypeGrid(t),
-                    const SizedBox(height: 24),
-                    TextFormField(
-                      controller: _nameController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: const InputDecoration(
-                        labelText: 'Account Name',
-                        labelStyle: TextStyle(color: Colors.white54),
-                        hintText: 'e.g., My Bank Account',
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white30),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.blue, width: 2),
-                        ),
-                      ),
-                      validator: (v) => v == null || v.trim().isEmpty
-                          ? 'Please enter account name'
-                          : null,
-                    ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _balanceController,
-                      style: const TextStyle(color: Colors.white),
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: widget.accountToEdit != null
-                            ? 'Current Balance'
-                            : 'Initial Balance',
-                        labelStyle: const TextStyle(color: Colors.white54),
-                        prefixText: '$_selectedCurrency ',
-                        prefixStyle: const TextStyle(color: Colors.white54),
-                        enabledBorder: const UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white30),
-                        ),
-                        focusedBorder: const UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.blue, width: 2),
-                        ),
-                      ),
-                      validator: (v) {
-                        if (v != null &&
-                            v.isNotEmpty &&
-                            double.tryParse(v) == null) {
-                          return 'Please enter a valid number';
-                        }
-                        return null;
+                    AccountTypeSection(
+                      types: _accountTypes,
+                      selectedType: _selectedType,
+                      isEditMode: widget.accountToEdit != null,
+                      t: t,
+                      onChanged: (type) {
+                        setState(() {
+                          _selectedType = type;
+                          _selectedIcon = null;
+                        });
                       },
                     ),
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        children: [
-                          const Text(
-                            'Currency',
-                            style: TextStyle(color: Colors.white54),
-                          ),
-                          const SizedBox(width: 16),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.white24),
-                            ),
-                            child: const Text(
-                              'EGP',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
+
+                    if (_selectedType.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+
+                      AccountIconPicker(
+                        icons: AccountAssetResolver.iconsForType(
+                          widget.sectionType ?? SectionType.liquidity,
+                          _selectedType,
+                        ),
+                        selectedIcon: _selectedIcon,
+                        onChanged: (icon) {
+                          setState(() {
+                            _selectedIcon = icon;
+                          });
+                        },
                       ),
+
+                      const SizedBox(height: 24),
+                    ],
+                    AccountDetailsSection(
+                      nameController: _nameController,
+                      balanceController: _balanceController,
+                      notesController: _notesController,
+                      isEditMode: widget.accountToEdit != null,
+                      selectedCurrency: _selectedCurrency,
                     ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _notesController,
-                      style: const TextStyle(color: Colors.white),
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Notes (Optional)',
-                        labelStyle: TextStyle(color: Colors.white54),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white30),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.blue, width: 2),
-                        ),
-                      ),
+                    const SizedBox(height: 24),
+
+                    AccountPreviewCard(
+                      accountName: _nameController.text,
+                      iconAsset: _selectedIcon,
+                      accountType: _selectedType,
+                      currency: _selectedCurrency,
+                      balance: _balanceController.text,
                     ),
                   ],
                 ),
@@ -362,82 +292,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       case SectionType.savings:
         return Colors.teal;
     }
-  }
-
-  Widget _buildAccountTypeGrid(AppLocalizations t) {
-    final types = _accountTypes;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final crossAxisCount = screenWidth < 400 ? 2 : 4;
-    final isEditMode = widget.accountToEdit != null;
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.2,
-      ),
-      itemCount: types.length,
-      itemBuilder: (context, index) {
-        final type = types[index];
-        final isSelected = _selectedType == type.id;
-        return GestureDetector(
-          onTap: () {
-            if (isEditMode &&
-                _selectedType.isNotEmpty &&
-                _selectedType != type.id) {
-              _showTypeChangeWarning();
-              return;
-            }
-            setState(() => _selectedType = type.id);
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? type.color.withOpacity(0.15)
-                  : Colors.white.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected ? type.color : Colors.white.withOpacity(0.1),
-                width: isSelected ? 2 : 1,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: type.color.withOpacity(0.4),
-                        blurRadius: 12,
-                        spreadRadius: 2,
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  type.icon,
-                  color: isSelected ? type.color : Colors.white54,
-                  size: 32,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  getAccountTypeDisplayName(type.id, t),
-                  style: TextStyle(
-                    color: isSelected ? type.color : Colors.white70,
-                    fontSize: 12,
-                    fontWeight: isSelected
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   void _showTypeChangeWarning() {
@@ -635,6 +489,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         group: widget.accountToEdit!.group,
         isArchived: widget.accountToEdit!.isArchived,
         notes: notes,
+        icon: _selectedIcon,
         nature: widget.accountToEdit!.nature,
       );
       await AccountService().updateAccount(updatedAccount);
@@ -654,6 +509,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         name: name,
         type: _selectedType,
         currency: _selectedCurrency,
+        icon: _selectedIcon,
         notes: notes,
       );
 

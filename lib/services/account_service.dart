@@ -19,6 +19,7 @@ class AccountService {
     required String name,
     required String type,
     required String currency,
+    String? icon,
     String? notes,
   }) {
     final natureEnum = resolveNature(type);
@@ -36,6 +37,7 @@ class AccountService {
       group: group,
       isArchived: false,
       notes: notes,
+      icon: icon,
     );
   }
 
@@ -44,6 +46,7 @@ class AccountService {
     required String name,
     required String type,
     required String currency,
+    String? icon,
     String? notes,
   }) async {
     try {
@@ -51,6 +54,7 @@ class AccountService {
         name: name,
         type: type,
         currency: currency,
+        icon: icon,
         notes: notes,
       );
       await box.put(account.id, account);

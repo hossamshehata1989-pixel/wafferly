@@ -7,6 +7,10 @@ import '../../models/account.dart';
 import '../../services/account_service.dart';
 import '../../models/enums/account_enums.dart';
 import '../../services/balance_service.dart';
+import '../../theme/section_type_visual.dart';
+import 'widgets/account_card.dart';
+import '../../theme/financial_group_visual_mapper.dart';
+import '../../theme/account_asset_resolver.dart';
 
 class GroupAccountsScreen extends StatelessWidget {
   final String title;
@@ -24,6 +28,7 @@ class GroupAccountsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('NEW GROUP SCREEN');
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: ValueListenableBuilder(
@@ -62,15 +67,20 @@ class GroupAccountsScreen extends StatelessWidget {
                   ),
                 ] else ...[
                   ...accounts.map(
-                    (account) => Card(
-                      child: ListTile(
-                        title: Text(account.name),
-                        subtitle: Text(account.type),
-                        trailing: Text(
+                    (account) => AccountCard(
+                      name: account.name,
+                      subtitle: account.type,
+                      balanceText:
                           '${_balanceService.getBalance(account.id).toStringAsFixed(0)} EGP',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
+
+                      iconAsset:
+                          account.icon ??
+                          AccountAssetResolver.defaultIcon(sectionType),
+                      visual: sectionType.groupVisual.toEntityVisual(),
+
+                      onTap: () {
+                        // TODO
+                      },
                     ),
                   ),
                 ],
