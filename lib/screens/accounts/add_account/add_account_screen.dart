@@ -7,7 +7,6 @@ import 'package:wafferly/models/account.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/services/account_service.dart';
 import 'package:wafferly/services/balance_service.dart';
-import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/models/enums/section_type.dart';
 import 'package:wafferly/l10n/app_localizations.dart';
 
@@ -20,6 +19,11 @@ import '../../../widgets/accounts/account_details_section.dart';
 import '../../../widgets/accounts/account_preview_card.dart';
 import '../../../shared/widgets/wafferly_section_title.dart';
 import 'package:wafferly/controllers/accounts/account_form_controller.dart';
+import 'package:wafferly/controllers/accounts/account_factory.dart';
+import 'package:wafferly/application/accounts/account_application_service.dart';
+import 'package:wafferly/application/accounts/requests/create_account_request.dart';
+import 'package:wafferly/application/accounts/requests/update_account_request.dart';
+import 'package:wafferly/application/accounts/account_transaction_service.dart';
 
 class AddAccountScreen extends StatefulWidget {
   final SectionType? sectionType;
@@ -45,8 +49,10 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   //======================================================
 
   final _form = AccountFormController();
-
-  //======================================================
+  final _application = AccountApplicationService(
+    accountService: AccountService(),
+    transactionService: const AccountTransactionService(),
+  ); //======================================================
   // State
   //======================================================
 
@@ -455,22 +461,25 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     final data = _form.data;
 
     if (widget.accountToEdit != null) {
-      final updatedAccount = Account(
-        id: widget.accountToEdit!.id,
+      final updatedAccount = AccountFactory.update(
+        original: widget.accountToEdit!,
         bookId: _getCurrentBookId(),
-        memberId: widget.accountToEdit!.memberId,
         name: data.name,
         type: _selectedType,
         currency: _selectedCurrency,
-        createdAt: widget.accountToEdit!.createdAt,
-        group: widget.accountToEdit!.group,
-        isArchived: widget.accountToEdit!.isArchived,
         notes: data.notes,
         icon: _selectedIcon,
-        nature: widget.accountToEdit!.nature,
       );
-      await AccountService().updateAccount(updatedAccount);
-      await _updateBalance(widget.accountToEdit!.id, data.balance);
+      await _application.updateAccount(
+        UpdateAccountRequest(
+          account: updatedAccount,
+          accountId: widget.accountToEdit!.id,
+          oldBalance: _oldBalance,
+          newBalance: data.balance,
+          paymentMethod: _selectedType,
+          currency: _selectedCurrency,
+        ),
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -481,36 +490,17 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         Navigator.pop(context, true);
       }
     } else {
-      final accountService = AccountService();
-      final newAccount = await accountService.createAccount(
-        name: data.name,
-        type: _selectedType,
-        currency: _selectedCurrency,
-        icon: _selectedIcon,
-        notes: data.notes,
+      final newAccount = await _application.createAccount(
+        CreateAccountRequest(
+          name: data.name,
+          type: _selectedType,
+          currency: _selectedCurrency,
+          icon: _selectedIcon,
+          notes: data.notes,
+          balance: data.balance,
+          sectionType: widget.sectionType ?? SectionType.liquidity,
+        ),
       );
-
-      if (data.balance != 0) {
-        final isLiability = widget.sectionType == SectionType.liabilities;
-        final initialBalanceAmount = isLiability ? -data.balance : data.balance;
-        final initialTransaction = Transaction.create(
-          amount: initialBalanceAmount.abs(),
-          type: TransactionType.initialBalance,
-          fromAccountId: initialBalanceAmount < 0 ? newAccount.id : null,
-          toAccountId: initialBalanceAmount > 0 ? newAccount.id : null,
-          categoryId: "initial_balance",
-          date: DateTime.now(),
-          note: "Initial balance",
-          isExceptional: false,
-          paymentMethod: _selectedType,
-          currencyCode: _selectedCurrency,
-          source: TransactionSource.accountCreation,
-        );
-        await Hive.box<Transaction>(
-          'transactions',
-        ).put(initialTransaction.id, initialTransaction);
-      }
-
       if (mounted) {
         final formattedAmount = NumberFormat(
           "#,###",
@@ -582,27 +572,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       _oldBalance = balance;
       _form.balanceController.text = balance.abs().toString();
     }
-  }
-
-  Future<void> _updateBalance(String accountId, double newBalance) async {
-    final difference = newBalance - _oldBalance;
-    if (difference == 0) return;
-    final adjustmentTransaction = Transaction.create(
-      amount: difference.abs(),
-      type: TransactionType.balanceAdjustment,
-      fromAccountId: difference < 0 ? accountId : null,
-      toAccountId: difference > 0 ? accountId : null,
-      categoryId: "balance_adjustment",
-      date: DateTime.now(),
-      note: "Manual balance adjustment",
-      isExceptional: false,
-      paymentMethod: _selectedType,
-      currencyCode: _selectedCurrency,
-      source: TransactionSource.balanceAdjustment,
-    );
-    await Hive.box<Transaction>(
-      'transactions',
-    ).put(adjustmentTransaction.id, adjustmentTransaction);
   }
 
   //======================================================
