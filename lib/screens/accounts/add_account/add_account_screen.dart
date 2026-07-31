@@ -440,7 +440,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   //======================================================
 
   Future<void> _saveAccount() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_form.validate(_formKey)) return;
     if (_selectedType.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -452,33 +452,29 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     }
     setState(() => _isSaving = true);
 
-    final name = _form.nameController.text.trim();
-    final balanceValue = double.tryParse(_form.balanceController.text) ?? 0;
-    final notes = _form.notesController.text.trim().isEmpty
-        ? null
-        : _form.notesController.text.trim();
+    final data = _form.data;
 
     if (widget.accountToEdit != null) {
       final updatedAccount = Account(
         id: widget.accountToEdit!.id,
         bookId: _getCurrentBookId(),
         memberId: widget.accountToEdit!.memberId,
-        name: name,
+        name: data.name,
         type: _selectedType,
         currency: _selectedCurrency,
         createdAt: widget.accountToEdit!.createdAt,
         group: widget.accountToEdit!.group,
         isArchived: widget.accountToEdit!.isArchived,
-        notes: notes,
+        notes: data.notes,
         icon: _selectedIcon,
         nature: widget.accountToEdit!.nature,
       );
       await AccountService().updateAccount(updatedAccount);
-      await _updateBalance(widget.accountToEdit!.id, balanceValue);
+      await _updateBalance(widget.accountToEdit!.id, data.balance);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$name updated successfully'),
+            content: Text('${data.name} updated successfully'),
             backgroundColor: Colors.green,
           ),
         );
@@ -487,16 +483,16 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     } else {
       final accountService = AccountService();
       final newAccount = await accountService.createAccount(
-        name: name,
+        name: data.name,
         type: _selectedType,
         currency: _selectedCurrency,
         icon: _selectedIcon,
-        notes: notes,
+        notes: data.notes,
       );
 
-      if (balanceValue != 0) {
+      if (data.balance != 0) {
         final isLiability = widget.sectionType == SectionType.liabilities;
-        final initialBalanceAmount = isLiability ? -balanceValue : balanceValue;
+        final initialBalanceAmount = isLiability ? -data.balance : data.balance;
         final initialTransaction = Transaction.create(
           amount: initialBalanceAmount.abs(),
           type: TransactionType.initialBalance,
@@ -518,13 +514,13 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       if (mounted) {
         final formattedAmount = NumberFormat(
           "#,###",
-        ).format(balanceValue.toInt());
+        ).format(data.balance.toInt());
         final amountText = widget.sectionType == SectionType.liabilities
             ? '$formattedAmount EGP (Debt)'
             : '$formattedAmount EGP';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$name added with $amountText'),
+            content: Text('${data.name} added with $amountText'),
             backgroundColor: Colors.green,
           ),
         );
