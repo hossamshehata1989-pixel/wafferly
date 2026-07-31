@@ -12,11 +12,14 @@ import 'package:wafferly/models/enums/section_type.dart';
 import 'package:wafferly/l10n/app_localizations.dart';
 
 import '../../../theme/account_asset_resolver.dart';
+import '../../../theme/app_colors.dart';
 import '../../../widgets/accounts/account_icon_picker.dart';
 import '../../../widgets/accounts/account_type_section.dart';
 import 'package:wafferly/models/enums/account_type_option.dart';
 import '../../../widgets/accounts/account_details_section.dart';
 import '../../../widgets/accounts/account_preview_card.dart';
+import '../../../shared/widgets/wafferly_section_title.dart';
+import 'package:wafferly/controllers/accounts/account_form_controller.dart';
 
 class AddAccountScreen extends StatefulWidget {
   final SectionType? sectionType;
@@ -37,17 +40,26 @@ class AddAccountScreen extends StatefulWidget {
 }
 
 class _AddAccountScreenState extends State<AddAccountScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _balanceController = TextEditingController();
-  final _notesController = TextEditingController();
+  //======================================================
+  // Controllers
+  //======================================================
 
+  final _form = AccountFormController();
+
+  //======================================================
+  // State
+  //======================================================
+
+  final _formKey = GlobalKey<FormState>();
   String _selectedType = '';
   String? _selectedIcon;
-
   String _selectedCurrency = 'EGP';
   bool _isSaving = false;
   double _oldBalance = 0;
+
+  //======================================================
+  // Computed Properties
+  //======================================================
 
   List<AccountTypeOption> get _accountTypes {
     final section = widget.sectionType ?? SectionType.liquidity;
@@ -83,6 +95,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   String get _sectionTitle => widget.accountToEdit != null
       ? 'Edit Account'
       : 'Add Account - $_sectionName';
+
   String get _sectionName {
     switch (widget.sectionType ?? SectionType.liquidity) {
       case SectionType.liquidity:
@@ -101,16 +114,20 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   String get _buttonText =>
       widget.accountToEdit != null ? 'Update Account' : 'Create Account';
 
+  //======================================================
+  // Lifecycle
+  //======================================================
+
   @override
   void initState() {
     super.initState();
 
     if (widget.accountToEdit != null) {
-      _nameController.text = widget.accountToEdit!.name;
+      _form.nameController.text = widget.accountToEdit!.name;
       _selectedType = widget.accountToEdit!.type;
       _selectedIcon = widget.accountToEdit!.icon;
       _selectedCurrency = widget.accountToEdit!.currency;
-      _notesController.text = widget.accountToEdit!.notes ?? '';
+      _form.notesController.text = widget.accountToEdit!.notes ?? '';
       _loadCurrentBalance();
     } else {
       _selectedType = widget.initialAccountType ?? '';
@@ -118,27 +135,36 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     }
   }
 
-  Future<void> _loadCurrentBalance() async {
-    if (widget.accountToEdit != null) {
-      final balance = BalanceService().getBalance(widget.accountToEdit!.id);
-      _oldBalance = balance;
-      _balanceController.text = balance.abs().toString();
-    }
-  }
-
   @override
   void dispose() {
-    _nameController.dispose();
-    _balanceController.dispose();
-    _notesController.dispose();
+    _form.dispose();
     super.dispose();
+  }
+
+  //======================================================
+  // UI
+  //======================================================
+
+  Color _getButtonColor() {
+    switch (widget.sectionType ?? SectionType.liquidity) {
+      case SectionType.liquidity:
+        return Colors.green;
+      case SectionType.liabilities:
+        return Colors.red;
+      case SectionType.investments:
+        return Colors.orange;
+      case SectionType.receivable:
+        return Colors.cyan;
+      case SectionType.savings:
+        return Colors.teal;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1115),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
           _sectionTitle,
@@ -162,137 +188,153 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
               ]
             : null,
       ),
-      body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Account Type',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    AccountTypeSection(
-                      types: _accountTypes,
-                      selectedType: _selectedType,
-                      isEditMode: widget.accountToEdit != null,
-                      t: t,
-                      onChanged: (type) {
-                        setState(() {
-                          _selectedType = type;
-                          _selectedIcon = null;
-                        });
-                      },
-                    ),
+      body: _buildBody(t),
+    );
+  }
 
-                    if (_selectedType.isNotEmpty) ...[
-                      const SizedBox(height: 24),
+  Widget _buildBody(AppLocalizations t) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          Expanded(child: _buildContent(t)),
+          _buildBottomBar(),
+        ],
+      ),
+    );
+  }
 
-                      AccountIconPicker(
-                        icons: AccountAssetResolver.iconsForType(
-                          widget.sectionType ?? SectionType.liquidity,
-                          _selectedType,
-                        ),
-                        selectedIcon: _selectedIcon,
-                        onChanged: (icon) {
-                          setState(() {
-                            _selectedIcon = icon;
-                          });
-                        },
-                      ),
+  Widget _buildContent(AppLocalizations t) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildTypeSection(t),
+          _buildIconSection(),
+          _buildDetailsSection(t),
+          _buildPreviewSection(),
+        ],
+      ),
+    );
+  }
 
-                      const SizedBox(height: 24),
-                    ],
-                    AccountDetailsSection(
-                      nameController: _nameController,
-                      balanceController: _balanceController,
-                      notesController: _notesController,
-                      isEditMode: widget.accountToEdit != null,
-                      selectedCurrency: _selectedCurrency,
-                    ),
-                    const SizedBox(height: 24),
+  //======================================================
+  // Section Builders (UI sub‑methods)
+  //======================================================
 
-                    AccountPreviewCard(
-                      accountName: _nameController.text,
-                      iconAsset: _selectedIcon,
-                      accountType: _selectedType,
-                      currency: _selectedCurrency,
-                      balance: _balanceController.text,
-                    ),
-                  ],
-                ),
-              ),
+  Widget _buildTypeSection(AppLocalizations t) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        WafferlySectionTitle(title: 'Account Type'),
+        const SizedBox(height: 12),
+        AccountTypeSection(
+          types: _accountTypes,
+          selectedType: _selectedType,
+          isEditMode: widget.accountToEdit != null,
+          t: t,
+          onChanged: (type) {
+            setState(() {
+              _selectedType = type;
+              _selectedIcon = null;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIconSection() {
+    if (_selectedType.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: AccountIconPicker(
+        icons: AccountAssetResolver.iconsForType(
+          widget.sectionType ?? SectionType.liquidity,
+          _selectedType,
+        ),
+        selectedIcon: _selectedIcon,
+        onChanged: (icon) {
+          setState(() {
+            _selectedIcon = icon;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildDetailsSection(AppLocalizations t) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: AccountDetailsSection(
+        nameController: _form.nameController,
+        balanceController: _form.balanceController,
+        notesController: _form.notesController,
+        isEditMode: widget.accountToEdit != null,
+        selectedCurrency: _selectedCurrency,
+      ),
+    );
+  }
+
+  Widget _buildPreviewSection() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: AccountPreviewCard(
+        accountName: _form.nameController.text,
+        iconAsset: _selectedIcon,
+        accountType: _selectedType,
+        currency: _selectedCurrency,
+        balance: _form.balanceController.text,
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.5),
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton(
+          onPressed: _isSaving ? null : _saveAccount,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: widget.accountToEdit != null
+                ? Colors.blue
+                : (_getButtonColor()),
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
-                border: Border(
-                  top: BorderSide(color: Colors.white.withOpacity(0.1)),
-                ),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isSaving ? null : _saveAccount,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.accountToEdit != null
-                        ? Colors.blue
-                        : (_getButtonColor()),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+          ),
+          child: _isSaving
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
                   ),
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : Text(
-                          _buttonText,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                )
+              : Text(
+                  _buttonText,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ),
-          ],
         ),
       ),
     );
   }
 
-  Color _getButtonColor() {
-    switch (widget.sectionType ?? SectionType.liquidity) {
-      case SectionType.liquidity:
-        return Colors.green;
-      case SectionType.liabilities:
-        return Colors.red;
-      case SectionType.investments:
-        return Colors.orange;
-      case SectionType.receivable:
-        return Colors.cyan;
-      case SectionType.savings:
-        return Colors.teal;
-    }
-  }
+  //======================================================
+  // Dialogs
+  //======================================================
 
   void _showTypeChangeWarning() {
     showDialog(
@@ -393,70 +435,9 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     );
   }
 
-  Future<bool> _checkIfAccountHasTransactions() async {
-    if (widget.accountToEdit == null) return false;
-    final transactionsBox = Hive.box<Transaction>('transactions');
-    return transactionsBox.values.any(
-      (t) =>
-          t.fromAccountId == widget.accountToEdit!.id ||
-          t.toAccountId == widget.accountToEdit!.id,
-    );
-  }
-
-  Future<void> _closeAccount() async {
-    if (widget.accountToEdit == null) return;
-    setState(() => _isSaving = true);
-    try {
-      await AccountService().archiveAccount(widget.accountToEdit!.id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Account archived. You can restore it later from settings.',
-            ),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        await Future.delayed(const Duration(milliseconds: 100));
-        Navigator.pop(context, true);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error archiving account: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  String _getCurrentBookId() => "default";
-
-  Future<void> _updateBalance(String accountId, double newBalance) async {
-    final difference = newBalance - _oldBalance;
-    if (difference == 0) return;
-    final adjustmentTransaction = Transaction.create(
-      amount: difference.abs(),
-      type: TransactionType.balanceAdjustment,
-      fromAccountId: difference < 0 ? accountId : null,
-      toAccountId: difference > 0 ? accountId : null,
-      categoryId: "balance_adjustment",
-      date: DateTime.now(),
-      note: "Manual balance adjustment",
-      isExceptional: false,
-      paymentMethod: _selectedType,
-      currencyCode: _selectedCurrency,
-      source: TransactionSource.balanceAdjustment,
-    );
-    await Hive.box<Transaction>(
-      'transactions',
-    ).put(adjustmentTransaction.id, adjustmentTransaction);
-  }
+  //======================================================
+  // Account Actions
+  //======================================================
 
   Future<void> _saveAccount() async {
     if (!_formKey.currentState!.validate()) return;
@@ -471,11 +452,11 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     }
     setState(() => _isSaving = true);
 
-    final name = _nameController.text.trim();
-    final balanceValue = double.tryParse(_balanceController.text) ?? 0;
-    final notes = _notesController.text.trim().isEmpty
+    final name = _form.nameController.text.trim();
+    final balanceValue = double.tryParse(_form.balanceController.text) ?? 0;
+    final notes = _form.notesController.text.trim().isEmpty
         ? null
-        : _notesController.text.trim();
+        : _form.notesController.text.trim();
 
     if (widget.accountToEdit != null) {
       final updatedAccount = Account(
@@ -552,4 +533,85 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     }
     setState(() => _isSaving = false);
   }
+
+  Future<void> _closeAccount() async {
+    if (widget.accountToEdit == null) return;
+    setState(() => _isSaving = true);
+    try {
+      await AccountService().archiveAccount(widget.accountToEdit!.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Account archived. You can restore it later from settings.',
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        await Future.delayed(const Duration(milliseconds: 100));
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error archiving account: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<bool> _checkIfAccountHasTransactions() async {
+    if (widget.accountToEdit == null) return false;
+    final transactionsBox = Hive.box<Transaction>('transactions');
+    return transactionsBox.values.any(
+      (t) =>
+          t.fromAccountId == widget.accountToEdit!.id ||
+          t.toAccountId == widget.accountToEdit!.id,
+    );
+  }
+
+  //======================================================
+  // Balance
+  //======================================================
+
+  Future<void> _loadCurrentBalance() async {
+    if (widget.accountToEdit != null) {
+      final balance = BalanceService().getBalance(widget.accountToEdit!.id);
+      _oldBalance = balance;
+      _form.balanceController.text = balance.abs().toString();
+    }
+  }
+
+  Future<void> _updateBalance(String accountId, double newBalance) async {
+    final difference = newBalance - _oldBalance;
+    if (difference == 0) return;
+    final adjustmentTransaction = Transaction.create(
+      amount: difference.abs(),
+      type: TransactionType.balanceAdjustment,
+      fromAccountId: difference < 0 ? accountId : null,
+      toAccountId: difference > 0 ? accountId : null,
+      categoryId: "balance_adjustment",
+      date: DateTime.now(),
+      note: "Manual balance adjustment",
+      isExceptional: false,
+      paymentMethod: _selectedType,
+      currencyCode: _selectedCurrency,
+      source: TransactionSource.balanceAdjustment,
+    );
+    await Hive.box<Transaction>(
+      'transactions',
+    ).put(adjustmentTransaction.id, adjustmentTransaction);
+  }
+
+  //======================================================
+  // Helpers
+  //======================================================
+
+  String _getCurrentBookId() => "default";
 }
