@@ -3,46 +3,30 @@ import 'package:wafferly/services/account_service.dart';
 import 'package:wafferly/application/accounts/requests/create_account_request.dart';
 import 'package:wafferly/application/accounts/requests/update_account_request.dart';
 import 'package:wafferly/application/accounts/account_transaction_service.dart';
+import 'package:wafferly/application/accounts/use_cases/create_account_use_case.dart';
+import 'package:wafferly/application/accounts/use_cases/update_account_use_case.dart';
 
 class AccountApplicationService {
-  final AccountService _accountService;
-  final AccountTransactionService _transactionService;
+  final CreateAccountUseCase _createAccountUseCase;
+  final UpdateAccountUseCase _updateAccountUseCase;
 
-  const AccountApplicationService({
+  AccountApplicationService({
     required AccountService accountService,
     required AccountTransactionService transactionService,
-  }) : _accountService = accountService,
-       _transactionService = transactionService;
+  }) : _createAccountUseCase = CreateAccountUseCase(
+         accountService: accountService,
+         transactionService: transactionService,
+       ),
+       _updateAccountUseCase = UpdateAccountUseCase(
+         accountService: accountService,
+         transactionService: transactionService,
+       );
 
-  Future<Account> createAccount(CreateAccountRequest request) async {
-    final account = await _accountService.createAccount(
-      name: request.name,
-      type: request.type,
-      currency: request.currency,
-      icon: request.icon,
-      notes: request.notes,
-    );
-
-    await _transactionService.createInitialBalance(
-      account: account,
-      balance: request.balance,
-      sectionType: request.sectionType,
-      paymentMethod: request.type,
-      currency: request.currency,
-    );
-
-    return account;
+  Future<Account> createAccount(CreateAccountRequest request) {
+    return _createAccountUseCase.execute(request);
   }
 
-  Future<void> updateAccount(UpdateAccountRequest request) async {
-    await _accountService.updateAccount(request.account);
-
-    await _transactionService.createBalanceAdjustment(
-      accountId: request.accountId,
-      oldBalance: request.oldBalance,
-      newBalance: request.newBalance,
-      paymentMethod: request.paymentMethod,
-      currency: request.currency,
-    );
+  Future<void> updateAccount(UpdateAccountRequest request) {
+    return _updateAccountUseCase.execute(request);
   }
 }

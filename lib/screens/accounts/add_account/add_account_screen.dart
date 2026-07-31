@@ -24,6 +24,7 @@ import 'package:wafferly/application/accounts/account_application_service.dart';
 import 'package:wafferly/application/accounts/requests/create_account_request.dart';
 import 'package:wafferly/application/accounts/requests/update_account_request.dart';
 import 'package:wafferly/application/accounts/account_transaction_service.dart';
+import 'package:wafferly/application/accounts/account_bootstrap.dart';
 
 class AddAccountScreen extends StatefulWidget {
   final SectionType? sectionType;
@@ -49,10 +50,8 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   //======================================================
 
   final _form = AccountFormController();
-  final _application = AccountApplicationService(
-    accountService: AccountService(),
-    transactionService: const AccountTransactionService(),
-  ); //======================================================
+  final _application = AccountBootstrap.create();
+  //======================================================
   // State
   //======================================================
 
