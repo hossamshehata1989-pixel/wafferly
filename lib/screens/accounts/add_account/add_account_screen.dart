@@ -20,11 +20,11 @@ import '../../../widgets/accounts/account_preview_card.dart';
 import '../../../shared/widgets/wafferly_section_title.dart';
 import 'package:wafferly/controllers/accounts/account_form_controller.dart';
 import 'package:wafferly/controllers/accounts/account_factory.dart';
-import 'package:wafferly/application/accounts/account_application_service.dart';
 import 'package:wafferly/application/accounts/requests/create_account_request.dart';
 import 'package:wafferly/application/accounts/requests/update_account_request.dart';
-import 'package:wafferly/application/accounts/account_transaction_service.dart';
 import 'package:wafferly/application/accounts/account_bootstrap.dart';
+import 'package:wafferly/shared/widgets/wafferly_form_section.dart';
+import 'package:wafferly/shared/widgets/wafferly_button.dart';
 
 class AddAccountScreen extends StatefulWidget {
   final SectionType? sectionType;
@@ -215,10 +215,23 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildTypeSection(t),
-          _buildIconSection(),
-          _buildDetailsSection(t),
-          _buildPreviewSection(),
+          WafferlyFormSection(
+            title: 'Account Type',
+            children: [_buildTypeSection(t)],
+          ),
+
+          if (_selectedType.isNotEmpty)
+            WafferlyFormSection(title: 'Icon', children: [_buildIconSection()]),
+
+          WafferlyFormSection(
+            title: 'Account Details',
+            children: [_buildDetailsSection(t)],
+          ),
+
+          WafferlyFormSection(
+            title: 'Preview',
+            children: [_buildPreviewSection()],
+          ),
         ],
       ),
     );
@@ -229,69 +242,54 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   //======================================================
 
   Widget _buildTypeSection(AppLocalizations t) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        WafferlySectionTitle(title: 'Account Type'),
-        const SizedBox(height: 12),
-        AccountTypeSection(
-          types: _accountTypes,
-          selectedType: _selectedType,
-          isEditMode: widget.accountToEdit != null,
-          t: t,
-          onChanged: (type) {
-            setState(() {
-              _selectedType = type;
-              _selectedIcon = null;
-            });
-          },
-        ),
-      ],
+    return AccountTypeSection(
+      types: _accountTypes,
+      selectedType: _selectedType,
+      isEditMode: widget.accountToEdit != null,
+      t: t,
+      onChanged: (type) {
+        setState(() {
+          _selectedType = type;
+          _selectedIcon = null;
+        });
+      },
     );
   }
 
   Widget _buildIconSection() {
     if (_selectedType.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 24),
-      child: AccountIconPicker(
-        icons: AccountAssetResolver.iconsForType(
-          widget.sectionType ?? SectionType.liquidity,
-          _selectedType,
-        ),
-        selectedIcon: _selectedIcon,
-        onChanged: (icon) {
-          setState(() {
-            _selectedIcon = icon;
-          });
-        },
+
+    return AccountIconPicker(
+      icons: AccountAssetResolver.iconsForType(
+        widget.sectionType ?? SectionType.liquidity,
+        _selectedType,
       ),
+      selectedIcon: _selectedIcon,
+      onChanged: (icon) {
+        setState(() {
+          _selectedIcon = icon;
+        });
+      },
     );
   }
 
   Widget _buildDetailsSection(AppLocalizations t) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 24),
-      child: AccountDetailsSection(
-        nameController: _form.nameController,
-        balanceController: _form.balanceController,
-        notesController: _form.notesController,
-        isEditMode: widget.accountToEdit != null,
-        selectedCurrency: _selectedCurrency,
-      ),
+    return AccountDetailsSection(
+      nameController: _form.nameController,
+      balanceController: _form.balanceController,
+      notesController: _form.notesController,
+      isEditMode: widget.accountToEdit != null,
+      selectedCurrency: _selectedCurrency,
     );
   }
 
   Widget _buildPreviewSection() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 24),
-      child: AccountPreviewCard(
-        accountName: _form.nameController.text,
-        iconAsset: _selectedIcon,
-        accountType: _selectedType,
-        currency: _selectedCurrency,
-        balance: _form.balanceController.text,
-      ),
+    return AccountPreviewCard(
+      accountName: _form.nameController.text,
+      iconAsset: _selectedIcon,
+      accountType: _selectedType,
+      currency: _selectedCurrency,
+      balance: _form.balanceController.text,
     );
   }
 
@@ -302,41 +300,16 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
         color: Colors.black.withOpacity(0.5),
         border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
       ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: _isSaving ? null : _saveAccount,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: widget.accountToEdit != null
-                ? Colors.blue
-                : (_getButtonColor()),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: _isSaving
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : Text(
-                  _buttonText,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-        ),
+      child: WafferlyButton(
+        title: _buttonText,
+        loading: _isSaving,
+        onPressed: _saveAccount,
+        backgroundColor: widget.accountToEdit != null
+            ? Colors.blue
+            : _getButtonColor(),
       ),
     );
   }
-
   //======================================================
   // Dialogs
   //======================================================
