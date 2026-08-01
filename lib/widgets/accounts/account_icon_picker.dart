@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../theme/responsive_metrics.dart';
 
 class AccountIconPicker extends StatelessWidget {
   const AccountIconPicker({
@@ -15,14 +16,19 @@ class AccountIconPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
+    const double gridSpacing = 12.0;
+    const double tileRadius = 14.0;
+    const double padding = 12.0;
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: icons.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 4,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+        crossAxisSpacing: gridSpacing,
+        mainAxisSpacing: gridSpacing,
       ),
       itemBuilder: (_, index) {
         final icon = icons[index];
@@ -30,14 +36,14 @@ class AccountIconPicker extends StatelessWidget {
 
         return InkWell(
           onTap: () => onChanged(icon),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(tileRadius),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             decoration: BoxDecoration(
               color: selected
                   ? Theme.of(context).colorScheme.primary.withOpacity(0.12)
                   : Colors.white.withOpacity(0.04),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(tileRadius),
               border: Border.all(
                 color: selected
                     ? Theme.of(context).colorScheme.primary
@@ -46,7 +52,7 @@ class AccountIconPicker extends StatelessWidget {
               ),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(padding),
               child: SvgPicture.asset(icon, fit: BoxFit.contain),
             ),
           ),

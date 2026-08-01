@@ -5,6 +5,7 @@ import 'package:wafferly/theme/responsive_metrics.dart';
 
 class WafferlyTextField extends StatelessWidget {
   final TextEditingController controller;
+
   final int? minLines;
   final List<String>? autofillHints;
 
@@ -22,16 +23,12 @@ class WafferlyTextField extends StatelessWidget {
     super.key,
     required this.controller,
     required this.label,
-
     this.hint,
     this.prefixText,
-
     this.keyboardType = TextInputType.text,
     this.textInputAction = TextInputAction.next,
     this.maxLines = 1,
-
     this.validator,
-
     this.minLines,
     this.autofillHints,
   });
@@ -40,18 +37,20 @@ class WafferlyTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     final metrics = ResponsiveMetrics.of(context);
 
+    final isMultiline = maxLines > 1;
+
     return TextFormField(
       controller: controller,
-      keyboardType: maxLines != null && maxLines! > 1
-          ? TextInputType.multiline
-          : keyboardType,
 
-      textInputAction: maxLines != null && maxLines! > 1
-          ? TextInputAction.newline
-          : textInputAction,
+      keyboardType: isMultiline ? TextInputType.multiline : keyboardType,
+
+      textInputAction: isMultiline ? TextInputAction.newline : textInputAction,
+
       maxLines: maxLines,
       minLines: minLines,
+
       autofillHints: autofillHints,
+
       validator: validator,
 
       style: TextStyle(color: Colors.white, fontSize: metrics.typography.body),
@@ -60,6 +59,13 @@ class WafferlyTextField extends StatelessWidget {
         labelText: label,
         hintText: hint,
         prefixText: prefixText,
+
+        isDense: metrics.isCompactHeight,
+
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: metrics.space.md,
+          vertical: metrics.input.verticalPadding,
+        ),
 
         labelStyle: TextStyle(
           color: Colors.white54,

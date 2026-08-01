@@ -43,13 +43,6 @@ class AdaptiveWrapGrid extends StatelessWidget {
         final itemWidth =
             (availableWidth - ((itemsPerRow - 1) * spacing)) / itemsPerRow;
 
-        //=====================================
-        debugPrint(
-          'availableWidth=$availableWidth '
-          'itemsPerRow=$itemsPerRow '
-          'itemWidth=$itemWidth',
-        );
-        //======================================
         return Wrap(
           spacing: spacing,
           runSpacing: runSpacing,

@@ -1,8 +1,8 @@
 // lib/shared/widgets/wafferly_form_section.dart
 
 import 'package:flutter/material.dart';
-import '../constants/app_spacing.dart';
 import 'wafferly_section_title.dart';
+import 'package:wafferly/theme/responsive_metrics.dart';
 
 class WafferlyFormSection extends StatelessWidget {
   final String title;
@@ -18,13 +18,18 @@ class WafferlyFormSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         WafferlySectionTitle(title: title),
-        const SizedBox(height: AppSpacing.sm),
+        SizedBox(height: metrics.space.sm), // original spacing after title
         ...children,
-        if (showSpacing) const SizedBox(height: AppSpacing.md),
+        if (showSpacing)
+          SizedBox(
+            height: metrics.space.lg,
+          ), // original spacing between sections
       ],
     );
   }

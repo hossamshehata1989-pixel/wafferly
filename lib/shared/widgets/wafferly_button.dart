@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import 'package:wafferly/theme/responsive_metrics.dart';
 
 class WafferlyButton extends StatelessWidget {
   final VoidCallback onPressed;
@@ -23,12 +24,15 @@ class WafferlyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
     final button = ElevatedButton(
       onPressed: loading ? null : onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor ?? AppColors.primary,
         foregroundColor: Colors.white,
-        minimumSize: fullWidth ? const Size(double.infinity, 52) : null,
+        minimumSize: fullWidth
+            ? Size(double.infinity, metrics.button.height)
+            : null,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
@@ -54,7 +58,11 @@ class WafferlyButton extends StatelessWidget {
     );
 
     if (fullWidth) {
-      return SizedBox(width: double.infinity, height: 52, child: button);
+      return SizedBox(
+        width: double.infinity,
+        height: metrics.button.height,
+        child: button,
+      );
     }
 
     return button;

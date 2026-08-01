@@ -16,7 +16,6 @@ import '../../../widgets/accounts/account_icon_picker.dart';
 import '../../../widgets/accounts/account_type_section.dart';
 import 'package:wafferly/models/enums/account_type_option.dart';
 import '../../../widgets/accounts/account_details_section.dart';
-import '../../../widgets/accounts/account_preview_card.dart';
 import '../../../shared/widgets/wafferly_section_title.dart';
 import 'package:wafferly/controllers/accounts/account_form_controller.dart';
 import 'package:wafferly/controllers/accounts/account_factory.dart';
@@ -25,6 +24,7 @@ import 'package:wafferly/application/accounts/requests/update_account_request.da
 import 'package:wafferly/application/accounts/account_bootstrap.dart';
 import 'package:wafferly/shared/widgets/wafferly_form_section.dart';
 import 'package:wafferly/shared/widgets/wafferly_button.dart';
+import 'package:wafferly/theme/responsive_metrics.dart';
 
 class AddAccountScreen extends StatefulWidget {
   final SectionType? sectionType;
@@ -51,6 +51,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
 
   final _form = AccountFormController();
   final _application = AccountBootstrap.create();
+
   //======================================================
   // State
   //======================================================
@@ -168,14 +169,17 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
+    final metrics = ResponsiveMetrics.of(context);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(
           _sectionTitle,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
+            fontSize: metrics.typography.title,
           ),
         ),
         backgroundColor: Colors.transparent,
@@ -210,8 +214,12 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
   }
 
   Widget _buildContent(AppLocalizations t) {
+    final metrics = ResponsiveMetrics.of(context);
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(
+        metrics.isCompactHeight ? metrics.space.md : 20.0,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -226,11 +234,6 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
           WafferlyFormSection(
             title: 'Account Details',
             children: [_buildDetailsSection(t)],
-          ),
-
-          WafferlyFormSection(
-            title: 'Preview',
-            children: [_buildPreviewSection()],
           ),
         ],
       ),
@@ -283,19 +286,13 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     );
   }
 
-  Widget _buildPreviewSection() {
-    return AccountPreviewCard(
-      accountName: _form.nameController.text,
-      iconAsset: _selectedIcon,
-      accountType: _selectedType,
-      currency: _selectedCurrency,
-      balance: _form.balanceController.text,
-    );
-  }
-
   Widget _buildBottomBar() {
+    final metrics = ResponsiveMetrics.of(context);
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(
+        metrics.isCompactHeight ? metrics.space.md : 20.0,
+      ),
       decoration: BoxDecoration(
         color: Colors.black.withOpacity(0.5),
         border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
@@ -310,6 +307,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
       ),
     );
   }
+
   //======================================================
   // Dialogs
   //======================================================
@@ -318,7 +316,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1B2A6B),
+        backgroundColor: AppColors.card,
         title: const Text(
           '⚠️ Cannot Change Account Type',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -342,7 +340,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1B2A6B),
+        backgroundColor: AppColors.card,
         title: const Row(
           children: [
             Icon(Icons.archive, color: Colors.red, size: 28),

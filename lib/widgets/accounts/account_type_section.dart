@@ -33,10 +33,9 @@ class AccountTypeSection extends StatelessWidget {
         final isSelected = selectedType == type.id;
 
         final iconSize = metrics.icon.medium;
-
         final fontSize = metrics.typography.caption;
-
         final verticalPadding = metrics.space.sm;
+
         return Material(
           color: Colors.transparent,
           child: InkWell(
@@ -47,7 +46,6 @@ class AccountTypeSection extends StatelessWidget {
                   selectedType != type.id) {
                 return;
               }
-
               onChanged(type.id);
             },
             child: AnimatedContainer(
@@ -56,7 +54,7 @@ class AccountTypeSection extends StatelessWidget {
                 color: isSelected
                     ? type.color.withOpacity(0.15)
                     : Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(metrics.radius.lg),
                 border: Border.all(
                   color: isSelected
                       ? type.color
@@ -78,7 +76,7 @@ class AccountTypeSection extends StatelessWidget {
                   minHeight: metrics.card.accountTypeHeight,
                 ),
                 padding: EdgeInsets.symmetric(
-                  vertical: verticalPadding,
+                  vertical: metrics.isCompactHeight ? 4 : 8,
                   horizontal: metrics.space.sm,
                 ),
                 child: Column(

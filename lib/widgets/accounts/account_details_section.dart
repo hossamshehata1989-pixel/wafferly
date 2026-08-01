@@ -89,7 +89,8 @@ class AccountDetailsSection extends StatelessWidget {
         WafferlyTextField(
           controller: notesController,
           label: 'Notes (Optional)',
-          maxLines: 3,
+          minLines: 1,
+          maxLines: 1,
         ),
       ],
     );

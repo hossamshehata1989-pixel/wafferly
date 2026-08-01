@@ -107,6 +107,10 @@ class ResponsiveMetrics {
 
   bool get isLandscape => width > height;
 
+  /// أجهزة قصيرة مثل:
+  /// iPhone SE / iPhone 8 / Pixel 4a
+  bool get isCompactHeight => height < 700;
+
   // ------------------------------------------------------------
   // Design Tokens
   // ------------------------------------------------------------
@@ -122,6 +126,7 @@ class ResponsiveMetrics {
   late final button = _ResponsiveButton(this);
 
   late final space = _ResponsiveSpacing(this);
+
   late final radius = _ResponsiveRadius(this);
 
   // ------------------------------------------------------------
@@ -157,9 +162,9 @@ class _ResponsiveTypography {
 
   const _ResponsiveTypography(this.m);
 
-  double get caption => m.text(10);
+  double get caption => m.isCompactHeight ? m.text(9) : m.text(10);
 
-  double get body => m.text(14);
+  double get body => m.isCompactHeight ? m.text(13) : m.text(14);
 
   double get title => m.text(18);
 
@@ -177,7 +182,7 @@ class _ResponsiveIcon {
 
   double get small => m.size(18);
 
-  double get medium => m.size(24);
+  double get medium => m.isCompactHeight ? m.size(20) : m.size(24);
 
   double get large => m.size(32);
 
@@ -195,7 +200,7 @@ class _ResponsiveCard {
 
   const _ResponsiveCard(this.m);
 
-  double get accountTypeHeight => m.h(82);
+  double get accountTypeHeight => m.isCompactHeight ? m.h(70) : m.h(82);
 
   double get previewHeight => m.h(92);
 }
@@ -209,9 +214,11 @@ class _ResponsiveInput {
 
   const _ResponsiveInput(this.m);
 
-  double get height => m.h(60);
+  double get height => m.isCompactHeight ? m.h(40) : m.h(48);
 
-  double get multilineHeight => m.h(100);
+  double get multilineHeight => height;
+
+  double get verticalPadding => m.isCompactHeight ? 6 : 8;
 }
 
 // ------------------------------------------------------------
@@ -235,15 +242,15 @@ class _ResponsiveSpacing {
 
   const _ResponsiveSpacing(this.m);
 
-  double get xs => m.spacing(4);
+  double get xs => m.isCompactHeight ? m.spacing(2) : m.spacing(4);
 
-  double get sm => m.spacing(8);
+  double get sm => m.isCompactHeight ? m.spacing(6) : m.spacing(8);
 
-  double get md => m.spacing(16);
+  double get md => m.isCompactHeight ? m.spacing(12) : m.spacing(16);
 
-  double get lg => m.spacing(24);
+  double get lg => m.isCompactHeight ? m.spacing(18) : m.spacing(24);
 
-  double get xl => m.spacing(32);
+  double get xl => m.isCompactHeight ? m.spacing(24) : m.spacing(32);
 }
 
 // ------------------------------------------------------------
