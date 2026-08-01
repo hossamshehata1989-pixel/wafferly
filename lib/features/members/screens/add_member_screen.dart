@@ -9,7 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../models/member_model.dart';
 import '../../../theme/app_colors.dart';
 import '../../../shared/constants/app_spacing.dart';
-import '../../../shared/widgets/wafferly_text_field.dart';
+import 'package:wafferly/widgets/shared/wafferly_text_field.dart';
 import '../../../shared/widgets/wafferly_dropdown.dart';
 import '../../../shared/widgets/wafferly_date_picker.dart';
 import '../../../shared/widgets/wafferly_button.dart';

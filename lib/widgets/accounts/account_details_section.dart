@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:wafferly/widgets/shared/wafferly_text_field.dart';
+import 'package:wafferly/theme/responsive_metrics.dart';
 
 class AccountDetailsSection extends StatelessWidget {
   final TextEditingController nameController;
@@ -19,22 +21,14 @@ class AccountDetailsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
+
     return Column(
       children: [
-        TextFormField(
+        WafferlyTextField(
           controller: nameController,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            labelText: 'Account Name',
-            labelStyle: TextStyle(color: Colors.white54),
-            hintText: 'e.g., My Bank Account',
-            enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.white30),
-            ),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.blue, width: 2),
-            ),
-          ),
+          label: 'Account Name',
+          hint: 'e.g., My Bank Account',
           validator: (v) {
             if (v == null || v.trim().isEmpty) {
               return 'Please enter account name';
@@ -42,34 +36,25 @@ class AccountDetailsSection extends StatelessWidget {
             return null;
           },
         ),
+        SizedBox(height: metrics.space.lg),
 
-        const SizedBox(height: 20),
-
-        TextFormField(
+        WafferlyTextField(
           controller: balanceController,
+          label: isEditMode ? 'Current Balance' : 'Initial Balance',
+
+          prefixText: '$selectedCurrency ',
+
           keyboardType: TextInputType.number,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            labelText: isEditMode ? 'Current Balance' : 'Initial Balance',
-            labelStyle: const TextStyle(color: Colors.white54),
-            prefixText: '$selectedCurrency ',
-            prefixStyle: const TextStyle(color: Colors.white54),
-            enabledBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.white30),
-            ),
-            focusedBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.blue, width: 2),
-            ),
-          ),
+
           validator: (v) {
             if (v != null && v.isNotEmpty && double.tryParse(v) == null) {
               return 'Please enter a valid number';
             }
+
             return null;
           },
         ),
-
-        const SizedBox(height: 20),
+        SizedBox(height: metrics.space.lg),
 
         Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -78,13 +63,13 @@ class AccountDetailsSection extends StatelessWidget {
               const Text('Currency', style: TextStyle(color: Colors.white54)),
               const SizedBox(width: 16),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+                padding: EdgeInsets.symmetric(
+                  horizontal: metrics.space.sm,
+                  vertical: metrics.space.xs,
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(metrics.radius.sm),
                   border: Border.all(color: Colors.white24),
                 ),
                 child: Text(
@@ -99,22 +84,12 @@ class AccountDetailsSection extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 20),
+        SizedBox(height: metrics.space.lg),
 
-        TextFormField(
+        WafferlyTextField(
           controller: notesController,
+          label: 'Notes (Optional)',
           maxLines: 3,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            labelText: 'Notes (Optional)',
-            labelStyle: TextStyle(color: Colors.white54),
-            enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.white30),
-            ),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.blue, width: 2),
-            ),
-          ),
         ),
       ],
     );

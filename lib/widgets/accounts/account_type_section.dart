@@ -4,6 +4,7 @@ import 'package:wafferly/l10n/app_localizations.dart';
 import '../../utils/account_type_helper.dart';
 import '../shared/adaptive_wrap_grid.dart';
 import 'package:wafferly/models/enums/account_type_option.dart';
+import 'package:wafferly/theme/responsive_metrics.dart';
 
 class AccountTypeSection extends StatelessWidget {
   final List<AccountTypeOption> types;
@@ -23,6 +24,7 @@ class AccountTypeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
     return AdaptiveWrapGrid(
       columns: 4,
       itemCount: types.length,
@@ -30,28 +32,15 @@ class AccountTypeSection extends StatelessWidget {
         final type = types[index];
         final isSelected = selectedType == type.id;
 
-        final iconSize = itemWidth >= 120
-            ? 28.0
-            : itemWidth >= 100
-            ? 24.0
-            : itemWidth >= 80
-            ? 20.0
-            : 18.0;
+        final iconSize = metrics.icon.medium;
 
-        final fontSize = itemWidth >= 120
-            ? 12.0
-            : itemWidth >= 100
-            ? 11.0
-            : itemWidth >= 80
-            ? 10.0
-            : 9.0;
+        final fontSize = metrics.typography.caption;
 
-        final verticalPadding = itemWidth >= 100 ? 12.0 : 8.0;
-
+        final verticalPadding = metrics.space.sm;
         return Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(metrics.radius.lg),
             onTap: () {
               if (isEditMode &&
                   selectedType.isNotEmpty &&
@@ -78,17 +67,19 @@ class AccountTypeSection extends StatelessWidget {
                     ? [
                         BoxShadow(
                           color: type.color.withOpacity(0.4),
-                          blurRadius: 8,
+                          blurRadius: metrics.size(8),
                           spreadRadius: 0,
                         ),
                       ]
                     : null,
               ),
               child: Container(
-                constraints: const BoxConstraints(minHeight: 78),
+                constraints: BoxConstraints(
+                  minHeight: metrics.card.accountTypeHeight,
+                ),
                 padding: EdgeInsets.symmetric(
                   vertical: verticalPadding,
-                  horizontal: 8,
+                  horizontal: metrics.space.sm,
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -98,7 +89,7 @@ class AccountTypeSection extends StatelessWidget {
                       color: isSelected ? type.color : Colors.white54,
                       size: iconSize,
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: metrics.space.xs),
                     Text(
                       getAccountTypeDisplayName(type.id, t),
                       textAlign: TextAlign.center,

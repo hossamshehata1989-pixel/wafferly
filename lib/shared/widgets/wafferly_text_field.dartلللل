@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import 'package:wafferly/theme/responsive_metrics.dart';
 
 class WafferlyTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -32,12 +33,14 @@ class WafferlyTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isMultiline = maxLines != null && maxLines! > 1;
-
+    final metrics = ResponsiveMetrics.of(context);
     return TextFormField(
       controller: controller,
 
-      style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
-
+      style: TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: metrics.typography.body,
+      ),
       textDirection: Directionality.of(context),
 
       keyboardType: isMultiline ? TextInputType.multiline : keyboardType,
@@ -54,7 +57,14 @@ class WafferlyTextField extends StatelessWidget {
 
       autofillHints: autofillHints,
 
-      decoration: InputDecoration(labelText: label, hintText: hint),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: metrics.spacing(16),
+          vertical: metrics.h(16),
+        ),
+      ),
     );
   }
 }

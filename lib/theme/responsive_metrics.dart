@@ -3,41 +3,40 @@
 import 'package:flutter/material.dart';
 
 /// نظام Responsive متكامل:
-/// - مرجع العرض = 390dp (متوازن لأجهزة Android الحديثة و iOS)
-/// - يدعم نقاط التوقف (Mobile, Tablet, Desktop)
-/// - يحسب مقاييس التكبير/التصغير مع حدود آمان
+/// - مرجع العرض = 390dp
+/// - يدعم Mobile / Tablet / Desktop
+/// - يحسب مقاييس التكبير والتصغير
 class ResponsiveMetrics {
   // ------------------------------------------------------------
-  // 1. الثوابت الأساسية
+  // 1. Constants
   // ------------------------------------------------------------
-  static const double _referenceWidth = 390.0; // المرجع الجديد (بدلاً من 411)
-  static const double _referenceHeight = 892.0; // مرجع الارتفاع (iPhone 14)
 
-  // حدود التكبير القصوى والدنيا (تم تخفيض lowerBound إلى 0.8 لدعم iPhone SE 320px)
+  static const double _referenceWidth = 390.0;
+  static const double _referenceHeight = 892.0;
+
   static const double _minScale = 0.85;
   static const double _maxScale = 1.5;
+
   static const double _minTextScale = 0.8;
   static const double _maxTextScale = 1.3;
 
-  // ------------------------------------------------------------
-  // 2. نقاط التوقف (Breakpoints) - حسب أفضل الممارسات
-  // ------------------------------------------------------------
-  static const double mobileBreakpoint = 600; // < 600 → موبايل
-  static const double tabletBreakpoint = 840; // 600 - 839 → تابلت
-  // ≥ 840 → ديسكتوب / ويب
+  static const double mobileBreakpoint = 600;
+  static const double tabletBreakpoint = 840;
 
   // ------------------------------------------------------------
-  // 3. الخصائص المحسوبة (لكل BuildContext)
+  // 2. Properties
   // ------------------------------------------------------------
-  final double width; // عرض الشاشة (dp)
-  final double height; // ارتفاع الشاشة (dp)
-  final double scale; // عامل التكبير الأفقي
-  final double textScale; // عامل تكبير النصوص
-  final double sizeScale; // عامل تكبير للأزرار/الأيقونات
-  final double spacingScale; // عامل للمسافات الأفقية
-  final double heightScale; // عامل للارتفاعات (من ارتفاع الشاشة)
 
-  const ResponsiveMetrics._({
+  final double width;
+  final double height;
+
+  final double scale;
+  final double textScale;
+  final double sizeScale;
+  final double spacingScale;
+  final double heightScale;
+
+  ResponsiveMetrics._({
     required this.width,
     required this.height,
     required this.scale,
@@ -48,28 +47,24 @@ class ResponsiveMetrics {
   });
 
   // ------------------------------------------------------------
-  // 4. المصنع (Factory) - يحسب القيم من MediaQuery
+  // Factory
   // ------------------------------------------------------------
+
   factory ResponsiveMetrics.of(BuildContext context) {
     final media = MediaQuery.of(context);
+
     final width = media.size.width;
     final height = media.size.height;
 
-    // التكبير الأفقي (بالنسبة للمرجع 390)
-    double rawScale = width / _referenceWidth;
-    double scale = rawScale.clamp(_minScale, _maxScale);
+    final scale = (width / _referenceWidth).clamp(_minScale, _maxScale);
 
-    // تكبير النصوص (قد يختلف)
-    double textScale = scale.clamp(_minTextScale, _maxTextScale);
+    final textScale = scale.clamp(_minTextScale, _maxTextScale);
 
-    // تكبير الأيقونات/الأزرار (يمكن أن يكون أكثر مرونة)
-    double sizeScale = scale.clamp(_minScale, 1.6);
+    final sizeScale = scale.clamp(_minScale, 1.6);
 
-    // تكبير المسافات
-    double spacingScale = scale.clamp(_minScale, 1.4);
+    final spacingScale = scale.clamp(_minScale, 1.4);
 
-    // التكبير العمودي (بالنسبة للمرجع 892)
-    double heightScale = (height / _referenceHeight).clamp(0.7, 1.2);
+    final heightScale = (height / _referenceHeight).clamp(0.7, 1.2);
 
     return ResponsiveMetrics._(
       width: width,
@@ -83,32 +78,56 @@ class ResponsiveMetrics {
   }
 
   // ------------------------------------------------------------
-  // 5. الدوال المساعدة (لتطبيق المقاييس)
+  // Helpers
   // ------------------------------------------------------------
+
   double size(double reference) => reference * sizeScale;
+
   double text(double reference) => reference * textScale;
+
   double spacing(double reference) => reference * spacingScale;
+
   double h(double reference) => reference * heightScale;
 
-  // دالة للقيم المطلقة مع إمكانية تجاوز المقياس (اختياري)
-  double custom(double reference, {double? customScale}) =>
-      reference * (customScale ?? scale);
+  double custom(double reference, {double? customScale}) {
+    return reference * (customScale ?? scale);
+  }
 
   // ------------------------------------------------------------
-  // 6. دوال نقاط التوقف (لتغيير الـ UI بناءً على حجم الشاشة)
+  // Breakpoints
   // ------------------------------------------------------------
+
   bool get isMobile => width < mobileBreakpoint;
+
   bool get isTablet => width >= mobileBreakpoint && width < tabletBreakpoint;
+
   bool get isDesktop => width >= tabletBreakpoint;
 
-  // اتجاه الشاشة (أفقي/رأسي)
   bool get isPortrait => height > width;
+
   bool get isLandscape => width > height;
 
   // ------------------------------------------------------------
-  // 7. (اختياري) دالة لبناء واجهة متجاوبة باستخدام نقاط التوقف
-  // مثال: ResponsiveMetrics.build(context, mobile: ..., tablet: ..., desktop: ...)
+  // Design Tokens
   // ------------------------------------------------------------
+
+  late final typography = _ResponsiveTypography(this);
+
+  late final icon = _ResponsiveIcon(this);
+
+  late final card = _ResponsiveCard(this);
+
+  late final input = _ResponsiveInput(this);
+
+  late final button = _ResponsiveButton(this);
+
+  late final space = _ResponsiveSpacing(this);
+  late final radius = _ResponsiveRadius(this);
+
+  // ------------------------------------------------------------
+  // Responsive Builder
+  // ------------------------------------------------------------
+
   static T build<T>(
     BuildContext context, {
     required T Function() mobile,
@@ -116,8 +135,133 @@ class ResponsiveMetrics {
     T Function()? desktop,
   }) {
     final metrics = ResponsiveMetrics.of(context);
-    if (metrics.isDesktop && desktop != null) return desktop();
-    if (metrics.isTablet && tablet != null) return tablet();
+
+    if (metrics.isDesktop && desktop != null) {
+      return desktop();
+    }
+
+    if (metrics.isTablet && tablet != null) {
+      return tablet();
+    }
+
     return mobile();
   }
+}
+
+// ------------------------------------------------------------
+// Typography
+// ------------------------------------------------------------
+
+class _ResponsiveTypography {
+  final ResponsiveMetrics m;
+
+  const _ResponsiveTypography(this.m);
+
+  double get caption => m.text(10);
+
+  double get body => m.text(14);
+
+  double get title => m.text(18);
+
+  double get headline => m.text(26);
+}
+
+// ------------------------------------------------------------
+// Icons
+// ------------------------------------------------------------
+
+class _ResponsiveIcon {
+  final ResponsiveMetrics m;
+
+  const _ResponsiveIcon(this.m);
+
+  double get small => m.size(18);
+
+  double get medium => m.size(24);
+
+  double get large => m.size(32);
+
+  double get hero => m.size(56);
+
+  double get xl => m.size(40);
+}
+
+// ------------------------------------------------------------
+// Cards
+// ------------------------------------------------------------
+
+class _ResponsiveCard {
+  final ResponsiveMetrics m;
+
+  const _ResponsiveCard(this.m);
+
+  double get accountTypeHeight => m.h(82);
+
+  double get previewHeight => m.h(92);
+}
+
+// ------------------------------------------------------------
+// Inputs
+// ------------------------------------------------------------
+
+class _ResponsiveInput {
+  final ResponsiveMetrics m;
+
+  const _ResponsiveInput(this.m);
+
+  double get height => m.h(60);
+
+  double get multilineHeight => m.h(100);
+}
+
+// ------------------------------------------------------------
+// Buttons
+// ------------------------------------------------------------
+
+class _ResponsiveButton {
+  final ResponsiveMetrics m;
+
+  const _ResponsiveButton(this.m);
+
+  double get height => m.h(54);
+}
+
+// ------------------------------------------------------------
+// Spacing
+// ------------------------------------------------------------
+
+class _ResponsiveSpacing {
+  final ResponsiveMetrics m;
+
+  const _ResponsiveSpacing(this.m);
+
+  double get xs => m.spacing(4);
+
+  double get sm => m.spacing(8);
+
+  double get md => m.spacing(16);
+
+  double get lg => m.spacing(24);
+
+  double get xl => m.spacing(32);
+}
+
+// ------------------------------------------------------------
+// Radius
+// ------------------------------------------------------------
+
+class _ResponsiveRadius {
+  final ResponsiveMetrics m;
+
+  const _ResponsiveRadius(this.m);
+
+  double get sm => m.size(8);
+
+  double get md => m.size(12);
+
+  double get lg => m.size(16);
+
+  double get xl => m.size(24);
+
+  double get xxl => m.size(32);
 }
