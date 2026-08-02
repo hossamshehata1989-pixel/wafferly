@@ -1,13 +1,14 @@
-// lib/shared/widgets/wafferly_date_picker.dart
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../../theme/app_colors.dart';
+import '../../theme/input/wafferly_input_decoration.dart';
+import '../../theme/responsive_metrics.dart';
 
 class WafferlyDatePicker extends StatelessWidget {
   final DateTime? selectedDate;
   final String label;
-  final Function(DateTime) onDateSelected;
+  final ValueChanged<DateTime> onDateSelected;
 
   const WafferlyDatePicker({
     super.key,
@@ -40,6 +41,7 @@ class WafferlyDatePicker extends StatelessWidget {
         );
       },
     );
+
     if (picked != null) {
       onDateSelected(picked);
     }
@@ -47,31 +49,31 @@ class WafferlyDatePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: () => _pickDate(context),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Row(
-            children: [
-              const Icon(Icons.cake, color: AppColors.primary),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  selectedDate == null
-                      ? label
-                      : _formatDate(context, selectedDate!),
-                  style: TextStyle(
-                    color: selectedDate == null
-                        ? AppColors.textHint
-                        : AppColors.textPrimary,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-              const Icon(Icons.chevron_right, color: AppColors.textHint),
-            ],
+    final metrics = ResponsiveMetrics.of(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => _pickDate(context),
+      child: InputDecorator(
+        isEmpty: selectedDate == null,
+        decoration: WafferlyInputDecoration.build(
+          context,
+          label: label,
+          suffixIcon: Icon(
+            Icons.calendar_today_outlined,
+            size: metrics.isCompactHeight ? 18 : 20,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        child: Text(
+          selectedDate == null
+              ? 'Select date'
+              : _formatDate(context, selectedDate!),
+          style: TextStyle(
+            fontSize: metrics.typography.body,
+            color: selectedDate == null
+                ? AppColors.textHint
+                : AppColors.textPrimary,
           ),
         ),
       ),

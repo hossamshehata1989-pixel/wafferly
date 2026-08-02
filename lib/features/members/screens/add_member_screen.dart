@@ -8,13 +8,14 @@ import 'package:uuid/uuid.dart';
 
 import '../models/member_model.dart';
 import '../../../theme/app_colors.dart';
-import '../../../shared/constants/app_spacing.dart';
-import 'package:wafferly/widgets/shared/wafferly_text_field.dart';
+import '../../../theme/responsive_metrics.dart'; // ✅ استيراد ResponsiveMetrics
+import '../../../widgets/shared/wafferly_text_field.dart';
 import '../../../shared/widgets/wafferly_dropdown.dart';
 import '../../../shared/widgets/wafferly_date_picker.dart';
 import '../../../shared/widgets/wafferly_button.dart';
 import '../../../shared/widgets/wafferly_form_section.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import '../../../utils/input_formatters.dart';
 
 class AddMemberScreen extends StatefulWidget {
   final MemberModel? member;
@@ -31,7 +32,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   final picker = ImagePicker();
   final _formKey = GlobalKey<FormState>();
   final nameController = TextEditingController();
-  final emailController = TextEditingController();
   final notesController = TextEditingController();
 
   String? gender;
@@ -75,7 +75,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
     if (member != null) {
       nameController.text = member.name;
-      emailController.text = member.email ?? '';
       notesController.text = member.notes ?? '';
       relationship = member.relationshipId;
       gender = member.gender;
@@ -90,7 +89,6 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   @override
   void dispose() {
     nameController.dispose();
-    emailController.dispose();
     notesController.dispose();
     super.dispose();
   }
@@ -111,32 +109,35 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   }
 
   Future<void> _showAvatarPicker() async {
+    final metrics = ResponsiveMetrics.of(context);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (_) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(
+              metrics.isCompactHeight ? metrics.space.sm : metrics.space.md,
+            ), // ✅ 16
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   "Choose Avatar",
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: metrics.typography.title, // 18
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: metrics.space.sm), // 16
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const BouncingScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 4,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12.0, // ✅ value specific to this widget
+                    mainAxisSpacing: 12.0,
                   ),
                   itemCount: avatarOptions.length,
                   itemBuilder: (context, index) {
@@ -162,10 +163,10 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                         ),
                         child: ClipOval(
                           child: Padding(
-                            padding: const EdgeInsets.all(8),
+                            padding: EdgeInsets.all(metrics.space.sm), // 8
                             child: SvgPicture.asset(
                               avatar,
-                              width: 48,
+                              width: 48, // ✅ fixed size for avatar picker
                               height: 48,
                               fit: BoxFit.contain,
                               theme: const SvgTheme(currentColor: Colors.white),
@@ -189,6 +190,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   }
 
   Future<void> _pickImage() async {
+    final metrics = ResponsiveMetrics.of(context);
     showModalBottomSheet(
       context: context,
       builder: (_) {
@@ -259,6 +261,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   }
 
   Future<void> _showCustomRelationshipDialog() async {
+    final metrics = ResponsiveMetrics.of(context);
     final controller = TextEditingController();
     try {
       final result = await showDialog<String>(
@@ -266,9 +269,12 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         builder: (_) {
           return AlertDialog(
             backgroundColor: AppColors.card,
-            title: const Text(
+            title: Text(
               "Relationship",
-              style: TextStyle(color: AppColors.textPrimary),
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: metrics.typography.title, // 18
+              ),
             ),
             content: WafferlyTextField(
               controller: controller,
@@ -278,12 +284,13 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text(
+                child: Text(
                   "Cancel",
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
               ),
               WafferlyButton(
+                widthFactor: .6,
                 onPressed: () => Navigator.pop(context, controller.text),
                 title: "Save",
                 fullWidth: false,
@@ -313,42 +320,24 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
   void _saveMember() {
     if (_formKey.currentState!.validate()) {
       final name = nameController.text.trim();
-      final email = emailController.text.trim();
       final notes = notesController.text.trim();
 
       final member = MemberModel(
         id: widget.member?.id ?? const Uuid().v4(),
-
         name: name,
-
         relationshipId: relationship,
-
         photoUrl: selectedImage?.path ?? widget.member?.photoUrl,
-
         avatarAsset: selectedAvatar ?? widget.member?.avatarAsset,
-
         birthday: birthday,
-
         gender: gender,
-
-        email: email.isEmpty ? null : email,
-
         notes: notes.isEmpty ? null : notes,
-
         isOwner: widget.member?.isOwner ?? false,
-
         isLinked: widget.member?.isLinked ?? false,
-
         accountId: widget.member?.accountId,
-
         isArchived: widget.member?.isArchived ?? false,
-
         archivedAt: widget.member?.archivedAt,
-
         transactionsCount: widget.member?.transactionsCount ?? 0,
-
         monthlySpent: widget.member?.monthlySpent ?? 0,
-
         goalsCount: widget.member?.goalsCount ?? 0,
       );
 
@@ -358,6 +347,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
     final isEditingOwner = widget.member?.isOwner == true;
     final availableRelationships = isEditingOwner
         ? relationships
@@ -366,14 +356,23 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(widget.member == null ? "Add Member" : "Edit Member"),
+        title: Text(
+          widget.member == null ? "Add Member" : "Edit Member",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: metrics.typography.title,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: SafeArea(
         child: Form(
           key: _formKey,
           child: ListView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: EdgeInsets.all(metrics.space.md), // 16
             children: [
               // Avatar Section
               Center(
@@ -388,7 +387,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                         ),
                         padding: const EdgeInsets.all(2),
                         child: CircleAvatar(
-                          radius: 38,
+                          radius: metrics.icon.avatar,
                           backgroundColor: AppColors.card,
                           backgroundImage: selectedImage != null
                               ? FileImage(selectedImage!)
@@ -397,33 +396,34 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                               ? null
                               : selectedAvatar != null
                               ? Padding(
-                                  padding: const EdgeInsets.all(10),
+                                  padding: EdgeInsets.all(
+                                    metrics.isCompactHeight ? 8 : 10,
+                                  ),
                                   child: SvgPicture.asset(
                                     selectedAvatar!,
                                     fit: BoxFit.contain,
                                   ),
                                 )
-                              : const Icon(
+                              : Icon(
                                   Icons.add_a_photo,
-                                  size: 30,
+                                  size: metrics.icon.medium, // 24
                                   color: AppColors.textPrimary,
                                 ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    const Text(
+                    SizedBox(height: metrics.space.md), // 8
+                    Text(
                       "Tap to add photo",
                       style: TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 12,
+                        fontSize: metrics.text(12),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
-
+              SizedBox(height: metrics.space.md), // 16
               // Basic Information
               WafferlyFormSection(
                 title: "Basic Information",
@@ -433,8 +433,9 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     label: "Name",
                     hint: "Enter member name",
                     validator: _validateName,
+                    inputFormatters: [WafferlyInputFormatters.personName],
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(height: metrics.space.sm), // 8
                   WafferlyDropdown<String>(
                     value: relationship,
                     label: "Relationship",
@@ -454,7 +455,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                       });
                     },
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(height: metrics.space.sm), // 8
                   WafferlyDropdown<String>(
                     value: gender,
                     label: "Gender",
@@ -468,7 +469,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                       });
                     },
                   ),
-                  const SizedBox(height: AppSpacing.sm),
+                  SizedBox(height: metrics.space.md), // 8
                   WafferlyDatePicker(
                     selectedDate: birthday,
                     label: "Birthday",
@@ -482,39 +483,15 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
               ),
 
               // Personal Information
-              WafferlyFormSection(
-                title: "Personal Information (Optional)",
-                children: [
-                  const SizedBox(height: AppSpacing.sm),
-                  WafferlyTextField(
-                    controller: emailController,
-                    label: "Email",
-                    hint: "Enter email address",
-                    keyboardType: TextInputType.emailAddress,
-                    validator: _validateEmail,
-                    autofillHints: const [AutofillHints.email],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  WafferlyTextField(
-                    controller: notesController,
-                    label: "Notes",
-                    hint: "Additional notes...",
-                    minLines: 3,
-                    maxLines: 5,
-                    textInputAction: TextInputAction.newline,
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: AppSpacing.xl),
-
+              SizedBox(height: metrics.space.xl), // 32
               // Save Button
               WafferlyButton(
+                widthFactor: .6,
                 onPressed: _saveMember,
                 title: "Save Member",
                 icon: Icons.save,
               ),
-              const SizedBox(height: AppSpacing.md),
+              SizedBox(height: metrics.space.md), // 16
             ],
           ),
         ),

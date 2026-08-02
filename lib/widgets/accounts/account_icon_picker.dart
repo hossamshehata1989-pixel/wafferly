@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
 import '../../theme/responsive_metrics.dart';
 
 class AccountIconPicker extends StatelessWidget {
@@ -17,47 +18,89 @@ class AccountIconPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = ResponsiveMetrics.of(context);
-    const double gridSpacing = 12.0;
-    const double tileRadius = 14.0;
-    const double padding = 12.0;
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: icons.length,
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
-        crossAxisSpacing: gridSpacing,
-        mainAxisSpacing: gridSpacing,
+    final iconSize = metrics.icon.accountPicker;
+
+    return Align(
+      alignment: Directionality.of(context) == TextDirection.rtl
+          ? Alignment.centerRight
+          : Alignment.centerLeft,
+      child: Wrap(
+        spacing: metrics.space.sm,
+        runSpacing: metrics.space.sm,
+        children: icons.map((icon) {
+          return _IconTile(
+            icon: icon,
+            selected: icon == selectedIcon,
+            iconSize: iconSize,
+            onTap: () => onChanged(icon),
+          );
+        }).toList(),
       ),
-      itemBuilder: (_, index) {
-        final icon = icons[index];
-        final selected = icon == selectedIcon;
+    );
+  }
+}
 
-        return InkWell(
-          onTap: () => onChanged(icon),
-          borderRadius: BorderRadius.circular(tileRadius),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            decoration: BoxDecoration(
-              color: selected
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.12)
-                  : Colors.white.withOpacity(0.04),
-              borderRadius: BorderRadius.circular(tileRadius),
-              border: Border.all(
-                color: selected
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.white24,
-                width: selected ? 2 : 1,
-              ),
+class _IconTile extends StatelessWidget {
+  const _IconTile({
+    required this.icon,
+    required this.selected,
+    required this.iconSize,
+    required this.onTap,
+  });
+
+  final String icon;
+  final bool selected;
+  final double iconSize;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+
+          // حجم الدائرة = حجم الأيقونة + Padding
+          width: iconSize + 16,
+          height: iconSize + 16,
+
+          padding: const EdgeInsets.all(8),
+
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: selected
+                ? primary.withValues(alpha: .12)
+                : Colors.white.withValues(alpha: .04),
+            border: Border.all(
+              color: selected ? primary : Colors.white24,
+              width: selected ? 2 : 1,
             ),
-            child: Padding(
-              padding: EdgeInsets.all(padding),
-              child: SvgPicture.asset(icon, fit: BoxFit.contain),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: primary.withValues(alpha: .30),
+                      blurRadius: 10,
+                    ),
+                  ]
+                : null,
+          ),
+
+          child: Center(
+            child: SvgPicture.asset(
+              icon,
+              width: iconSize,
+              height: iconSize,
+              fit: BoxFit.contain,
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

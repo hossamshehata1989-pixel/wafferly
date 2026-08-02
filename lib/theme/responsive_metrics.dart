@@ -162,13 +162,15 @@ class _ResponsiveTypography {
 
   const _ResponsiveTypography(this.m);
 
-  double get caption => m.isCompactHeight ? m.text(9) : m.text(10);
+  double get caption => m.isCompactHeight ? m.text(10) : m.text(10);
 
   double get body => m.isCompactHeight ? m.text(13) : m.text(14);
 
-  double get title => m.text(18);
+  double get title => m.isCompactHeight ? m.text(16) : m.text(18);
 
   double get headline => m.text(26);
+
+  double get accountPicker => m.isCompactHeight ? 24 : 28;
 }
 
 // ------------------------------------------------------------
@@ -182,13 +184,19 @@ class _ResponsiveIcon {
 
   double get small => m.size(18);
 
-  double get medium => m.isCompactHeight ? m.size(20) : m.size(24);
+  double get medium => m.isCompactHeight ? m.size(18) : m.size(24);
 
   double get large => m.size(32);
 
   double get hero => m.size(56);
 
   double get xl => m.size(40);
+
+  double get accountIcon => m.isCompactHeight ? m.size(34) : m.size(42);
+
+  double get accountPicker => m.isCompactHeight ? 26 : 30;
+
+  double get avatar => m.isCompactHeight ? m.size(30) : m.size(38);
 }
 
 // ------------------------------------------------------------
@@ -230,7 +238,7 @@ class _ResponsiveButton {
 
   const _ResponsiveButton(this.m);
 
-  double get height => m.h(54);
+  double get height => m.isCompactHeight ? 46 : 54;
 }
 
 // ------------------------------------------------------------

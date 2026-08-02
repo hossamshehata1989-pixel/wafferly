@@ -1,7 +1,8 @@
-// lib/widgets/shared/wafferly_text_field.dart
-
 import 'package:flutter/material.dart';
-import 'package:wafferly/theme/responsive_metrics.dart';
+import 'package:flutter/services.dart';
+
+import '../../theme/input/wafferly_input_decoration.dart';
+import '../../theme/responsive_metrics.dart';
 
 class WafferlyTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -19,6 +20,8 @@ class WafferlyTextField extends StatelessWidget {
 
   final String? Function(String?)? validator;
 
+  final List<TextInputFormatter>? inputFormatters;
+
   const WafferlyTextField({
     super.key,
     required this.controller,
@@ -31,6 +34,7 @@ class WafferlyTextField extends StatelessWidget {
     this.validator,
     this.minLines,
     this.autofillHints,
+    this.inputFormatters,
   });
 
   @override
@@ -53,42 +57,15 @@ class WafferlyTextField extends StatelessWidget {
 
       validator: validator,
 
+      inputFormatters: inputFormatters,
+
       style: TextStyle(color: Colors.white, fontSize: metrics.typography.body),
 
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
+      decoration: WafferlyInputDecoration.build(
+        context,
+        label: label,
+        hint: hint,
         prefixText: prefixText,
-
-        isDense: metrics.isCompactHeight,
-
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: metrics.space.md,
-          vertical: metrics.input.verticalPadding,
-        ),
-
-        labelStyle: TextStyle(
-          color: Colors.white54,
-          fontSize: metrics.typography.body,
-        ),
-
-        hintStyle: TextStyle(
-          color: Colors.white38,
-          fontSize: metrics.typography.body,
-        ),
-
-        prefixStyle: TextStyle(
-          color: Colors.white54,
-          fontSize: metrics.typography.body,
-        ),
-
-        enabledBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.white30),
-        ),
-
-        focusedBorder: const UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.blue, width: 2),
-        ),
       ),
     );
   }

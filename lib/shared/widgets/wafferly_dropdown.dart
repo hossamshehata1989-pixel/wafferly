@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/input/wafferly_input_decoration.dart';
 
 class WafferlyDropdown<T> extends StatelessWidget {
   final T? value;
@@ -23,7 +24,7 @@ class WafferlyDropdown<T> extends StatelessWidget {
       initialValue: value,
       items: items,
       onChanged: onChanged,
-      decoration: InputDecoration(labelText: label),
+      decoration: WafferlyInputDecoration.build(context, label: label),
       dropdownColor: AppColors.card,
       style: const TextStyle(color: AppColors.textPrimary),
       icon: const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),

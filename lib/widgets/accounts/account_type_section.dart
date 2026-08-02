@@ -34,7 +34,6 @@ class AccountTypeSection extends StatelessWidget {
 
         final iconSize = metrics.icon.medium;
         final fontSize = metrics.typography.caption;
-        final verticalPadding = metrics.space.sm;
 
         return Material(
           color: Colors.transparent,
