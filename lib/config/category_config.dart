@@ -19,38 +19,67 @@ class CategoryConfig {
   String resolveTitle(AppLocalizations t) {
     switch (id) {
       // Expense categories
-      case 'dailyTransport': return t.dailyTransport;
-      case 'bills': return t.bills;
-      case 'supermarket': return t.supermarket;
-      case 'drinks': return t.drinks;
-      case 'fastFood': return t.fastFood;
-      case 'meatFish': return t.meatFish;
-      case 'vegetables': return t.vegetables;
-      case 'fruits': return t.fruits;
-      case 'smoking': return t.smoking;
-      case 'health': return t.health;
-      case 'entertainment': return t.entertainment;
-      case 'education': return t.education;
-      case 'vehicles': return t.vehicles;
-      case 'home': return t.home;
-      case 'personalCare': return t.personalCare;
-      case 'mobilePc': return t.mobilePc;
-      case 'financials': return t.financials;
-      case 'governServices': return t.governServices;
-      case 'giftsOccasions': return t.giftsOccasions;
-      case 'hobbies': return t.hobbies;
-      case 'baby': return t.baby;
-      case 'clothes': return t.clothes;
-      case 'shoes': return t.shoes;
-      
+      case 'dailyTransport':
+        return t.dailyTransport;
+      case 'bills':
+        return t.bills;
+      case 'supermarket':
+        return t.supermarket;
+      case 'drinks':
+        return t.drinks;
+      case 'fastFood':
+        return t.fastFood;
+      case 'meatFish':
+        return t.meatFish;
+      case 'vegetables':
+        return t.vegetables;
+      case 'fruits':
+        return t.fruits;
+      case 'smoking':
+        return t.smoking;
+      case 'health':
+        return t.health;
+      case 'entertainment':
+        return t.entertainment;
+      case 'education':
+        return t.education;
+      case 'vehicles':
+        return t.vehicles;
+      case 'home':
+        return t.home;
+      case 'personalCare':
+        return t.personalCare;
+      case 'mobilePc':
+        return t.mobilePc;
+      case 'financials':
+        return t.financials;
+      case 'governServices':
+        return t.governServices;
+      case 'giftsOccasions':
+        return t.giftsOccasions;
+      case 'hobbies':
+        return t.hobbies;
+      case 'baby':
+        return t.baby;
+      case 'clothes':
+        return t.clothes;
+      case 'shoes':
+        return t.shoes;
+
       // Income categories
-      case 'salary': return t.salary;
-      case 'dailyIncome': return t.dailyIncome;
-      case 'bonus': return t.bonus;
-      case 'rewards': return t.rewards;
-      case 'freelance': return t.freelance;
-      
-      default: return id;
+      case 'salary':
+        return t.salary;
+      case 'dailyIncome':
+        return t.dailyIncome;
+      case 'bonus':
+        return t.bonus;
+      case 'rewards':
+        return t.rewards;
+      case 'freelance':
+        return t.freelance;
+
+      default:
+        return id;
     }
   }
 }
@@ -59,10 +88,7 @@ class SubCategoryConfig {
   final String id;
   final String Function(AppLocalizations) title;
 
-  const SubCategoryConfig({
-    required this.id,
-    required this.title,
-  });
+  const SubCategoryConfig({required this.id, required this.title});
 }
 
 // =======================================================
@@ -330,13 +356,22 @@ final List<CategoryConfig> expenseCategories = [
     id: 'hobbies',
     icon: AppAssets.categoryHobbies,
     subCategories: [
-      SubCategoryConfig(id: 'sportsSubscriptions', title: (t) => t.sportsSubscriptions),
+      SubCategoryConfig(
+        id: 'sportsSubscriptions',
+        title: (t) => t.sportsSubscriptions,
+      ),
       SubCategoryConfig(id: 'sportsEquipment', title: (t) => t.sportsEquipment),
-      SubCategoryConfig(id: 'sportsSupplements', title: (t) => t.sportsSupplements),
+      SubCategoryConfig(
+        id: 'sportsSupplements',
+        title: (t) => t.sportsSupplements,
+      ),
       SubCategoryConfig(id: 'pets', title: (t) => t.pets),
       SubCategoryConfig(id: 'videoGames', title: (t) => t.videoGames),
       SubCategoryConfig(id: 'skating', title: (t) => t.skating),
-      SubCategoryConfig(id: 'gardeningAndPlants', title: (t) => t.gardeningAndPlants),
+      SubCategoryConfig(
+        id: 'gardeningAndPlants',
+        title: (t) => t.gardeningAndPlants,
+      ),
       SubCategoryConfig(id: 'reading', title: (t) => t.reading),
       SubCategoryConfig(id: 'music', title: (t) => t.music),
       SubCategoryConfig(id: 'arts', title: (t) => t.arts),
@@ -388,26 +423,11 @@ final List<CategoryConfig> expenseCategories = [
 // 🟡 Income Categories
 // =======================================================
 final List<CategoryConfig> incomeCategories = [
-  CategoryConfig(
-    id: 'salary',
-    icon: AppAssets.categoryPlaceholder,
-  ),
-  CategoryConfig(
-    id: 'dailyIncome',
-    icon: AppAssets.categoryPlaceholder,
-  ),
-  CategoryConfig(
-    id: 'bonus',
-    icon: AppAssets.categoryPlaceholder,
-  ),
-  CategoryConfig(
-    id: 'rewards',
-    icon: AppAssets.categoryPlaceholder,
-  ),
-  CategoryConfig(
-    id: 'freelance',
-    icon: AppAssets.categoryPlaceholder,
-  ),
+  CategoryConfig(id: 'salary', icon: AppAssets.categoryPlaceholder),
+  CategoryConfig(id: 'dailyIncome', icon: AppAssets.categoryPlaceholder),
+  CategoryConfig(id: 'bonus', icon: AppAssets.categoryPlaceholder),
+  CategoryConfig(id: 'rewards', icon: AppAssets.categoryPlaceholder),
+  CategoryConfig(id: 'freelance', icon: AppAssets.categoryPlaceholder),
 ];
 
 List<CategoryConfig> getCategories(CategoryType type) {
@@ -418,7 +438,6 @@ List<CategoryConfig> getCategories(CategoryType type) {
       return incomeCategories;
   }
 }
-
 
 // 🔹 For backward compatibility (legacy code)
 @Deprecated('Use getCategories(CategoryType.expense) instead')

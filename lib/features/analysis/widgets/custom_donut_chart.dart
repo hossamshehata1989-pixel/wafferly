@@ -39,9 +39,10 @@ class _CustomDonutChartState extends State<CustomDonutChart>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _animation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-    );
+    _animation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _controller.forward();
   }
 
@@ -57,7 +58,8 @@ class _CustomDonutChartState extends State<CustomDonutChart>
     final formatter = NumberFormat("#,###");
 
     // ✅ ترتيب البيانات تنازلياً (من الأكبر للأصغر)
-    final sortedData = [...widget.data]..sort((a, b) => b.value.compareTo(a.value));
+    final sortedData = [...widget.data]
+      ..sort((a, b) => b.value.compareTo(a.value));
 
     if (sortedData.isEmpty) {
       return Container(

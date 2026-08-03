@@ -31,8 +31,8 @@ class TransactionLedgerBuilder {
   // ✅ Updated: accepts real expense ledger account ID
   List<LedgerEntry> buildExpenseEntries({
     required String transactionId,
-    required String expenseLedgerAccountId,  // real LedgerAccount.id
-    required String sourceAccountId,         // real Account.id (cash/bank)
+    required String expenseLedgerAccountId, // real LedgerAccount.id
+    required String sourceAccountId, // real Account.id (cash/bank)
     required double amount,
     required DateTime date,
   }) {
@@ -59,8 +59,8 @@ class TransactionLedgerBuilder {
   // ✅ Updated: accepts real income ledger account ID
   List<LedgerEntry> buildIncomeEntries({
     required String transactionId,
-    required String destinationAccountId,    // real Account.id (cash/bank)
-    required String incomeLedgerAccountId,   // real LedgerAccount.id
+    required String destinationAccountId, // real Account.id (cash/bank)
+    required String incomeLedgerAccountId, // real LedgerAccount.id
     required double amount,
     required DateTime date,
   }) {

@@ -4,40 +4,31 @@ import '../config/category_config.dart';
 // ==============================
 // 🔹 Get Main Category Name
 // ==============================
-String getMainCategoryName(
-String categoryId,
-AppLocalizations t,
-) {
-final allCategories = [...expenseCategories, ...incomeCategories];
+String getMainCategoryName(String categoryId, AppLocalizations t) {
+  final allCategories = [...expenseCategories, ...incomeCategories];
 
-final category = allCategories.firstWhere(
-(c) => c.id == categoryId,
-orElse: () => throw Exception("Category not found"),
-);
+  final category = allCategories.firstWhere(
+    (c) => c.id == categoryId,
+    orElse: () => throw Exception("Category not found"),
+  );
 
-return category.resolveTitle(t);
+  return category.resolveTitle(t);
 }
 
 // ==============================
 // 🔹 Get Sub Category Name
 // ==============================
-String getSubCategoryName(
-String subCategoryId,
-AppLocalizations t,
-) {
-for (final category in expenseCategories) {
-final sub = category.subCategories?.firstWhere(
-(s) => s.id == subCategoryId,
-orElse: () => SubCategoryConfig(id: '', title: (t) => ''),
-);
+String getSubCategoryName(String subCategoryId, AppLocalizations t) {
+  for (final category in expenseCategories) {
+    final sub = category.subCategories?.firstWhere(
+      (s) => s.id == subCategoryId,
+      orElse: () => SubCategoryConfig(id: '', title: (t) => ''),
+    );
 
+    if (sub != null && sub.id.isNotEmpty) {
+      return sub.title(t);
+    }
+  }
 
-if (sub != null && sub.id.isNotEmpty) {
-  return sub.title(t);
-}
-
-
-}
-
-return subCategoryId; // fallback
+  return subCategoryId; // fallback
 }

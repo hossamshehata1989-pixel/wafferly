@@ -3,6 +3,7 @@ import '../operations/financial_operation.dart';
 import '../operations/income_operation.dart';
 import '../operations/transfer_operation.dart';
 import '../operations/goal_transfer_operation.dart';
+import '../operations/opening_balance_operation.dart';
 
 import 'financial_action_type.dart';
 import 'financial_interpreter.dart';
@@ -67,6 +68,16 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
           amount: operation.amount,
           sourceAccountId: operation.accountId,
           goalId: operation.goalId,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case OpeningBalanceOperation():
+        return NormalizedIntent(
+          action: FinancialActionType.openingBalance,
+          sourceAccountId: operation.intent.accountId,
+          amount: operation.intent.amount,
+          categoryId: 'initial_balance',
+          isLiability: operation.intent.isLiability,
           resolution: operation.resolution ?? Resolution.execute,
         );
 

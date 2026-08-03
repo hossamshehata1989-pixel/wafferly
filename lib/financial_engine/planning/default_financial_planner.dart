@@ -16,6 +16,7 @@ import '../mutations/create_transaction_mutation.dart';
 import '../ports/transaction_lookup_port.dart';
 import '../mutations/update_transaction_mutation.dart';
 import '../mutations/deletion_transaction_mutation.dart';
+import '../../constants/transaction_constants.dart';
 
 final class DefaultFinancialPlanner implements FinancialPlanner {
   final ChartOfAccounts _chartOfAccounts;
@@ -45,6 +46,9 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
 
       case FinancialActionType.createGoalAllocation:
         return _planGoalAllocation(intent);
+
+      case FinancialActionType.openingBalance:
+        return _planOpeningBalance(context);
 
       case FinancialActionType.correction:
         return await _planCorrection(context);
@@ -245,6 +249,54 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
           goalId: goalId,
           amount: intent.amount,
         ),
+      ],
+    );
+  }
+
+  FinancialExecutionPlan _planOpeningBalance(PlanningContext context) {
+    final intent = context.intent;
+    const openingEquityAccountId =
+        ChartOfAccounts.openingBalanceEquityAccountId;
+    final accountId = intent.sourceAccountId;
+    final amount = intent.amount;
+    final accountReceivesDebit = !intent.isLiability;
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: TransactionType.initialBalance,
+      fromAccountId: accountReceivesDebit ? null : accountId,
+      toAccountId: accountReceivesDebit ? accountId : null,
+      categoryId: 'initial_balance',
+      subCategoryId: null,
+      amount: amount,
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: false,
+      source: TransactionSource.accountCreation,
+      actorMemberId: null,
+    );
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [
+        JournalEntryMutation(
+          journalEntryId: 'journal-1',
+          description: 'Opening Balance',
+          lines: accountReceivesDebit
+              ? [
+                  EntryLine(accountId: accountId, debit: amount),
+                  EntryLine(accountId: openingEquityAccountId, credit: amount),
+                ]
+              : [
+                  EntryLine(accountId: openingEquityAccountId, debit: amount),
+                  EntryLine(accountId: accountId, credit: amount),
+                ],
+        ),
+        CreateTransactionMutation(record: transactionRecord),
       ],
     );
   }

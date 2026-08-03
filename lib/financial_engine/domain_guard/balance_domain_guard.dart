@@ -14,6 +14,16 @@ final class BalanceDomainGuard implements DomainGuard {
 
   @override
   Future<DomainGuardResult> validate(NormalizedIntent intent) async {
+    if (intent.action == FinancialActionType.openingBalance) {
+      if (intent.amount < 0) {
+        return const DomainViolation(
+          reason: 'Opening balance amount must not be negative.',
+        );
+      }
+
+      return const DomainGuardPassed();
+    }
+
     if (intent.action == FinancialActionType.income) {
       return const DomainGuardPassed();
     }

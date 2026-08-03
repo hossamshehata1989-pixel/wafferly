@@ -30,7 +30,7 @@ class AnalysisCard extends StatelessWidget {
     final t = AppLocalizations.of(context)!;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final formatter = NumberFormat("#,###");
-    
+
     // تنسيق العملة حسب اللغة
     final formattedAmount = isArabic
         ? "${formatter.format(amount.toInt())} ج.م"
@@ -77,7 +77,9 @@ class AnalysisCard extends StatelessWidget {
                   children: [
                     if (changePercentage != 0)
                       Icon(
-                        changePercentage > 0 ? Icons.trending_up : Icons.trending_down,
+                        changePercentage > 0
+                            ? Icons.trending_up
+                            : Icons.trending_down,
                         size: 12,
                         color: changePercentage > 0 ? Colors.red : Colors.green,
                       ),
@@ -90,7 +92,9 @@ class AnalysisCard extends StatelessWidget {
                         style: TextStyle(
                           color: changePercentage > 0
                               ? Colors.red
-                              : (changePercentage < 0 ? Colors.green : Colors.white54),
+                              : (changePercentage < 0
+                                    ? Colors.green
+                                    : Colors.white54),
                           fontSize: 10,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -109,7 +113,9 @@ class AnalysisCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: isCompareActive ? color : Colors.white.withOpacity(0.2),
+                      color: isCompareActive
+                          ? color
+                          : Colors.white.withOpacity(0.2),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(

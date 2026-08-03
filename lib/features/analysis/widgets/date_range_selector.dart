@@ -28,9 +28,7 @@ class DateRangeSelector extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF2A2A2A),
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.2),
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.2)),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<TimePeriod>(
@@ -41,13 +39,32 @@ class DateRangeSelector extends StatelessWidget {
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
-              icon: const Icon(Icons.arrow_drop_down, color: Colors.white70, size: 20),
+              icon: const Icon(
+                Icons.arrow_drop_down,
+                color: Colors.white70,
+                size: 20,
+              ),
               items: [
-                const DropdownMenuItem(value: TimePeriod.daily, child: Text("Daily")),
-                const DropdownMenuItem(value: TimePeriod.weekly, child: Text("Weekly")),
-                const DropdownMenuItem(value: TimePeriod.monthly, child: Text("Monthly")),
-                const DropdownMenuItem(value: TimePeriod.yearly, child: Text("Yearly")),
-                const DropdownMenuItem(value: TimePeriod.custom, child: Text("Custom Range")),
+                const DropdownMenuItem(
+                  value: TimePeriod.daily,
+                  child: Text("Daily"),
+                ),
+                const DropdownMenuItem(
+                  value: TimePeriod.weekly,
+                  child: Text("Weekly"),
+                ),
+                const DropdownMenuItem(
+                  value: TimePeriod.monthly,
+                  child: Text("Monthly"),
+                ),
+                const DropdownMenuItem(
+                  value: TimePeriod.yearly,
+                  child: Text("Yearly"),
+                ),
+                const DropdownMenuItem(
+                  value: TimePeriod.custom,
+                  child: Text("Custom Range"),
+                ),
               ],
               onChanged: (value) {
                 if (value != null) {
@@ -70,7 +87,8 @@ class DateRangeSelector extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         // ✅ زر التاريخ (يظهر فقط لـ daily, custom)
-        if (selectedPeriod == TimePeriod.daily || selectedPeriod == TimePeriod.custom)
+        if (selectedPeriod == TimePeriod.daily ||
+            selectedPeriod == TimePeriod.custom)
           Expanded(
             child: GestureDetector(
               onTap: () async {
@@ -79,7 +97,10 @@ class DateRangeSelector extends StatelessWidget {
                     context: context,
                     firstDate: DateTime(2020),
                     lastDate: DateTime.now(),
-                    initialDateRange: DateTimeRange(start: startDate, end: endDate),
+                    initialDateRange: DateTimeRange(
+                      start: startDate,
+                      end: endDate,
+                    ),
                     builder: (context, child) {
                       return Theme(
                         data: ThemeData.dark().copyWith(
@@ -92,7 +113,8 @@ class DateRangeSelector extends StatelessWidget {
                       );
                     },
                   );
-                  if (picked != null) onDateRangeChanged(picked.start, picked.end);
+                  if (picked != null)
+                    onDateRangeChanged(picked.start, picked.end);
                 } else if (selectedPeriod == TimePeriod.daily) {
                   final picked = await showDatePicker(
                     context: context,
@@ -117,7 +139,10 @@ class DateRangeSelector extends StatelessWidget {
                 }
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
@@ -129,7 +154,11 @@ class DateRangeSelector extends StatelessWidget {
                       _getDateRangeText(),
                       style: const TextStyle(color: Colors.white, fontSize: 14),
                     ),
-                    const Icon(Icons.calendar_today, color: Colors.white70, size: 18),
+                    const Icon(
+                      Icons.calendar_today,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
                   ],
                 ),
               ),
@@ -160,8 +189,18 @@ class DateRangeSelector extends StatelessWidget {
               itemCount: 12,
               itemBuilder: (context, index) {
                 final months = [
-                  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                  'Jan',
+                  'Feb',
+                  'Mar',
+                  'Apr',
+                  'May',
+                  'Jun',
+                  'Jul',
+                  'Aug',
+                  'Sep',
+                  'Oct',
+                  'Nov',
+                  'Dec',
                 ];
                 return TextButton(
                   onPressed: () {
@@ -186,7 +225,7 @@ class DateRangeSelector extends StatelessWidget {
   void _showYearPicker(BuildContext context) {
     final currentYear = DateTime.now().year;
     final years = List.generate(10, (i) => currentYear - i);
-    
+
     showDialog(
       context: context,
       builder: (context) {
@@ -229,7 +268,7 @@ class DateRangeSelector extends StatelessWidget {
       final date = DateTime.now().subtract(Duration(days: i * 7));
       weeks.add(date);
     }
-    
+
     showDialog(
       context: context,
       builder: (context) {
@@ -253,8 +292,16 @@ class DateRangeSelector extends StatelessWidget {
                     style: const TextStyle(color: Colors.white),
                   ),
                   onTap: () {
-                    final newStart = DateTime(weekStart.year, weekStart.month, weekStart.day);
-                    final newEnd = DateTime(weekEnd.year, weekEnd.month, weekEnd.day);
+                    final newStart = DateTime(
+                      weekStart.year,
+                      weekStart.month,
+                      weekStart.day,
+                    );
+                    final newEnd = DateTime(
+                      weekEnd.year,
+                      weekEnd.month,
+                      weekEnd.day,
+                    );
                     onDateRangeChanged(newStart, newEnd);
                     Navigator.pop(context);
                   },
@@ -273,7 +320,20 @@ class DateRangeSelector extends StatelessWidget {
     } else if (selectedPeriod == TimePeriod.weekly) {
       return "${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}";
     } else if (selectedPeriod == TimePeriod.monthly) {
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       return "${months[startDate.month - 1]} ${startDate.year}";
     } else if (selectedPeriod == TimePeriod.yearly) {
       return "${startDate.year}";

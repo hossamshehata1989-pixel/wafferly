@@ -137,7 +137,6 @@ final class FinancialOperationEngine {
         await _idempotencyGuard.remember(context, result);
       }
 
-
       return result;
     } catch (e, s) {
       debugPrint('POLICY EXCEPTION:');

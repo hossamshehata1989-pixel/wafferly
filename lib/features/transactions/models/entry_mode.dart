@@ -1,5 +1,1 @@
-enum EntryMode {
-  expense,
-  income,
-  transfer,
-}
+enum EntryMode { expense, income, transfer }

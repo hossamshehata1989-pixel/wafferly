@@ -6,7 +6,8 @@ import '../models/ledger_account.dart';
 import '../models/enums/ledger_account_type.dart';
 
 class LedgerAccountService {
-  static final LedgerAccountService _instance = LedgerAccountService._internal();
+  static final LedgerAccountService _instance =
+      LedgerAccountService._internal();
   factory LedgerAccountService() => _instance;
   LedgerAccountService._internal();
 

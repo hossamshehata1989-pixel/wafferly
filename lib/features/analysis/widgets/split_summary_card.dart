@@ -76,9 +76,7 @@ class _SummaryCard extends StatelessWidget {
         // 🎨 Dark Glass Effect
         color: Colors.white.withOpacity(0.05),
 
-        border: Border.all(
-          color: color.withOpacity(0.3),
-        ),
+        border: Border.all(color: color.withOpacity(0.3)),
 
         boxShadow: [
           BoxShadow(
@@ -102,11 +100,7 @@ class _SummaryCard extends StatelessWidget {
                   color: color.withOpacity(0.2),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  icon,
-                  size: 16,
-                  color: color,
-                ),
+                child: Icon(icon, size: 16, color: color),
               ),
               const SizedBox(width: 8),
               Text(

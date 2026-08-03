@@ -44,18 +44,24 @@ class LedgerSandboxService {
       print("\n💾 Saved entries via LedgerService.");
 
       // 4. Retrieve using LedgerService
-      final savedEntries = await _ledgerService.getEntriesByTransactionId(mockTransactionId);
-      
+      final savedEntries = await _ledgerService.getEntriesByTransactionId(
+        mockTransactionId,
+      );
+
       print("\n🔍 Retrieved ${savedEntries.length} entries by transactionId:");
       for (var e in savedEntries) {
-        print("   - ID: ${e.id}, account: ${e.accountId}, amount: ${e.amount}, type: ${e.entryType.string}");
+        print(
+          "   - ID: ${e.id}, account: ${e.accountId}, amount: ${e.amount}, type: ${e.entryType.string}",
+        );
       }
 
       // 5. Verify
       if (savedEntries.length == 2) {
         print("\n✅ Sandbox test PASSED: Found both debit and credit entries.");
       } else {
-        print("\n⚠️ Sandbox test WARNING: Expected 2 entries, found ${savedEntries.length}.");
+        print(
+          "\n⚠️ Sandbox test WARNING: Expected 2 entries, found ${savedEntries.length}.",
+        );
       }
     } catch (e) {
       print("\n❌ Sandbox test FAILED: $e");

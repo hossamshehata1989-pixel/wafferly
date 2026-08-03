@@ -9,11 +9,7 @@ class AccountService {
     required String type,
     required String currency,
   }) {
-    box.add(Account(
-      name: name,
-      type: type,
-      currency: currency,
-    ));
+    box.add(Account(name: name, type: type, currency: currency));
   }
 
   List<Account> getAllAccounts() {

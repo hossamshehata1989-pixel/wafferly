@@ -10,7 +10,7 @@ import 'ledger_service.dart';
 
 class LedgerIntegrityService {
   final LedgerService _ledgerService = LedgerService();
-  
+
   Box<Transaction> get _txBox => Hive.box<Transaction>('transactions');
 
   /// ============================================================
@@ -19,11 +19,11 @@ class LedgerIntegrityService {
   Future<List<String>> getDuplicateTransactionIds() async {
     final allEntries = await _ledgerService.getAllEntries();
     final Map<String, int> txCount = {};
-    
+
     for (final entry in allEntries) {
       txCount[entry.transactionId] = (txCount[entry.transactionId] ?? 0) + 1;
     }
-    
+
     final duplicates = <String>[];
     txCount.forEach((txId, count) {
       // Each transaction should have exactly 2 ledger entries (debit + credit)
@@ -31,7 +31,7 @@ class LedgerIntegrityService {
         duplicates.add("$txId: $count entries (expected 2)");
       }
     });
-    
+
     return duplicates;
   }
 
@@ -41,14 +41,14 @@ class LedgerIntegrityService {
   Future<List<LedgerEntry>> getOrphanLedgerEntries() async {
     final allEntries = await _ledgerService.getAllEntries();
     final orphans = <LedgerEntry>[];
-    
+
     for (final entry in allEntries) {
       final tx = _txBox.get(entry.transactionId);
       if (tx == null) {
         orphans.add(entry);
       }
     }
-    
+
     return orphans;
   }
 
@@ -58,19 +58,21 @@ class LedgerIntegrityService {
   Future<List<Transaction>> getTransactionsWithoutLedgerEntries() async {
     final allEntries = await _ledgerService.getAllEntries();
     final Set<String> txWithEntries = {};
-    
+
     for (final entry in allEntries) {
       txWithEntries.add(entry.transactionId);
     }
-    
+
     final missing = <Transaction>[];
     for (final tx in _txBox.values) {
-      if (!txWithEntries.contains(tx.id) && 
-          (tx.type == 'expense' || tx.type == 'income' || tx.type == 'transfer')) {
+      if (!txWithEntries.contains(tx.id) &&
+          (tx.type == 'expense' ||
+              tx.type == 'income' ||
+              tx.type == 'transfer')) {
         missing.add(tx);
       }
     }
-    
+
     return missing;
   }
 
@@ -79,13 +81,13 @@ class LedgerIntegrityService {
   /// ============================================================
   Future<IntegrityReport> runFullValidation() async {
     final startTime = DateTime.now();
-    
+
     final duplicates = await getDuplicateTransactionIds();
     final orphans = await getOrphanLedgerEntries();
     final missing = await getTransactionsWithoutLedgerEntries();
-    
+
     final endTime = DateTime.now();
-    
+
     return IntegrityReport(
       duplicateTransactionIssues: duplicates,
       orphanLedgerEntries: orphans,
@@ -101,7 +103,7 @@ class LedgerIntegrityService {
   /// ============================================================
   Future<void> printValidationReport() async {
     final report = await runFullValidation();
-    
+
     print("\n${"=" * 60}");
     print("🔍 LEDGER INTEGRITY REPORT (Sprint 4A)");
     print("=" * 60);
@@ -109,7 +111,7 @@ class LedgerIntegrityService {
     print("📊 Total Ledger Entries: ${report.totalLedgerEntries}");
     print("⏱️ Validation Time: ${report.validationDurationMs} ms");
     print("-" * 60);
-    
+
     if (report.duplicateTransactionIssues.isEmpty) {
       print("✅ No duplicate transaction entries found.");
     } else {
@@ -118,23 +120,27 @@ class LedgerIntegrityService {
         print("   - $issue");
       }
     }
-    
+
     if (report.orphanLedgerEntries.isEmpty) {
       print("✅ No orphan ledger entries found.");
     } else {
       print("⚠️ ORPHAN LEDGER ENTRIES (${report.orphanLedgerEntries.length}):");
       for (final entry in report.orphanLedgerEntries.take(5)) {
-        print("   - Entry ${entry.id} -> missing transaction ${entry.transactionId}");
+        print(
+          "   - Entry ${entry.id} -> missing transaction ${entry.transactionId}",
+        );
       }
       if (report.orphanLedgerEntries.length > 5) {
         print("   ... and ${report.orphanLedgerEntries.length - 5} more");
       }
     }
-    
+
     if (report.transactionsWithoutLedger.isEmpty) {
       print("✅ All transactions have corresponding ledger entries.");
     } else {
-      print("⚠️ TRANSACTIONS WITHOUT LEDGER ENTRIES (${report.transactionsWithoutLedger.length}):");
+      print(
+        "⚠️ TRANSACTIONS WITHOUT LEDGER ENTRIES (${report.transactionsWithoutLedger.length}):",
+      );
       for (final tx in report.transactionsWithoutLedger.take(5)) {
         print("   - Transaction ${tx.id} (${tx.type}, ${tx.amount} EGP)");
       }
@@ -142,7 +148,7 @@ class LedgerIntegrityService {
         print("   ... and ${report.transactionsWithoutLedger.length - 5} more");
       }
     }
-    
+
     print("=" * 60);
     print("✅ Integrity check completed.\n");
   }
@@ -158,7 +164,7 @@ class IntegrityReport {
   final int totalLedgerEntries;
   final int totalTransactions;
   final int validationDurationMs;
-  
+
   IntegrityReport({
     required this.duplicateTransactionIssues,
     required this.orphanLedgerEntries,

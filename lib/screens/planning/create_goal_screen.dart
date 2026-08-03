@@ -114,7 +114,9 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
         name.contains('طارئ')) {
       return '🛟';
     }
-    if (name.contains('gift') || name.contains('هدية') || name.contains('هديه')) {
+    if (name.contains('gift') ||
+        name.contains('هدية') ||
+        name.contains('هديه')) {
       return '🎁';
     }
     return '🎯';

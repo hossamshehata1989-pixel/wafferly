@@ -102,8 +102,7 @@ class CategoryDetailRow extends StatelessWidget {
         width: 20,
         height: 20,
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) =>
-            Icon(Icons.category, size: 20, color: color),
+        errorBuilder: (_, _, _) => Icon(Icons.category, size: 20, color: color),
       ),
     );
   }

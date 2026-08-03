@@ -6,10 +6,10 @@ void main() {
 
   void checkId(String id) {
     final mainPath = 'assets/icons/categories/category_$id.svg';
-    final subPath  = 'assets/icons/subcategories/sub_$id.svg';
+    final subPath = 'assets/icons/subcategories/sub_$id.svg';
 
     final mainFile = File(mainPath);
-    final subFile  = File(subPath);
+    final subFile = File(subPath);
 
     if (!mainFile.existsSync() && !subFile.existsSync()) {
       missing.add(id);

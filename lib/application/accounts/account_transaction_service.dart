@@ -1,11 +1,17 @@
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:wafferly/constants/transaction_constants.dart';
+import 'package:wafferly/financial_engine/commands/opening_balance/opening_balance_intent.dart';
+import 'package:wafferly/financial_engine/commands/shared/transaction_metadata.dart';
+import 'package:wafferly/financial_engine/engine/financial_operation_engine.dart';
+import 'package:wafferly/financial_engine/execution_context/execution_context.dart';
+import 'package:wafferly/financial_engine/operations/opening_balance_operation.dart';
+import 'package:wafferly/financial_engine/results/operation_result.dart';
 import 'package:wafferly/models/account.dart';
 import 'package:wafferly/models/enums/section_type.dart';
-import 'package:wafferly/models/transaction.dart';
 
 class AccountTransactionService {
-  const AccountTransactionService();
+  final FinancialOperationEngine _engine;
+
+  const AccountTransactionService({required FinancialOperationEngine engine})
+    : _engine = engine;
 
   Future<void> createInitialBalance({
     required Account account,
@@ -14,28 +20,32 @@ class AccountTransactionService {
     required String paymentMethod,
     required String currency,
   }) async {
-    if (balance == 0) return;
-
     final isLiability = sectionType == SectionType.liabilities;
-    final initialBalanceAmount = isLiability ? -balance : balance;
-
-    final transaction = Transaction.create(
-      amount: initialBalanceAmount.abs(),
-      type: TransactionType.initialBalance,
-      fromAccountId: initialBalanceAmount < 0 ? account.id : null,
-      toAccountId: initialBalanceAmount > 0 ? account.id : null,
-      categoryId: "initial_balance",
-      date: DateTime.now(),
-      note: "Initial balance",
-      isExceptional: false,
-      paymentMethod: paymentMethod,
-      currencyCode: currency,
-      source: TransactionSource.accountCreation,
+    final context = ExecutionContext(
+      idempotencyKey: 'opening-balance-${account.id}',
     );
 
-    await Hive.box<Transaction>(
-      'transactions',
-    ).put(transaction.id, transaction);
+    final result = await _engine.execute(
+      OpeningBalanceOperation(
+        intent: OpeningBalanceIntent(
+          accountId: account.id,
+          amount: balance,
+          isLiability: isLiability,
+        ),
+        metadata: TransactionMetadata(
+          occurredAt: DateTime.now(),
+          note: 'Initial balance',
+          paymentMethod: paymentMethod,
+          currencyCode: currency,
+        ),
+        context: context,
+      ),
+      context,
+    );
+
+    if (result is! OperationSucceeded) {
+      throw StateError('Opening balance operation failed: $result');
+    }
   }
 
   Future<void> createBalanceAdjustment({
@@ -49,22 +59,8 @@ class AccountTransactionService {
 
     if (difference == 0) return;
 
-    final transaction = Transaction.create(
-      amount: difference.abs(),
-      type: TransactionType.balanceAdjustment,
-      fromAccountId: difference < 0 ? accountId : null,
-      toAccountId: difference > 0 ? accountId : null,
-      categoryId: "balance_adjustment",
-      date: DateTime.now(),
-      note: "Manual balance adjustment",
-      isExceptional: false,
-      paymentMethod: paymentMethod,
-      currencyCode: currency,
-      source: TransactionSource.balanceAdjustment,
+    throw UnsupportedError(
+      'Balance adjustment must be executed through the Financial Operation Engine.',
     );
-
-    await Hive.box<Transaction>(
-      'transactions',
-    ).put(transaction.id, transaction);
   }
 }

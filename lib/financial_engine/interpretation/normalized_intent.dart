@@ -20,6 +20,9 @@ final class NormalizedIntent {
   /// Used only by goal operations.
   final String? goalId;
 
+  /// Used by opening-balance genesis operations.
+  final bool isLiability;
+
   final double amount;
   final Resolution resolution;
 
@@ -32,6 +35,7 @@ final class NormalizedIntent {
     this.goalId,
     this.actorMemberId,
     this.isExceptional = false,
+    this.isLiability = false,
     required this.resolution,
   });
 }

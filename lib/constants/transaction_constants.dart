@@ -10,7 +10,7 @@ class TransactionSource {
   static const String importedCsv = 'imported_csv';
   static const String bankSync = 'bank_sync';
   static const String autoDetected = 'auto_detected';
-  
+
   /// قائمة بكل المصادر (للقوائم والفلترة)
   static const List<String> all = [
     manual,
@@ -22,9 +22,10 @@ class TransactionSource {
     bankSync,
     autoDetected,
   ];
-  
+
   /// هل المصدر تلقائي أم يدوي؟
-  static bool isManual(String source) => source == manual || source == fromExpense;
+  static bool isManual(String source) =>
+      source == manual || source == fromExpense;
   static bool isAuto(String source) => !isManual(source);
 }
 
@@ -36,7 +37,7 @@ class TransactionType {
   static const String debt = 'debt';
   static const String initialBalance = 'initial_balance';
   static const String balanceAdjustment = 'balance_adjustment';
-  
+
   static const List<String> all = [
     income,
     expense,

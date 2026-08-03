@@ -1,5 +1,1 @@
-enum EntryState {
-  empty,
-  draft,
-  readyToSave,
-}
+enum EntryState { empty, draft, readyToSave }
