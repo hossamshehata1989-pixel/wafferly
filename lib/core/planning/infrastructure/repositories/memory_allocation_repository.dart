@@ -53,4 +53,15 @@ final class MemoryAllocationRepository implements AllocationRepository {
   Future<void> delete(String allocationId) async {
     _storage.remove(allocationId);
   }
+
+  @override
+  Future<Allocation?> findCurrentBySource(String sourceId) async {
+    try {
+      return _storage.values.firstWhere(
+        (allocation) => allocation.sourceId == sourceId,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 }

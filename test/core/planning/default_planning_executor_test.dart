@@ -5,6 +5,8 @@ import 'package:wafferly/core/planning/engine/executor/default_planning_executor
 import 'package:wafferly/core/planning/infrastructure/repositories/memory_allocation_repository.dart';
 import 'package:wafferly/core/planning/operations/reserve_operation.dart';
 import 'package:wafferly/core/planning/value_objects/planning_source_type.dart';
+import 'package:wafferly/core/planning/engine/planning_execution_context.dart';
+import 'package:wafferly/core/planning/engine/interpreter/planning_interpreter.dart';
 
 void main() {
   group('DefaultPlanningExecutor', () {
@@ -23,8 +25,13 @@ void main() {
         amount: 500,
       );
 
+      final context = PlanningExecutionContext(
+        operation: operation,
+        intent: PlanningIntent.reserve,
+      );
+
       // Act
-      await executor.execute(operation);
+      await executor.execute(context);
 
       // Assert
       final Allocation? allocation = await repository.findById('op-1');

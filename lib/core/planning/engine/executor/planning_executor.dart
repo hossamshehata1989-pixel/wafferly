@@ -1,4 +1,4 @@
-import '../../operations/planning_operation.dart';
+import '../planning_execution_context.dart';
 
 /// ===============================================================
 /// PlanningExecutor
@@ -23,5 +23,5 @@ import '../../operations/planning_operation.dart';
 ///
 /// ===============================================================
 abstract interface class PlanningExecutor {
-  Future<void> execute(PlanningOperation operation);
+  Future<void> execute(PlanningExecutionContext context);
 }

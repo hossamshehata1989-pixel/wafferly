@@ -1,9 +1,9 @@
 import '../../entities/allocation.dart';
-import '../../operations/planning_operation.dart';
 import '../../operations/reserve_operation.dart';
 import '../../ports/allocation_repository.dart';
 import '../../value_objects/allocation_status.dart';
 import 'planning_executor.dart';
+import '../planning_execution_context.dart';
 
 /// ===============================================================
 /// DefaultPlanningExecutor
@@ -23,7 +23,9 @@ final class DefaultPlanningExecutor implements PlanningExecutor {
   final AllocationRepository repository;
 
   @override
-  Future<void> execute(PlanningOperation operation) async {
+  Future<void> execute(PlanningExecutionContext context) async {
+    final operation = context.operation;
+
     switch (operation) {
       case ReserveOperation():
         // Build the operational Allocation state

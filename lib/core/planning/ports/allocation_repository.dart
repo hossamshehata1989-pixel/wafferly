@@ -32,9 +32,13 @@ abstract interface class AllocationRepository {
   /// Returns all active Allocations.
   Future<List<Allocation>> findActive();
 
+  /// Returns whether an allocation already exists
+  /// for the specified planning source.
   /// Deletes an Allocation.
   ///
   /// This should rarely be used in production.
   /// Business operations should prefer changing Allocation status.
   Future<void> delete(String allocationId);
+
+  Future<Allocation?> findCurrentBySource(String sourceId);
 }
