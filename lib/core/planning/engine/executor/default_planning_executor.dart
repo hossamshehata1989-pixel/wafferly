@@ -4,6 +4,7 @@ import '../../ports/allocation_repository.dart';
 import '../../value_objects/allocation_status.dart';
 import 'planning_executor.dart';
 import '../planning_execution_context.dart';
+import '../../operations/release_operation.dart';
 
 /// ===============================================================
 /// DefaultPlanningExecutor
@@ -44,6 +45,25 @@ final class DefaultPlanningExecutor implements PlanningExecutor {
         );
 
         await repository.create(allocation);
+
+        break;
+
+      case ReleaseOperation operation:
+        final allocation = await repository.findCurrentBySource(
+          operation.sourceId,
+        );
+
+        if (allocation == null) {
+          throw StateError('No allocation exists for this planning source.');
+        }
+
+        final updatedAllocation = allocation.copyWith(
+          amount: allocation.amount - operation.amount,
+          version: allocation.version + 1,
+          updatedAt: DateTime.now(),
+        );
+
+        await repository.update(updatedAllocation);
 
         break;
     }

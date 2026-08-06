@@ -8,6 +8,7 @@ import '../engine/policies/planning_policy_pipeline.dart';
 import '../infrastructure/repositories/memory_allocation_repository.dart';
 import '../ports/allocation_repository.dart';
 import '../engine/guards/positive_amount_guard.dart';
+import '../engine/guards/cannot_release_more_than_reserved_guard.dart';
 
 final class PlanningEngineBootstrap {
   const PlanningEngineBootstrap._();
@@ -19,7 +20,12 @@ final class PlanningEngineBootstrap {
 
     return PlanningEngine(
       interpreter: const DefaultPlanningInterpreter(),
-      guards: const PlanningGuardPipeline(guards: [PositiveAmountGuard()]),
+      guards: PlanningGuardPipeline(
+        guards: [
+          const PositiveAmountGuard(),
+          CannotReleaseMoreThanReservedGuard(repository: repository),
+        ],
+      ),
       policies: const PlanningPolicyPipeline(policies: []),
       planner: const DefaultPlanningPlanner(),
       integrity: const DefaultPlanningIntegrityChecker(),

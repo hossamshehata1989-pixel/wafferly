@@ -67,4 +67,28 @@ final class Allocation {
 
   /// Last successful update timestamp.
   final DateTime? updatedAt;
+
+  Allocation copyWith({
+    String? id,
+    String? sourceId,
+    PlanningSourceType? sourceType,
+    String? accountId,
+    double? amount,
+    AllocationStatus? status,
+    int? version,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Allocation(
+      id: id ?? this.id,
+      sourceId: sourceId ?? this.sourceId,
+      sourceType: sourceType ?? this.sourceType,
+      accountId: accountId ?? this.accountId,
+      amount: amount ?? this.amount,
+      status: status ?? this.status,
+      version: version ?? this.version,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 }
