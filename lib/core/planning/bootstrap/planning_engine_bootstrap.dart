@@ -29,7 +29,10 @@ final class PlanningEngineBootstrap {
         ],
       ),
       policies: const PlanningPolicyPipeline(policies: []),
-      planner: const DefaultPlanningPlanner(),
+      planner: DefaultPlanningPlanner(
+        repository: repository,
+        idGenerator: idGenerator,
+      ),
       integrity: const DefaultPlanningIntegrityChecker(),
       executor: DefaultPlanningExecutor(
         repository: repository,

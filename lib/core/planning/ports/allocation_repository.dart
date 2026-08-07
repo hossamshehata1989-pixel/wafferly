@@ -40,5 +40,5 @@ abstract interface class AllocationRepository {
   /// Business operations should prefer changing Allocation status.
   Future<void> delete(String allocationId);
 
-  Future<Allocation?> findCurrentBySource(String sourceId);
+  Future<Allocation?> findActiveBySource(String sourceId);
 }

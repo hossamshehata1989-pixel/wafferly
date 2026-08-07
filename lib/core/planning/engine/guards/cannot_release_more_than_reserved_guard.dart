@@ -19,7 +19,7 @@ final class CannotReleaseMoreThanReservedGuard implements PlanningGuard {
   Future<void> validate(PlanningExecutionContext context) async {
     switch (context.operation) {
       case ReleaseOperation operation:
-        final allocation = await repository.findCurrentBySource(
+        final allocation = await repository.findActiveBySource(
           operation.sourceId,
         );
 

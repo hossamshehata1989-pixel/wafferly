@@ -28,4 +28,4 @@ abstract interface class PlanningInterpreter {
 /// operation implementations.
 ///
 /// ===============================================================
-enum PlanningIntent { reserve, release }
+enum PlanningIntent { reserve, release, split }

@@ -72,8 +72,6 @@ final class PlanningEngine {
 
     await integrity.validate(plan);
 
-    await integrity.validate(plan);
-
     await executor.execute(plan);
   }
 }
