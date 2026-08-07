@@ -1,35 +1,26 @@
 import '../../value_objects/planning_source_type.dart';
 
-/// ===============================================================
-/// PlanningMutation
-/// ===============================================================
-///
-/// Represents a single domain mutation produced by the Planner.
-///
-/// Mutations are immutable execution primitives understood by the
-/// Planning Executor.
-///
-/// They are NOT database operations.
-/// They represent domain-level allocation changes.
-///
-/// ===============================================================
 sealed class PlanningMutation {
   const PlanningMutation();
 }
 
 /// ===============================================================
-/// ReserveMutation
+/// CreateAllocationMutation
 /// ===============================================================
-final class ReserveMutation extends PlanningMutation {
-  const ReserveMutation({
+final class CreateAllocationMutation extends PlanningMutation {
+  const CreateAllocationMutation({
+    required this.allocationId,
+    required this.createdAt,
     required this.sourceId,
     required this.sourceType,
     required this.accountId,
     required this.amount,
   });
 
-  final String sourceId;
+  final String allocationId;
+  final DateTime createdAt;
 
+  final String sourceId;
   final PlanningSourceType sourceType;
   final String accountId;
 
@@ -37,12 +28,29 @@ final class ReserveMutation extends PlanningMutation {
 }
 
 /// ===============================================================
-/// ReleaseMutation
+/// IncreaseAllocationMutation
 /// ===============================================================
-final class ReleaseMutation extends PlanningMutation {
-  const ReleaseMutation({required this.sourceId, required this.amount});
+final class IncreaseAllocationMutation extends PlanningMutation {
+  const IncreaseAllocationMutation({
+    required this.allocationId,
+    required this.amount,
+  });
 
-  final String sourceId;
+  final String allocationId;
+
+  final double amount;
+}
+
+/// ===============================================================
+/// DecreaseAllocationMutation
+/// ===============================================================
+final class DecreaseAllocationMutation extends PlanningMutation {
+  const DecreaseAllocationMutation({
+    required this.allocationId,
+    required this.amount,
+  });
+
+  final String allocationId;
 
   final double amount;
 }

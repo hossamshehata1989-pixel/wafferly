@@ -72,8 +72,8 @@ final class PlanningEngine {
 
     await integrity.validate(plan);
 
-    context = context.copyWith(plan: plan);
+    await integrity.validate(plan);
 
-    await executor.execute(context);
+    await executor.execute(plan);
   }
 }

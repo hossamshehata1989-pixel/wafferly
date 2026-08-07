@@ -1,27 +1,16 @@
-import '../planning_execution_context.dart';
+import '../planner/planning_execution_plan.dart';
 
 /// ===============================================================
 /// PlanningExecutor
 /// ===============================================================
 ///
-/// Executes validated PlanningOperations.
+/// Executes a validated PlanningExecutionPlan.
 ///
-/// The Executor is the only component allowed
-/// to mutate Allocation state.
+/// The Executor owns NO business rules.
 ///
-/// Responsibilities:
-/// - Create Allocations
-/// - Update Allocations
-/// - Release Allocations
-/// - Reallocate Allocations
-///
-/// It owns NO business rules.
-///
-/// ADR References:
-/// - ADR-026 PlanningOperation Contract
-/// - ADR-028 Allocation Contract
+/// It only applies PlanningMutations to the AllocationRepository.
 ///
 /// ===============================================================
 abstract interface class PlanningExecutor {
-  Future<void> execute(PlanningExecutionContext context);
+  Future<void> execute(PlanningExecutionPlan plan);
 }

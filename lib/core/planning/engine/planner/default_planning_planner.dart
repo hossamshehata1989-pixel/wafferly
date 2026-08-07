@@ -14,7 +14,9 @@ final class DefaultPlanningPlanner implements ExecutionPlanner {
       case ReserveOperation operation:
         return PlanningExecutionPlan(
           mutations: [
-            ReserveMutation(
+            CreateAllocationMutation(
+              allocationId: operation.id,
+              createdAt: operation.createdAt,
               sourceId: operation.sourceId,
               sourceType: operation.sourceType,
               accountId: operation.accountId,
@@ -26,8 +28,8 @@ final class DefaultPlanningPlanner implements ExecutionPlanner {
       case ReleaseOperation operation:
         return PlanningExecutionPlan(
           mutations: [
-            ReleaseMutation(
-              sourceId: operation.sourceId,
+            DecreaseAllocationMutation(
+              allocationId: operation.id,
               amount: operation.amount,
             ),
           ],
