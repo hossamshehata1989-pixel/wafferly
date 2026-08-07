@@ -1,17 +1,19 @@
+import 'planning_mutation.dart';
+
 /// ===============================================================
 /// PlanningExecutionPlan
 /// ===============================================================
 ///
-/// Immutable execution decision produced by the PlanningPlanner.
-///
-/// The Execution Plan does NOT contain execution logic.
-///
-/// It only describes HOW the operation should be executed.
+/// Immutable execution recipe produced by the Planner.
 ///
 /// ===============================================================
 final class PlanningExecutionPlan {
-  const PlanningExecutionPlan({required this.requiresUserApproval});
+  const PlanningExecutionPlan({
+    required this.mutations,
+    this.requiresUserApproval = false,
+  });
 
-  /// Whether execution must be deferred until user approval.
+  final List<PlanningMutation> mutations;
+
   final bool requiresUserApproval;
 }
