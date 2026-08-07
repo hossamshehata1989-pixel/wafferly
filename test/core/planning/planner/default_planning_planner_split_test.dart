@@ -1,21 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:wafferly/core/planning/engine/interpreter/planning_interpreter.dart';
 import 'package:wafferly/core/planning/engine/planner/default_planning_planner.dart';
+import 'package:wafferly/core/planning/engine/planner/handlers/merge_planner.dart';
+import 'package:wafferly/core/planning/engine/planner/handlers/reallocate_planner.dart';
+import 'package:wafferly/core/planning/engine/planner/handlers/release_planner.dart';
+import 'package:wafferly/core/planning/engine/planner/handlers/reserve_planner.dart';
+import 'package:wafferly/core/planning/engine/planner/handlers/split_planner.dart';
 import 'package:wafferly/core/planning/engine/planner/planning_execution_plan.dart';
 import 'package:wafferly/core/planning/engine/planner/planning_mutation.dart';
 import 'package:wafferly/core/planning/engine/planning_execution_context.dart';
-import 'package:wafferly/core/planning/engine/interpreter/planning_interpreter.dart';
+import 'package:wafferly/core/planning/entities/allocation.dart';
 import 'package:wafferly/core/planning/infrastructure/identity/memory_allocation_id_generator.dart';
 import 'package:wafferly/core/planning/infrastructure/repositories/memory_allocation_repository.dart';
-import 'package:wafferly/core/planning/entities/allocation.dart';
+import 'package:wafferly/core/planning/operations/split_operation.dart';
 import 'package:wafferly/core/planning/value_objects/allocation_status.dart';
 import 'package:wafferly/core/planning/value_objects/planning_source_reference.dart';
 import 'package:wafferly/core/planning/value_objects/planning_source_type.dart';
-import 'package:wafferly/core/planning/operations/split_operation.dart';
-import 'package:wafferly/core/planning/engine/planner/handlers/reserve_planner.dart';
-import 'package:wafferly/core/planning/engine/planner/handlers/release_planner.dart';
-import 'package:wafferly/core/planning/engine/planner/handlers/split_planner.dart';
-import 'package:wafferly/core/planning/engine/planner/handlers/merge_planner.dart';
 
 void main() {
   group('DefaultPlanningPlanner SplitOperation', () {
@@ -46,6 +47,7 @@ void main() {
             idGenerator: MemoryAllocationIdGenerator(),
           ),
           mergePlanner: MergePlanner(repository: repository),
+          reallocatePlanner: ReallocatePlanner(repository: repository),
         );
 
         final context = PlanningExecutionContext(
@@ -81,7 +83,6 @@ void main() {
         expect(create.accountId, 'cash');
       },
     );
-    // ===============================================================
 
     test(
       'creates IncreaseAllocationMutation when target allocation already exists',
@@ -122,6 +123,7 @@ void main() {
             idGenerator: MemoryAllocationIdGenerator(),
           ),
           mergePlanner: MergePlanner(repository: repository),
+          reallocatePlanner: ReallocatePlanner(repository: repository),
         );
 
         final context = PlanningExecutionContext(
@@ -157,8 +159,6 @@ void main() {
       },
     );
 
-    // ===============================================================
-
     test('throws when source allocation does not exist', () async {
       final repository = MemoryAllocationRepository();
 
@@ -172,6 +172,7 @@ void main() {
           idGenerator: MemoryAllocationIdGenerator(),
         ),
         mergePlanner: MergePlanner(repository: repository),
+        reallocatePlanner: ReallocatePlanner(repository: repository),
       );
 
       final context = PlanningExecutionContext(
@@ -194,7 +195,5 @@ void main() {
 
       expect(() => planner.plan(context), throwsA(isA<StateError>()));
     });
-
-    // ==============================================================
   });
 }
