@@ -12,6 +12,10 @@ import 'package:wafferly/core/planning/value_objects/allocation_status.dart';
 import 'package:wafferly/core/planning/value_objects/planning_source_reference.dart';
 import 'package:wafferly/core/planning/value_objects/planning_source_type.dart';
 import 'package:wafferly/core/planning/operations/split_operation.dart';
+import 'package:wafferly/core/planning/engine/planner/handlers/reserve_planner.dart';
+import 'package:wafferly/core/planning/engine/planner/handlers/release_planner.dart';
+import 'package:wafferly/core/planning/engine/planner/handlers/split_planner.dart';
+import 'package:wafferly/core/planning/engine/planner/handlers/merge_planner.dart';
 
 void main() {
   group('DefaultPlanningPlanner SplitOperation', () {
@@ -33,8 +37,15 @@ void main() {
         );
 
         final planner = DefaultPlanningPlanner(
-          repository: repository,
-          idGenerator: MemoryAllocationIdGenerator(),
+          reservePlanner: ReservePlanner(
+            idGenerator: MemoryAllocationIdGenerator(),
+          ),
+          releasePlanner: ReleasePlanner(repository: repository),
+          splitPlanner: SplitPlanner(
+            repository: repository,
+            idGenerator: MemoryAllocationIdGenerator(),
+          ),
+          mergePlanner: MergePlanner(repository: repository),
         );
 
         final context = PlanningExecutionContext(
@@ -102,8 +113,15 @@ void main() {
         );
 
         final planner = DefaultPlanningPlanner(
-          repository: repository,
-          idGenerator: MemoryAllocationIdGenerator(),
+          reservePlanner: ReservePlanner(
+            idGenerator: MemoryAllocationIdGenerator(),
+          ),
+          releasePlanner: ReleasePlanner(repository: repository),
+          splitPlanner: SplitPlanner(
+            repository: repository,
+            idGenerator: MemoryAllocationIdGenerator(),
+          ),
+          mergePlanner: MergePlanner(repository: repository),
         );
 
         final context = PlanningExecutionContext(
@@ -145,8 +163,15 @@ void main() {
       final repository = MemoryAllocationRepository();
 
       final planner = DefaultPlanningPlanner(
-        repository: repository,
-        idGenerator: MemoryAllocationIdGenerator(),
+        reservePlanner: ReservePlanner(
+          idGenerator: MemoryAllocationIdGenerator(),
+        ),
+        releasePlanner: ReleasePlanner(repository: repository),
+        splitPlanner: SplitPlanner(
+          repository: repository,
+          idGenerator: MemoryAllocationIdGenerator(),
+        ),
+        mergePlanner: MergePlanner(repository: repository),
       );
 
       final context = PlanningExecutionContext(

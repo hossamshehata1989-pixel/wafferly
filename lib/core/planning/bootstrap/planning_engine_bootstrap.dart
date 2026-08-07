@@ -11,6 +11,10 @@ import '../engine/guards/positive_amount_guard.dart';
 import '../engine/guards/cannot_release_more_than_reserved_guard.dart';
 import '../ports/allocation_id_generator.dart';
 import '../infrastructure/identity/memory_allocation_id_generator.dart';
+import '../engine/planner/handlers/reserve_planner.dart';
+import '../engine/planner/handlers/release_planner.dart';
+import '../engine/planner/handlers/split_planner.dart';
+import '../engine/planner/handlers/merge_planner.dart';
 
 final class PlanningEngineBootstrap {
   const PlanningEngineBootstrap._();
@@ -30,8 +34,13 @@ final class PlanningEngineBootstrap {
       ),
       policies: const PlanningPolicyPipeline(policies: []),
       planner: DefaultPlanningPlanner(
-        repository: repository,
-        idGenerator: idGenerator,
+        reservePlanner: ReservePlanner(idGenerator: idGenerator),
+        releasePlanner: ReleasePlanner(repository: repository),
+        splitPlanner: SplitPlanner(
+          repository: repository,
+          idGenerator: idGenerator,
+        ),
+        mergePlanner: MergePlanner(repository: repository),
       ),
       integrity: const DefaultPlanningIntegrityChecker(),
       executor: DefaultPlanningExecutor(
