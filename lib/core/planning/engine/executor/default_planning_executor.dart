@@ -61,6 +61,11 @@ final class DefaultPlanningExecutor implements PlanningExecutor {
               updatedAt: DateTime.now(),
             ),
           );
+
+        case DeactivateAllocationMutation _:
+          throw UnimplementedError(
+            'DeactivateAllocationMutation is not implemented yet.',
+          );
       }
     }
   }

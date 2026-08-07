@@ -54,3 +54,12 @@ final class DecreaseAllocationMutation extends PlanningMutation {
 
   final double amount;
 }
+
+/// ===============================================================
+/// DeactivateAllocationMutation
+/// ===============================================================
+final class DeactivateAllocationMutation extends PlanningMutation {
+  const DeactivateAllocationMutation({required this.allocationId});
+
+  final String allocationId;
+}
