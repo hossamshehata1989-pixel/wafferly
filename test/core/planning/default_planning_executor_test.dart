@@ -90,5 +90,49 @@ void main() {
       expect(allocation.sourceId, 'goal-1');
       expect(allocation.accountId, 'cash');
     });
+
+    test('releases allocation from DeactivateAllocationMutation', () async {
+      // Arrange
+      final repository = MemoryAllocationRepository();
+
+      final allocation = Allocation(
+        id: 'allocation-1',
+        sourceId: 'goal-1',
+        sourceType: PlanningSourceType.goal,
+        accountId: 'cash',
+        amount: 1000,
+        status: AllocationStatus.active,
+        version: 1,
+        createdAt: DateTime(2026, 8, 6),
+      );
+
+      await repository.create(allocation);
+
+      final executor = DefaultPlanningExecutor(
+        repository: repository,
+        idGenerator: MemoryAllocationIdGenerator(),
+      );
+
+      final plan = PlanningExecutionPlan(
+        mutations: [DeactivateAllocationMutation(allocationId: 'allocation-1')],
+      );
+
+      // Act
+      await executor.execute(plan);
+
+      // Assert
+      final updated = await repository.findById('allocation-1');
+
+      expect(updated, isNotNull);
+      expect(updated!.status, AllocationStatus.released);
+      expect(updated.version, 2);
+      expect(updated.updatedAt, isNotNull);
+
+      // Immutable financial/planning identity remains unchanged.
+      expect(updated.id, 'allocation-1');
+      expect(updated.sourceId, 'goal-1');
+      expect(updated.accountId, 'cash');
+      expect(updated.amount, 1000);
+    });
   });
 }

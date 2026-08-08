@@ -62,9 +62,19 @@ final class DefaultPlanningExecutor implements PlanningExecutor {
             ),
           );
 
-        case DeactivateAllocationMutation _:
-          throw UnimplementedError(
-            'DeactivateAllocationMutation is not implemented yet.',
+        case DeactivateAllocationMutation():
+          final allocation = await repository.findById(mutation.allocationId);
+
+          if (allocation == null) {
+            throw StateError('Allocation not found.');
+          }
+
+          await repository.update(
+            allocation.copyWith(
+              status: AllocationStatus.released,
+              version: allocation.version + 1,
+              updatedAt: DateTime.now(),
+            ),
           );
       }
     }
