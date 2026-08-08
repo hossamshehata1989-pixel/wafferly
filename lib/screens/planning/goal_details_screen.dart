@@ -21,6 +21,7 @@ import '../../services/transaction_service.dart';
 import '../../models/transaction.dart';
 import '../../constants/transaction_constants.dart';
 import '../../services/goal_details_projection_service.dart';
+import 'package:provider/provider.dart';
 
 class GoalDetailsScreen extends StatefulWidget {
   final Goal goal;
@@ -52,7 +53,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     _projectionService = GoalProjectionService();
     _activityService = GoalActivityService();
 
-    _goalAllocationService = GoalAllocationService();
+    _goalAllocationService = context.read<GoalAllocationService>();
 
     _fundingProjectionService = GoalFundingProjectionService();
     _goalService = GoalService();

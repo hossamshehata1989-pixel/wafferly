@@ -12,6 +12,7 @@ import 'goal_details_screen.dart';
 import '../../models/enums/goal_status.dart';
 import 'create_goal_screen.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -22,7 +23,7 @@ class GoalsScreen extends StatefulWidget {
 
 class _GoalsScreenState extends State<GoalsScreen> {
   final GoalService _goalService = GoalService();
-  final GoalAllocationService _goalAllocationService = GoalAllocationService();
+  late final GoalAllocationService _goalAllocationService;
 
   // ✅ استبدال GoalProjectionService بـ GoalFundingProjectionService
   final GoalFundingProjectionService _projectionService =
@@ -34,6 +35,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
   @override
   void initState() {
     super.initState();
+
+    _goalAllocationService = context.read<GoalAllocationService>();
+
     _loadGoals();
   }
 

@@ -68,6 +68,7 @@ import 'services/balance_service.dart';
 import 'features/members/services/member_seeder.dart';
 import 'core/planning/ports/allocation_repository.dart';
 import 'core/planning/services/available_balance_projection_service.dart';
+import 'services/goal_allocation_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -396,6 +397,11 @@ void main() async {
         Provider<FinancialOperationEngine>(create: (_) => engine),
 
         Provider<PlanningEngine>(create: (_) => planningEngine),
+
+        Provider<GoalAllocationService>(
+          create: (context) =>
+              GoalAllocationService(engine: context.read<PlanningEngine>()),
+        ),
 
         Provider<AvailableBalanceProjectionService>(
           create: (_) => availableBalanceProjectionService,

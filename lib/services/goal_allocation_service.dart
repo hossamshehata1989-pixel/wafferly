@@ -7,8 +7,13 @@ import 'allocation_service.dart';
 import 'allocation_validator.dart';
 import 'goal_funding_projection_service.dart';
 import 'goal_service.dart';
+import '../core/planning/engine/planning_engine.dart';
 
 class GoalAllocationService {
+  GoalAllocationService({required PlanningEngine engine}) : _engine = engine;
+
+  final PlanningEngine _engine;
+
   final AllocationService _allocationService = AllocationService();
   final AllocationValidator _validator = AllocationValidator();
   final GoalService _goalService = GoalService();
