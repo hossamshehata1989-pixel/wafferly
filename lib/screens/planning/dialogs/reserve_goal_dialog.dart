@@ -1,22 +1,24 @@
 // lib/screens/planning/dialogs/reserve_goal_dialog.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import '../../../models/enums/account_enums.dart';
 import '../../../services/account_service.dart';
-import '../../../services/goal_allocation_service.dart';
 import '../../../services/goal_service.dart';
 import '../../../services/goal_funding_projection_service.dart';
 import '../../../services/goal_activity_service.dart';
 import '../../../models/goal_activity.dart';
+import '../../../services/goal_allocation_service.dart';
 
 Future<bool?> showReserveGoalDialog(
   BuildContext context, {
   required String goalId,
 }) async {
   final accountService = AccountService();
-  final allocationService = GoalAllocationService();
+  final allocationService = context.read<GoalAllocationService>();
   final goalService = GoalService();
-  final projectionService = GoalFundingProjectionService();
+  final projectionService = context.read<GoalFundingProjectionService>();
   final activityService = GoalActivityService();
 
   final goal = goalService.getById(goalId);
@@ -24,8 +26,10 @@ Future<bool?> showReserveGoalDialog(
     return false;
   }
 
-  final projection = projectionService.getProjection(goalId);
+  final projection = await projectionService.getProjection(goalId);
+
   final currentProgress = projection.totalProgress;
+
   final remaining = (goal.targetAmount - currentProgress).clamp(
     0.0,
     double.infinity,

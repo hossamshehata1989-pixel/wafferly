@@ -13,6 +13,7 @@ import '../../models/enums/goal_status.dart';
 import 'create_goal_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../models/goal_funding_projection.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -26,8 +27,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
   late final GoalAllocationService _goalAllocationService;
 
   // ✅ استبدال GoalProjectionService بـ GoalFundingProjectionService
-  final GoalFundingProjectionService _projectionService =
-      GoalFundingProjectionService();
+  late final GoalFundingProjectionService _projectionService;
+
+  final Map<String, GoalFundingProjection> _projections = {};
 
   List<Goal> goals = [];
   bool showArchived = false;
@@ -37,23 +39,36 @@ class _GoalsScreenState extends State<GoalsScreen> {
     super.initState();
 
     _goalAllocationService = context.read<GoalAllocationService>();
+    _projectionService = context.read<GoalFundingProjectionService>();
 
     _loadGoals();
   }
 
-  void _loadGoals() {
+  Future<void> _loadGoals() async {
     final loadedGoals = _goalService.getAll();
+
+    final projections = <String, GoalFundingProjection>{};
+
+    for (final goal in loadedGoals) {
+      projections[goal.id] = await _projectionService.getProjection(goal.id);
+    }
+
     if (!mounted) return;
+
     setState(() {
       goals = loadedGoals;
+      _projections
+        ..clear()
+        ..addAll(projections);
     });
   }
 
   Widget _buildGoalCard(Goal goal, bool isTablet) {
-    // ✅ استخدام getProjection() مباشرة (متزامن)
-    final projection = _projectionService.getProjection(goal.id);
+    final projection = _projections[goal.id];
+
     final allocated =
-        projection.totalProgress; // totalReserved + totalSaved (saved = 0)
+        projection?.totalProgress ??
+        0.0; // totalReserved + totalSaved (saved = 0)
 
     final progress = goal.status == GoalStatus.completed
         ? 1.0

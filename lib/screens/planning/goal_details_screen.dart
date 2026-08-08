@@ -55,19 +55,21 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
 
     _goalAllocationService = context.read<GoalAllocationService>();
 
-    _fundingProjectionService = GoalFundingProjectionService();
+    _fundingProjectionService = context.read<GoalFundingProjectionService>();
     _goalService = GoalService();
 
     _loadData();
   }
 
   Future<void> _loadData() async {
-    final projection = _fundingProjectionService.getProjection(widget.goal.id);
-
-    final activities = _activityService.getGoalActivities(widget.goal.id);
-    final fundingSources = _fundingProjectionService.getFundingSources(
+    final projection = await _fundingProjectionService.getProjection(
       widget.goal.id,
     );
+
+    final activities = _activityService.getGoalActivities(widget.goal.id);
+
+    final fundingSources = projection.reservedSources;
+
     final savedSources = projection.savingSources;
 
     setState(() {
@@ -433,7 +435,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   }
 
   Future<void> _cancelGoal() async {
-    final fundingSources = _fundingProjectionService.getFundingSources(
+    final fundingSources = await _fundingProjectionService.getFundingSources(
       widget.goal.id,
     );
 

@@ -1,42 +1,43 @@
-// lib/services/goal_funding_projection_service.dart
-
+import '../core/planning/ports/allocation_repository.dart';
+import '../core/planning/value_objects/allocation_status.dart';
+import '../core/planning/value_objects/planning_source_type.dart';
+import '../models/goal_activity.dart';
 import '../models/goal_funding_source.dart';
 import '../models/goal_funding_projection.dart';
-import 'allocation_service.dart';
-import 'account_service.dart';
-import '../models/goal_activity.dart';
 import 'goal_activity_service.dart';
-import '../models/enums/allocation_type.dart';
+import 'account_service.dart';
 
 class GoalFundingProjectionService {
-  final AllocationService _allocationService = AllocationService();
-  final AccountService _accountService = AccountService();
+  GoalFundingProjectionService({
+    required AllocationRepository allocationRepository,
+  }) : _allocationRepository = allocationRepository;
+
+  final AllocationRepository _allocationRepository;
+
   final GoalActivityService _activityService = GoalActivityService();
+  final AccountService _accountService = AccountService();
 
-  /// Get current funding sources from active Allocations (reserved money)
-  List<GoalFundingSource> getFundingSources(String goalId) {
-    // Get all allocations for this goal of type 'goal'
-    final allocations = _allocationService
-        .getAll()
-        .where((a) => a.type == AllocationType.goal && a.referenceId == goalId)
-        .toList();
+  /// Returns the currently active Planning allocations for this Goal,
+  /// grouped by funding account.
+  Future<List<GoalFundingSource>> getFundingSources(String goalId) async {
+    final allocations = await _allocationRepository.findBySource(goalId);
 
-    // Group by accountId and sum amounts
+    final activeGoalAllocations = allocations.where(
+      (allocation) =>
+          allocation.sourceType == PlanningSourceType.goal &&
+          allocation.status == AllocationStatus.active,
+    );
+
     final Map<String, double> totals = {};
-    for (final alloc in allocations) {
-      final account = _accountService.getAccountById(alloc.accountId);
 
-      // Exclude archived source accounts from projections
-      if (account == null || account.isArchived) {
-        continue;
-      }
-
-      totals[alloc.accountId] = (totals[alloc.accountId] ?? 0) + alloc.amount;
+    for (final allocation in activeGoalAllocations) {
+      totals[allocation.accountId] =
+          (totals[allocation.accountId] ?? 0) + allocation.amount;
     }
 
-    // Convert to FundingSource list
     return totals.entries.map((entry) {
       final account = _accountService.getAccountById(entry.key);
+
       return GoalFundingSource(
         accountId: entry.key,
         accountName: account?.name ?? 'Unknown',
@@ -46,16 +47,17 @@ class GoalFundingProjectionService {
     }).toList();
   }
 
-  /// Get saved sources from transfer_to_saving activities (history)
+  /// Returns historical amounts transferred to saving.
   List<GoalFundingSource> getSavedSources(String goalId) {
     final activities = _activityService.getGoalActivities(goalId);
 
     final Map<String, double> totals = {};
+
     for (final activity in activities) {
       if (activity.type == GoalActivityType.transferToSaving) {
         final accountId = activity.destinationAccountId;
+
         if (accountId != null) {
-          // Do NOT filter archived accounts — historical data must remain
           totals[accountId] = (totals[accountId] ?? 0) + activity.amount;
         }
       }
@@ -63,27 +65,33 @@ class GoalFundingProjectionService {
 
     return totals.entries.map((entry) {
       final account = _accountService.getAccountById(entry.key);
+
       return GoalFundingSource(
         accountId: entry.key,
-        accountName:
-            account?.name ??
-            'Unknown', // Fallback for archived/deleted accounts
+        accountName: account?.name ?? 'Unknown',
         amount: entry.value,
         isSaving: true,
       );
     }).toList();
   }
 
-  /// Get full projection: current reserved state (from Allocations) + saved state (from history)
-  GoalFundingProjection getProjection(String goalId) {
-    final reservedSources = getFundingSources(goalId);
+  /// Full Goal projection:
+  ///
+  /// Reserved  -> Planning Allocation state
+  /// Saved     -> historical GoalActivity state
+  Future<GoalFundingProjection> getProjection(String goalId) async {
+    final reservedSources = await getFundingSources(goalId);
     final savedSources = getSavedSources(goalId);
 
     final totalReserved = reservedSources.fold<double>(
       0,
-      (sum, s) => sum + s.amount,
+      (sum, source) => sum + source.amount,
     );
-    final totalSaved = savedSources.fold<double>(0, (sum, s) => sum + s.amount);
+
+    final totalSaved = savedSources.fold<double>(
+      0,
+      (sum, source) => sum + source.amount,
+    );
 
     return GoalFundingProjection(
       reservedSources: reservedSources,
