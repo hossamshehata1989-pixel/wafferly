@@ -1,13 +1,17 @@
-// lib/services/balance_service.dart
-
 import 'package:hive/hive.dart';
+
 import '../models/transaction.dart';
 import '../constants/transaction_constants.dart';
-import 'reserved_money_service.dart';
+import '../core/planning/services/available_balance_projection_service.dart';
 
 class BalanceService {
   final Box<Transaction> txBox = Hive.box<Transaction>('transactions');
-  final ReservedMoneyService _reservedService = ReservedMoneyService();
+
+  final AvailableBalanceProjectionService? _availableBalanceProjectionService;
+
+  BalanceService({
+    AvailableBalanceProjectionService? availableBalanceProjectionService,
+  }) : _availableBalanceProjectionService = availableBalanceProjectionService;
 
   double getBalance(String accountId) {
     double balance = 0;
@@ -17,9 +21,11 @@ class BalanceService {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
         }
+
         if (tx.fromAccountId == accountId) {
           balance -= tx.amount;
         }
+
         continue;
       }
 
@@ -27,9 +33,11 @@ class BalanceService {
         if (tx.fromAccountId == accountId) {
           balance -= tx.amount;
         }
+
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
         }
+
         continue;
       }
 
@@ -37,6 +45,7 @@ class BalanceService {
         if (tx.fromAccountId == accountId) {
           balance -= tx.amount;
         }
+
         continue;
       }
 
@@ -44,6 +53,7 @@ class BalanceService {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
         }
+
         continue;
       }
     }
@@ -65,9 +75,11 @@ class BalanceService {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
         }
+
         if (tx.fromAccountId == accountId) {
           balance -= tx.amount;
         }
+
         continue;
       }
 
@@ -75,9 +87,11 @@ class BalanceService {
         if (tx.fromAccountId == accountId) {
           balance -= tx.amount;
         }
+
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
         }
+
         continue;
       }
 
@@ -85,6 +99,7 @@ class BalanceService {
         if (tx.fromAccountId == accountId) {
           balance -= tx.amount;
         }
+
         continue;
       }
 
@@ -92,6 +107,7 @@ class BalanceService {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
         }
+
         continue;
       }
     }
@@ -99,9 +115,38 @@ class BalanceService {
     return balance;
   }
 
+  /// Legacy available-balance path.
+  ///
+  /// Kept temporarily while existing synchronous callers
+  /// are migrated to the Planning-based read path.
   double getAvailableBalance(String accountId) {
-    final realBalance = getBalance(accountId);
-    final reservedAmount = _reservedService.getReservedAmount(accountId);
-    return realBalance - reservedAmount;
+    throw StateError(
+      'Legacy getAvailableBalance() is still being migrated '
+      'to the Planning Allocation read path.',
+    );
+  }
+
+  /// Planning-based available balance.
+  ///
+  /// Account Balance comes from the financial truth.
+  /// Reserved Money comes from active Planning Allocations.
+  Future<double> getAvailableBalanceFromPlanning(String accountId) async {
+    final projectionService = _availableBalanceProjectionService;
+
+    if (projectionService == null) {
+      throw StateError(
+        'AvailableBalanceProjectionService is required '
+        'for Planning-based available balance.',
+      );
+    }
+
+    final balance = getBalance(accountId);
+
+    final projection = await projectionService.project(
+      accountId: accountId,
+      balance: balance,
+    );
+
+    return projection.available;
   }
 }

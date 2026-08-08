@@ -59,9 +59,15 @@ import 'services/transaction_service.dart';
 import 'bootstrap/financial_engine_bootstrap.dart';
 import 'financial_engine/engine/financial_operation_engine.dart';
 import 'services/transaction_application_service.dart';
+import 'core/planning/bootstrap/planning_engine_bootstrap.dart';
+import 'core/planning/engine/planning_engine.dart';
+import 'core/planning/infrastructure/persistence/hive_allocation_record.dart';
+import 'services/manual_reserve_application_service.dart';
 
 import 'services/balance_service.dart';
 import 'features/members/services/member_seeder.dart';
+import 'core/planning/ports/allocation_repository.dart';
+import 'core/planning/services/available_balance_projection_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -234,6 +240,14 @@ void main() async {
   }
 
   // ====================================================
+  // Planning Allocation Persistence
+  // ====================================================
+
+  if (!Hive.isAdapterRegistered(97)) {
+    Hive.registerAdapter(HiveAllocationRecordAdapter());
+  }
+
+  // ====================================================
   // Open Boxes
   // ====================================================
 
@@ -247,6 +261,7 @@ void main() async {
   await Hive.openBox<MemberModel>('members');
   await MemberSeeder.ensureOwnerExists();
   await Hive.openBox<Allocation>('allocations');
+  await Hive.openBox<HiveAllocationRecord>('planning_allocations');
   await Hive.openBox<GoalActivity>('goal_activities');
   await Hive.openBox<Commitment>('commitments');
 
@@ -335,18 +350,41 @@ void main() async {
   // ====================================================
 
   CategoryRegistry.initialize();
-
+  // ====================================================
   // Create shared services
-  final balanceService = BalanceService();
+  // ====================================================
+
   final transactionBox = Hive.box<Transaction>('transactions');
-  // Create engine once
+
+  // ====================================================
+  // Planning Engine + Planning Read Side
+  // ====================================================
+
+  final AllocationRepository allocationRepository =
+      PlanningEngineBootstrap.createProductionAllocationRepository();
+
+  final planningEngine = PlanningEngineBootstrap.create(
+    allocationRepository: allocationRepository,
+  );
+
+  final availableBalanceProjectionService = AvailableBalanceProjectionService(
+    allocationRepository: allocationRepository,
+  );
+
+  // ====================================================
+  // Financial Engine
+  // ====================================================
+
+  final balanceService = BalanceService(
+    availableBalanceProjectionService: availableBalanceProjectionService,
+  );
+
   final engineContext = FinancialEngineBootstrap.create(
     balanceService: balanceService,
     transactionBox: transactionBox,
   );
 
   final engine = engineContext.engine;
-
   runApp(
     MultiProvider(
       providers: [
@@ -356,6 +394,17 @@ void main() async {
         ),
 
         Provider<FinancialOperationEngine>(create: (_) => engine),
+
+        Provider<PlanningEngine>(create: (_) => planningEngine),
+
+        Provider<AvailableBalanceProjectionService>(
+          create: (_) => availableBalanceProjectionService,
+        ),
+
+        Provider<ManualReserveApplicationService>(
+          create: (_) =>
+              ManualReserveApplicationService(engine: planningEngine),
+        ),
 
         Provider<TransactionApplicationService>(
           create: (_) => TransactionApplicationService(
