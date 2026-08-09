@@ -70,6 +70,7 @@ import 'core/planning/ports/allocation_repository.dart';
 import 'core/planning/services/available_balance_projection_service.dart';
 import 'services/goal_allocation_service.dart';
 import 'services/goal_funding_projection_service.dart';
+import 'core/planning/engine/guards/cannot_reserve_more_than_available_guard.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -362,12 +363,8 @@ void main() async {
   // Planning Engine + Planning Read Side
   // ====================================================
 
-  final AllocationRepository allocationRepository =
+  final allocationRepository =
       PlanningEngineBootstrap.createProductionAllocationRepository();
-
-  final planningEngine = PlanningEngineBootstrap.create(
-    allocationRepository: allocationRepository,
-  );
 
   final availableBalanceProjectionService = AvailableBalanceProjectionService(
     allocationRepository: allocationRepository,
@@ -379,6 +376,16 @@ void main() async {
 
   final balanceService = BalanceService(
     availableBalanceProjectionService: availableBalanceProjectionService,
+  );
+
+  // ====================================================
+  // Planning Engine
+  // ====================================================
+
+  final planningEngine = PlanningEngineBootstrap.create(
+    allocationRepository: allocationRepository,
+    availableBalanceProjectionService: availableBalanceProjectionService,
+    accountBalanceProvider: balanceService.getBalance,
   );
 
   final engineContext = FinancialEngineBootstrap.create(
