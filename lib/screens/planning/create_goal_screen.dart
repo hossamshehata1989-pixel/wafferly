@@ -294,7 +294,11 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
               width: double.infinity,
 
               child: _buildGradientButton(
-                onPressed: () => setState(() => currentStep = 3),
+                onPressed: _targetAmount > 0
+                    ? () {
+                        setState(() => currentStep = 3);
+                      }
+                    : null,
                 label: 'Continue',
               ),
             ),
@@ -556,23 +560,15 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
           SizedBox(
             width: double.infinity,
             child: _buildGradientButton(
-              onPressed: () {
-                if (selectedType == GoalType.recurring &&
-                    planningMode == 'amount' &&
-                    _periodAmount > _targetAmount) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Contribution amount cannot exceed target amount',
-                      ),
-                      backgroundColor: Color.fromARGB(255, 170, 118, 114),
-                    ),
-                  );
-                  return;
-                }
-
-                setState(() => currentStep = 3);
-              },
+              onPressed:
+                  _targetAmount > 0 &&
+                      !(selectedType == GoalType.recurring &&
+                          planningMode == 'amount' &&
+                          _periodAmount > _targetAmount)
+                  ? () {
+                      setState(() => currentStep = 3);
+                    }
+                  : null,
               label: 'Continue',
             ),
           ),
@@ -1130,7 +1126,7 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
   }
 
   Widget _buildGradientButton({
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
     required String label,
   }) {
     return Container(
@@ -1299,6 +1295,16 @@ class _CreateGoalScreenState extends State<CreateGoalScreen> {
 
           _buildGradientButton(
             onPressed: () async {
+              if (_targetAmount <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Target amount must be greater than zero'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
               final goal = Goal.create(
                 title: _goalNameController.text.trim(),
                 targetAmount: _targetAmount,

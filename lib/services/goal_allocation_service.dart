@@ -37,8 +37,11 @@ class GoalAllocationService {
     // ---------------------------------------------------------------
 
     final goal = _goalService.getById(goalId);
-
     if (goal == null) {
+      return false;
+    }
+
+    if (goal.targetAmount <= 0) {
       return false;
     }
 
