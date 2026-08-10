@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+
 import 'package:wafferly/core/planning/engine/guards/cannot_release_more_than_reserved_guard.dart';
 import 'package:wafferly/core/planning/engine/interpreter/planning_interpreter.dart';
 import 'package:wafferly/core/planning/engine/planning_execution_context.dart';
@@ -99,5 +100,68 @@ void main() {
 
       await guard.validate(context);
     });
+
+    test(
+      'passes when release amount is covered by multiple active allocations',
+      () async {
+        final repository = MemoryAllocationRepository();
+
+        await repository.create(
+          Allocation(
+            id: 'allocation-1',
+            sourceId: 'goal-1',
+            sourceType: PlanningSourceType.goal,
+            accountId: 'cash',
+            amount: 100,
+            status: AllocationStatus.active,
+            createdAt: DateTime(2026, 1, 1),
+          ),
+        );
+
+        await repository.create(
+          Allocation(
+            id: 'allocation-2',
+            sourceId: 'goal-1',
+            sourceType: PlanningSourceType.goal,
+            accountId: 'cash',
+            amount: 200,
+            status: AllocationStatus.active,
+            createdAt: DateTime(2026, 1, 2),
+          ),
+        );
+
+        final allocations = await repository.findBySource('goal-1');
+
+        expect(allocations, hasLength(2));
+
+        expect(
+          allocations.fold<double>(
+            0,
+            (sum, allocation) => sum + allocation.amount,
+          ),
+          300,
+        );
+
+        final guard = CannotReleaseMoreThanReservedGuard(
+          repository: repository,
+        );
+
+        final operation = ReleaseOperation(
+          id: 'release-1',
+          createdAt: DateTime(2026),
+          sourceId: 'goal-1',
+          sourceType: PlanningSourceType.goal,
+          accountId: 'cash',
+          amount: 250,
+        );
+
+        final context = PlanningExecutionContext(
+          operation: operation,
+          intent: PlanningIntent.release,
+        );
+
+        await guard.validate(context);
+      },
+    );
   });
 }

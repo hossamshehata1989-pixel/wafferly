@@ -187,7 +187,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: const Color(0xFF0F1115),
+          backgroundColor: const Color.fromARGB(255, 21, 17, 15),
           appBar: AppBar(
             title: Text(
               t.accounts,

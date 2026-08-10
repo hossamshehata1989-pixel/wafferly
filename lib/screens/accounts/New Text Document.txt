@@ -1,0 +1,48 @@
+AccountsScreen
+
+نظرة عامة على كل الحسابات.
+
+AccountsGroupScreen
+
+الحسابات الموجودة داخل Group معين.
+
+AccountGroupDetailsScreen
+
+Dashboard الخاص بالـGroup.
+
+AccountDetailsScreen
+
+تفاصيل حساب واحد، مثل 2000.
+
+
+AccountsScreen
+│
+├── Money You Have
+│      │
+│      ├── AccountsGroupScreen
+│      │      ├── 2000
+│      │      ├── Cash Wallet
+│      │      └── ...
+│      │
+│      └── AccountGroupDetailsScreen
+│             ├── Total Balance
+│             ├── Liquidity Chart
+│             ├── Available
+│             ├── Reserved
+│             └── Accounts Summary
+│
+├── Savings
+│      ├── AccountsGroupScreen
+│      └── AccountGroupDetailsScreen
+│
+├── Investments
+│      ├── AccountsGroupScreen
+│      └── AccountGroupDetailsScreen
+│
+├── Money You Owe
+│      ├── AccountsGroupScreen
+│      └── AccountGroupDetailsScreen
+│
+└── Money You Will Get
+       ├── AccountsGroupScreen
+       └── AccountGroupDetailsScreen
