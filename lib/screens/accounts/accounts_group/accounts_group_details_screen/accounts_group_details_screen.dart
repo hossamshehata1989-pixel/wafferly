@@ -1,6 +1,15 @@
 // lib/screens/accounts/accounts_group/accounts_group_details_screen/accounts_group_details_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+import '../../../../models/account.dart';
+import '../../../../models/transaction.dart';
+import '../../../../models/allocation.dart';
+import '../../../../services/account_service.dart';
+import '../../../../services/balance_service.dart';
+import '../../../../services/allocation_service.dart';
+import '../../../../services/allocation_projection_service.dart';
 import '../../../../theme/responsive_metrics.dart';
 
 class AccountsGroupDetailsScreen extends StatelessWidget {
@@ -124,58 +133,201 @@ class _BalanceOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.fromLTRB(
-        m.spacing(20),
-        m.h(6),
-        m.spacing(20),
-        m.spacing(20),
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(m.radius.xl),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF062D36), Color(0xFF081722), Color(0xFF07131D)],
-        ),
-        border: Border.all(color: const Color(0xFF0B4D57), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF00DDB0).withValues(alpha: 0.08),
-            blurRadius: m.size(28),
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: m.isTablet
-          ? Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: m.isDesktop ? 2 : 3,
-                  child: Column(
-                    children: [
-                      _BalanceHeader(m: m),
-                      _PeriodAndFilter(m: m),
-                      const _BalanceChart(),
+    final accountsBox = Hive.box<Account>('accounts');
+    final transactionsBox = Hive.box<Transaction>('transactions');
+    final allocationsBox = Hive.box<Allocation>(AllocationService.boxName);
+
+    return ValueListenableBuilder<Box<Account>>(
+      valueListenable: accountsBox.listenable(),
+      builder: (context, _, __) {
+        return ValueListenableBuilder<Box<Transaction>>(
+          valueListenable: transactionsBox.listenable(),
+          builder: (context, _, __) {
+            return ValueListenableBuilder<Box<Allocation>>(
+              valueListenable: allocationsBox.listenable(),
+              builder: (context, _, __) {
+                final data = _GroupFinancialData.fromCurrentAccounts(
+                  AccountService().getAllActiveAccounts(),
+                  BalanceService(),
+                  AllocationService(),
+                );
+
+                return Container(
+                  margin: EdgeInsets.fromLTRB(
+                    m.spacing(20),
+                    m.h(6),
+                    m.spacing(20),
+                    m.spacing(20),
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(m.radius.xl),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0xFF062D36),
+                        Color(0xFF081722),
+                        Color(0xFF07131D),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: const Color(0xFF0B4D57),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00DDB0).withValues(alpha: 0.08),
+                        blurRadius: m.size(28),
+                        spreadRadius: 1,
+                      ),
                     ],
                   ),
-                ),
-                Expanded(
-                  flex: m.isDesktop ? 3 : 2,
-                  child: _MetricsColumn(m: m),
-                ),
-              ],
-            )
-          : Column(
-              children: [
-                _BalanceHeader(m: m),
-                _PeriodAndFilter(m: m),
-                const _BalanceChart(),
-                _MetricsRow(m: m),
-              ],
-            ),
+                  child: m.isTablet
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: m.isDesktop ? 2 : 3,
+                              child: Column(
+                                children: [
+                                  _BalanceHeader(
+                                    m: m,
+                                    totalBalance: data.totalBalance,
+                                  ),
+                                  _PeriodAndFilter(m: m),
+                                  _BalanceChart(
+                                    values: data.chartValues,
+                                    labels: data.chartLabels,
+                                    latestValue: data.latestBalance,
+                                    latestDate: data.latestDate,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              flex: m.isDesktop ? 3 : 2,
+                              child: _MetricsColumn(
+                                m: m,
+                                available: data.available,
+                                reserved: data.reserved,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            _BalanceHeader(
+                              m: m,
+                              totalBalance: data.totalBalance,
+                            ),
+                            _PeriodAndFilter(m: m),
+                            _BalanceChart(
+                              values: data.chartValues,
+                              labels: data.chartLabels,
+                              latestValue: data.latestBalance,
+                              latestDate: data.latestDate,
+                            ),
+                            _MetricsRow(
+                              m: m,
+                              available: data.available,
+                              reserved: data.reserved,
+                            ),
+                          ],
+                        ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
+  }
+}
+
+class _GroupFinancialData {
+  const _GroupFinancialData({
+    required this.totalBalance,
+    required this.available,
+    required this.reserved,
+    required this.chartValues,
+    required this.chartLabels,
+    required this.latestBalance,
+    required this.latestDate,
+  });
+
+  final double totalBalance;
+  final double available;
+  final double reserved;
+  final List<double> chartValues;
+  final List<String> chartLabels;
+  final double latestBalance;
+  final DateTime latestDate;
+
+  factory _GroupFinancialData.fromCurrentAccounts(
+    List<Account> accounts,
+    BalanceService balanceService,
+    AllocationService allocationService,
+  ) {
+    final activeAccounts = accounts
+        .where((account) => !account.isArchived)
+        .where((account) => account.currency.toUpperCase() == 'EGP')
+        .toList();
+
+    double totalBalance = 0;
+    for (final account in activeAccounts) {
+      totalBalance += balanceService.getBalance(account.id);
+    }
+
+    final reserved = AllocationProjectionService().getTotalReservedMoney();
+    final available = totalBalance - reserved;
+
+    final now = DateTime.now();
+    final values = <double>[];
+    final labels = <String>[];
+
+    for (int offset = 5; offset >= 0; offset--) {
+      final monthDate = DateTime(now.year, now.month - offset + 1, 0);
+      final snapshotDate = offset == 0 ? now : monthDate;
+
+      double monthBalance = 0;
+      for (final account in activeAccounts) {
+        monthBalance += balanceService.getBalanceAtDate(
+          account.id,
+          snapshotDate,
+        );
+      }
+
+      values.add(monthBalance);
+      labels.add(_monthLabel(snapshotDate.month));
+    }
+
+    return _GroupFinancialData(
+      totalBalance: totalBalance,
+      available: available,
+      reserved: reserved,
+      chartValues: values,
+      chartLabels: labels,
+      latestBalance: values.isEmpty ? totalBalance : values.last,
+      latestDate: now,
+    );
+  }
+
+  static String _monthLabel(int month) {
+    const labels = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return labels[month - 1];
   }
 }
 
@@ -184,9 +336,10 @@ class _BalanceOverview extends StatelessWidget {
 // ================================================================
 
 class _BalanceHeader extends StatelessWidget {
-  const _BalanceHeader({required this.m});
+  const _BalanceHeader({required this.m, required this.totalBalance});
 
   final ResponsiveMetrics m;
+  final double totalBalance;
 
   @override
   Widget build(BuildContext context) {
@@ -214,7 +367,9 @@ class _BalanceHeader extends StatelessWidget {
                 ),
                 SizedBox(height: m.h(5)),
                 Text(
-                  '1,500',
+                  _formatMoney(totalBalance),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: m.isCompactHeight ? m.text(38) : m.text(50),
@@ -224,11 +379,11 @@ class _BalanceHeader extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: m.h(4)),
-                Text(
+                const Text(
                   'EGP',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: m.isCompactHeight ? m.text(18) : m.text(22),
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -240,6 +395,120 @@ class _BalanceHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+// ================================================================
+// METRICS
+// ================================================================
+
+class _MetricsColumn extends StatelessWidget {
+  const _MetricsColumn({
+    required this.m,
+    required this.available,
+    required this.reserved,
+  });
+
+  final ResponsiveMetrics m;
+  final double available;
+  final double reserved;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        m.spacing(10),
+        m.spacing(20),
+        m.spacing(18),
+        m.spacing(20),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _BalanceMetric(
+              title: 'Available',
+              amount: _formatMoney(available),
+              icon: Icons.arrow_upward_rounded,
+              color: const Color(0xFF3EE8B8),
+              m: m,
+            ),
+          ),
+          SizedBox(width: m.spacing(12)),
+          Expanded(
+            child: _BalanceMetric(
+              title: 'Reserved',
+              amount: _formatMoney(reserved),
+              icon: Icons.arrow_forward_rounded,
+              color: const Color(0xFFFFA928),
+              m: m,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetricsRow extends StatelessWidget {
+  const _MetricsRow({
+    required this.m,
+    required this.available,
+    required this.reserved,
+  });
+
+  final ResponsiveMetrics m;
+  final double available;
+  final double reserved;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        m.spacing(18),
+        0,
+        m.spacing(18),
+        m.spacing(20),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _BalanceMetric(
+              title: 'Available',
+              amount: _formatMoney(available),
+              icon: Icons.arrow_upward_rounded,
+              color: const Color(0xFF3EE8B8),
+              m: m,
+            ),
+          ),
+          SizedBox(width: m.spacing(12)),
+          Expanded(
+            child: _BalanceMetric(
+              title: 'Reserved',
+              amount: _formatMoney(reserved),
+              icon: Icons.arrow_forward_rounded,
+              color: const Color(0xFFFFA928),
+              m: m,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatMoney(double value) {
+  final rounded = value.round();
+  final sign = rounded < 0 ? '-' : '';
+  final digits = rounded.abs().toString();
+  final buffer = StringBuffer();
+
+  for (int i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) {
+      buffer.write(',');
+    }
+    buffer.write(digits[i]);
+  }
+
+  return '$sign$buffer';
 }
 
 // ================================================================
@@ -267,102 +536,6 @@ class _PeriodAndFilter extends StatelessWidget {
 }
 
 // ================================================================
-// METRICS
-// ================================================================
-
-class _MetricsColumn extends StatelessWidget {
-  const _MetricsColumn({required this.m});
-
-  final ResponsiveMetrics m;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        m.spacing(10),
-        m.spacing(20),
-        m.spacing(18),
-        m.spacing(20),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _BalanceMetric(
-                  title: 'Available',
-                  amount: '2,750',
-                  icon: Icons.arrow_upward_rounded,
-                  color: const Color(0xFF3EE8B8),
-                  m: m,
-                ),
-              ),
-              SizedBox(width: m.spacing(12)),
-              Expanded(
-                child: _BalanceMetric(
-                  title: 'Reserved',
-                  amount: '1,500',
-                  icon: Icons.arrow_forward_rounded,
-                  color: const Color(0xFFFFA928),
-                  m: m,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: m.spacing(16)),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricsRow extends StatelessWidget {
-  const _MetricsRow({required this.m});
-
-  final ResponsiveMetrics m;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        m.spacing(18),
-        0,
-        m.spacing(18),
-        m.spacing(20),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: _BalanceMetric(
-                  title: 'Available',
-                  amount: '2,750',
-                  icon: Icons.arrow_upward_rounded,
-                  color: const Color(0xFF3EE8B8),
-                  m: m,
-                ),
-              ),
-              SizedBox(width: m.spacing(12)),
-              Expanded(
-                child: _BalanceMetric(
-                  title: 'Reserved',
-                  amount: '1,500',
-                  icon: Icons.arrow_forward_rounded,
-                  color: const Color(0xFFFFA928),
-                  m: m,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: m.spacing(16)),
-        ],
-      ),
-    );
-  }
-}
-
 // ================================================================
 // ACCOUNTS HEADER
 // ================================================================
@@ -432,100 +605,166 @@ class _AccountsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accounts = [
-      _AccountData(
-        icon: Icons.account_balance_rounded,
-        iconColor: const Color(0xFF35E0B5),
-        iconBackground: const Color(0xFF0C5149),
-        name: '2000',
-        subtitle: 'Bank Account',
-        badge: 'Default',
-        balance: '1,500',
-        balanceSuffix: 'EGP',
-        available: '2,750 EGP',
-        showAvailable: true,
-        isLiability: false,
-      ),
-      _AccountData(
-        icon: Icons.account_balance_wallet_rounded,
-        iconColor: const Color(0xFFB17CFF),
-        iconBackground: const Color(0xFF342354),
-        name: 'Cash Wallet',
-        subtitle: 'Wallet',
-        balance: '250',
-        balanceSuffix: 'EGP',
-        available: '250 EGP',
-        showAvailable: true,
-        isLiability: false,
-      ),
-      _AccountData(
-        icon: Icons.bar_chart_rounded,
-        iconColor: const Color(0xFFFFA928),
-        iconBackground: const Color(0xFF4A3212),
-        name: 'Investments',
-        subtitle: 'Investment Account',
-        balance: '12,750',
-        balanceSuffix: 'EGP',
-        available: '12,750 EGP',
-        showAvailable: true,
-        isLiability: false,
-      ),
-      _AccountData(
-        icon: Icons.credit_card_rounded,
-        iconColor: const Color(0xFFFF5572),
-        iconBackground: const Color(0xFF4D1724),
-        name: 'Credit Card',
-        subtitle: 'Liability Account',
-        balance: '-3,200',
-        balanceSuffix: 'EGP',
-        available: 'Outstanding 3,200 EGP',
-        showAvailable: false,
-        isLiability: true,
-      ),
-    ];
+    final accountsBox = Hive.box<Account>('accounts');
+    final transactionsBox = Hive.box<Transaction>('transactions');
+    final allocationsBox = Hive.box<Allocation>(AllocationService.boxName);
 
-    if (m.isDesktop) {
-      return SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: m.spacing(12),
-          mainAxisSpacing: m.spacing(12),
-          childAspectRatio: 1.2,
-        ),
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => _AccountCard(data: accounts[index], m: m),
-          childCount: accounts.length,
-        ),
-      );
-    }
+    return ValueListenableBuilder<Box<Account>>(
+      valueListenable: accountsBox.listenable(),
+      builder: (context, _, __) {
+        return ValueListenableBuilder<Box<Transaction>>(
+          valueListenable: transactionsBox.listenable(),
+          builder: (context, _, __) {
+            return ValueListenableBuilder<Box<Allocation>>(
+              valueListenable: allocationsBox.listenable(),
+              builder: (context, _, __) {
+                final balanceService = BalanceService();
+                final allocationService = AllocationService();
 
-    if (m.isTablet) {
-      return SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: m.spacing(12),
-          mainAxisSpacing: m.spacing(12),
-          childAspectRatio: 1.3,
-        ),
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => _AccountCard(data: accounts[index], m: m),
-          childCount: accounts.length,
-        ),
-      );
-    }
+                final accounts = AccountService()
+                    .getAllActiveAccounts()
+                    .where((account) => account.currency.toUpperCase() == 'EGP')
+                    .map(
+                      (account) => _accountDataFromModel(
+                        account,
+                        balanceService,
+                        allocationService,
+                      ),
+                    )
+                    .toList();
 
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) => _AccountCard(data: accounts[index], m: m),
-        childCount: accounts.length,
-      ),
+                if (m.isDesktop) {
+                  return SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: m.spacing(12),
+                      mainAxisSpacing: m.spacing(12),
+                      childAspectRatio: 1.2,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) =>
+                          _AccountCard(data: accounts[index], m: m),
+                      childCount: accounts.length,
+                    ),
+                  );
+                }
+
+                if (m.isTablet) {
+                  return SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: m.spacing(12),
+                      mainAxisSpacing: m.spacing(12),
+                      childAspectRatio: 1.3,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) =>
+                          _AccountCard(data: accounts[index], m: m),
+                      childCount: accounts.length,
+                    ),
+                  );
+                }
+
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) =>
+                        _AccountCard(data: accounts[index], m: m),
+                    childCount: accounts.length,
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 }
 
-// ================================================================
-// DATA CLASSES
-// ================================================================
+_AccountData _accountDataFromModel(
+  Account account,
+  BalanceService balanceService,
+  AllocationService allocationService,
+) {
+  final balance = balanceService.getBalance(account.id);
+  final reserved = allocationService.getAllocatedAmountForAccount(account.id);
+  final available = balance - reserved;
+  final isLiability = account.nature.name == 'liability';
+
+  return _AccountData(
+    icon: _iconForAccountType(account.type, isLiability),
+    iconColor: _colorForAccountType(account.type, isLiability),
+    iconBackground: _colorForAccountType(
+      account.type,
+      isLiability,
+    ).withValues(alpha: 0.18),
+    name: account.name,
+    subtitle: _prettyAccountType(account.type),
+    balance: _formatMoney(balance),
+    balanceSuffix: account.currency,
+    available: isLiability
+        ? 'Outstanding ${_formatMoney(balance.abs())} ${account.currency}'
+        : 'Available ${_formatMoney(available)} ${account.currency}',
+    showAvailable: false,
+    isLiability: isLiability,
+  );
+}
+
+String _prettyAccountType(String type) {
+  final spaced = type.replaceAllMapped(
+    RegExp(r'([a-z])([A-Z])'),
+    (match) => '${match.group(1)} ${match.group(2)}',
+  );
+
+  return spaced.isEmpty
+      ? type
+      : '${spaced[0].toUpperCase()}${spaced.substring(1)}';
+}
+
+IconData _iconForAccountType(String type, bool isLiability) {
+  if (isLiability) {
+    if (type == 'creditCard') return Icons.credit_card_rounded;
+    if (type == 'loan') return Icons.account_balance_rounded;
+    if (type == 'installment') return Icons.calendar_month_rounded;
+    return Icons.account_balance_wallet_rounded;
+  }
+
+  switch (type) {
+    case 'bank':
+      return Icons.account_balance_rounded;
+    case 'wallet':
+      return Icons.account_balance_wallet_rounded;
+    case 'investment':
+    case 'stocks':
+    case 'gold':
+    case 'certificates':
+      return Icons.bar_chart_rounded;
+    case 'cash':
+      return Icons.payments_rounded;
+    default:
+      return Icons.account_balance_wallet_rounded;
+  }
+}
+
+Color _colorForAccountType(String type, bool isLiability) {
+  if (isLiability) return const Color(0xFFFF5572);
+
+  switch (type) {
+    case 'bank':
+      return const Color(0xFF35E0B5);
+    case 'wallet':
+      return const Color(0xFFB17CFF);
+    case 'investment':
+    case 'stocks':
+    case 'gold':
+    case 'certificates':
+      return const Color(0xFFFFA928);
+    case 'cash':
+      return const Color(0xFF4AA8FF);
+    default:
+      return const Color(0xFF35E0B5);
+  }
+}
 
 class _AccountData {
   final IconData icon;
@@ -1080,7 +1319,17 @@ class _NotificationButton extends StatelessWidget {
 // ================================================================
 
 class _BalanceChart extends StatelessWidget {
-  const _BalanceChart();
+  const _BalanceChart({
+    required this.values,
+    required this.labels,
+    required this.latestValue,
+    required this.latestDate,
+  });
+
+  final List<double> values;
+  final List<String> labels;
+  final double latestValue;
+  final DateTime latestDate;
 
   @override
   Widget build(BuildContext context) {
@@ -1091,11 +1340,24 @@ class _BalanceChart extends StatelessWidget {
       height: m.isCompactHeight ? m.h(190) : m.h(225),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final minValue = values.isEmpty
+              ? 0.0
+              : values.reduce((a, b) => a < b ? a : b);
+          final maxValue = values.isEmpty
+              ? 1.0
+              : values.reduce((a, b) => a > b ? a : b);
+
           return Stack(
             fit: StackFit.expand,
             children: [
               Positioned.fill(
-                child: CustomPaint(painter: _BalanceChartPainter()),
+                child: CustomPaint(
+                  painter: _BalanceChartPainter(
+                    values: values,
+                    minValue: minValue,
+                    maxValue: maxValue,
+                  ),
+                ),
               ),
               Positioned(
                 right: 0,
@@ -1103,13 +1365,7 @@ class _BalanceChart extends StatelessWidget {
                 bottom: m.h(26),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    _ChartLabel('2.0k'),
-                    _ChartLabel('1.5k'),
-                    _ChartLabel('1.0k'),
-                    _ChartLabel('500'),
-                    _ChartLabel('0'),
-                  ],
+                  children: _chartScaleLabels(minValue, maxValue, m),
                 ),
               ),
               Positioned(
@@ -1133,21 +1389,24 @@ class _BalanceChart extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Column(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '1,500 EGP',
-                        style: TextStyle(
+                        '${_formatMoney(latestValue)} EGP',
+                        style: const TextStyle(
                           color: Color(0xFF35E0B5),
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
                       Text(
-                        'Aug 10',
-                        style: TextStyle(color: Colors.white60, fontSize: 10),
+                        '${_GroupFinancialData._monthLabel(latestDate.month)} ${latestDate.day}',
+                        style: const TextStyle(
+                          color: Colors.white60,
+                          fontSize: 10,
+                        ),
                       ),
                     ],
                   ),
@@ -1159,14 +1418,7 @@ class _BalanceChart extends StatelessWidget {
                 bottom: 0,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    _ChartLabel('Mar'),
-                    _ChartLabel('Apr'),
-                    _ChartLabel('May'),
-                    _ChartLabel('Jun'),
-                    _ChartLabel('Jul'),
-                    _ChartLabel('Aug'),
-                  ],
+                  children: [for (final label in labels) _ChartLabel(label)],
                 ),
               ),
             ],
@@ -1175,6 +1427,35 @@ class _BalanceChart extends StatelessWidget {
       ),
     );
   }
+
+  List<Widget> _chartScaleLabels(
+    double minValue,
+    double maxValue,
+    ResponsiveMetrics m,
+  ) {
+    final range = (maxValue - minValue).abs();
+    final safeRange = range < 1 ? 1.0 : range;
+
+    return List.generate(5, (index) {
+      final value = maxValue - (safeRange * index / 4);
+      return _ChartLabel(_formatCompact(value));
+    });
+  }
+}
+
+String _formatCompact(double value) {
+  final absolute = value.abs();
+
+  String formatted;
+  if (absolute >= 1000000) {
+    formatted = '${(value / 1000000).toStringAsFixed(1)}M';
+  } else if (absolute >= 1000) {
+    formatted = '${(value / 1000).toStringAsFixed(1)}k';
+  } else {
+    formatted = value.round().toString();
+  }
+
+  return formatted;
 }
 
 class _ChartLabel extends StatelessWidget {
@@ -1202,21 +1483,33 @@ class _ChartLabel extends StatelessWidget {
 // ================================================================
 
 class _BalanceChartPainter extends CustomPainter {
+  const _BalanceChartPainter({
+    required this.values,
+    required this.minValue,
+    required this.maxValue,
+  });
+
+  final List<double> values;
+  final double minValue;
+  final double maxValue;
+
   @override
   void paint(Canvas canvas, Size size) {
     final chartWidth = size.width - 48;
     final chartHeight = size.height - 32;
 
-    final points = <Offset>[
-      Offset(0, chartHeight * 0.79),
-      Offset(chartWidth * 0.18, chartHeight * 0.55),
-      Offset(chartWidth * 0.39, chartHeight * 0.43),
-      Offset(chartWidth * 0.58, chartHeight * 0.60),
-      Offset(chartWidth * 0.76, chartHeight * 0.38),
-      Offset(chartWidth * 0.96, chartHeight * 0.14),
-    ];
+    if (values.isEmpty || chartWidth <= 0 || chartHeight <= 0) return;
 
-    // Grid line
+    final range = (maxValue - minValue).abs() < 1 ? 1.0 : (maxValue - minValue);
+
+    final points = <Offset>[];
+    for (int i = 0; i < values.length; i++) {
+      final x = values.length == 1 ? 0.0 : chartWidth * i / (values.length - 1);
+      final normalized = (values[i] - minValue) / range;
+      final y = chartHeight * (1 - normalized.clamp(0.0, 1.0));
+      points.add(Offset(x, y));
+    }
+
     final gridPaint = Paint()
       ..color = Colors.white.withValues(alpha: 0.045)
       ..strokeWidth = 1;
@@ -1227,10 +1520,7 @@ class _BalanceChartPainter extends CustomPainter {
       gridPaint,
     );
 
-    // Curve
-    final path = Path();
-
-    path.moveTo(points.first.dx, points.first.dy);
+    final path = Path()..moveTo(points.first.dx, points.first.dy);
 
     for (int i = 0; i < points.length - 1; i++) {
       final current = points[i];
@@ -1240,7 +1530,6 @@ class _BalanceChartPainter extends CustomPainter {
         current.dx + (next.dx - current.dx) * 0.45,
         current.dy,
       );
-
       final controlPoint2 = Offset(
         next.dx - (next.dx - current.dx) * 0.45,
         next.dy,
@@ -1256,7 +1545,6 @@ class _BalanceChartPainter extends CustomPainter {
       );
     }
 
-    // Fill
     final fillPath = Path.from(path)
       ..lineTo(chartWidth, chartHeight)
       ..lineTo(0, chartHeight)
@@ -1271,7 +1559,6 @@ class _BalanceChartPainter extends CustomPainter {
 
     canvas.drawPath(fillPath, fillPaint);
 
-    // Line
     final linePaint = Paint()
       ..color = const Color(0xFF35E0B5)
       ..style = PaintingStyle.stroke
@@ -1281,26 +1568,19 @@ class _BalanceChartPainter extends CustomPainter {
 
     canvas.drawPath(path, linePaint);
 
-    // Points
-    for (int i = 0; i < points.length; i++) {
-      final point = points[i];
-
+    for (final point in points) {
       final glowPaint = Paint()
         ..color = const Color(0xFF35E0B5).withValues(alpha: 0.16);
-
       canvas.drawCircle(point, 8, glowPaint);
 
       final pointPaint = Paint()..color = const Color(0xFF35E0B5);
-
       canvas.drawCircle(point, 3.5, pointPaint);
     }
 
-    // Selected final point
     final selectedPoint = points.last;
 
     final selectedGlow = Paint()
       ..color = const Color(0xFF35E0B5).withValues(alpha: 0.18);
-
     canvas.drawCircle(selectedPoint, 13, selectedGlow);
 
     final selectedRing = Paint()
@@ -1311,10 +1591,8 @@ class _BalanceChartPainter extends CustomPainter {
     canvas.drawCircle(selectedPoint, 6, selectedRing);
 
     final selectedDot = Paint()..color = const Color(0xFF35E0B5);
-
     canvas.drawCircle(selectedPoint, 3, selectedDot);
 
-    // Vertical guide
     final guidePaint = Paint()
       ..color = const Color(0xFF35E0B5).withValues(alpha: 0.22)
       ..strokeWidth = 1;
@@ -1327,7 +1605,9 @@ class _BalanceChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return false;
+  bool shouldRepaint(covariant _BalanceChartPainter oldDelegate) {
+    return oldDelegate.values != values ||
+        oldDelegate.minValue != minValue ||
+        oldDelegate.maxValue != maxValue;
   }
 }
