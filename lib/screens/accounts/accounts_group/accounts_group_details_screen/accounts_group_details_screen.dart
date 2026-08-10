@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../../models/account.dart';
+import '../../../../models/enums/account_enums.dart';
 import '../../../../models/transaction.dart';
 import '../../../../models/allocation.dart';
 import '../../../../services/account_service.dart';
 import '../../../../services/balance_service.dart';
 import '../../../../services/allocation_service.dart';
-import '../../../../services/allocation_projection_service.dart';
 import '../../../../theme/responsive_metrics.dart';
 
 class AccountsGroupDetailsScreen extends StatelessWidget {
@@ -268,8 +268,12 @@ class _GroupFinancialData {
     BalanceService balanceService,
     AllocationService allocationService,
   ) {
+    // IMPORTANT: This screen is a LIQUIDITY dashboard.
+    // Only accounts explicitly classified as AccountGroup.liquidity
+    // participate in balance, chart, available, and reserved totals.
     final activeAccounts = accounts
         .where((account) => !account.isArchived)
+        .where((account) => account.group == AccountGroup.liquidity)
         .where((account) => account.currency.toUpperCase() == 'EGP')
         .toList();
 
@@ -278,7 +282,13 @@ class _GroupFinancialData {
       totalBalance += balanceService.getBalance(account.id);
     }
 
-    final reserved = AllocationProjectionService().getTotalReservedMoney();
+    // Reserved must be calculated from the SAME liquidity scope.
+    // Do not use getTotalReservedMoney(), because that is global and can
+    // include allocations belonging to non-liquidity accounts.
+    double reserved = 0;
+    for (final account in activeAccounts) {
+      reserved += allocationService.getAllocatedAmountForAccount(account.id);
+    }
     final available = totalBalance - reserved;
 
     final now = DateTime.now();
@@ -623,6 +633,7 @@ class _AccountsList extends StatelessWidget {
 
                 final accounts = AccountService()
                     .getAllActiveAccounts()
+                    .where((account) => account.group == AccountGroup.liquidity)
                     .where((account) => account.currency.toUpperCase() == 'EGP')
                     .map(
                       (account) => _accountDataFromModel(
@@ -1202,7 +1213,7 @@ class _AccountFilter extends StatelessWidget {
           ),
           SizedBox(width: m.spacing(8)),
           Text(
-            'All Accounts',
+            'Liquidity Accounts',
             style: TextStyle(
               color: Colors.white,
               fontSize: m.text(12),
