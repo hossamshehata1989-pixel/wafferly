@@ -15,8 +15,18 @@ import '../../../../theme/responsive_metrics.dart';
 import '../../../../theme/account_asset_resolver.dart';
 import '../../../../models/enums/section_type.dart';
 
-class AccountsGroupDetailsScreen extends StatelessWidget {
+class AccountsGroupDetailsScreen extends StatefulWidget {
   const AccountsGroupDetailsScreen({super.key});
+
+  @override
+  State<AccountsGroupDetailsScreen> createState() =>
+      _AccountsGroupDetailsScreenState();
+}
+
+class _AccountsGroupDetailsScreenState
+    extends State<AccountsGroupDetailsScreen> {
+  String _selectedCurrency = 'EGP';
+  int _selectedPeriodMonths = 6;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +39,19 @@ class AccountsGroupDetailsScreen extends StatelessWidget {
           physics: const BouncingScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(child: _Header(m: m)),
-            SliverToBoxAdapter(child: _BalanceOverview(m: m)),
+            SliverToBoxAdapter(
+              child: _BalanceOverview(
+                m: m,
+                selectedCurrency: _selectedCurrency,
+                selectedPeriodMonths: _selectedPeriodMonths,
+                onCurrencyChanged: (value) {
+                  setState(() => _selectedCurrency = value);
+                },
+                onPeriodChanged: (value) {
+                  setState(() => _selectedPeriodMonths = value);
+                },
+              ),
+            ),
             SliverToBoxAdapter(child: _AccountsHeader(m: m)),
             SliverPadding(
               padding: EdgeInsets.fromLTRB(
@@ -38,7 +60,7 @@ class AccountsGroupDetailsScreen extends StatelessWidget {
                 m.spacing(20),
                 m.spacing(24),
               ),
-              sliver: _AccountsList(m: m),
+              sliver: _AccountsList(m: m, selectedCurrency: _selectedCurrency),
             ),
           ],
         ),
@@ -117,8 +139,10 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(width: m.spacing(10)),
+          SizedBox(width: m.spacing(8)),
           _NotificationButton(m: m, size: m.size(controlSize)),
+          SizedBox(width: m.spacing(7)),
+          _BalanceVisibilityButton(m: m, size: m.size(controlSize)),
         ],
       ),
     );
@@ -130,9 +154,19 @@ class _Header extends StatelessWidget {
 // ================================================================
 
 class _BalanceOverview extends StatelessWidget {
-  const _BalanceOverview({required this.m});
+  const _BalanceOverview({
+    required this.m,
+    required this.selectedCurrency,
+    required this.selectedPeriodMonths,
+    required this.onCurrencyChanged,
+    required this.onPeriodChanged,
+  });
 
   final ResponsiveMetrics m;
+  final String selectedCurrency;
+  final int selectedPeriodMonths;
+  final ValueChanged<String> onCurrencyChanged;
+  final ValueChanged<int> onPeriodChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -153,6 +187,8 @@ class _BalanceOverview extends StatelessWidget {
                   AccountService().getAllActiveAccounts(),
                   BalanceService(),
                   AllocationService(),
+                  currency: selectedCurrency,
+                  periodMonths: selectedPeriodMonths,
                 );
 
                 return Container(
@@ -162,6 +198,7 @@ class _BalanceOverview extends StatelessWidget {
                     m.spacing(18),
                     m.spacing(12),
                   ),
+                  padding: EdgeInsets.all(m.spacing(14)),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(m.radius.xl),
                     gradient: const LinearGradient(
@@ -185,56 +222,49 @@ class _BalanceOverview extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: m.isTablet
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _BalanceHeader(
+                        m: m,
+                        totalBalance: data.totalBalance,
+                        selectedCurrency: selectedCurrency,
+                        selectedPeriodMonths: selectedPeriodMonths,
+                        currencies: data.availableCurrencies,
+                        onCurrencyChanged: onCurrencyChanged,
+                        onPeriodChanged: onPeriodChanged,
+                      ),
+                      SizedBox(height: m.h(8)),
+                      SizedBox(
+                        height: m.isCompactHeight ? m.h(154) : m.h(178),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Expanded(
-                              flex: m.isDesktop ? 2 : 3,
-                              child: Column(
-                                children: [
-                                  _BalanceHeader(
-                                    m: m,
-                                    totalBalance: data.totalBalance,
-                                  ),
-                                  _BalanceChart(
-                                    values: data.chartValues,
-                                    labels: data.chartLabels,
-                                    latestValue: data.latestBalance,
-                                    latestDate: data.latestDate,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              flex: m.isDesktop ? 3 : 2,
+                              flex: 4,
                               child: _MetricsColumn(
                                 m: m,
                                 available: data.available,
                                 reserved: data.reserved,
                               ),
                             ),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            _BalanceHeader(
-                              m: m,
-                              totalBalance: data.totalBalance,
-                            ),
-                            _BalanceChart(
-                              values: data.chartValues,
-                              labels: data.chartLabels,
-                              latestValue: data.latestBalance,
-                              latestDate: data.latestDate,
-                            ),
-                            _MetricsRow(
-                              m: m,
-                              available: data.available,
-                              reserved: data.reserved,
+                            SizedBox(width: m.spacing(10)),
+                            Expanded(
+                              flex: 6,
+                              child: _BalanceChart(
+                                values: data.chartValues,
+                                labels: data.chartLabels,
+                                dates: data.chartDates,
+                                latestValue: data.latestBalance,
+                                latestDate: data.latestDate,
+                                currency: selectedCurrency,
+                              ),
                             ),
                           ],
                         ),
+                      ),
+                    ],
+                  ),
                 );
               },
             );
@@ -252,8 +282,10 @@ class _GroupFinancialData {
     required this.reserved,
     required this.chartValues,
     required this.chartLabels,
+    required this.chartDates,
     required this.latestBalance,
     required this.latestDate,
+    required this.availableCurrencies,
   });
 
   final double totalBalance;
@@ -261,42 +293,55 @@ class _GroupFinancialData {
   final double reserved;
   final List<double> chartValues;
   final List<String> chartLabels;
+  final List<DateTime> chartDates;
   final double latestBalance;
   final DateTime latestDate;
+  final List<String> availableCurrencies;
 
   factory _GroupFinancialData.fromCurrentAccounts(
     List<Account> accounts,
     BalanceService balanceService,
-    AllocationService allocationService,
-  ) {
-    // IMPORTANT: This screen is a LIQUIDITY dashboard.
-    // Only accounts explicitly classified as AccountGroup.liquidity
-    // participate in balance, chart, available, and reserved totals.
-    final activeAccounts = accounts
+    AllocationService allocationService, {
+    required String currency,
+    required int periodMonths,
+  }) {
+    final activeLiquidityAccounts = accounts
         .where((account) => !account.isArchived)
         .where((account) => account.group == AccountGroup.liquidity)
-        .where((account) => account.currency.toUpperCase() == 'EGP')
+        .toList();
+
+    final currencies =
+        activeLiquidityAccounts
+            .map((account) => account.currency.toUpperCase())
+            .where((currency) => currency.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+
+    final activeAccounts = activeLiquidityAccounts
+        .where((account) => account.currency.toUpperCase() == currency)
         .toList();
 
     double totalBalance = 0;
+    double reserved = 0;
+
     for (final account in activeAccounts) {
       totalBalance += balanceService.getBalance(account.id);
-    }
-
-    // Reserved must be calculated from the SAME liquidity scope.
-    // Do not use getTotalReservedMoney(), because that is global and can
-    // include allocations belonging to non-liquidity accounts.
-    double reserved = 0;
-    for (final account in activeAccounts) {
       reserved += allocationService.getAllocatedAmountForAccount(account.id);
     }
+
+    // Reserved money cannot exceed the actual balance of the selected group.
+    reserved = reserved.clamp(0.0, totalBalance).toDouble();
     final available = totalBalance - reserved;
 
     final now = DateTime.now();
     final values = <double>[];
     final labels = <String>[];
+    final dates = <DateTime>[];
 
-    for (int offset = 5; offset >= 0; offset--) {
+    final safePeriod = periodMonths.clamp(1, 24).toInt();
+
+    for (int offset = safePeriod - 1; offset >= 0; offset--) {
       final monthDate = DateTime(now.year, now.month - offset + 1, 0);
       final snapshotDate = offset == 0 ? now : monthDate;
 
@@ -309,6 +354,7 @@ class _GroupFinancialData {
       }
 
       values.add(monthBalance);
+      dates.add(snapshotDate);
       labels.add(_monthLabel(snapshotDate.month));
     }
 
@@ -318,8 +364,10 @@ class _GroupFinancialData {
       reserved: reserved,
       chartValues: values,
       chartLabels: labels,
+      chartDates: dates,
       latestBalance: values.isEmpty ? totalBalance : values.last,
       latestDate: now,
+      availableCurrencies: currencies.isEmpty ? [currency] : currencies,
     );
   }
 
@@ -347,77 +395,253 @@ class _GroupFinancialData {
 // ================================================================
 
 class _BalanceHeader extends StatelessWidget {
-  const _BalanceHeader({required this.m, required this.totalBalance});
+  const _BalanceHeader({
+    required this.m,
+    required this.totalBalance,
+    required this.selectedCurrency,
+    required this.selectedPeriodMonths,
+    required this.currencies,
+    required this.onCurrencyChanged,
+    required this.onPeriodChanged,
+  });
 
   final ResponsiveMetrics m;
   final double totalBalance;
+  final String selectedCurrency;
+  final int selectedPeriodMonths;
+  final List<String> currencies;
+  final ValueChanged<String> onCurrencyChanged;
+  final ValueChanged<int> onPeriodChanged;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        m.spacing(16),
-        m.isCompactHeight ? m.spacing(5) : m.spacing(8),
-        m.spacing(14),
-        0,
-      ),
-      child: Row(
+      padding: EdgeInsets.symmetric(horizontal: m.spacing(2)),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
                   'Total Balance',
                   style: TextStyle(
-                    color: Color(0xFF39E4C1),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF39E4C1),
+                    fontSize: m.isCompactHeight ? m.text(13) : m.text(14),
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: m.h(1)),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        _formatMoney(totalBalance),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: m.isCompactHeight ? m.text(28) : m.text(38),
-                          height: 1,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -2,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: m.spacing(5)),
-                    Text(
-                      'EGP',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: m.isCompactHeight ? m.text(14) : m.text(16),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: m.h(5)),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: _PeriodSelector(m: m),
-                ),
-              ],
-            ),
+              ),
+              SizedBox(width: m.spacing(6)),
+              _CompactFilter(
+                label: selectedCurrency,
+                icon: Icons.currency_exchange_rounded,
+                m: m,
+                onTap: () => _showCurrencyPicker(context),
+              ),
+              SizedBox(width: m.spacing(6)),
+              _CompactFilter(
+                label: '$selectedPeriodMonths Months',
+                icon: Icons.calendar_month_rounded,
+                m: m,
+                onTap: () => _showPeriodPicker(context),
+              ),
+            ],
           ),
-          SizedBox(width: m.spacing(8)),
-          _BalanceVisibilityButton(m: m),
+          SizedBox(height: m.h(2)),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Flexible(
+                child: Text(
+                  _formatMoney(totalBalance),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: m.isCompactHeight ? m.text(27) : m.text(32),
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -1.5,
+                  ),
+                ),
+              ),
+              SizedBox(width: m.spacing(5)),
+              Text(
+                selectedCurrency,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: m.isCompactHeight ? m.text(13) : m.text(15),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  void _showCurrencyPicker(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: const Color(0xFF071823),
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: EdgeInsets.only(bottom: m.h(12)),
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  m.spacing(20),
+                  m.h(4),
+                  m.spacing(20),
+                  m.h(8),
+                ),
+                child: Text(
+                  'Currency',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: m.text(18),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              for (final currency in currencies)
+                ListTile(
+                  title: Text(
+                    currency,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  trailing: currency == selectedCurrency
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: Color(0xFF35E0B5),
+                        )
+                      : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    onCurrencyChanged(currency);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPeriodPicker(BuildContext context) {
+    const periods = [3, 6, 12];
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: const Color(0xFF071823),
+      builder: (context) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: EdgeInsets.only(bottom: m.h(12)),
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  m.spacing(20),
+                  m.h(4),
+                  m.spacing(20),
+                  m.h(8),
+                ),
+                child: Text(
+                  'Period',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: m.text(18),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              for (final months in periods)
+                ListTile(
+                  title: Text(
+                    '$months Months',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  trailing: months == selectedPeriodMonths
+                      ? const Icon(
+                          Icons.check_rounded,
+                          color: Color(0xFF35E0B5),
+                        )
+                      : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    onPeriodChanged(months);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CompactFilter extends StatelessWidget {
+  const _CompactFilter({
+    required this.label,
+    required this.icon,
+    required this.m,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final ResponsiveMetrics m;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(m.radius.lg),
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: m.spacing(8),
+            vertical: m.h(6),
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0B1C28),
+            borderRadius: BorderRadius.circular(m.radius.lg),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white70, size: m.size(13)),
+              SizedBox(width: m.spacing(4)),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: m.text(10),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(width: m.spacing(2)),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Colors.white54,
+                size: m.size(14),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -440,83 +664,30 @@ class _MetricsColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        m.spacing(10),
-        m.spacing(10),
-        m.spacing(16),
-        m.spacing(10),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _BalanceMetric(
-              title: 'Available',
-              amount: _formatMoney(available),
-              icon: Icons.arrow_upward_rounded,
-              color: const Color(0xFF3EE8B8),
-              m: m,
-            ),
+    return Column(
+      children: [
+        Expanded(
+          child: _BalanceMetric(
+            title: 'Available',
+            description: 'Available to spend',
+            amount: _formatMoney(available),
+            icon: Icons.arrow_upward_rounded,
+            color: const Color(0xFF3EE8B8),
+            m: m,
           ),
-          SizedBox(width: m.spacing(8)),
-          Expanded(
-            child: _BalanceMetric(
-              title: 'Reserved',
-              amount: _formatMoney(reserved),
-              icon: Icons.arrow_forward_rounded,
-              color: const Color(0xFFFFA928),
-              m: m,
-            ),
+        ),
+        SizedBox(height: m.spacing(8)),
+        Expanded(
+          child: _BalanceMetric(
+            title: 'Reserved',
+            description: 'Your reserved money',
+            amount: _formatMoney(reserved),
+            icon: Icons.arrow_forward_rounded,
+            color: const Color(0xFFFFA928),
+            m: m,
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricsRow extends StatelessWidget {
-  const _MetricsRow({
-    required this.m,
-    required this.available,
-    required this.reserved,
-  });
-
-  final ResponsiveMetrics m;
-  final double available;
-  final double reserved;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        m.spacing(16),
-        0,
-        m.spacing(16),
-        m.spacing(10),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _BalanceMetric(
-              title: 'Available',
-              amount: _formatMoney(available),
-              icon: Icons.arrow_upward_rounded,
-              color: const Color(0xFF3EE8B8),
-              m: m,
-            ),
-          ),
-          SizedBox(width: m.spacing(8)),
-          Expanded(
-            child: _BalanceMetric(
-              title: 'Reserved',
-              amount: _formatMoney(reserved),
-              icon: Icons.arrow_forward_rounded,
-              color: const Color(0xFFFFA928),
-              m: m,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -605,9 +776,10 @@ class _AccountsHeader extends StatelessWidget {
 // ================================================================
 
 class _AccountsList extends StatelessWidget {
-  const _AccountsList({required this.m});
+  const _AccountsList({required this.m, required this.selectedCurrency});
 
   final ResponsiveMetrics m;
+  final String selectedCurrency;
 
   @override
   Widget build(BuildContext context) {
@@ -630,7 +802,10 @@ class _AccountsList extends StatelessWidget {
                 final accounts = AccountService()
                     .getAllActiveAccounts()
                     .where((account) => account.group == AccountGroup.liquidity)
-                    .where((account) => account.currency.toUpperCase() == 'EGP')
+                    .where(
+                      (account) =>
+                          account.currency.toUpperCase() == selectedCurrency,
+                    )
                     .map(
                       (account) => _accountDataFromModel(
                         account,
@@ -712,6 +887,9 @@ _AccountData _accountDataFromModel(
     available: isLiability
         ? 'Outstanding ${_formatMoney(balance.abs())} ${account.currency}'
         : 'Available ${_formatMoney(available)} ${account.currency}',
+    reserved: isLiability
+        ? '—'
+        : 'Reserved ${_formatMoney(reserved)} ${account.currency}',
     showAvailable: false,
     isLiability: isLiability,
   );
@@ -775,6 +953,7 @@ class _AccountData {
   final String balance;
   final String balanceSuffix;
   final String available;
+  final String reserved;
   final bool showAvailable;
   final String? badge;
   final bool isLiability;
@@ -788,6 +967,7 @@ class _AccountData {
     required this.balance,
     required this.balanceSuffix,
     required this.available,
+    required this.reserved,
     required this.showAvailable,
     this.badge,
     this.isLiability = false,
@@ -942,7 +1122,7 @@ class _AccountCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    SizedBox(height: m.h(4)),
+                    SizedBox(height: m.h(3)),
                     Text(
                       data.showAvailable
                           ? 'Available ${data.available}'
@@ -955,6 +1135,17 @@ class _AccountCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    if (!data.isLiability) ...[
+                      SizedBox(height: m.h(2)),
+                      Text(
+                        data.reserved,
+                        style: TextStyle(
+                          color: const Color(0xFFFFA928),
+                          fontSize: m.text(9.5),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 SizedBox(width: m.spacing(7)),
@@ -975,6 +1166,7 @@ class _AccountCard extends StatelessWidget {
 class _BalanceMetric extends StatelessWidget {
   const _BalanceMetric({
     required this.title,
+    required this.description,
     required this.amount,
     required this.icon,
     required this.color,
@@ -982,6 +1174,7 @@ class _BalanceMetric extends StatelessWidget {
   });
 
   final String title;
+  final String description;
   final String amount;
   final IconData icon;
   final Color color;
@@ -990,11 +1183,12 @@ class _BalanceMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       padding: EdgeInsets.fromLTRB(
-        m.spacing(10),
-        m.spacing(8),
-        m.spacing(8),
-        m.spacing(8),
+        m.spacing(9),
+        m.spacing(7),
+        m.spacing(7),
+        m.spacing(7),
       ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.06),
@@ -1005,25 +1199,41 @@ class _BalanceMetric extends StatelessWidget {
         children: [
           Expanded(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: color,
-                    fontSize: m.text(11),
-                    fontWeight: FontWeight.w600,
+                    fontSize: m.text(10),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: m.h(1)),
+                Text(
+                  description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.48),
+                    fontSize: m.text(8.5),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 SizedBox(height: m.h(2)),
                 RichText(
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   text: TextSpan(
                     children: [
                       TextSpan(
                         text: amount,
                         style: TextStyle(
                           color: color,
-                          fontSize: m.text(17),
+                          fontSize: m.text(15),
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -1031,7 +1241,7 @@ class _BalanceMetric extends StatelessWidget {
                         text: ' EGP',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: m.text(11),
+                          fontSize: m.text(9),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1042,137 +1252,13 @@ class _BalanceMetric extends StatelessWidget {
             ),
           ),
           Container(
-            width: m.size(28),
-            height: m.size(28),
+            width: m.size(25),
+            height: m.size(25),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.11),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: m.size(13)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({
-    required this.icon,
-    required this.color,
-    required this.title,
-    required this.subtitle,
-    required this.m,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String subtitle;
-  final ResponsiveMetrics m;
-
-  @override
-  Widget build(BuildContext context) {
-    final height = m.isDesktop ? m.h(130) : m.h(118);
-
-    return Container(
-      height: height,
-      decoration: BoxDecoration(
-        color: const Color(0xFF071722),
-        borderRadius: BorderRadius.circular(m.radius.lg),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.045)),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(m.radius.lg),
-          onTap: () {},
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: m.spacing(5),
-              vertical: m.h(13),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: m.isDesktop ? m.size(56) : m.size(50),
-                  height: m.isDesktop ? m.size(56) : m.size(50),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.11),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: m.isDesktop ? m.size(30) : m.size(28),
-                  ),
-                ),
-                SizedBox(height: m.h(9)),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: m.text(12),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: m.h(3)),
-                Text(
-                  subtitle,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.43),
-                    fontSize: m.text(9.5),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PeriodSelector extends StatelessWidget {
-  const _PeriodSelector({required this.m});
-
-  final ResponsiveMetrics m;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: m.spacing(11),
-        vertical: m.h(9),
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0B1C28),
-        borderRadius: BorderRadius.circular(m.radius.lg),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            '6 Months',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: m.text(12),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(width: m.spacing(7)),
-          Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Colors.white70,
-            size: m.size(18),
+            child: Icon(icon, color: color, size: m.size(12)),
           ),
         ],
       ),
@@ -1181,24 +1267,25 @@ class _PeriodSelector extends StatelessWidget {
 }
 
 class _BalanceVisibilityButton extends StatelessWidget {
-  const _BalanceVisibilityButton({required this.m});
+  const _BalanceVisibilityButton({required this.m, required this.size});
 
   final ResponsiveMetrics m;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: m.size(46),
-      height: m.size(46),
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.055),
+        color: const Color(0xFF0A1A26),
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Icon(
         Icons.visibility_outlined,
         color: Colors.white,
-        size: m.size(21),
+        size: size * 0.48,
       ),
     );
   }
@@ -1274,29 +1361,70 @@ class _NotificationButton extends StatelessWidget {
 }
 
 // ================================================================
-// STATIC BALANCE CHART
+// INTERACTIVE BALANCE CHART
 // ================================================================
 
-class _BalanceChart extends StatelessWidget {
+class _BalanceChart extends StatefulWidget {
   const _BalanceChart({
     required this.values,
     required this.labels,
+    required this.dates,
     required this.latestValue,
     required this.latestDate,
+    required this.currency,
   });
 
   final List<double> values;
   final List<String> labels;
+  final List<DateTime> dates;
   final double latestValue;
   final DateTime latestDate;
+  final String currency;
+
+  @override
+  State<_BalanceChart> createState() => _BalanceChartState();
+}
+
+class _BalanceChartState extends State<_BalanceChart> {
+  int _selectedIndex = -1;
+
+  int _indexFromLocalX(double x, double width) {
+    if (widget.values.length <= 1) return 0;
+
+    final chartWidth = width - 48;
+    if (chartWidth <= 0) return 0;
+
+    final normalized = (x / chartWidth).clamp(0.0, 1.0);
+    return (normalized * (widget.values.length - 1))
+        .round()
+        .clamp(0, widget.values.length - 1)
+        .toInt();
+  }
+
+  void _selectAt(Offset position, double width) {
+    if (widget.values.isEmpty) return;
+
+    final index = _indexFromLocalX(position.dx, width);
+    if (index != _selectedIndex) {
+      setState(() => _selectedIndex = index);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
+    final values = widget.values;
+    final selectedIndex = _selectedIndex < 0
+        ? (values.isEmpty ? -1 : values.length - 1)
+        : _selectedIndex;
 
-    return SizedBox(
-      width: double.infinity,
-      height: m.isCompactHeight ? m.h(108) : m.h(138),
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF061923).withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(m.radius.lg),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.055)),
+      ),
+      padding: EdgeInsets.fromLTRB(m.spacing(8), m.h(7), m.spacing(5), m.h(4)),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final minValue = values.isEmpty
@@ -1306,85 +1434,124 @@ class _BalanceChart extends StatelessWidget {
               ? 1.0
               : values.reduce((a, b) => a > b ? a : b);
 
-          return Stack(
-            fit: StackFit.expand,
-            children: [
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _BalanceChartPainter(
-                    values: values,
-                    minValue: minValue,
-                    maxValue: maxValue,
-                  ),
+          final chartWidth = constraints.maxWidth - 48;
+          final selectedX = values.isEmpty
+              ? 0.0
+              : (values.length == 1
+                    ? 0.0
+                    : chartWidth * selectedIndex / (values.length - 1));
+
+          const tooltipWidth = 96.0;
+          final tooltipLeft = (selectedX - tooltipWidth / 2)
+              .clamp(
+                2.0,
+                (constraints.maxWidth - tooltipWidth - 2).clamp(
+                  2.0,
+                  double.infinity,
                 ),
-              ),
-              Positioned(
-                right: 0,
-                top: m.h(12),
-                bottom: m.h(22),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: _chartScaleLabels(minValue, maxValue, m),
-                ),
-              ),
-              Positioned(
-                right: m.spacing(34),
-                top: 0,
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: m.spacing(10),
-                    vertical: m.h(6),
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF062D35),
-                    borderRadius: BorderRadius.circular(m.radius.md),
-                    border: Border.all(
-                      color: const Color(0xFF14DDB1).withValues(alpha: 0.28),
+              )
+              .toDouble();
+
+          final selectedValue = values.isEmpty
+              ? widget.latestValue
+              : values[selectedIndex];
+          final selectedDate = widget.dates.isEmpty
+              ? widget.latestDate
+              : widget.dates[selectedIndex];
+
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (details) =>
+                _selectAt(details.localPosition, constraints.maxWidth),
+            onHorizontalDragUpdate: (details) =>
+                _selectAt(details.localPosition, constraints.maxWidth),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _BalanceChartPainter(
+                      values: values,
+                      minValue: minValue,
+                      maxValue: maxValue,
+                      selectedIndex: selectedIndex,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF00E1B3).withValues(alpha: 0.08),
-                        blurRadius: m.size(15),
-                      ),
-                    ],
                   ),
+                ),
+                Positioned(
+                  left: tooltipLeft,
+                  top: 0,
+                  child: Container(
+                    width: tooltipWidth,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: m.spacing(6),
+                      vertical: m.h(4),
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF062D35),
+                      borderRadius: BorderRadius.circular(m.radius.md),
+                      border: Border.all(
+                        color: const Color(0xFF14DDB1).withValues(alpha: 0.28),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${_formatMoney(selectedValue)} ${widget.currency}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: const Color(0xFF35E0B5),
+                            fontSize: m.text(10),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(height: m.h(1)),
+                        Text(
+                          '${_GroupFinancialData._monthLabel(selectedDate.month)} ${selectedDate.day}',
+                          style: TextStyle(
+                            color: Colors.white60,
+                            fontSize: m.text(8.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  top: m.h(5),
+                  bottom: m.h(20),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: _chartScaleLabels(minValue, maxValue, m),
+                  ),
+                ),
+                Positioned(
+                  left: m.spacing(4),
+                  right: m.spacing(28),
+                  bottom: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '${_formatMoney(latestValue)} EGP',
-                        style: const TextStyle(
-                          color: Color(0xFF35E0B5),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${_GroupFinancialData._monthLabel(latestDate.month)} ${latestDate.day}',
-                        style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 9,
-                        ),
-                      ),
+                      for (final label in widget.labels) _ChartLabel(label),
                     ],
                   ),
                 ),
-              ),
-              Positioned(
-                left: m.spacing(8),
-                right: m.spacing(42),
-                bottom: 0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [for (final label in labels) _ChartLabel(label)],
-                ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),
     );
+  }
+
+  // The chart receives the selected currency through the parent data; this
+  // label is kept separate so the tooltip remains readable.
+  String selectedCurrencyLabel(BuildContext context) {
+    return 'EGP';
   }
 
   List<Widget> _chartScaleLabels(
@@ -1395,8 +1562,8 @@ class _BalanceChart extends StatelessWidget {
     final range = (maxValue - minValue).abs();
     final safeRange = range < 1 ? 1.0 : range;
 
-    return List.generate(5, (index) {
-      final value = maxValue - (safeRange * index / 4);
+    return List.generate(4, (index) {
+      final value = maxValue - (safeRange * index / 3);
       return _ChartLabel(_formatCompact(value));
     });
   }
@@ -1405,16 +1572,13 @@ class _BalanceChart extends StatelessWidget {
 String _formatCompact(double value) {
   final absolute = value.abs();
 
-  String formatted;
   if (absolute >= 1000000) {
-    formatted = '${(value / 1000000).toStringAsFixed(1)}M';
+    return '${(value / 1000000).toStringAsFixed(1)}M';
   } else if (absolute >= 1000) {
-    formatted = '${(value / 1000).toStringAsFixed(1)}k';
-  } else {
-    formatted = value.round().toString();
+    return '${(value / 1000).toStringAsFixed(1)}k';
   }
 
-  return formatted;
+  return value.round().toString();
 }
 
 class _ChartLabel extends StatelessWidget {
@@ -1446,11 +1610,13 @@ class _BalanceChartPainter extends CustomPainter {
     required this.values,
     required this.minValue,
     required this.maxValue,
+    required this.selectedIndex,
   });
 
   final List<double> values;
   final double minValue;
   final double maxValue;
+  final int selectedIndex;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1536,7 +1702,8 @@ class _BalanceChartPainter extends CustomPainter {
       canvas.drawCircle(point, 3.5, pointPaint);
     }
 
-    final selectedPoint = points.last;
+    final safeSelectedIndex = selectedIndex.clamp(0, points.length - 1);
+    final selectedPoint = points[safeSelectedIndex];
 
     final selectedGlow = Paint()
       ..color = const Color(0xFF35E0B5).withValues(alpha: 0.18);
@@ -1567,6 +1734,7 @@ class _BalanceChartPainter extends CustomPainter {
   bool shouldRepaint(covariant _BalanceChartPainter oldDelegate) {
     return oldDelegate.values != values ||
         oldDelegate.minValue != minValue ||
-        oldDelegate.maxValue != maxValue;
+        oldDelegate.maxValue != maxValue ||
+        oldDelegate.selectedIndex != selectedIndex;
   }
 }
