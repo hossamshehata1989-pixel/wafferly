@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../models/account.dart';
 import '../../../../models/enums/account_enums.dart';
@@ -11,6 +12,8 @@ import '../../../../services/account_service.dart';
 import '../../../../services/balance_service.dart';
 import '../../../../services/allocation_service.dart';
 import '../../../../theme/responsive_metrics.dart';
+import '../../../../theme/account_asset_resolver.dart';
+import '../../../../models/enums/section_type.dart';
 
 class AccountsGroupDetailsScreen extends StatelessWidget {
   const AccountsGroupDetailsScreen({super.key});
@@ -74,7 +77,7 @@ class _Header extends StatelessWidget {
             size: m.size(controlSize),
             m: m,
           ),
-          SizedBox(width: m.spacing(12)),
+          SizedBox(width: m.spacing(8)),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -88,7 +91,7 @@ class _Header extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: m.h(2)),
+                SizedBox(height: m.h(1)),
                 Text(
                   'Hossam 👋',
                   maxLines: 1,
@@ -101,7 +104,7 @@ class _Header extends StatelessWidget {
                     letterSpacing: -0.6,
                   ),
                 ),
-                SizedBox(height: m.h(4)),
+                SizedBox(height: m.h(2)),
                 Text(
                   'Here’s your financial overview',
                   maxLines: 1,
@@ -154,10 +157,10 @@ class _BalanceOverview extends StatelessWidget {
 
                 return Container(
                   margin: EdgeInsets.fromLTRB(
-                    m.spacing(20),
-                    m.h(6),
-                    m.spacing(20),
-                    m.spacing(20),
+                    m.spacing(18),
+                    m.h(4),
+                    m.spacing(18),
+                    m.spacing(12),
                   ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(m.radius.xl),
@@ -194,7 +197,6 @@ class _BalanceOverview extends StatelessWidget {
                                     m: m,
                                     totalBalance: data.totalBalance,
                                   ),
-                                  _PeriodAndFilter(m: m),
                                   _BalanceChart(
                                     values: data.chartValues,
                                     labels: data.chartLabels,
@@ -220,7 +222,6 @@ class _BalanceOverview extends StatelessWidget {
                               m: m,
                               totalBalance: data.totalBalance,
                             ),
-                            _PeriodAndFilter(m: m),
                             _BalanceChart(
                               values: data.chartValues,
                               labels: data.chartLabels,
@@ -355,9 +356,9 @@ class _BalanceHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        m.spacing(18),
-        m.isCompactHeight ? m.spacing(14) : m.spacing(17),
         m.spacing(16),
+        m.isCompactHeight ? m.spacing(5) : m.spacing(8),
+        m.spacing(14),
         0,
       ),
       child: Row(
@@ -371,35 +372,50 @@ class _BalanceHeader extends StatelessWidget {
                   'Total Balance',
                   style: TextStyle(
                     color: Color(0xFF39E4C1),
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(height: m.h(5)),
-                Text(
-                  _formatMoney(totalBalance),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: m.isCompactHeight ? m.text(38) : m.text(50),
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -2,
-                  ),
+                SizedBox(height: m.h(1)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _formatMoney(totalBalance),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: m.isCompactHeight ? m.text(28) : m.text(38),
+                          height: 1,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -2,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: m.spacing(5)),
+                    Text(
+                      'EGP',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: m.isCompactHeight ? m.text(14) : m.text(16),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: m.h(4)),
-                const Text(
-                  'EGP',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                SizedBox(height: m.h(5)),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _PeriodSelector(m: m),
                 ),
               ],
             ),
           ),
+          SizedBox(width: m.spacing(8)),
           _BalanceVisibilityButton(m: m),
         ],
       ),
@@ -427,9 +443,9 @@ class _MetricsColumn extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.fromLTRB(
         m.spacing(10),
-        m.spacing(20),
-        m.spacing(18),
-        m.spacing(20),
+        m.spacing(10),
+        m.spacing(16),
+        m.spacing(10),
       ),
       child: Row(
         children: [
@@ -442,7 +458,7 @@ class _MetricsColumn extends StatelessWidget {
               m: m,
             ),
           ),
-          SizedBox(width: m.spacing(12)),
+          SizedBox(width: m.spacing(8)),
           Expanded(
             child: _BalanceMetric(
               title: 'Reserved',
@@ -473,10 +489,10 @@ class _MetricsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        m.spacing(18),
+        m.spacing(16),
         0,
-        m.spacing(18),
-        m.spacing(20),
+        m.spacing(16),
+        m.spacing(10),
       ),
       child: Row(
         children: [
@@ -489,7 +505,7 @@ class _MetricsRow extends StatelessWidget {
               m: m,
             ),
           ),
-          SizedBox(width: m.spacing(12)),
+          SizedBox(width: m.spacing(8)),
           Expanded(
             child: _BalanceMetric(
               title: 'Reserved',
@@ -525,26 +541,6 @@ String _formatMoney(double value) {
 // PERIOD & FILTER
 // ================================================================
 
-class _PeriodAndFilter extends StatelessWidget {
-  const _PeriodAndFilter({required this.m});
-
-  final ResponsiveMetrics m;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: m.spacing(18)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _AccountFilter(m: m),
-          _PeriodSelector(m: m),
-        ],
-      ),
-    );
-  }
-}
-
 // ================================================================
 // ================================================================
 // ACCOUNTS HEADER
@@ -559,10 +555,10 @@ class _AccountsHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        m.spacing(26),
+        m.spacing(22),
         0,
-        m.spacing(26),
-        m.spacing(14),
+        m.spacing(22),
+        m.spacing(9),
       ),
       child: Row(
         children: [
@@ -571,7 +567,7 @@ class _AccountsHeader extends StatelessWidget {
               'Accounts',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: m.text(18),
+                fontSize: m.text(17),
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -582,8 +578,8 @@ class _AccountsHeader extends StatelessWidget {
               // هنربطه بـ AddAccountScreen بعدين
             },
             child: Container(
-              width: m.size(36),
-              height: m.size(36),
+              width: m.size(32),
+              height: m.size(32),
               decoration: BoxDecoration(
                 color: const Color(0xFF35E0B5).withValues(alpha: 0.10),
                 shape: BoxShape.circle,
@@ -594,7 +590,7 @@ class _AccountsHeader extends StatelessWidget {
               child: Icon(
                 Icons.add_rounded,
                 color: const Color(0xFF35E0B5),
-                size: m.size(21),
+                size: m.size(18),
               ),
             ),
           ),
@@ -703,7 +699,7 @@ _AccountData _accountDataFromModel(
   final isLiability = account.nature.name == 'liability';
 
   return _AccountData(
-    icon: _iconForAccountType(account.type, isLiability),
+    iconAsset: _resolveAccountIcon(account),
     iconColor: _colorForAccountType(account.type, isLiability),
     iconBackground: _colorForAccountType(
       account.type,
@@ -732,29 +728,22 @@ String _prettyAccountType(String type) {
       : '${spaced[0].toUpperCase()}${spaced.substring(1)}';
 }
 
-IconData _iconForAccountType(String type, bool isLiability) {
-  if (isLiability) {
-    if (type == 'creditCard') return Icons.credit_card_rounded;
-    if (type == 'loan') return Icons.account_balance_rounded;
-    if (type == 'installment') return Icons.calendar_month_rounded;
-    return Icons.account_balance_wallet_rounded;
+String _resolveAccountIcon(Account account) {
+  final savedIcon = account.icon;
+  if (savedIcon != null && savedIcon.isNotEmpty) {
+    return savedIcon;
   }
 
-  switch (type) {
-    case 'bank':
-      return Icons.account_balance_rounded;
-    case 'wallet':
-      return Icons.account_balance_wallet_rounded;
-    case 'investment':
-    case 'stocks':
-    case 'gold':
-    case 'certificates':
-      return Icons.bar_chart_rounded;
-    case 'cash':
-      return Icons.payments_rounded;
-    default:
-      return Icons.account_balance_wallet_rounded;
+  final icons = AccountAssetResolver.iconsForType(
+    SectionType.liquidity,
+    account.type,
+  );
+
+  if (icons.isNotEmpty) {
+    return icons.first;
   }
+
+  return AccountAssetResolver.defaultIcon(SectionType.liquidity);
 }
 
 Color _colorForAccountType(String type, bool isLiability) {
@@ -778,7 +767,7 @@ Color _colorForAccountType(String type, bool isLiability) {
 }
 
 class _AccountData {
-  final IconData icon;
+  final String iconAsset;
   final Color iconColor;
   final Color iconBackground;
   final String name;
@@ -791,7 +780,7 @@ class _AccountData {
   final bool isLiability;
 
   const _AccountData({
-    required this.icon,
+    required this.iconAsset,
     required this.iconColor,
     required this.iconBackground,
     required this.name,
@@ -818,7 +807,7 @@ class _AccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(bottom: m.spacing(10)),
+      margin: EdgeInsets.only(bottom: m.spacing(5)),
       decoration: BoxDecoration(
         color: const Color(0xFF071823),
         borderRadius: BorderRadius.circular(m.radius.lg),
@@ -834,16 +823,16 @@ class _AccountCard extends StatelessWidget {
           onTap: () {},
           child: Padding(
             padding: EdgeInsets.fromLTRB(
-              m.spacing(16),
-              m.spacing(15),
-              m.spacing(14),
-              m.spacing(15),
+              m.spacing(10),
+              m.spacing(8),
+              m.spacing(9),
+              m.spacing(8),
             ),
             child: Row(
               children: [
                 Container(
-                  width: m.size(58),
-                  height: m.size(58),
+                  width: m.size(50),
+                  height: m.size(50),
                   decoration: BoxDecoration(
                     color: data.iconBackground,
                     shape: BoxShape.circle,
@@ -851,13 +840,18 @@ class _AccountCard extends StatelessWidget {
                       color: data.iconColor.withValues(alpha: 0.12),
                     ),
                   ),
-                  child: Icon(
-                    data.icon,
-                    color: data.iconColor,
-                    size: m.size(29),
+                  padding: EdgeInsets.all(m.size(8)),
+                  child: SvgPicture.asset(
+                    data.iconAsset,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.account_balance_wallet_rounded,
+                      color: data.iconColor,
+                      size: m.size(24),
+                    ),
                   ),
                 ),
-                SizedBox(width: m.spacing(15)),
+                SizedBox(width: m.spacing(8)),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -868,7 +862,7 @@ class _AccountCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: m.text(18),
+                          fontSize: m.text(16),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -879,12 +873,12 @@ class _AccountCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.52),
-                          fontSize: m.text(13),
+                          fontSize: m.text(10),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       if (data.badge != null) ...[
-                        SizedBox(height: m.h(7)),
+                        SizedBox(height: m.h(4)),
                         Container(
                           padding: EdgeInsets.symmetric(
                             horizontal: m.spacing(9),
@@ -900,7 +894,7 @@ class _AccountCard extends StatelessWidget {
                             data.badge!,
                             style: TextStyle(
                               color: const Color(0xFF35E0B5),
-                              fontSize: m.text(10),
+                              fontSize: m.text(9),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -909,7 +903,7 @@ class _AccountCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                SizedBox(width: m.spacing(10)),
+                SizedBox(width: m.spacing(7)),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -917,7 +911,7 @@ class _AccountCard extends StatelessWidget {
                       'Balance',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.48),
-                        fontSize: m.text(12),
+                        fontSize: m.text(10),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -931,7 +925,7 @@ class _AccountCard extends StatelessWidget {
                               color: data.isLiability
                                   ? const Color(0xFFFF5572)
                                   : Colors.white,
-                              fontSize: m.text(20),
+                              fontSize: m.text(16),
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -941,7 +935,7 @@ class _AccountCard extends StatelessWidget {
                               color: data.isLiability
                                   ? const Color(0xFFFF5572)
                                   : Colors.white,
-                              fontSize: m.text(13),
+                              fontSize: m.text(11),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -957,17 +951,17 @@ class _AccountCard extends StatelessWidget {
                         color: data.isLiability
                             ? const Color(0xFFFF5572)
                             : const Color(0xFF35E0B5),
-                        fontSize: m.text(12),
+                        fontSize: m.text(10),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
-                SizedBox(width: m.spacing(10)),
+                SizedBox(width: m.spacing(7)),
                 Icon(
                   Icons.chevron_right_rounded,
                   color: Colors.white.withValues(alpha: 0.58),
-                  size: m.size(26),
+                  size: m.size(18),
                 ),
               ],
             ),
@@ -997,10 +991,10 @@ class _BalanceMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-        m.spacing(14),
-        m.spacing(12),
         m.spacing(10),
-        m.spacing(12),
+        m.spacing(8),
+        m.spacing(8),
+        m.spacing(8),
       ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.06),
@@ -1017,7 +1011,7 @@ class _BalanceMetric extends StatelessWidget {
                   title,
                   style: TextStyle(
                     color: color,
-                    fontSize: m.text(13),
+                    fontSize: m.text(11),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1029,7 +1023,7 @@ class _BalanceMetric extends StatelessWidget {
                         text: amount,
                         style: TextStyle(
                           color: color,
-                          fontSize: m.text(20),
+                          fontSize: m.text(17),
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -1048,13 +1042,13 @@ class _BalanceMetric extends StatelessWidget {
             ),
           ),
           Container(
-            width: m.size(34),
-            height: m.size(34),
+            width: m.size(28),
+            height: m.size(28),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.11),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: m.size(18)),
+            child: Icon(icon, color: color, size: m.size(13)),
           ),
         ],
       ),
@@ -1155,7 +1149,7 @@ class _PeriodSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: m.spacing(14),
+        horizontal: m.spacing(11),
         vertical: m.h(9),
       ),
       decoration: BoxDecoration(
@@ -1186,52 +1180,6 @@ class _PeriodSelector extends StatelessWidget {
   }
 }
 
-class _AccountFilter extends StatelessWidget {
-  const _AccountFilter({required this.m});
-
-  final ResponsiveMetrics m;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: m.spacing(14),
-        vertical: m.h(9),
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A202A),
-        borderRadius: BorderRadius.circular(m.radius.lg),
-        border: Border.all(color: const Color(0xFF1D5360)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.account_balance_rounded,
-            color: const Color(0xFF35E0B5),
-            size: m.size(17),
-          ),
-          SizedBox(width: m.spacing(8)),
-          Text(
-            'Liquidity Accounts',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: m.text(12),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(width: m.spacing(7)),
-          Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: Colors.white70,
-            size: m.size(17),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _BalanceVisibilityButton extends StatelessWidget {
   const _BalanceVisibilityButton({required this.m});
 
@@ -1240,8 +1188,8 @@ class _BalanceVisibilityButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: m.size(55),
-      height: m.size(55),
+      width: m.size(46),
+      height: m.size(46),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.055),
         shape: BoxShape.circle,
@@ -1250,7 +1198,7 @@ class _BalanceVisibilityButton extends StatelessWidget {
       child: Icon(
         Icons.visibility_outlined,
         color: Colors.white,
-        size: m.size(25),
+        size: m.size(21),
       ),
     );
   }
@@ -1348,7 +1296,7 @@ class _BalanceChart extends StatelessWidget {
 
     return SizedBox(
       width: double.infinity,
-      height: m.isCompactHeight ? m.h(190) : m.h(225),
+      height: m.isCompactHeight ? m.h(108) : m.h(138),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final minValue = values.isEmpty
@@ -1372,8 +1320,8 @@ class _BalanceChart extends StatelessWidget {
               ),
               Positioned(
                 right: 0,
-                top: m.h(18),
-                bottom: m.h(26),
+                top: m.h(12),
+                bottom: m.h(22),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: _chartScaleLabels(minValue, maxValue, m),
@@ -1384,8 +1332,8 @@ class _BalanceChart extends StatelessWidget {
                 top: 0,
                 child: Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: m.spacing(13),
-                    vertical: m.h(9),
+                    horizontal: m.spacing(10),
+                    vertical: m.h(6),
                   ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF062D35),
@@ -1407,7 +1355,7 @@ class _BalanceChart extends StatelessWidget {
                         '${_formatMoney(latestValue)} EGP',
                         style: const TextStyle(
                           color: Color(0xFF35E0B5),
-                          fontSize: 15,
+                          fontSize: 13,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -1416,7 +1364,7 @@ class _BalanceChart extends StatelessWidget {
                         '${_GroupFinancialData._monthLabel(latestDate.month)} ${latestDate.day}',
                         style: const TextStyle(
                           color: Colors.white60,
-                          fontSize: 10,
+                          fontSize: 9,
                         ),
                       ),
                     ],
