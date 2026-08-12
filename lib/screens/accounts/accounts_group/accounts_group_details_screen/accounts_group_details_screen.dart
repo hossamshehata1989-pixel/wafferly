@@ -3,10 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../models/account.dart';
 import '../../../../models/transaction.dart';
-import '../../../../models/allocation.dart';
+import '../../../../core/planning/infrastructure/persistence/hive_allocation_record.dart';
+import '../../../../core/planning/services/available_balance_projection_service.dart';
 import '../../../../theme/responsive_metrics.dart';
 import 'accounts_group_details_logic.dart';
 
@@ -195,8 +197,8 @@ class _BalanceOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     final accountsBox = Hive.box<Account>('accounts');
     final transactionsBox = Hive.box<Transaction>('transactions');
-    final allocationsBox = Hive.box<Allocation>(
-      AccountsGroupDetailsLogic.allocationBoxName,
+    final planningAllocationsBox = Hive.box<HiveAllocationRecord>(
+      'planning_allocations',
     );
 
     return ValueListenableBuilder<Box<Account>>(
@@ -205,102 +207,122 @@ class _BalanceOverview extends StatelessWidget {
         return ValueListenableBuilder<Box<Transaction>>(
           valueListenable: transactionsBox.listenable(),
           builder: (context, _, __) {
-            return ValueListenableBuilder<Box<Allocation>>(
-              valueListenable: allocationsBox.listenable(),
+            return ValueListenableBuilder<Box<HiveAllocationRecord>>(
+              valueListenable: planningAllocationsBox.listenable(),
               builder: (context, _, __) {
-                final data = AccountsGroupDetailsLogic.buildFinancialData(
-                  currency: selectedCurrency,
-                  periodMonths: selectedPeriodMonths,
-                );
+                final projectionService = context
+                    .read<AvailableBalanceProjectionService>();
 
-                return Container(
-                  margin: EdgeInsets.fromLTRB(
-                    m.spacing(18),
-                    m.h(4),
-                    m.spacing(18),
-                    m.spacing(12),
+                return FutureBuilder<GroupFinancialData>(
+                  future: AccountsGroupDetailsLogic.buildFinancialData(
+                    currency: selectedCurrency,
+                    periodMonths: selectedPeriodMonths,
+                    projectionService: projectionService,
                   ),
-                  padding: EdgeInsets.all(m.spacing(14)),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(m.radius.xl),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF062D36),
-                        Color(0xFF081722),
-                        Color(0xFF07131D),
-                      ],
-                    ),
-                    border: Border.all(
-                      color: const Color(0xFF0B4D57),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF00DDB0).withValues(alpha: 0.08),
-                        blurRadius: m.size(28),
-                        spreadRadius: 1,
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const SizedBox(
+                        height: 260,
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    }
+
+                    final data = snapshot.data!;
+
+                    return Container(
+                      margin: EdgeInsets.fromLTRB(
+                        m.spacing(18),
+                        m.h(4),
+                        m.spacing(18),
+                        m.spacing(12),
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _BalanceHeader(
-                        m: m,
-                        totalBalance: data.totalBalance,
-                        selectedCurrency: selectedCurrency,
-                        selectedPeriodMonths: selectedPeriodMonths,
-                        currencies: data.availableCurrencies,
-                        showBalance: showBalances,
-                        totalBreakdown: data.totalBreakdown,
-                        onCurrencyChanged: onCurrencyChanged,
-                        onPeriodChanged: onPeriodChanged,
-                      ),
-                      SizedBox(height: m.h(7)),
-                      _CurrencyComposition(
-                        m: m,
-                        items: data.totalBreakdown,
-                        showBalance: showBalances,
-                      ),
-                      SizedBox(height: m.h(7)),
-                      SizedBox(
-                        height: m.isCompactHeight ? m.h(146) : m.h(164),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              flex: 6,
-                              child: _BalanceChart(
-                                values: data.chartValues,
-                                labels: data.chartLabels,
-                                dates: data.chartDates,
-                                latestValue: data.latestBalance,
-                                latestDate: data.latestDate,
-                                currency: selectedCurrency,
-                                showBalance: showBalances,
-                                periodMonths: selectedPeriodMonths,
-                              ),
-                            ),
-                            SizedBox(width: m.spacing(10)),
-                            Expanded(
-                              flex: 4,
-                              child: _MetricsColumn(
-                                m: m,
-                                available: data.available,
-                                reserved: data.reserved,
-                                availableBreakdown: data.availableBreakdown,
-                                reservedBreakdown: data.reservedBreakdown,
-                                displayCurrency: selectedCurrency,
-                                showBalances: showBalances,
-                              ),
-                            ),
+                      padding: EdgeInsets.all(m.spacing(14)),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(m.radius.xl),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF062D36),
+                            Color(0xFF081722),
+                            Color(0xFF07131D),
                           ],
                         ),
+                        border: Border.all(
+                          color: const Color(0xFF0B4D57),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF00DDB0,
+                            ).withValues(alpha: 0.08),
+                            blurRadius: m.size(28),
+                            spreadRadius: 1,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _BalanceHeader(
+                            m: m,
+                            totalBalance: data.totalBalance,
+                            selectedCurrency: selectedCurrency,
+                            selectedPeriodMonths: selectedPeriodMonths,
+                            currencies: data.availableCurrencies,
+                            showBalance: showBalances,
+                            totalBreakdown: data.totalBreakdown,
+                            onCurrencyChanged: onCurrencyChanged,
+                            onPeriodChanged: onPeriodChanged,
+                          ),
+                          SizedBox(height: m.h(7)),
+                          _CurrencyComposition(
+                            m: m,
+                            items: data.totalBreakdown,
+                            showBalance: showBalances,
+                          ),
+                          SizedBox(height: m.h(7)),
+                          SizedBox(
+                            height: m.isCompactHeight ? m.h(146) : m.h(164),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  flex: 6,
+                                  child: _BalanceChart(
+                                    values: data.chartValues,
+                                    labels: data.chartLabels,
+                                    dates: data.chartDates,
+                                    latestValue: data.latestBalance,
+                                    latestDate: data.latestDate,
+                                    currency: selectedCurrency,
+                                    showBalance: showBalances,
+                                    periodMonths: selectedPeriodMonths,
+                                  ),
+                                ),
+                                SizedBox(width: m.spacing(10)),
+                                Expanded(
+                                  flex: 4,
+                                  child: _MetricsColumn(
+                                    m: m,
+                                    available: data.available,
+                                    reserved: data.reserved,
+                                    availableBreakdown: data.availableBreakdown,
+                                    reservedBreakdown: data.reservedBreakdown,
+                                    displayCurrency: selectedCurrency,
+                                    showBalances: showBalances,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 );
               },
             );
@@ -760,8 +782,8 @@ class _AccountsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final accountsBox = Hive.box<Account>('accounts');
     final transactionsBox = Hive.box<Transaction>('transactions');
-    final allocationsBox = Hive.box<Allocation>(
-      AccountsGroupDetailsLogic.allocationBoxName,
+    final planningAllocationsBox = Hive.box<HiveAllocationRecord>(
+      'planning_allocations',
     );
 
     return ValueListenableBuilder<Box<Account>>(
@@ -770,58 +792,79 @@ class _AccountsList extends StatelessWidget {
         return ValueListenableBuilder<Box<Transaction>>(
           valueListenable: transactionsBox.listenable(),
           builder: (context, _, __) {
-            return ValueListenableBuilder<Box<Allocation>>(
-              valueListenable: allocationsBox.listenable(),
+            return ValueListenableBuilder<Box<HiveAllocationRecord>>(
+              valueListenable: planningAllocationsBox.listenable(),
               builder: (context, _, __) {
-                final accounts = AccountsGroupDetailsLogic.buildAccountList();
+                final projectionService = context
+                    .read<AvailableBalanceProjectionService>();
 
-                if (m.isDesktop) {
-                  return SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: m.spacing(12),
-                      mainAxisSpacing: m.spacing(12),
-                      childAspectRatio: 1.2,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => _AccountCard(
-                        data: accounts[index],
-                        m: m,
-                        showBalances: showBalances,
-                      ),
-                      childCount: accounts.length,
-                    ),
-                  );
-                }
-
-                if (m.isTablet) {
-                  return SliverGrid(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: m.spacing(12),
-                      mainAxisSpacing: m.spacing(12),
-                      childAspectRatio: 1.3,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) => _AccountCard(
-                        data: accounts[index],
-                        m: m,
-                        showBalances: showBalances,
-                      ),
-                      childCount: accounts.length,
-                    ),
-                  );
-                }
-
-                return SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) => _AccountCard(
-                      data: accounts[index],
-                      m: m,
-                      showBalances: showBalances,
-                    ),
-                    childCount: accounts.length,
+                return FutureBuilder<List<AccountData>>(
+                  future: AccountsGroupDetailsLogic.buildAccountList(
+                    projectionService: projectionService,
                   ),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: 120,
+                          child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
+                    }
+
+                    final accounts = snapshot.data!;
+
+                    if (m.isDesktop) {
+                      return SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: m.spacing(12),
+                          mainAxisSpacing: m.spacing(12),
+                          childAspectRatio: 1.2,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _AccountCard(
+                            data: accounts[index],
+                            m: m,
+                            showBalances: showBalances,
+                          ),
+                          childCount: accounts.length,
+                        ),
+                      );
+                    }
+
+                    if (m.isTablet) {
+                      return SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: m.spacing(12),
+                          mainAxisSpacing: m.spacing(12),
+                          childAspectRatio: 1.3,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => _AccountCard(
+                            data: accounts[index],
+                            m: m,
+                            showBalances: showBalances,
+                          ),
+                          childCount: accounts.length,
+                        ),
+                      );
+                    }
+
+                    return SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _AccountCard(
+                          data: accounts[index],
+                          m: m,
+                          showBalances: showBalances,
+                        ),
+                        childCount: accounts.length,
+                      ),
+                    );
+                  },
                 );
               },
             );

@@ -4,61 +4,70 @@ import 'package:flutter/material.dart';
 
 import '../../../../models/account.dart';
 import '../../../../models/enums/account_enums.dart';
-import '../../../../models/transaction.dart';
-import '../../../../models/allocation.dart';
 import '../../../../services/account_service.dart';
 import '../../../../services/balance_service.dart';
-import '../../../../services/allocation_service.dart';
+import '../../../../core/planning/services/available_balance_projection_service.dart';
 import '../../../../theme/account_asset_resolver.dart';
 import '../../../../models/enums/section_type.dart';
 
 /// Financial/data logic used by AccountsGroupDetailsScreen.
 ///
-/// This file contains the financial calculations and model-to-display mapping.
+/// This file owns the financial calculations and model-to-display mapping.
 /// The screen remains responsible only for rendering and UI interaction.
+///
+/// IMPORTANT:
+/// - Balance remains sourced from BalanceService.
+/// - Reserved / Available are read from the Planning read-side projection.
+/// - The legacy AllocationService is intentionally not used here.
 class AccountsGroupDetailsLogic {
   const AccountsGroupDetailsLogic._();
 
-  static const String allocationBoxName = AllocationService.boxName;
-
-  static GroupFinancialData buildFinancialData({
+  static Future<GroupFinancialData> buildFinancialData({
     required String currency,
     required int periodMonths,
+    required AvailableBalanceProjectionService projectionService,
   }) {
     return GroupFinancialData.fromCurrentAccounts(
       AccountService().getAllActiveAccounts(),
       BalanceService(),
-      AllocationService(),
+      projectionService,
       currency: currency,
       periodMonths: periodMonths,
     );
   }
 
-  static List<AccountData> buildAccountList() {
+  static Future<List<AccountData>> buildAccountList({
+    required AvailableBalanceProjectionService projectionService,
+  }) async {
     final balanceService = BalanceService();
-    final allocationService = AllocationService();
 
-    return AccountService()
+    final accounts = AccountService()
         .getAllActiveAccounts()
         .where((account) => account.group == AccountGroup.liquidity)
-        .map(
-          (account) => buildAccountData(
-            account,
-            balanceService,
-            allocationService,
-          ),
-        )
         .toList();
+
+    return Future.wait(
+      accounts.map(
+        (account) =>
+            buildAccountData(account, balanceService, projectionService),
+      ),
+    );
   }
 
-  static AccountData buildAccountData(
+  static Future<AccountData> buildAccountData(
     Account account,
     BalanceService balanceService,
-    AllocationService allocationService,
-  ) {
+    AvailableBalanceProjectionService projectionService,
+  ) async {
     final balance = balanceService.getBalance(account.id);
-    final reserved = allocationService.getAllocatedAmountForAccount(account.id);
-    final available = balance - reserved;
+
+    final projection = await projectionService.project(
+      accountId: account.id,
+      balance: balance,
+    );
+
+    final reserved = projection.reserved;
+    final available = projection.available;
     final isLiability = account.nature.name == 'liability';
     final iconColor = _colorForAccountType(account.type, isLiability);
 
@@ -146,9 +155,8 @@ class CurrencyAmount {
 /// Display-only FX resolver for the overview.
 ///
 /// The financial truth remains the account balance in its native currency.
-/// These rates are intentionally isolated here so the UI can later consume
-/// the real FX resolver / stored exchange-rate snapshots without changing
-/// the screen architecture.
+/// These rates remain isolated here until the real FX resolver / stored
+/// exchange-rate snapshot source is wired into the read model.
 class _OverviewFx {
   static const Map<String, double> _egpRates = {
     'EGP': 1.0,
@@ -202,38 +210,54 @@ class GroupFinancialData {
   final List<CurrencyAmount> availableBreakdown;
   final List<CurrencyAmount> reservedBreakdown;
 
-  factory GroupFinancialData.fromCurrentAccounts(
+  static Future<GroupFinancialData> fromCurrentAccounts(
     List<Account> accounts,
     BalanceService balanceService,
-    AllocationService allocationService, {
+    AvailableBalanceProjectionService projectionService, {
     required String currency,
     required int periodMonths,
-  }) {
+  }) async {
     final activeLiquidityAccounts = accounts
         .where((account) => !account.isArchived)
         .where((account) => account.group == AccountGroup.liquidity)
         .toList();
 
-    final currencies = activeLiquidityAccounts
-        .map((account) => account.currency.toUpperCase())
-        .where((currency) => currency.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final currencies =
+        activeLiquidityAccounts
+            .map((account) => account.currency.toUpperCase())
+            .where((currency) => currency.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
 
     final totalsByCurrency = <String, double>{};
     final reservedByCurrency = <String, double>{};
 
-    for (final account in activeLiquidityAccounts) {
-      final accountCurrency = account.currency.toUpperCase();
-      final balance = balanceService.getBalance(account.id);
-      final reserved = allocationService
-          .getAllocatedAmountForAccount(account.id)
-          .clamp(0.0, balance)
-          .toDouble();
+    final projections = await Future.wait(
+      activeLiquidityAccounts.map((account) async {
+        final balance = balanceService.getBalance(account.id);
+
+        final projection = await projectionService.project(
+          accountId: account.id,
+          balance: balance,
+        );
+
+        return (
+          account: account,
+          balance: balance,
+          reserved: projection.reserved,
+        );
+      }),
+    );
+
+    for (final item in projections) {
+      final accountCurrency = item.account.currency.toUpperCase();
+
+      final reserved = item.reserved.clamp(0.0, item.balance).toDouble();
 
       totalsByCurrency[accountCurrency] =
-          (totalsByCurrency[accountCurrency] ?? 0) + balance;
+          (totalsByCurrency[accountCurrency] ?? 0) + item.balance;
+
       reservedByCurrency[accountCurrency] =
           (reservedByCurrency[accountCurrency] ?? 0) + reserved;
     }
@@ -244,7 +268,9 @@ class GroupFinancialData {
 
     for (final entry in totalsByCurrency.entries) {
       final nativeTotal = entry.value;
-      final nativeReserved = reservedByCurrency[entry.key] ?? 0;
+      final nativeReserved = (reservedByCurrency[entry.key] ?? 0)
+          .clamp(0.0, nativeTotal)
+          .toDouble();
       final nativeAvailable = nativeTotal - nativeReserved;
 
       totalBreakdown.add(
@@ -300,8 +326,12 @@ class GroupFinancialData {
     }
 
     reserved = reserved.clamp(0.0, totalBalance).toDouble();
-    final available = totalBalance - reserved;
+    final available = (totalBalance - reserved)
+        .clamp(0.0, double.infinity)
+        .toDouble();
 
+    // Keep the chart exactly as a balance history. Reserved money is a
+    // planning projection and must not alter historical account balances.
     final now = DateTime.now();
     final values = <double>[];
     final labels = <String>[];
@@ -313,6 +343,7 @@ class GroupFinancialData {
       final snapshotDate = offset == 0 ? now : monthDate;
 
       double monthBalance = 0;
+
       for (final account in activeLiquidityAccounts) {
         final nativeBalance = balanceService.getBalanceAtDate(
           account.id,
