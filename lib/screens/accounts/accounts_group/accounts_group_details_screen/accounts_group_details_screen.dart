@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
-
+import '../../../../models/enums/account_enums.dart';
 import '../../../../models/account.dart';
+import '../../../../services/account_service.dart';
 import '../../../../models/transaction.dart';
 import '../../../../core/planning/infrastructure/persistence/hive_allocation_record.dart';
 import '../../../../core/planning/services/available_balance_projection_service.dart';
@@ -23,7 +24,7 @@ class AccountsGroupDetailsScreen extends StatefulWidget {
 class _AccountsGroupDetailsScreenState
     extends State<AccountsGroupDetailsScreen> {
   String _selectedCurrency = 'EGP';
-  int _selectedPeriodMonths = 6;
+  OverviewPeriod _selectedPeriod = OverviewPeriod.sixMonths;
   bool _showBalances = true;
 
   @override
@@ -49,13 +50,13 @@ class _AccountsGroupDetailsScreenState
               child: _BalanceOverview(
                 m: m,
                 selectedCurrency: _selectedCurrency,
-                selectedPeriodMonths: _selectedPeriodMonths,
+                selectedPeriod: _selectedPeriod,
                 showBalances: _showBalances,
                 onCurrencyChanged: (value) {
                   setState(() => _selectedCurrency = value);
                 },
                 onPeriodChanged: (value) {
-                  setState(() => _selectedPeriodMonths = value);
+                  setState(() => _selectedPeriod = value);
                 },
               ),
             ),
@@ -67,11 +68,7 @@ class _AccountsGroupDetailsScreenState
                 m.spacing(20),
                 m.spacing(24),
               ),
-              sliver: _AccountsList(
-                m: m,
-                selectedCurrency: _selectedCurrency,
-                showBalances: _showBalances,
-              ),
+              sliver: _AccountsList(m: m, showBalances: _showBalances),
             ),
             SliverToBoxAdapter(child: _AddAccountButton(m: m)),
           ],
@@ -98,16 +95,14 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final horizontalPadding = m.isCompactHeight ? 20.0 : 24.0;
-    final verticalPadding = m.isCompactHeight ? 10.0 : 13.0;
-    final controlSize = m.isCompactHeight ? 42.0 : 46.0;
+    final controlSize = m.isCompactHeight ? 36.0 : 38.0;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        m.spacing(horizontalPadding),
-        m.spacing(verticalPadding),
-        m.spacing(horizontalPadding),
-        m.spacing(verticalPadding),
+        m.spacing(18),
+        m.spacing(7),
+        m.spacing(18),
+        m.spacing(5),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -119,47 +114,51 @@ class _Header extends StatelessWidget {
           ),
           SizedBox(width: m.spacing(8)),
           Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  'Good morning,',
-                  style: TextStyle(
-                    fontSize: m.isCompactHeight ? m.text(13) : m.text(15),
-                    color: Colors.white.withValues(alpha: 0.62),
-                    fontWeight: FontWeight.w500,
-                  ),
+                Icon(
+                  Icons.water_drop_rounded,
+                  color: const Color(0xFF35E0B5),
+                  size: m.size(18),
                 ),
-                SizedBox(height: m.h(1)),
-                Text(
-                  'Hossam 👋',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: m.isCompactHeight ? m.text(22) : m.text(27),
-                    height: 1.05,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.6,
-                  ),
-                ),
-                SizedBox(height: m.h(2)),
-                Text(
-                  'Here’s your financial overview',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: m.isCompactHeight ? m.text(11) : m.text(13),
-                    color: Colors.white.withValues(alpha: 0.55),
+                SizedBox(width: m.spacing(5)),
+                Flexible(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Liquidity',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: m.isCompactHeight ? m.text(18) : m.text(20),
+                          height: 1,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.35,
+                        ),
+                      ),
+                      SizedBox(height: m.h(3)),
+                      Text(
+                        'Cash & accounts available to spend',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: m.isCompactHeight ? m.text(9) : m.text(10),
+                          color: Colors.white.withValues(alpha: 0.52),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          SizedBox(width: m.spacing(8)),
+          SizedBox(width: m.spacing(6)),
           _NotificationButton(m: m, size: m.size(controlSize)),
-          SizedBox(width: m.spacing(7)),
+          SizedBox(width: m.spacing(5)),
           _BalanceVisibilityButton(
             m: m,
             size: m.size(controlSize),
@@ -180,7 +179,7 @@ class _BalanceOverview extends StatelessWidget {
   const _BalanceOverview({
     required this.m,
     required this.selectedCurrency,
-    required this.selectedPeriodMonths,
+    required this.selectedPeriod,
     required this.showBalances,
     required this.onCurrencyChanged,
     required this.onPeriodChanged,
@@ -188,11 +187,10 @@ class _BalanceOverview extends StatelessWidget {
 
   final ResponsiveMetrics m;
   final String selectedCurrency;
-  final int selectedPeriodMonths;
+  final OverviewPeriod selectedPeriod;
   final bool showBalances;
   final ValueChanged<String> onCurrencyChanged;
-  final ValueChanged<int> onPeriodChanged;
-
+  final ValueChanged<OverviewPeriod> onPeriodChanged;
   @override
   Widget build(BuildContext context) {
     final accountsBox = Hive.box<Account>('accounts');
@@ -216,7 +214,7 @@ class _BalanceOverview extends StatelessWidget {
                 return FutureBuilder<GroupFinancialData>(
                   future: AccountsGroupDetailsLogic.buildFinancialData(
                     currency: selectedCurrency,
-                    periodMonths: selectedPeriodMonths,
+                    period: selectedPeriod,
                     projectionService: projectionService,
                   ),
                   builder: (context, snapshot) {
@@ -233,12 +231,17 @@ class _BalanceOverview extends StatelessWidget {
 
                     return Container(
                       margin: EdgeInsets.fromLTRB(
-                        m.spacing(18),
-                        m.h(4),
-                        m.spacing(18),
+                        m.spacing(12),
+                        m.h(2),
+                        m.spacing(12),
                         m.spacing(12),
                       ),
-                      padding: EdgeInsets.all(m.spacing(14)),
+                      padding: EdgeInsets.fromLTRB(
+                        m.spacing(14),
+                        m.spacing(14),
+                        m.spacing(14),
+                        m.spacing(8),
+                      ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(m.radius.xl),
                         gradient: const LinearGradient(
@@ -271,27 +274,21 @@ class _BalanceOverview extends StatelessWidget {
                             m: m,
                             totalBalance: data.totalBalance,
                             selectedCurrency: selectedCurrency,
-                            selectedPeriodMonths: selectedPeriodMonths,
+                            selectedPeriod: selectedPeriod,
                             currencies: data.availableCurrencies,
                             showBalance: showBalances,
                             totalBreakdown: data.totalBreakdown,
                             onCurrencyChanged: onCurrencyChanged,
                             onPeriodChanged: onPeriodChanged,
                           ),
-                          SizedBox(height: m.h(7)),
-                          _CurrencyComposition(
-                            m: m,
-                            items: data.totalBreakdown,
-                            showBalance: showBalances,
-                          ),
-                          SizedBox(height: m.h(7)),
+                          SizedBox(height: m.h(8)),
                           SizedBox(
-                            height: m.isCompactHeight ? m.h(146) : m.h(164),
+                            height: m.isCompactHeight ? m.h(155) : m.h(180),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Expanded(
-                                  flex: 6,
+                                  flex: 8,
                                   child: _BalanceChart(
                                     values: data.chartValues,
                                     labels: data.chartLabels,
@@ -300,10 +297,10 @@ class _BalanceOverview extends StatelessWidget {
                                     latestDate: data.latestDate,
                                     currency: selectedCurrency,
                                     showBalance: showBalances,
-                                    periodMonths: selectedPeriodMonths,
+                                    period: selectedPeriod,
                                   ),
                                 ),
-                                SizedBox(width: m.spacing(10)),
+                                SizedBox(width: m.spacing(5)),
                                 Expanded(
                                   flex: 4,
                                   child: _MetricsColumn(
@@ -318,6 +315,13 @@ class _BalanceOverview extends StatelessWidget {
                                 ),
                               ],
                             ),
+                          ),
+                          SizedBox(height: m.h(6)),
+                          _AccountTypeSummary(
+                            m: m,
+                            items: data.accountTypeBreakdown,
+                            showBalance: showBalances,
+                            displayCurrency: selectedCurrency,
                           ),
                         ],
                       ),
@@ -342,7 +346,7 @@ class _BalanceHeader extends StatelessWidget {
     required this.m,
     required this.totalBalance,
     required this.selectedCurrency,
-    required this.selectedPeriodMonths,
+    required this.selectedPeriod,
     required this.currencies,
     required this.showBalance,
     required this.totalBreakdown,
@@ -353,13 +357,12 @@ class _BalanceHeader extends StatelessWidget {
   final ResponsiveMetrics m;
   final double totalBalance;
   final String selectedCurrency;
-  final int selectedPeriodMonths;
+  final OverviewPeriod selectedPeriod;
   final List<String> currencies;
   final bool showBalance;
   final List<CurrencyAmount> totalBreakdown;
   final ValueChanged<String> onCurrencyChanged;
-  final ValueChanged<int> onPeriodChanged;
-
+  final ValueChanged<OverviewPeriod> onPeriodChanged;
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -378,41 +381,57 @@ class _BalanceHeader extends StatelessWidget {
                       'Total Balance',
                       style: TextStyle(
                         color: const Color(0xFF39E4C1),
-                        fontSize: m.isCompactHeight ? m.text(13) : m.text(14),
+                        fontSize: m.isCompactHeight ? m.text(14) : m.text(16),
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     SizedBox(height: m.h(2)),
                     Row(
-                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Flexible(
-                          child: Text(
-                            showBalance ? formatMoney(totalBalance) : '••••',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: m.isCompactHeight
-                                  ? m.text(27)
-                                  : m.text(31),
-                              height: 1,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -1.5,
+                          fit: FlexFit.tight,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              showBalance ? formatMoney(totalBalance) : '••••',
+                              maxLines: 1,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: m.isCompactHeight
+                                    ? m.text(30)
+                                    : m.text(34),
+                                height: 1,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -1.5,
+                              ),
                             ),
                           ),
                         ),
-                        SizedBox(width: m.spacing(4)),
+
+                        SizedBox(width: m.spacing(3)),
+
                         Text(
                           showBalance ? selectedCurrency : '•••',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: m.isCompactHeight
-                                ? m.text(12)
-                                : m.text(14),
+                                ? m.text(13)
+                                : m.text(15),
                             fontWeight: FontWeight.w700,
+                          ),
+                        ),
+
+                        SizedBox(width: m.spacing(6)),
+
+                        Flexible(
+                          child: _TotalBreakdownPill(
+                            breakdown: totalBreakdown,
+                            showBalance: showBalance,
+                            displayCurrency: selectedCurrency,
+                            m: m,
                           ),
                         ),
                       ],
@@ -420,7 +439,7 @@ class _BalanceHeader extends StatelessWidget {
                   ],
                 ),
               ),
-              SizedBox(width: m.spacing(8)),
+              SizedBox(width: m.spacing(1)),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -432,7 +451,7 @@ class _BalanceHeader extends StatelessWidget {
                   ),
                   SizedBox(width: m.spacing(5)),
                   _CompactFilter(
-                    label: '$selectedPeriodMonths Months',
+                    label: selectedPeriod.label,
                     icon: Icons.calendar_month_rounded,
                     m: m,
                     onTap: () => _showPeriodPicker(context),
@@ -498,8 +517,6 @@ class _BalanceHeader extends StatelessWidget {
   }
 
   void _showPeriodPicker(BuildContext context) {
-    const periods = [3, 6, 12];
-
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -526,13 +543,19 @@ class _BalanceHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              for (final months in periods)
+              for (final period in OverviewPeriod.values)
                 ListTile(
+                  leading: Icon(
+                    period.icon,
+                    color: period == selectedPeriod
+                        ? const Color(0xFF35E0B5)
+                        : Colors.white54,
+                  ),
                   title: Text(
-                    '$months Months',
+                    period.label,
                     style: const TextStyle(color: Colors.white),
                   ),
-                  trailing: months == selectedPeriodMonths
+                  trailing: period == selectedPeriod
                       ? const Icon(
                           Icons.check_rounded,
                           color: Color(0xFF35E0B5),
@@ -540,7 +563,7 @@ class _BalanceHeader extends StatelessWidget {
                       : null,
                   onTap: () {
                     Navigator.pop(context);
-                    onPeriodChanged(months);
+                    onPeriodChanged(period);
                   },
                 ),
             ],
@@ -551,59 +574,223 @@ class _BalanceHeader extends StatelessWidget {
   }
 }
 
-class _CurrencyComposition extends StatelessWidget {
-  const _CurrencyComposition({
+class _AccountTypeSummary extends StatelessWidget {
+  const _AccountTypeSummary({
     required this.m,
     required this.items,
     required this.showBalance,
+    required this.displayCurrency,
   });
 
   final ResponsiveMetrics m;
-  final List<CurrencyAmount> items;
+  final List<AccountTypeAmount> items;
   final bool showBalance;
+  final String displayCurrency;
 
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
+    const order = [
+      AccountTypeFilter.cash,
+      AccountTypeFilter.wallet,
+      AccountTypeFilter.card,
+      AccountTypeFilter.bank,
+    ];
+
+    final byType = <AccountTypeFilter, AccountTypeAmount>{
+      for (final item in items) item.type: item,
+    };
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: m.spacing(8), vertical: m.h(5)),
+      padding: EdgeInsets.fromLTRB(m.spacing(1), m.h(1), m.spacing(1), m.h(1)),
       decoration: BoxDecoration(
         color: const Color(0xFF061923).withValues(alpha: 0.62),
-        borderRadius: BorderRadius.circular(m.radius.md),
+        borderRadius: BorderRadius.circular(m.radius.lg),
         border: Border.all(
-          color: const Color(0xFF35E0B5).withValues(alpha: 0.12),
+          color: const Color(0xFF35E0B5).withValues(alpha: 0.10),
         ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (int i = 0; i < items.length; i++) ...[
-              if (i > 0)
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: m.spacing(6)),
-                  child: Text(
-                    '·',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      fontSize: m.text(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'AVAILABLE BY ACCOUNT TYPE',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.62),
+              fontSize: m.text(8.5),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.35,
+            ),
+          ),
+          SizedBox(height: m.h(5)),
+          Row(
+            children: [
+              for (int i = 0; i < order.length; i++) ...[
+                Expanded(
+                  child: _AccountTypeSummaryItem(
+                    m: m,
+                    item:
+                        byType[order[i]] ??
+                        AccountTypeAmount(
+                          type: order[i],
+                          amount: 0,
+                          isLiability: false,
+                        ),
+                    showBalance: showBalance,
+                    displayCurrency: displayCurrency,
+                    totalAmount: items.fold<double>(
+                      0,
+                      (sum, item) => sum + item.amount,
                     ),
                   ),
                 ),
-              Text(
-                showBalance
-                    ? '${formatMoney(items[i].originalAmount)} ${items[i].currency}'
-                    : '•••• ${items[i].currency}',
+                if (i < order.length - 1)
+                  Container(
+                    width: 1,
+                    height: m.h(40),
+                    margin: EdgeInsets.symmetric(horizontal: m.spacing(3)),
+                    color: Colors.white.withValues(alpha: 0.10),
+                  ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountTypeSummaryItem extends StatelessWidget {
+  const _AccountTypeSummaryItem({
+    required this.m,
+    required this.item,
+    required this.showBalance,
+    required this.displayCurrency,
+    required this.totalAmount,
+  });
+
+  final ResponsiveMetrics m;
+  final AccountTypeAmount item;
+  final bool showBalance;
+  final String displayCurrency;
+  final double totalAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    final percentage = totalAmount <= 0
+        ? 0.0
+        : (item.amount / totalAmount) * 100;
+    final color = item.type.color;
+    final label = switch (item.type) {
+      AccountTypeFilter.cash => 'Cash',
+      AccountTypeFilter.wallet => 'Wallets',
+      AccountTypeFilter.card => 'Cards',
+      AccountTypeFilter.bank => 'Banks',
+      _ => item.label,
+    };
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(item.icon, color: color, size: m.size(15)),
+
+        SizedBox(height: m.h(3)),
+
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.78),
-                  fontSize: m.text(8.5),
+                  color: Colors.white.withValues(alpha: 0.62),
+                  fontSize: m.text(10),
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
+            ),
+            SizedBox(width: m.spacing(4)),
+            Text(
+              '${percentage.toStringAsFixed(0)}%',
+              style: TextStyle(
+                color: color,
+                fontSize: m.text(9),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
+        ),
+
+        SizedBox(height: m.h(2)),
+
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              showBalance ? formatMoney(item.amount) : '••••',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: m.text(12),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(width: m.spacing(4)),
+            Text(
+              showBalance ? displayCurrency : '•••',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.52),
+                fontSize: m.text(9),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TotalBreakdownPill extends StatelessWidget {
+  const _TotalBreakdownPill({
+    required this.breakdown,
+    required this.showBalance,
+    required this.displayCurrency,
+    required this.m,
+  });
+
+  final List<CurrencyAmount> breakdown;
+  final bool showBalance;
+  final String displayCurrency;
+  final ResponsiveMetrics m;
+
+  @override
+  Widget build(BuildContext context) {
+    final convertedTotal = breakdown.fold<double>(
+      0,
+      (sum, item) => sum + item.convertedAmount,
+    );
+
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: m.spacing(8), vertical: m.h(3)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF061923).withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(m.radius.md),
+        border: Border.all(
+          color: const Color(0xFF35E0B5).withValues(alpha: 0.18),
+        ),
+      ),
+      child: Text(
+        showBalance
+            ? '${formatMoney(convertedTotal)} $displayCurrency'
+            : '•••• $displayCurrency',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.82),
+          fontSize: m.text(8.5),
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -632,7 +819,7 @@ class _CompactFilter extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: EdgeInsets.symmetric(
-            horizontal: m.spacing(8),
+            horizontal: m.spacing(1),
             vertical: m.h(6),
           ),
           decoration: BoxDecoration(
@@ -738,12 +925,14 @@ class _AccountsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final count = AccountServiceForUi.activeLiquidityCount();
+
     return Padding(
       padding: EdgeInsets.fromLTRB(
         m.spacing(22),
-        0,
+        m.h(1),
         m.spacing(22),
-        m.spacing(9),
+        m.spacing(8),
       ),
       child: Row(
         children: [
@@ -752,9 +941,17 @@ class _AccountsHeader extends StatelessWidget {
               'Accounts',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: m.text(17),
+                fontSize: m.text(18),
                 fontWeight: FontWeight.w800,
               ),
+            ),
+          ),
+          Text(
+            '$count account${count == 1 ? '' : 's'}',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.48),
+              fontSize: m.text(10),
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -763,19 +960,23 @@ class _AccountsHeader extends StatelessWidget {
   }
 }
 
+class AccountServiceForUi {
+  static int activeLiquidityCount() {
+    return AccountService()
+        .getAllActiveAccounts()
+        .where((account) => account.group == AccountGroup.liquidity)
+        .length;
+  }
+}
+
 // ================================================================
 // ACCOUNTS LIST
 // ================================================================
 
 class _AccountsList extends StatelessWidget {
-  const _AccountsList({
-    required this.m,
-    required this.selectedCurrency,
-    required this.showBalances,
-  });
+  const _AccountsList({required this.m, required this.showBalances});
 
   final ResponsiveMetrics m;
-  final String selectedCurrency;
   final bool showBalances;
 
   @override
@@ -884,10 +1085,10 @@ class _AddAccountButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        m.spacing(20),
+        m.spacing(50),
         m.spacing(2),
-        m.spacing(20),
-        m.spacing(24),
+        m.spacing(50),
+        m.spacing(2),
       ),
       child: Material(
         color: Colors.transparent,
@@ -950,7 +1151,7 @@ class _AccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(bottom: m.spacing(5)),
+      margin: EdgeInsets.only(bottom: m.spacing(8)),
       decoration: BoxDecoration(
         color: const Color(0xFF071823),
         borderRadius: BorderRadius.circular(m.radius.lg),
@@ -966,16 +1167,16 @@ class _AccountCard extends StatelessWidget {
           onTap: () {},
           child: Padding(
             padding: EdgeInsets.fromLTRB(
+              m.spacing(12),
               m.spacing(10),
-              m.spacing(8),
-              m.spacing(9),
-              m.spacing(8),
+              m.spacing(10),
+              m.spacing(10),
             ),
             child: Row(
               children: [
                 Container(
-                  width: m.size(50),
-                  height: m.size(50),
+                  width: m.size(45),
+                  height: m.size(45),
                   decoration: BoxDecoration(
                     color: data.iconBackground,
                     shape: BoxShape.circle,
@@ -983,7 +1184,7 @@ class _AccountCard extends StatelessWidget {
                       color: data.iconColor.withValues(alpha: 0.12),
                     ),
                   ),
-                  padding: EdgeInsets.all(m.size(8)),
+                  padding: EdgeInsets.all(m.size(4)),
                   child: SvgPicture.asset(
                     data.iconAsset,
                     fit: BoxFit.contain,
@@ -1005,7 +1206,7 @@ class _AccountCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: m.text(16),
+                          fontSize: m.text(13),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1050,14 +1251,6 @@ class _AccountCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      'Balance',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.48),
-                        fontSize: m.text(10),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
                     SizedBox(height: m.h(2)),
                     RichText(
                       text: TextSpan(
@@ -1227,25 +1420,6 @@ class _BalanceMetric extends StatelessWidget {
               ],
             ),
           ),
-          if (visibleBreakdown.isNotEmpty) ...[
-            SizedBox(height: m.h(2)),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: m.spacing(4),
-              runSpacing: m.h(1),
-              children: [
-                for (final item in visibleBreakdown)
-                  Text(
-                    '${formatMoney(item.originalAmount)} ${item.currency}',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.48),
-                      fontSize: m.text(7),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-              ],
-            ),
-          ],
         ],
       ),
     );
@@ -1373,7 +1547,7 @@ class _BalanceChart extends StatefulWidget {
     required this.latestDate,
     required this.currency,
     required this.showBalance,
-    required this.periodMonths,
+    required this.period,
   });
 
   final List<double> values;
@@ -1383,7 +1557,7 @@ class _BalanceChart extends StatefulWidget {
   final DateTime latestDate;
   final String currency;
   final bool showBalance;
-  final int periodMonths;
+  final OverviewPeriod period;
 
   @override
   State<_BalanceChart> createState() => _BalanceChartState();
@@ -1612,10 +1786,17 @@ class _BalanceChartState extends State<_BalanceChart> {
   List<String> _visibleChartLabels(List<String> labels) {
     if (labels.isEmpty) return const [];
 
-    final step = switch (widget.periodMonths) {
-      12 => 3,
-      6 => 2,
-      _ => 2,
+    if (widget.period == OverviewPeriod.thisWeek) {
+      return labels;
+    }
+
+    final step = switch (widget.period) {
+      OverviewPeriod.allTime => 3,
+      OverviewPeriod.thisMonth => 5,
+      OverviewPeriod.threeMonths => 1,
+      OverviewPeriod.sixMonths => 2,
+      OverviewPeriod.twelveMonths => 3,
+      OverviewPeriod.thisWeek => 1,
     };
 
     final visible = <String>[];
@@ -1668,12 +1849,18 @@ class _ChartLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
 
-    return Text(
-      text,
-      style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.45),
-        fontSize: m.text(10),
-        fontWeight: FontWeight.w500,
+    return Transform.rotate(
+      angle: -65 * 3.141592653589793 / 180,
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.visible,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.45),
+          fontSize: m.text(9),
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

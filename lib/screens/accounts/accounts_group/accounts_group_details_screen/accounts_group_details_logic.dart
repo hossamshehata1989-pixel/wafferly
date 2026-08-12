@@ -10,6 +10,73 @@ import '../../../../core/planning/services/available_balance_projection_service.
 import '../../../../theme/account_asset_resolver.dart';
 import '../../../../models/enums/section_type.dart';
 
+enum OverviewPeriod {
+  thisWeek,
+  thisMonth,
+  threeMonths,
+  sixMonths,
+  twelveMonths,
+  allTime;
+
+  String get label => switch (this) {
+    OverviewPeriod.thisWeek => 'This week',
+    OverviewPeriod.thisMonth => 'This month',
+    OverviewPeriod.threeMonths => '3 Months',
+    OverviewPeriod.sixMonths => '6 Months',
+    OverviewPeriod.twelveMonths => '12 Months',
+    OverviewPeriod.allTime => 'Since start',
+  };
+
+  IconData get icon => switch (this) {
+    OverviewPeriod.thisWeek => Icons.view_week_rounded,
+    OverviewPeriod.thisMonth => Icons.calendar_month_rounded,
+    OverviewPeriod.threeMonths => Icons.calendar_view_month_rounded,
+    OverviewPeriod.sixMonths => Icons.calendar_view_month_rounded,
+    OverviewPeriod.twelveMonths => Icons.date_range_rounded,
+    OverviewPeriod.allTime => Icons.history_rounded,
+  };
+}
+
+enum AccountTypeFilter {
+  all,
+  cash,
+  wallet,
+  bank,
+  card,
+  investment,
+  other;
+
+  String get label => switch (this) {
+    AccountTypeFilter.all => 'All',
+    AccountTypeFilter.cash => 'Cash',
+    AccountTypeFilter.wallet => 'Wallets',
+    AccountTypeFilter.bank => 'Banks',
+    AccountTypeFilter.card => 'Cards',
+    AccountTypeFilter.investment => 'Investments',
+    AccountTypeFilter.other => 'Other',
+  };
+
+  IconData get icon => switch (this) {
+    AccountTypeFilter.all => Icons.account_balance_wallet_rounded,
+    AccountTypeFilter.cash => Icons.payments_rounded,
+    AccountTypeFilter.wallet => Icons.account_balance_wallet_rounded,
+    AccountTypeFilter.bank => Icons.account_balance_rounded,
+    AccountTypeFilter.card => Icons.credit_card_rounded,
+    AccountTypeFilter.investment => Icons.bar_chart_rounded,
+    AccountTypeFilter.other => Icons.category_rounded,
+  };
+
+  Color get color => switch (this) {
+    AccountTypeFilter.all => const Color(0xFF35E0B5),
+    AccountTypeFilter.cash => const Color(0xFF4AA8FF),
+    AccountTypeFilter.wallet => const Color(0xFFB17CFF),
+    AccountTypeFilter.bank => const Color(0xFF35E0B5),
+    AccountTypeFilter.card => const Color(0xFFFF5572),
+    AccountTypeFilter.investment => const Color(0xFFFFA928),
+    AccountTypeFilter.other => Colors.white70,
+  };
+}
+
 /// Financial/data logic used by AccountsGroupDetailsScreen.
 ///
 /// This file owns the financial calculations and model-to-display mapping.
@@ -24,7 +91,7 @@ class AccountsGroupDetailsLogic {
 
   static Future<GroupFinancialData> buildFinancialData({
     required String currency,
-    required int periodMonths,
+    required OverviewPeriod period,
     required AvailableBalanceProjectionService projectionService,
   }) {
     return GroupFinancialData.fromCurrentAccounts(
@@ -32,18 +99,20 @@ class AccountsGroupDetailsLogic {
       BalanceService(),
       projectionService,
       currency: currency,
-      periodMonths: periodMonths,
+      period: period,
     );
   }
 
   static Future<List<AccountData>> buildAccountList({
     required AvailableBalanceProjectionService projectionService,
+    AccountTypeFilter filter = AccountTypeFilter.all,
   }) async {
     final balanceService = BalanceService();
 
     final accounts = AccountService()
         .getAllActiveAccounts()
         .where((account) => account.group == AccountGroup.liquidity)
+        .where((account) => _matchesAccountType(account, filter))
         .toList();
 
     return Future.wait(
@@ -52,6 +121,39 @@ class AccountsGroupDetailsLogic {
             buildAccountData(account, balanceService, projectionService),
       ),
     );
+  }
+
+  static bool _matchesAccountType(Account account, AccountTypeFilter filter) {
+    if (filter == AccountTypeFilter.all) return true;
+    return _accountTypeFor(account) == filter;
+  }
+
+  static AccountTypeFilter _accountTypeFor(Account account) {
+    final type = account.type.trim().toLowerCase().replaceAll(
+      RegExp(r'[\s_-]+'),
+      '',
+    );
+
+    if (type == 'cash' || type.contains('cash')) {
+      return AccountTypeFilter.cash;
+    }
+    if (type == 'wallet' || type.contains('wallet')) {
+      return AccountTypeFilter.wallet;
+    }
+    if (type == 'bank' || type.contains('bank')) {
+      return AccountTypeFilter.bank;
+    }
+    if (type.contains('card') || type.contains('credit')) {
+      return AccountTypeFilter.card;
+    }
+    if (type.contains('investment') ||
+        type.contains('stock') ||
+        type.contains('gold') ||
+        type.contains('certificate')) {
+      return AccountTypeFilter.investment;
+    }
+
+    return AccountTypeFilter.other;
   }
 
   static Future<AccountData> buildAccountData(
@@ -195,6 +297,7 @@ class GroupFinancialData {
     required this.totalBreakdown,
     required this.availableBreakdown,
     required this.reservedBreakdown,
+    required this.accountTypeBreakdown,
   });
 
   final double totalBalance;
@@ -209,21 +312,34 @@ class GroupFinancialData {
   final List<CurrencyAmount> totalBreakdown;
   final List<CurrencyAmount> availableBreakdown;
   final List<CurrencyAmount> reservedBreakdown;
+  final List<AccountTypeAmount> accountTypeBreakdown;
 
   static Future<GroupFinancialData> fromCurrentAccounts(
     List<Account> accounts,
     BalanceService balanceService,
     AvailableBalanceProjectionService projectionService, {
     required String currency,
-    required int periodMonths,
+    required OverviewPeriod period,
   }) async {
     final activeLiquidityAccounts = accounts
         .where((account) => !account.isArchived)
         .where((account) => account.group == AccountGroup.liquidity)
         .toList();
 
+    // Liquidity overview represents money that can actually be spent.
+    // Investments and liability accounts remain visible in the Accounts list,
+    // but do not inflate Total Balance / Available / Reserved here.
+    final overviewAccounts = activeLiquidityAccounts
+        .where((account) => account.nature.name != 'liability')
+        .where(
+          (account) =>
+              AccountsGroupDetailsLogic._accountTypeFor(account) !=
+              AccountTypeFilter.investment,
+        )
+        .toList();
+
     final currencies =
-        activeLiquidityAccounts
+        overviewAccounts
             .map((account) => account.currency.toUpperCase())
             .where((currency) => currency.isNotEmpty)
             .toSet()
@@ -232,9 +348,13 @@ class GroupFinancialData {
 
     final totalsByCurrency = <String, double>{};
     final reservedByCurrency = <String, double>{};
+    final typeTotals = <AccountTypeFilter, double>{
+      for (final type in AccountTypeFilter.values)
+        if (type != AccountTypeFilter.all) type: 0,
+    };
 
     final projections = await Future.wait(
-      activeLiquidityAccounts.map((account) async {
+      overviewAccounts.map((account) async {
         final balance = balanceService.getBalance(account.id);
 
         final projection = await projectionService.project(
@@ -254,12 +374,26 @@ class GroupFinancialData {
       final accountCurrency = item.account.currency.toUpperCase();
 
       final reserved = item.reserved.clamp(0.0, item.balance).toDouble();
+      final available = (item.balance - reserved)
+          .clamp(0.0, double.infinity)
+          .toDouble();
 
       totalsByCurrency[accountCurrency] =
           (totalsByCurrency[accountCurrency] ?? 0) + item.balance;
 
       reservedByCurrency[accountCurrency] =
           (reservedByCurrency[accountCurrency] ?? 0) + reserved;
+
+      final accountType = AccountsGroupDetailsLogic._accountTypeFor(
+        item.account,
+      );
+
+      if (accountType == AccountTypeFilter.cash ||
+          accountType == AccountTypeFilter.wallet ||
+          accountType == AccountTypeFilter.card ||
+          accountType == AccountTypeFilter.bank) {
+        typeTotals[accountType] = (typeTotals[accountType] ?? 0) + available;
+      }
     }
 
     final totalBreakdown = <CurrencyAmount>[];
@@ -336,31 +470,86 @@ class GroupFinancialData {
     final values = <double>[];
     final labels = <String>[];
     final dates = <DateTime>[];
-    final safePeriod = periodMonths.clamp(1, 24).toInt();
 
-    for (int offset = safePeriod - 1; offset >= 0; offset--) {
-      final monthDate = DateTime(now.year, now.month - offset + 1, 0);
-      final snapshotDate = offset == 0 ? now : monthDate;
+    DateTime startOfDay(DateTime value) =>
+        DateTime(value.year, value.month, value.day);
 
-      double monthBalance = 0;
-
-      for (final account in activeLiquidityAccounts) {
+    void addSnapshot(DateTime snapshotDate) {
+      double snapshotBalance = 0;
+      for (final account in overviewAccounts) {
         final nativeBalance = balanceService.getBalanceAtDate(
           account.id,
           snapshotDate,
         );
 
-        monthBalance += _OverviewFx.toDisplay(
+        snapshotBalance += _OverviewFx.toDisplay(
           amount: nativeBalance,
           fromCurrency: account.currency,
           displayCurrency: currency,
         );
       }
 
-      values.add(monthBalance);
+      values.add(snapshotBalance);
       dates.add(snapshotDate);
       labels.add(monthLabel(snapshotDate.month));
     }
+
+    switch (period) {
+      case OverviewPeriod.thisWeek:
+        final start = startOfDay(now).subtract(const Duration(days: 6));
+        for (int i = 0; i < 7; i++) {
+          final date = start.add(Duration(days: i));
+          addSnapshot(date);
+          labels[labels.length - 1] = _weekdayLabel(date.weekday);
+        }
+        break;
+
+      case OverviewPeriod.thisMonth:
+        final start = DateTime(now.year, now.month, 1);
+        final days = now.difference(start).inDays;
+        for (int i = 0; i <= days; i++) {
+          addSnapshot(start.add(Duration(days: i)));
+        }
+        break;
+
+      case OverviewPeriod.threeMonths:
+      case OverviewPeriod.sixMonths:
+      case OverviewPeriod.twelveMonths:
+      case OverviewPeriod.allTime:
+        final monthCount = switch (period) {
+          OverviewPeriod.threeMonths => 3,
+          OverviewPeriod.sixMonths => 6,
+          OverviewPeriod.twelveMonths => 12,
+          OverviewPeriod.allTime => _allTimeMonthCount(overviewAccounts, now),
+          OverviewPeriod.thisWeek => 1,
+          OverviewPeriod.thisMonth => 1,
+        };
+
+        for (int offset = monthCount - 1; offset >= 0; offset--) {
+          final monthStart = DateTime(now.year, now.month - offset, 1);
+          final snapshotDate = offset == 0
+              ? now
+              : DateTime(monthStart.year, monthStart.month + 1, 0);
+          addSnapshot(snapshotDate);
+        }
+        break;
+    }
+
+    const displayTypes = [
+      AccountTypeFilter.cash,
+      AccountTypeFilter.wallet,
+      AccountTypeFilter.card,
+      AccountTypeFilter.bank,
+    ];
+
+    final accountTypeBreakdown = [
+      for (final type in displayTypes)
+        AccountTypeAmount(
+          type: type,
+          amount: typeTotals[type] ?? 0,
+          isLiability: false,
+        ),
+    ];
 
     return GroupFinancialData(
       totalBalance: totalBalance,
@@ -375,8 +564,30 @@ class GroupFinancialData {
       totalBreakdown: totalBreakdown,
       availableBreakdown: availableBreakdown,
       reservedBreakdown: reservedBreakdown,
+      accountTypeBreakdown: accountTypeBreakdown,
     );
   }
+}
+
+int _allTimeMonthCount(List<Account> accounts, DateTime now) {
+  if (accounts.isEmpty) return 1;
+
+  final earliest = accounts
+      .map((account) => account.createdAt)
+      .reduce((a, b) => a.isBefore(b) ? a : b);
+
+  final earliestMonth = DateTime(earliest.year, earliest.month);
+  final currentMonth = DateTime(now.year, now.month);
+
+  return (currentMonth.year - earliestMonth.year) * 12 +
+      currentMonth.month -
+      earliestMonth.month +
+      1;
+}
+
+String _weekdayLabel(int weekday) {
+  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  return labels[weekday - 1];
 }
 
 String monthLabel(int month) {
@@ -412,6 +623,22 @@ String formatMoney(double value) {
   }
 
   return '$sign$buffer';
+}
+
+class AccountTypeAmount {
+  const AccountTypeAmount({
+    required this.type,
+    required this.amount,
+    required this.isLiability,
+  });
+
+  final AccountTypeFilter type;
+  final double amount;
+  final bool isLiability;
+
+  String get label => type.label;
+  IconData get icon => type.icon;
+  Color get color => isLiability ? const Color(0xFFFF5572) : type.color;
 }
 
 class AccountData {
