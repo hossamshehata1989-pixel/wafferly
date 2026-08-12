@@ -23,7 +23,7 @@ class AccountsGroupDetailsScreen extends StatefulWidget {
 
 class _AccountsGroupDetailsScreenState
     extends State<AccountsGroupDetailsScreen> {
-  String _selectedCurrency = 'EGP';
+  String? _currencyFilter;
   OverviewPeriod _selectedPeriod = OverviewPeriod.sixMonths;
   bool _showBalances = true;
 
@@ -49,11 +49,12 @@ class _AccountsGroupDetailsScreenState
             SliverToBoxAdapter(
               child: _BalanceOverview(
                 m: m,
-                selectedCurrency: _selectedCurrency,
+                currencyFilter: _currencyFilter,
                 selectedPeriod: _selectedPeriod,
                 showBalances: _showBalances,
-                onCurrencyChanged: (value) {
-                  setState(() => _selectedCurrency = value);
+
+                onCurrencyFilterChanged: (value) {
+                  setState(() => _currencyFilter = value);
                 },
                 onPeriodChanged: (value) {
                   setState(() => _selectedPeriod = value);
@@ -178,18 +179,18 @@ class _Header extends StatelessWidget {
 class _BalanceOverview extends StatelessWidget {
   const _BalanceOverview({
     required this.m,
-    required this.selectedCurrency,
+    required this.currencyFilter,
     required this.selectedPeriod,
     required this.showBalances,
-    required this.onCurrencyChanged,
+    required this.onCurrencyFilterChanged,
     required this.onPeriodChanged,
   });
 
   final ResponsiveMetrics m;
-  final String selectedCurrency;
+  final String? currencyFilter;
   final OverviewPeriod selectedPeriod;
   final bool showBalances;
-  final ValueChanged<String> onCurrencyChanged;
+  final ValueChanged<String?> onCurrencyFilterChanged;
   final ValueChanged<OverviewPeriod> onPeriodChanged;
   @override
   Widget build(BuildContext context) {
@@ -213,7 +214,7 @@ class _BalanceOverview extends StatelessWidget {
 
                 return FutureBuilder<GroupFinancialData>(
                   future: AccountsGroupDetailsLogic.buildFinancialData(
-                    currency: selectedCurrency,
+                    currencyFilter: currencyFilter,
                     period: selectedPeriod,
                     projectionService: projectionService,
                   ),
@@ -273,12 +274,13 @@ class _BalanceOverview extends StatelessWidget {
                           _BalanceHeader(
                             m: m,
                             totalBalance: data.totalBalance,
-                            selectedCurrency: selectedCurrency,
+                            currencyFilter: currencyFilter,
+                            effectiveCurrency: data.effectiveCurrency,
                             selectedPeriod: selectedPeriod,
                             currencies: data.availableCurrencies,
                             showBalance: showBalances,
                             totalBreakdown: data.totalBreakdown,
-                            onCurrencyChanged: onCurrencyChanged,
+                            onCurrencyFilterChanged: onCurrencyFilterChanged,
                             onPeriodChanged: onPeriodChanged,
                           ),
                           SizedBox(height: m.h(8)),
@@ -295,7 +297,7 @@ class _BalanceOverview extends StatelessWidget {
                                     dates: data.chartDates,
                                     latestValue: data.latestBalance,
                                     latestDate: data.latestDate,
-                                    currency: selectedCurrency,
+                                    currency: data.effectiveCurrency ?? '',
                                     showBalance: showBalances,
                                     period: selectedPeriod,
                                   ),
@@ -309,7 +311,8 @@ class _BalanceOverview extends StatelessWidget {
                                     reserved: data.reserved,
                                     availableBreakdown: data.availableBreakdown,
                                     reservedBreakdown: data.reservedBreakdown,
-                                    displayCurrency: selectedCurrency,
+                                    displayCurrency:
+                                        data.effectiveCurrency ?? '',
                                     showBalances: showBalances,
                                   ),
                                 ),
@@ -321,7 +324,7 @@ class _BalanceOverview extends StatelessWidget {
                             m: m,
                             items: data.accountTypeBreakdown,
                             showBalance: showBalances,
-                            displayCurrency: selectedCurrency,
+                            displayCurrency: data.effectiveCurrency ?? '',
                           ),
                         ],
                       ),
@@ -340,28 +343,29 @@ class _BalanceOverview extends StatelessWidget {
 // ================================================================
 // BALANCE HEADER
 // ================================================================
-
 class _BalanceHeader extends StatelessWidget {
   const _BalanceHeader({
     required this.m,
     required this.totalBalance,
-    required this.selectedCurrency,
+    required this.currencyFilter,
+    required this.effectiveCurrency,
     required this.selectedPeriod,
     required this.currencies,
     required this.showBalance,
     required this.totalBreakdown,
-    required this.onCurrencyChanged,
+    required this.onCurrencyFilterChanged,
     required this.onPeriodChanged,
   });
 
   final ResponsiveMetrics m;
   final double totalBalance;
-  final String selectedCurrency;
+  final String? currencyFilter;
+  final String? effectiveCurrency;
   final OverviewPeriod selectedPeriod;
   final List<String> currencies;
   final bool showBalance;
   final List<CurrencyAmount> totalBreakdown;
-  final ValueChanged<String> onCurrencyChanged;
+  final ValueChanged<String?> onCurrencyFilterChanged;
   final ValueChanged<OverviewPeriod> onPeriodChanged;
   @override
   Widget build(BuildContext context) {
@@ -387,53 +391,70 @@ class _BalanceHeader extends StatelessWidget {
                     ),
                     SizedBox(height: m.h(2)),
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Flexible(
-                          fit: FlexFit.tight,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              showBalance ? formatMoney(totalBalance) : '••••',
-                              maxLines: 1,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: m.isCompactHeight
-                                    ? m.text(30)
-                                    : m.text(34),
-                                height: 1,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -1.5,
-                              ),
+                        if (effectiveCurrency == null) ...[
+                          Expanded(
+                            child: _TotalBreakdownPill(
+                              breakdown: totalBreakdown,
+                              showBalance: showBalance,
+                              m: m,
                             ),
                           ),
-                        ),
-
-                        SizedBox(width: m.spacing(3)),
-
-                        Text(
-                          showBalance ? selectedCurrency : '•••',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: m.isCompactHeight
-                                ? m.text(13)
-                                : m.text(15),
-                            fontWeight: FontWeight.w700,
+                        ] else ...[
+                          Flexible(
+                            fit: FlexFit.loose,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      showBalance
+                                          ? formatMoney(totalBalance)
+                                          : '••••',
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: m.isCompactHeight
+                                            ? m.text(30)
+                                            : m.text(34),
+                                        height: 1,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -1.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: m.spacing(3)),
+                                Text(
+                                  showBalance ? effectiveCurrency! : '•••',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: m.isCompactHeight
+                                        ? m.text(13)
+                                        : m.text(15),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-
-                        SizedBox(width: m.spacing(6)),
-
-                        Flexible(
-                          child: _TotalBreakdownPill(
-                            breakdown: totalBreakdown,
-                            showBalance: showBalance,
-                            displayCurrency: selectedCurrency,
-                            m: m,
-                          ),
-                        ),
+                          if (totalBreakdown.isNotEmpty) ...[
+                            SizedBox(width: m.spacing(4)),
+                            Flexible(
+                              child: _TotalBreakdownPill(
+                                breakdown: totalBreakdown,
+                                showBalance: showBalance,
+                                m: m,
+                              ),
+                            ),
+                          ],
+                        ],
                       ],
                     ),
                   ],
@@ -444,17 +465,17 @@ class _BalanceHeader extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _CompactFilter(
-                    label: selectedCurrency,
-                    icon: Icons.currency_exchange_rounded,
-                    m: m,
-                    onTap: () => _showCurrencyPicker(context),
-                  ),
-                  SizedBox(width: m.spacing(5)),
-                  _CompactFilter(
                     label: selectedPeriod.label,
                     icon: Icons.calendar_month_rounded,
                     m: m,
                     onTap: () => _showPeriodPicker(context),
+                  ),
+                  SizedBox(width: m.spacing(5)),
+                  _CompactFilter(
+                    label: currencyFilter ?? 'All',
+                    icon: Icons.filter_alt_rounded,
+                    m: m,
+                    onTap: () => _showCurrencyFilterPicker(context),
                   ),
                 ],
               ),
@@ -465,7 +486,7 @@ class _BalanceHeader extends StatelessWidget {
     );
   }
 
-  void _showCurrencyPicker(BuildContext context) {
+  void _showCurrencyFilterPicker(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -484,7 +505,7 @@ class _BalanceHeader extends StatelessWidget {
                   m.h(8),
                 ),
                 child: const Text(
-                  'Display currency',
+                  'Filter by currency',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 18,
@@ -492,13 +513,28 @@ class _BalanceHeader extends StatelessWidget {
                   ),
                 ),
               ),
+
+              ListTile(
+                title: const Text(
+                  'All currencies',
+                  style: TextStyle(color: Colors.white),
+                ),
+                trailing: currencyFilter == null
+                    ? const Icon(Icons.check_rounded, color: Color(0xFF35E0B5))
+                    : null,
+                onTap: () {
+                  Navigator.pop(context);
+                  onCurrencyFilterChanged(null);
+                },
+              ),
+
               for (final currency in currencies)
                 ListTile(
                   title: Text(
                     currency,
                     style: const TextStyle(color: Colors.white),
                   ),
-                  trailing: currency == selectedCurrency
+                  trailing: currency == currencyFilter
                       ? const Icon(
                           Icons.check_rounded,
                           color: Color(0xFF35E0B5),
@@ -506,7 +542,7 @@ class _BalanceHeader extends StatelessWidget {
                       : null,
                   onTap: () {
                     Navigator.pop(context);
-                    onCurrencyChanged(currency);
+                    onCurrencyFilterChanged(currency);
                   },
                 ),
             ],
@@ -758,21 +794,18 @@ class _TotalBreakdownPill extends StatelessWidget {
   const _TotalBreakdownPill({
     required this.breakdown,
     required this.showBalance,
-    required this.displayCurrency,
     required this.m,
   });
 
   final List<CurrencyAmount> breakdown;
   final bool showBalance;
-  final String displayCurrency;
   final ResponsiveMetrics m;
 
   @override
   Widget build(BuildContext context) {
-    final convertedTotal = breakdown.fold<double>(
-      0,
-      (sum, item) => sum + item.convertedAmount,
-    );
+    if (breakdown.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: m.spacing(8), vertical: m.h(3)),
@@ -783,15 +816,22 @@ class _TotalBreakdownPill extends StatelessWidget {
           color: const Color(0xFF35E0B5).withValues(alpha: 0.18),
         ),
       ),
-      child: Text(
-        showBalance
-            ? '${formatMoney(convertedTotal)} $displayCurrency'
-            : '•••• $displayCurrency',
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.82),
-          fontSize: m.text(8.5),
-          fontWeight: FontWeight.w700,
-        ),
+      child: Wrap(
+        spacing: m.spacing(8),
+        runSpacing: m.h(2),
+        children: [
+          for (final item in breakdown)
+            Text(
+              showBalance
+                  ? '${item.currency} ${formatMoney(item.originalAmount)}'
+                  : '${item.currency} ••••',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.82),
+                fontSize: m.text(8.5),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1677,105 +1717,108 @@ class _BalanceChartState extends State<_BalanceChart> {
 
           final visibleLabels = _visibleChartLabels(widget.labels);
 
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: (details) =>
-                _selectAt(details.localPosition, constraints.maxWidth),
-            onHorizontalDragUpdate: (details) =>
-                _selectAt(details.localPosition, constraints.maxWidth),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _BalanceChartPainter(
-                      values: values,
-                      minValue: minValue,
-                      maxValue: maxValue,
-                      selectedIndex: selectedIndex,
+          return Directionality(
+            textDirection: TextDirection.ltr,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (details) =>
+                  _selectAt(details.localPosition, constraints.maxWidth),
+              onHorizontalDragUpdate: (details) =>
+                  _selectAt(details.localPosition, constraints.maxWidth),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: CustomPaint(
+                      painter: _BalanceChartPainter(
+                        values: values,
+                        minValue: minValue,
+                        maxValue: maxValue,
+                        selectedIndex: selectedIndex,
+                      ),
                     ),
                   ),
-                ),
 
-                // Tooltip moves to a clear side of the selected point.
-                Positioned(
-                  left: tooltipLeft,
-                  top: tooltipTop,
-                  child: IgnorePointer(
-                    child: Container(
-                      width: tooltipWidth,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: m.spacing(6),
-                        vertical: m.h(4),
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF062D35),
-                        borderRadius: BorderRadius.circular(m.radius.md),
-                        border: Border.all(
-                          color: const Color(
-                            0xFF14DDB1,
-                          ).withValues(alpha: 0.28),
+                  // Tooltip moves to a clear side of the selected point.
+                  Positioned(
+                    left: tooltipLeft,
+                    top: tooltipTop,
+                    child: IgnorePointer(
+                      child: Container(
+                        width: tooltipWidth,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: m.spacing(6),
+                          vertical: m.h(4),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.20),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF062D35),
+                          borderRadius: BorderRadius.circular(m.radius.md),
+                          border: Border.all(
+                            color: const Color(
+                              0xFF14DDB1,
+                            ).withValues(alpha: 0.28),
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            widget.showBalance
-                                ? '${formatMoney(selectedValue)} ${widget.currency}'
-                                : '•••• ${widget.currency}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: const Color(0xFF35E0B5),
-                              fontSize: m.text(10),
-                              fontWeight: FontWeight.w800,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.20),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
                             ),
-                          ),
-                          SizedBox(height: m.h(1)),
-                          Text(
-                            '${monthLabel(selectedDate.month)} ${selectedDate.day}',
-                            style: TextStyle(
-                              color: Colors.white60,
-                              fontSize: m.text(8.5),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.showBalance
+                                  ? '${formatMoney(selectedValue)} ${widget.currency}'
+                                  : '•••• ${widget.currency}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: const Color(0xFF35E0B5),
+                                fontSize: m.text(10),
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
-                          ),
-                        ],
+                            SizedBox(height: m.h(1)),
+                            Text(
+                              '${monthLabel(selectedDate.month)} ${selectedDate.day}',
+                              style: TextStyle(
+                                color: Colors.white60,
+                                fontSize: m.text(8.5),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                Positioned(
-                  right: 0,
-                  top: m.h(2),
-                  bottom: m.h(18),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: _chartScaleLabels(minValue, maxValue, m),
+                  Positioned(
+                    right: 0,
+                    top: m.h(2),
+                    bottom: m.h(18),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: _chartScaleLabels(minValue, maxValue, m),
+                    ),
                   ),
-                ),
 
-                Positioned(
-                  left: m.spacing(4),
-                  right: m.spacing(28),
-                  bottom: 0,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      for (final label in visibleLabels) _ChartLabel(label),
-                    ],
+                  Positioned(
+                    left: m.spacing(4),
+                    right: m.spacing(28),
+                    bottom: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        for (final label in visibleLabels) _ChartLabel(label),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
