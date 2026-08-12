@@ -5,15 +5,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../models/account.dart';
-import '../../../../models/enums/account_enums.dart';
 import '../../../../models/transaction.dart';
 import '../../../../models/allocation.dart';
-import '../../../../services/account_service.dart';
-import '../../../../services/balance_service.dart';
-import '../../../../services/allocation_service.dart';
 import '../../../../theme/responsive_metrics.dart';
-import '../../../../theme/account_asset_resolver.dart';
-import '../../../../models/enums/section_type.dart';
+import 'accounts_group_details_logic.dart';
 
 class AccountsGroupDetailsScreen extends StatefulWidget {
   const AccountsGroupDetailsScreen({super.key});
@@ -200,7 +195,9 @@ class _BalanceOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     final accountsBox = Hive.box<Account>('accounts');
     final transactionsBox = Hive.box<Transaction>('transactions');
-    final allocationsBox = Hive.box<Allocation>(AllocationService.boxName);
+    final allocationsBox = Hive.box<Allocation>(
+      AccountsGroupDetailsLogic.allocationBoxName,
+    );
 
     return ValueListenableBuilder<Box<Account>>(
       valueListenable: accountsBox.listenable(),
@@ -211,10 +208,7 @@ class _BalanceOverview extends StatelessWidget {
             return ValueListenableBuilder<Box<Allocation>>(
               valueListenable: allocationsBox.listenable(),
               builder: (context, _, __) {
-                final data = _GroupFinancialData.fromCurrentAccounts(
-                  AccountService().getAllActiveAccounts(),
-                  BalanceService(),
-                  AllocationService(),
+                final data = AccountsGroupDetailsLogic.buildFinancialData(
                   currency: selectedCurrency,
                   periodMonths: selectedPeriodMonths,
                 );
@@ -317,236 +311,6 @@ class _BalanceOverview extends StatelessWidget {
   }
 }
 
-class _CurrencyAmount {
-  const _CurrencyAmount({
-    required this.currency,
-    required this.originalAmount,
-    required this.convertedAmount,
-  });
-
-  final String currency;
-  final double originalAmount;
-  final double convertedAmount;
-}
-
-/// Display-only FX resolver for the overview.
-///
-/// The financial truth remains the account balance in its native currency.
-/// These rates are intentionally isolated here so the UI can later consume
-/// the real FX resolver / stored exchange-rate snapshots without changing
-/// the screen architecture.
-class _OverviewFx {
-  static const Map<String, double> _egpRates = {
-    'EGP': 1.0,
-    'USD': 50.0,
-    'SAR': 12.0,
-    'EUR': 55.0,
-    'GBP': 64.0,
-  };
-
-  static double toDisplay({
-    required double amount,
-    required String fromCurrency,
-    required String displayCurrency,
-  }) {
-    final from = _egpRates[fromCurrency.toUpperCase()];
-    final to = _egpRates[displayCurrency.toUpperCase()];
-
-    // Unknown currencies are kept in native units rather than inventing a
-    // conversion rate. The official FX resolver can replace this later.
-    if (from == null || to == null || to == 0) return amount;
-    return amount * from / to;
-  }
-}
-
-class _GroupFinancialData {
-  const _GroupFinancialData({
-    required this.totalBalance,
-    required this.available,
-    required this.reserved,
-    required this.chartValues,
-    required this.chartLabels,
-    required this.chartDates,
-    required this.latestBalance,
-    required this.latestDate,
-    required this.availableCurrencies,
-    required this.totalBreakdown,
-    required this.availableBreakdown,
-    required this.reservedBreakdown,
-  });
-
-  final double totalBalance;
-  final double available;
-  final double reserved;
-  final List<double> chartValues;
-  final List<String> chartLabels;
-  final List<DateTime> chartDates;
-  final double latestBalance;
-  final DateTime latestDate;
-  final List<String> availableCurrencies;
-  final List<_CurrencyAmount> totalBreakdown;
-  final List<_CurrencyAmount> availableBreakdown;
-  final List<_CurrencyAmount> reservedBreakdown;
-
-  factory _GroupFinancialData.fromCurrentAccounts(
-    List<Account> accounts,
-    BalanceService balanceService,
-    AllocationService allocationService, {
-    required String currency,
-    required int periodMonths,
-  }) {
-    final activeLiquidityAccounts = accounts
-        .where((account) => !account.isArchived)
-        .where((account) => account.group == AccountGroup.liquidity)
-        .toList();
-
-    final currencies =
-        activeLiquidityAccounts
-            .map((account) => account.currency.toUpperCase())
-            .where((currency) => currency.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
-
-    final totalsByCurrency = <String, double>{};
-    final reservedByCurrency = <String, double>{};
-
-    for (final account in activeLiquidityAccounts) {
-      final accountCurrency = account.currency.toUpperCase();
-      final balance = balanceService.getBalance(account.id);
-      final reserved = allocationService
-          .getAllocatedAmountForAccount(account.id)
-          .clamp(0.0, balance)
-          .toDouble();
-
-      totalsByCurrency[accountCurrency] =
-          (totalsByCurrency[accountCurrency] ?? 0) + balance;
-      reservedByCurrency[accountCurrency] =
-          (reservedByCurrency[accountCurrency] ?? 0) + reserved;
-    }
-
-    final totalBreakdown = <_CurrencyAmount>[];
-    final availableBreakdown = <_CurrencyAmount>[];
-    final reservedBreakdown = <_CurrencyAmount>[];
-
-    for (final entry in totalsByCurrency.entries) {
-      final nativeTotal = entry.value;
-      final nativeReserved = reservedByCurrency[entry.key] ?? 0;
-      final nativeAvailable = nativeTotal - nativeReserved;
-
-      totalBreakdown.add(
-        _CurrencyAmount(
-          currency: entry.key,
-          originalAmount: nativeTotal,
-          convertedAmount: _OverviewFx.toDisplay(
-            amount: nativeTotal,
-            fromCurrency: entry.key,
-            displayCurrency: currency,
-          ),
-        ),
-      );
-      availableBreakdown.add(
-        _CurrencyAmount(
-          currency: entry.key,
-          originalAmount: nativeAvailable,
-          convertedAmount: _OverviewFx.toDisplay(
-            amount: nativeAvailable,
-            fromCurrency: entry.key,
-            displayCurrency: currency,
-          ),
-        ),
-      );
-      reservedBreakdown.add(
-        _CurrencyAmount(
-          currency: entry.key,
-          originalAmount: nativeReserved,
-          convertedAmount: _OverviewFx.toDisplay(
-            amount: nativeReserved,
-            fromCurrency: entry.key,
-            displayCurrency: currency,
-          ),
-        ),
-      );
-    }
-
-    totalBreakdown.sort((a, b) => a.currency.compareTo(b.currency));
-    availableBreakdown.sort((a, b) => a.currency.compareTo(b.currency));
-    reservedBreakdown.sort((a, b) => a.currency.compareTo(b.currency));
-
-    double totalBalance = 0;
-    double reserved = 0;
-    for (final item in totalBreakdown) {
-      totalBalance += item.convertedAmount;
-    }
-    for (final item in reservedBreakdown) {
-      reserved += item.convertedAmount;
-    }
-    reserved = reserved.clamp(0.0, totalBalance).toDouble();
-    final available = totalBalance - reserved;
-
-    final now = DateTime.now();
-    final values = <double>[];
-    final labels = <String>[];
-    final dates = <DateTime>[];
-    final safePeriod = periodMonths.clamp(1, 24).toInt();
-
-    for (int offset = safePeriod - 1; offset >= 0; offset--) {
-      final monthDate = DateTime(now.year, now.month - offset + 1, 0);
-      final snapshotDate = offset == 0 ? now : monthDate;
-
-      double monthBalance = 0;
-      for (final account in activeLiquidityAccounts) {
-        final nativeBalance = balanceService.getBalanceAtDate(
-          account.id,
-          snapshotDate,
-        );
-        monthBalance += _OverviewFx.toDisplay(
-          amount: nativeBalance,
-          fromCurrency: account.currency,
-          displayCurrency: currency,
-        );
-      }
-
-      values.add(monthBalance);
-      dates.add(snapshotDate);
-      labels.add(_monthLabel(snapshotDate.month));
-    }
-
-    return _GroupFinancialData(
-      totalBalance: totalBalance,
-      available: available,
-      reserved: reserved,
-      chartValues: values,
-      chartLabels: labels,
-      chartDates: dates,
-      latestBalance: values.isEmpty ? totalBalance : values.last,
-      latestDate: now,
-      availableCurrencies: currencies.isEmpty ? [currency] : currencies,
-      totalBreakdown: totalBreakdown,
-      availableBreakdown: availableBreakdown,
-      reservedBreakdown: reservedBreakdown,
-    );
-  }
-
-  static String _monthLabel(int month) {
-    const labels = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return labels[month - 1];
-  }
-}
-
 // ================================================================
 // BALANCE HEADER
 // ================================================================
@@ -570,7 +334,7 @@ class _BalanceHeader extends StatelessWidget {
   final int selectedPeriodMonths;
   final List<String> currencies;
   final bool showBalance;
-  final List<_CurrencyAmount> totalBreakdown;
+  final List<CurrencyAmount> totalBreakdown;
   final ValueChanged<String> onCurrencyChanged;
   final ValueChanged<int> onPeriodChanged;
 
@@ -604,7 +368,7 @@ class _BalanceHeader extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            showBalance ? _formatMoney(totalBalance) : '••••',
+                            showBalance ? formatMoney(totalBalance) : '••••',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -773,7 +537,7 @@ class _CurrencyComposition extends StatelessWidget {
   });
 
   final ResponsiveMetrics m;
-  final List<_CurrencyAmount> items;
+  final List<CurrencyAmount> items;
   final bool showBalance;
 
   @override
@@ -808,7 +572,7 @@ class _CurrencyComposition extends StatelessWidget {
                 ),
               Text(
                 showBalance
-                    ? '${_formatMoney(items[i].originalAmount)} ${items[i].currency}'
+                    ? '${formatMoney(items[i].originalAmount)} ${items[i].currency}'
                     : '•••• ${items[i].currency}',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.78),
@@ -899,8 +663,8 @@ class _MetricsColumn extends StatelessWidget {
   final ResponsiveMetrics m;
   final double available;
   final double reserved;
-  final List<_CurrencyAmount> availableBreakdown;
-  final List<_CurrencyAmount> reservedBreakdown;
+  final List<CurrencyAmount> availableBreakdown;
+  final List<CurrencyAmount> reservedBreakdown;
   final String displayCurrency;
   final bool showBalances;
 
@@ -912,7 +676,7 @@ class _MetricsColumn extends StatelessWidget {
           child: _BalanceMetric(
             title: 'Available',
             description: 'Available to spend',
-            amount: showBalances ? _formatMoney(available) : '••••',
+            amount: showBalances ? formatMoney(available) : '••••',
             breakdown: availableBreakdown,
             color: const Color(0xFFFFA928),
             displayCurrency: displayCurrency,
@@ -924,7 +688,7 @@ class _MetricsColumn extends StatelessWidget {
           child: _BalanceMetric(
             title: 'Reserved',
             description: 'Your reserved money',
-            amount: showBalances ? _formatMoney(reserved) : '••••',
+            amount: showBalances ? formatMoney(reserved) : '••••',
             breakdown: reservedBreakdown,
             color: const Color(0xFF35E0B5),
             displayCurrency: displayCurrency,
@@ -934,22 +698,6 @@ class _MetricsColumn extends StatelessWidget {
       ],
     );
   }
-}
-
-String _formatMoney(double value) {
-  final rounded = value.round();
-  final sign = rounded < 0 ? '-' : '';
-  final digits = rounded.abs().toString();
-  final buffer = StringBuffer();
-
-  for (int i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) {
-      buffer.write(',');
-    }
-    buffer.write(digits[i]);
-  }
-
-  return '$sign$buffer';
 }
 
 // ================================================================
@@ -1012,7 +760,9 @@ class _AccountsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final accountsBox = Hive.box<Account>('accounts');
     final transactionsBox = Hive.box<Transaction>('transactions');
-    final allocationsBox = Hive.box<Allocation>(AllocationService.boxName);
+    final allocationsBox = Hive.box<Allocation>(
+      AccountsGroupDetailsLogic.allocationBoxName,
+    );
 
     return ValueListenableBuilder<Box<Account>>(
       valueListenable: accountsBox.listenable(),
@@ -1023,20 +773,7 @@ class _AccountsList extends StatelessWidget {
             return ValueListenableBuilder<Box<Allocation>>(
               valueListenable: allocationsBox.listenable(),
               builder: (context, _, __) {
-                final balanceService = BalanceService();
-                final allocationService = AllocationService();
-
-                final accounts = AccountService()
-                    .getAllActiveAccounts()
-                    .where((account) => account.group == AccountGroup.liquidity)
-                    .map(
-                      (account) => _accountDataFromModel(
-                        account,
-                        balanceService,
-                        allocationService,
-                      ),
-                    )
-                    .toList();
+                final accounts = AccountsGroupDetailsLogic.buildAccountList();
 
                 if (m.isDesktop) {
                   return SliverGrid(
@@ -1093,117 +830,6 @@ class _AccountsList extends StatelessWidget {
       },
     );
   }
-}
-
-_AccountData _accountDataFromModel(
-  Account account,
-  BalanceService balanceService,
-  AllocationService allocationService,
-) {
-  final balance = balanceService.getBalance(account.id);
-  final reserved = allocationService.getAllocatedAmountForAccount(account.id);
-  final available = balance - reserved;
-  final isLiability = account.nature.name == 'liability';
-
-  return _AccountData(
-    iconAsset: _resolveAccountIcon(account),
-    iconColor: _colorForAccountType(account.type, isLiability),
-    iconBackground: _colorForAccountType(
-      account.type,
-      isLiability,
-    ).withValues(alpha: 0.18),
-    name: account.name,
-    subtitle: _prettyAccountType(account.type),
-    balance: _formatMoney(balance),
-    balanceSuffix: account.currency,
-    available: isLiability
-        ? 'Outstanding ${_formatMoney(balance.abs())} ${account.currency}'
-        : 'Available ${_formatMoney(available)} ${account.currency}',
-    reserved: isLiability
-        ? '—'
-        : 'Reserved ${_formatMoney(reserved)} ${account.currency}',
-    showAvailable: false,
-    isLiability: isLiability,
-  );
-}
-
-String _prettyAccountType(String type) {
-  final spaced = type.replaceAllMapped(
-    RegExp(r'([a-z])([A-Z])'),
-    (match) => '${match.group(1)} ${match.group(2)}',
-  );
-
-  return spaced.isEmpty
-      ? type
-      : '${spaced[0].toUpperCase()}${spaced.substring(1)}';
-}
-
-String _resolveAccountIcon(Account account) {
-  final savedIcon = account.icon;
-  if (savedIcon != null && savedIcon.isNotEmpty) {
-    return savedIcon;
-  }
-
-  final icons = AccountAssetResolver.iconsForType(
-    SectionType.liquidity,
-    account.type,
-  );
-
-  if (icons.isNotEmpty) {
-    return icons.first;
-  }
-
-  return AccountAssetResolver.defaultIcon(SectionType.liquidity);
-}
-
-Color _colorForAccountType(String type, bool isLiability) {
-  if (isLiability) return const Color(0xFFFF5572);
-
-  switch (type) {
-    case 'bank':
-      return const Color(0xFF35E0B5);
-    case 'wallet':
-      return const Color(0xFFB17CFF);
-    case 'investment':
-    case 'stocks':
-    case 'gold':
-    case 'certificates':
-      return const Color(0xFFFFA928);
-    case 'cash':
-      return const Color(0xFF4AA8FF);
-    default:
-      return const Color(0xFF35E0B5);
-  }
-}
-
-class _AccountData {
-  final String iconAsset;
-  final Color iconColor;
-  final Color iconBackground;
-  final String name;
-  final String subtitle;
-  final String balance;
-  final String balanceSuffix;
-  final String available;
-  final String reserved;
-  final bool showAvailable;
-  final String? badge;
-  final bool isLiability;
-
-  const _AccountData({
-    required this.iconAsset,
-    required this.iconColor,
-    required this.iconBackground,
-    required this.name,
-    required this.subtitle,
-    required this.balance,
-    required this.balanceSuffix,
-    required this.available,
-    required this.reserved,
-    required this.showAvailable,
-    this.badge,
-    this.isLiability = false,
-  });
 }
 
 class _AddAccountButton extends StatelessWidget {
@@ -1274,7 +900,7 @@ class _AccountCard extends StatelessWidget {
     required this.showBalances,
   });
 
-  final _AccountData data;
+  final AccountData data;
   final ResponsiveMetrics m;
   final bool showBalances;
 
@@ -1475,7 +1101,7 @@ class _BalanceMetric extends StatelessWidget {
   final String title;
   final String description;
   final String amount;
-  final List<_CurrencyAmount> breakdown;
+  final List<CurrencyAmount> breakdown;
   final Color color;
   final String displayCurrency;
   final ResponsiveMetrics m;
@@ -1567,7 +1193,7 @@ class _BalanceMetric extends StatelessWidget {
               children: [
                 for (final item in visibleBreakdown)
                   Text(
-                    '${_formatMoney(item.originalAmount)} ${item.currency}',
+                    '${formatMoney(item.originalAmount)} ${item.currency}',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.48),
                       fontSize: m.text(7),
@@ -1887,7 +1513,7 @@ class _BalanceChartState extends State<_BalanceChart> {
                         children: [
                           Text(
                             widget.showBalance
-                                ? '${_formatMoney(selectedValue)} ${widget.currency}'
+                                ? '${formatMoney(selectedValue)} ${widget.currency}'
                                 : '•••• ${widget.currency}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1899,7 +1525,7 @@ class _BalanceChartState extends State<_BalanceChart> {
                           ),
                           SizedBox(height: m.h(1)),
                           Text(
-                            '${_GroupFinancialData._monthLabel(selectedDate.month)} ${selectedDate.day}',
+                            '${monthLabel(selectedDate.month)} ${selectedDate.day}',
                             style: TextStyle(
                               color: Colors.white60,
                               fontSize: m.text(8.5),
