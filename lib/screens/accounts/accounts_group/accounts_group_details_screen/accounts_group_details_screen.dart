@@ -27,6 +27,7 @@ class _AccountsGroupDetailsScreenState
     extends State<AccountsGroupDetailsScreen> {
   String _selectedCurrency = 'EGP';
   int _selectedPeriodMonths = 6;
+  bool _showBalances = true;
 
   @override
   Widget build(BuildContext context) {
@@ -38,12 +39,21 @@ class _AccountsGroupDetailsScreenState
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
-            SliverToBoxAdapter(child: _Header(m: m)),
+            SliverToBoxAdapter(
+              child: _Header(
+                m: m,
+                showBalances: _showBalances,
+                onToggleBalanceVisibility: () {
+                  setState(() => _showBalances = !_showBalances);
+                },
+              ),
+            ),
             SliverToBoxAdapter(
               child: _BalanceOverview(
                 m: m,
                 selectedCurrency: _selectedCurrency,
                 selectedPeriodMonths: _selectedPeriodMonths,
+                showBalances: _showBalances,
                 onCurrencyChanged: (value) {
                   setState(() => _selectedCurrency = value);
                 },
@@ -60,8 +70,13 @@ class _AccountsGroupDetailsScreenState
                 m.spacing(20),
                 m.spacing(24),
               ),
-              sliver: _AccountsList(m: m, selectedCurrency: _selectedCurrency),
+              sliver: _AccountsList(
+                m: m,
+                selectedCurrency: _selectedCurrency,
+                showBalances: _showBalances,
+              ),
             ),
+            SliverToBoxAdapter(child: _AddAccountButton(m: m)),
           ],
         ),
       ),
@@ -74,9 +89,15 @@ class _AccountsGroupDetailsScreenState
 // ================================================================
 
 class _Header extends StatelessWidget {
-  const _Header({required this.m});
+  const _Header({
+    required this.m,
+    required this.showBalances,
+    required this.onToggleBalanceVisibility,
+  });
 
   final ResponsiveMetrics m;
+  final bool showBalances;
+  final VoidCallback onToggleBalanceVisibility;
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +163,12 @@ class _Header extends StatelessWidget {
           SizedBox(width: m.spacing(8)),
           _NotificationButton(m: m, size: m.size(controlSize)),
           SizedBox(width: m.spacing(7)),
-          _BalanceVisibilityButton(m: m, size: m.size(controlSize)),
+          _BalanceVisibilityButton(
+            m: m,
+            size: m.size(controlSize),
+            visible: showBalances,
+            onTap: onToggleBalanceVisibility,
+          ),
         ],
       ),
     );
@@ -158,6 +184,7 @@ class _BalanceOverview extends StatelessWidget {
     required this.m,
     required this.selectedCurrency,
     required this.selectedPeriodMonths,
+    required this.showBalances,
     required this.onCurrencyChanged,
     required this.onPeriodChanged,
   });
@@ -165,6 +192,7 @@ class _BalanceOverview extends StatelessWidget {
   final ResponsiveMetrics m;
   final String selectedCurrency;
   final int selectedPeriodMonths;
+  final bool showBalances;
   final ValueChanged<String> onCurrencyChanged;
   final ValueChanged<int> onPeriodChanged;
 
@@ -231,24 +259,23 @@ class _BalanceOverview extends StatelessWidget {
                         selectedCurrency: selectedCurrency,
                         selectedPeriodMonths: selectedPeriodMonths,
                         currencies: data.availableCurrencies,
+                        showBalance: showBalances,
+                        totalBreakdown: data.totalBreakdown,
                         onCurrencyChanged: onCurrencyChanged,
                         onPeriodChanged: onPeriodChanged,
                       ),
-                      SizedBox(height: m.h(8)),
+                      SizedBox(height: m.h(7)),
+                      _CurrencyComposition(
+                        m: m,
+                        items: data.totalBreakdown,
+                        showBalance: showBalances,
+                      ),
+                      SizedBox(height: m.h(7)),
                       SizedBox(
-                        height: m.isCompactHeight ? m.h(154) : m.h(178),
+                        height: m.isCompactHeight ? m.h(146) : m.h(164),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Expanded(
-                              flex: 4,
-                              child: _MetricsColumn(
-                                m: m,
-                                available: data.available,
-                                reserved: data.reserved,
-                              ),
-                            ),
-                            SizedBox(width: m.spacing(10)),
                             Expanded(
                               flex: 6,
                               child: _BalanceChart(
@@ -258,6 +285,21 @@ class _BalanceOverview extends StatelessWidget {
                                 latestValue: data.latestBalance,
                                 latestDate: data.latestDate,
                                 currency: selectedCurrency,
+                                showBalance: showBalances,
+                                periodMonths: selectedPeriodMonths,
+                              ),
+                            ),
+                            SizedBox(width: m.spacing(10)),
+                            Expanded(
+                              flex: 4,
+                              child: _MetricsColumn(
+                                m: m,
+                                available: data.available,
+                                reserved: data.reserved,
+                                availableBreakdown: data.availableBreakdown,
+                                reservedBreakdown: data.reservedBreakdown,
+                                displayCurrency: selectedCurrency,
+                                showBalances: showBalances,
                               ),
                             ),
                           ],
@@ -275,6 +317,48 @@ class _BalanceOverview extends StatelessWidget {
   }
 }
 
+class _CurrencyAmount {
+  const _CurrencyAmount({
+    required this.currency,
+    required this.originalAmount,
+    required this.convertedAmount,
+  });
+
+  final String currency;
+  final double originalAmount;
+  final double convertedAmount;
+}
+
+/// Display-only FX resolver for the overview.
+///
+/// The financial truth remains the account balance in its native currency.
+/// These rates are intentionally isolated here so the UI can later consume
+/// the real FX resolver / stored exchange-rate snapshots without changing
+/// the screen architecture.
+class _OverviewFx {
+  static const Map<String, double> _egpRates = {
+    'EGP': 1.0,
+    'USD': 50.0,
+    'SAR': 12.0,
+    'EUR': 55.0,
+    'GBP': 64.0,
+  };
+
+  static double toDisplay({
+    required double amount,
+    required String fromCurrency,
+    required String displayCurrency,
+  }) {
+    final from = _egpRates[fromCurrency.toUpperCase()];
+    final to = _egpRates[displayCurrency.toUpperCase()];
+
+    // Unknown currencies are kept in native units rather than inventing a
+    // conversion rate. The official FX resolver can replace this later.
+    if (from == null || to == null || to == 0) return amount;
+    return amount * from / to;
+  }
+}
+
 class _GroupFinancialData {
   const _GroupFinancialData({
     required this.totalBalance,
@@ -286,6 +370,9 @@ class _GroupFinancialData {
     required this.latestBalance,
     required this.latestDate,
     required this.availableCurrencies,
+    required this.totalBreakdown,
+    required this.availableBreakdown,
+    required this.reservedBreakdown,
   });
 
   final double totalBalance;
@@ -297,6 +384,9 @@ class _GroupFinancialData {
   final double latestBalance;
   final DateTime latestDate;
   final List<String> availableCurrencies;
+  final List<_CurrencyAmount> totalBreakdown;
+  final List<_CurrencyAmount> availableBreakdown;
+  final List<_CurrencyAmount> reservedBreakdown;
 
   factory _GroupFinancialData.fromCurrentAccounts(
     List<Account> accounts,
@@ -318,19 +408,79 @@ class _GroupFinancialData {
             .toList()
           ..sort();
 
-    final activeAccounts = activeLiquidityAccounts
-        .where((account) => account.currency.toUpperCase() == currency)
-        .toList();
+    final totalsByCurrency = <String, double>{};
+    final reservedByCurrency = <String, double>{};
+
+    for (final account in activeLiquidityAccounts) {
+      final accountCurrency = account.currency.toUpperCase();
+      final balance = balanceService.getBalance(account.id);
+      final reserved = allocationService
+          .getAllocatedAmountForAccount(account.id)
+          .clamp(0.0, balance)
+          .toDouble();
+
+      totalsByCurrency[accountCurrency] =
+          (totalsByCurrency[accountCurrency] ?? 0) + balance;
+      reservedByCurrency[accountCurrency] =
+          (reservedByCurrency[accountCurrency] ?? 0) + reserved;
+    }
+
+    final totalBreakdown = <_CurrencyAmount>[];
+    final availableBreakdown = <_CurrencyAmount>[];
+    final reservedBreakdown = <_CurrencyAmount>[];
+
+    for (final entry in totalsByCurrency.entries) {
+      final nativeTotal = entry.value;
+      final nativeReserved = reservedByCurrency[entry.key] ?? 0;
+      final nativeAvailable = nativeTotal - nativeReserved;
+
+      totalBreakdown.add(
+        _CurrencyAmount(
+          currency: entry.key,
+          originalAmount: nativeTotal,
+          convertedAmount: _OverviewFx.toDisplay(
+            amount: nativeTotal,
+            fromCurrency: entry.key,
+            displayCurrency: currency,
+          ),
+        ),
+      );
+      availableBreakdown.add(
+        _CurrencyAmount(
+          currency: entry.key,
+          originalAmount: nativeAvailable,
+          convertedAmount: _OverviewFx.toDisplay(
+            amount: nativeAvailable,
+            fromCurrency: entry.key,
+            displayCurrency: currency,
+          ),
+        ),
+      );
+      reservedBreakdown.add(
+        _CurrencyAmount(
+          currency: entry.key,
+          originalAmount: nativeReserved,
+          convertedAmount: _OverviewFx.toDisplay(
+            amount: nativeReserved,
+            fromCurrency: entry.key,
+            displayCurrency: currency,
+          ),
+        ),
+      );
+    }
+
+    totalBreakdown.sort((a, b) => a.currency.compareTo(b.currency));
+    availableBreakdown.sort((a, b) => a.currency.compareTo(b.currency));
+    reservedBreakdown.sort((a, b) => a.currency.compareTo(b.currency));
 
     double totalBalance = 0;
     double reserved = 0;
-
-    for (final account in activeAccounts) {
-      totalBalance += balanceService.getBalance(account.id);
-      reserved += allocationService.getAllocatedAmountForAccount(account.id);
+    for (final item in totalBreakdown) {
+      totalBalance += item.convertedAmount;
     }
-
-    // Reserved money cannot exceed the actual balance of the selected group.
+    for (final item in reservedBreakdown) {
+      reserved += item.convertedAmount;
+    }
     reserved = reserved.clamp(0.0, totalBalance).toDouble();
     final available = totalBalance - reserved;
 
@@ -338,7 +488,6 @@ class _GroupFinancialData {
     final values = <double>[];
     final labels = <String>[];
     final dates = <DateTime>[];
-
     final safePeriod = periodMonths.clamp(1, 24).toInt();
 
     for (int offset = safePeriod - 1; offset >= 0; offset--) {
@@ -346,10 +495,15 @@ class _GroupFinancialData {
       final snapshotDate = offset == 0 ? now : monthDate;
 
       double monthBalance = 0;
-      for (final account in activeAccounts) {
-        monthBalance += balanceService.getBalanceAtDate(
+      for (final account in activeLiquidityAccounts) {
+        final nativeBalance = balanceService.getBalanceAtDate(
           account.id,
           snapshotDate,
+        );
+        monthBalance += _OverviewFx.toDisplay(
+          amount: nativeBalance,
+          fromCurrency: account.currency,
+          displayCurrency: currency,
         );
       }
 
@@ -368,6 +522,9 @@ class _GroupFinancialData {
       latestBalance: values.isEmpty ? totalBalance : values.last,
       latestDate: now,
       availableCurrencies: currencies.isEmpty ? [currency] : currencies,
+      totalBreakdown: totalBreakdown,
+      availableBreakdown: availableBreakdown,
+      reservedBreakdown: reservedBreakdown,
     );
   }
 
@@ -401,6 +558,8 @@ class _BalanceHeader extends StatelessWidget {
     required this.selectedCurrency,
     required this.selectedPeriodMonths,
     required this.currencies,
+    required this.showBalance,
+    required this.totalBreakdown,
     required this.onCurrencyChanged,
     required this.onPeriodChanged,
   });
@@ -410,6 +569,8 @@ class _BalanceHeader extends StatelessWidget {
   final String selectedCurrency;
   final int selectedPeriodMonths;
   final List<String> currencies;
+  final bool showBalance;
+  final List<_CurrencyAmount> totalBreakdown;
   final ValueChanged<String> onCurrencyChanged;
   final ValueChanged<int> onPeriodChanged;
 
@@ -418,65 +579,79 @@ class _BalanceHeader extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: m.spacing(2)),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Text(
-                  'Total Balance',
-                  style: TextStyle(
-                    color: const Color(0xFF39E4C1),
-                    fontSize: m.isCompactHeight ? m.text(13) : m.text(14),
-                    fontWeight: FontWeight.w700,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total Balance',
+                      style: TextStyle(
+                        color: const Color(0xFF39E4C1),
+                        fontSize: m.isCompactHeight ? m.text(13) : m.text(14),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: m.h(2)),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            showBalance ? _formatMoney(totalBalance) : '••••',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: m.isCompactHeight
+                                  ? m.text(27)
+                                  : m.text(31),
+                              height: 1,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -1.5,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: m.spacing(4)),
+                        Text(
+                          showBalance ? selectedCurrency : '•••',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: m.isCompactHeight
+                                ? m.text(12)
+                                : m.text(14),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: m.spacing(8)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _CompactFilter(
+                    label: selectedCurrency,
+                    icon: Icons.currency_exchange_rounded,
+                    m: m,
+                    onTap: () => _showCurrencyPicker(context),
                   ),
-                ),
-              ),
-              SizedBox(width: m.spacing(6)),
-              _CompactFilter(
-                label: selectedCurrency,
-                icon: Icons.currency_exchange_rounded,
-                m: m,
-                onTap: () => _showCurrencyPicker(context),
-              ),
-              SizedBox(width: m.spacing(6)),
-              _CompactFilter(
-                label: '$selectedPeriodMonths Months',
-                icon: Icons.calendar_month_rounded,
-                m: m,
-                onTap: () => _showPeriodPicker(context),
-              ),
-            ],
-          ),
-          SizedBox(height: m.h(2)),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Flexible(
-                child: Text(
-                  _formatMoney(totalBalance),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: m.isCompactHeight ? m.text(27) : m.text(32),
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -1.5,
+                  SizedBox(width: m.spacing(5)),
+                  _CompactFilter(
+                    label: '$selectedPeriodMonths Months',
+                    icon: Icons.calendar_month_rounded,
+                    m: m,
+                    onTap: () => _showPeriodPicker(context),
                   ),
-                ),
-              ),
-              SizedBox(width: m.spacing(5)),
-              Text(
-                selectedCurrency,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: m.isCompactHeight ? m.text(13) : m.text(15),
-                  fontWeight: FontWeight.w700,
-                ),
+                ],
               ),
             ],
           ),
@@ -503,11 +678,11 @@ class _BalanceHeader extends StatelessWidget {
                   m.spacing(20),
                   m.h(8),
                 ),
-                child: Text(
-                  'Currency',
+                child: const Text(
+                  'Display currency',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: m.text(18),
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -556,11 +731,11 @@ class _BalanceHeader extends StatelessWidget {
                   m.spacing(20),
                   m.h(8),
                 ),
-                child: Text(
+                child: const Text(
                   'Period',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: m.text(18),
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -586,6 +761,65 @@ class _BalanceHeader extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _CurrencyComposition extends StatelessWidget {
+  const _CurrencyComposition({
+    required this.m,
+    required this.items,
+    required this.showBalance,
+  });
+
+  final ResponsiveMetrics m;
+  final List<_CurrencyAmount> items;
+  final bool showBalance;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: m.spacing(8), vertical: m.h(5)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF061923).withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(m.radius.md),
+        border: Border.all(
+          color: const Color(0xFF35E0B5).withValues(alpha: 0.12),
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (int i = 0; i < items.length; i++) ...[
+              if (i > 0)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: m.spacing(6)),
+                  child: Text(
+                    '·',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      fontSize: m.text(10),
+                    ),
+                  ),
+                ),
+              Text(
+                showBalance
+                    ? '${_formatMoney(items[i].originalAmount)} ${items[i].currency}'
+                    : '•••• ${items[i].currency}',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.78),
+                  fontSize: m.text(8.5),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -656,11 +890,19 @@ class _MetricsColumn extends StatelessWidget {
     required this.m,
     required this.available,
     required this.reserved,
+    required this.availableBreakdown,
+    required this.reservedBreakdown,
+    required this.displayCurrency,
+    required this.showBalances,
   });
 
   final ResponsiveMetrics m;
   final double available;
   final double reserved;
+  final List<_CurrencyAmount> availableBreakdown;
+  final List<_CurrencyAmount> reservedBreakdown;
+  final String displayCurrency;
+  final bool showBalances;
 
   @override
   Widget build(BuildContext context) {
@@ -670,20 +912,22 @@ class _MetricsColumn extends StatelessWidget {
           child: _BalanceMetric(
             title: 'Available',
             description: 'Available to spend',
-            amount: _formatMoney(available),
-            icon: Icons.arrow_upward_rounded,
-            color: const Color(0xFF3EE8B8),
+            amount: showBalances ? _formatMoney(available) : '••••',
+            breakdown: availableBreakdown,
+            color: const Color(0xFFFFA928),
+            displayCurrency: displayCurrency,
             m: m,
           ),
         ),
-        SizedBox(height: m.spacing(8)),
+        SizedBox(height: m.spacing(7)),
         Expanded(
           child: _BalanceMetric(
             title: 'Reserved',
             description: 'Your reserved money',
-            amount: _formatMoney(reserved),
-            icon: Icons.arrow_forward_rounded,
-            color: const Color(0xFFFFA928),
+            amount: showBalances ? _formatMoney(reserved) : '••••',
+            breakdown: reservedBreakdown,
+            color: const Color(0xFF35E0B5),
+            displayCurrency: displayCurrency,
             m: m,
           ),
         ),
@@ -743,28 +987,6 @@ class _AccountsHeader extends StatelessWidget {
               ),
             ),
           ),
-
-          GestureDetector(
-            onTap: () {
-              // هنربطه بـ AddAccountScreen بعدين
-            },
-            child: Container(
-              width: m.size(32),
-              height: m.size(32),
-              decoration: BoxDecoration(
-                color: const Color(0xFF35E0B5).withValues(alpha: 0.10),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: const Color(0xFF35E0B5).withValues(alpha: 0.22),
-                ),
-              ),
-              child: Icon(
-                Icons.add_rounded,
-                color: const Color(0xFF35E0B5),
-                size: m.size(18),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -776,10 +998,15 @@ class _AccountsHeader extends StatelessWidget {
 // ================================================================
 
 class _AccountsList extends StatelessWidget {
-  const _AccountsList({required this.m, required this.selectedCurrency});
+  const _AccountsList({
+    required this.m,
+    required this.selectedCurrency,
+    required this.showBalances,
+  });
 
   final ResponsiveMetrics m;
   final String selectedCurrency;
+  final bool showBalances;
 
   @override
   Widget build(BuildContext context) {
@@ -802,10 +1029,6 @@ class _AccountsList extends StatelessWidget {
                 final accounts = AccountService()
                     .getAllActiveAccounts()
                     .where((account) => account.group == AccountGroup.liquidity)
-                    .where(
-                      (account) =>
-                          account.currency.toUpperCase() == selectedCurrency,
-                    )
                     .map(
                       (account) => _accountDataFromModel(
                         account,
@@ -824,8 +1047,11 @@ class _AccountsList extends StatelessWidget {
                       childAspectRatio: 1.2,
                     ),
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) =>
-                          _AccountCard(data: accounts[index], m: m),
+                      (context, index) => _AccountCard(
+                        data: accounts[index],
+                        m: m,
+                        showBalances: showBalances,
+                      ),
                       childCount: accounts.length,
                     ),
                   );
@@ -840,8 +1066,11 @@ class _AccountsList extends StatelessWidget {
                       childAspectRatio: 1.3,
                     ),
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) =>
-                          _AccountCard(data: accounts[index], m: m),
+                      (context, index) => _AccountCard(
+                        data: accounts[index],
+                        m: m,
+                        showBalances: showBalances,
+                      ),
                       childCount: accounts.length,
                     ),
                   );
@@ -849,8 +1078,11 @@ class _AccountsList extends StatelessWidget {
 
                 return SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) =>
-                        _AccountCard(data: accounts[index], m: m),
+                    (context, index) => _AccountCard(
+                      data: accounts[index],
+                      m: m,
+                      showBalances: showBalances,
+                    ),
                     childCount: accounts.length,
                   ),
                 );
@@ -974,15 +1206,77 @@ class _AccountData {
   });
 }
 
+class _AddAccountButton extends StatelessWidget {
+  const _AddAccountButton({required this.m});
+
+  final ResponsiveMetrics m;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        m.spacing(20),
+        m.spacing(2),
+        m.spacing(20),
+        m.spacing(24),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            // TODO: Navigate to AddAccountScreen.
+          },
+          borderRadius: BorderRadius.circular(m.radius.lg),
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(vertical: m.spacing(11)),
+            decoration: BoxDecoration(
+              color: const Color(0xFF35E0B5).withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(m.radius.lg),
+              border: Border.all(
+                color: const Color(0xFF35E0B5).withValues(alpha: 0.24),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.add_rounded,
+                  color: const Color(0xFF35E0B5),
+                  size: m.size(19),
+                ),
+                SizedBox(width: m.spacing(6)),
+                Text(
+                  'Add account',
+                  style: TextStyle(
+                    color: const Color(0xFF35E0B5),
+                    fontSize: m.text(13),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ================================================================
 // UI COMPONENTS
 // ================================================================
 
 class _AccountCard extends StatelessWidget {
-  const _AccountCard({required this.data, required this.m});
+  const _AccountCard({
+    required this.data,
+    required this.m,
+    required this.showBalances,
+  });
 
   final _AccountData data;
   final ResponsiveMetrics m;
+  final bool showBalances;
 
   @override
   Widget build(BuildContext context) {
@@ -1100,7 +1394,7 @@ class _AccountCard extends StatelessWidget {
                       text: TextSpan(
                         children: [
                           TextSpan(
-                            text: data.balance,
+                            text: showBalances ? data.balance : '••••',
                             style: TextStyle(
                               color: data.isLiability
                                   ? const Color(0xFFFF5572)
@@ -1110,7 +1404,9 @@ class _AccountCard extends StatelessWidget {
                             ),
                           ),
                           TextSpan(
-                            text: ' ${data.balanceSuffix}',
+                            text: showBalances
+                                ? ' ${data.balanceSuffix}'
+                                : ' •••',
                             style: TextStyle(
                               color: data.isLiability
                                   ? const Color(0xFFFF5572)
@@ -1124,13 +1420,15 @@ class _AccountCard extends StatelessWidget {
                     ),
                     SizedBox(height: m.h(3)),
                     Text(
-                      data.showAvailable
-                          ? 'Available ${data.available}'
-                          : data.available,
+                      showBalances
+                          ? (data.showAvailable
+                                ? 'Available ${data.available}'
+                                : data.available)
+                          : 'Available ••••',
                       style: TextStyle(
                         color: data.isLiability
                             ? const Color(0xFFFF5572)
-                            : const Color(0xFF35E0B5),
+                            : const Color(0xFFFFA928),
                         fontSize: m.text(10),
                         fontWeight: FontWeight.w600,
                       ),
@@ -1138,9 +1436,9 @@ class _AccountCard extends StatelessWidget {
                     if (!data.isLiability) ...[
                       SizedBox(height: m.h(2)),
                       Text(
-                        data.reserved,
+                        showBalances ? data.reserved : 'Reserved ••••',
                         style: TextStyle(
-                          color: const Color(0xFFFFA928),
+                          color: const Color(0xFF35E0B5),
                           fontSize: m.text(9.5),
                           fontWeight: FontWeight.w600,
                         ),
@@ -1168,98 +1466,117 @@ class _BalanceMetric extends StatelessWidget {
     required this.title,
     required this.description,
     required this.amount,
-    required this.icon,
+    required this.breakdown,
     required this.color,
+    required this.displayCurrency,
     required this.m,
   });
 
   final String title;
   final String description;
   final String amount;
-  final IconData icon;
+  final List<_CurrencyAmount> breakdown;
   final Color color;
+  final String displayCurrency;
   final ResponsiveMetrics m;
 
   @override
   Widget build(BuildContext context) {
+    final visibleBreakdown = breakdown
+        .where((item) => item.originalAmount.abs() > 0.0001)
+        .take(3)
+        .toList();
+
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(
-        m.spacing(9),
-        m.spacing(7),
-        m.spacing(7),
-        m.spacing(7),
+      padding: EdgeInsets.symmetric(
+        horizontal: m.spacing(7),
+        vertical: m.spacing(6),
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
+        color: color.withValues(alpha: 0.055),
         borderRadius: BorderRadius.circular(m.radius.md),
         border: Border.all(color: color.withValues(alpha: 0.10)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: m.text(10),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (title == 'Reserved') ...[
+                SizedBox(width: m.spacing(3)),
+                Icon(Icons.lock_rounded, color: color, size: m.size(11)),
+              ],
+            ],
+          ),
+          SizedBox(height: m.h(1)),
+          Text(
+            description,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.48),
+              fontSize: m.text(7.5),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: m.h(1)),
+          RichText(
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            text: TextSpan(
               children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                TextSpan(
+                  text: amount,
                   style: TextStyle(
                     color: color,
-                    fontSize: m.text(10),
-                    fontWeight: FontWeight.w700,
+                    fontSize: m.text(14),
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                SizedBox(height: m.h(1)),
-                Text(
-                  description,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                TextSpan(
+                  text: ' $displayCurrency',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.48),
+                    color: Colors.white,
                     fontSize: m.text(8.5),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                SizedBox(height: m.h(2)),
-                RichText(
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: amount,
-                        style: TextStyle(
-                          color: color,
-                          fontSize: m.text(15),
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' EGP',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: m.text(9),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-          Container(
-            width: m.size(25),
-            height: m.size(25),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.11),
-              shape: BoxShape.circle,
+          if (visibleBreakdown.isNotEmpty) ...[
+            SizedBox(height: m.h(2)),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: m.spacing(4),
+              runSpacing: m.h(1),
+              children: [
+                for (final item in visibleBreakdown)
+                  Text(
+                    '${_formatMoney(item.originalAmount)} ${item.currency}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.48),
+                      fontSize: m.text(7),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
             ),
-            child: Icon(icon, color: color, size: m.size(12)),
-          ),
+          ],
         ],
       ),
     );
@@ -1267,25 +1584,39 @@ class _BalanceMetric extends StatelessWidget {
 }
 
 class _BalanceVisibilityButton extends StatelessWidget {
-  const _BalanceVisibilityButton({required this.m, required this.size});
+  const _BalanceVisibilityButton({
+    required this.m,
+    required this.size,
+    required this.visible,
+    required this.onTap,
+  });
 
   final ResponsiveMetrics m;
   final double size;
+  final bool visible;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A1A26),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
-      child: Icon(
-        Icons.visibility_outlined,
-        color: Colors.white,
-        size: size * 0.48,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(size),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A1A26),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          ),
+          child: Icon(
+            visible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            color: Colors.white,
+            size: size * 0.48,
+          ),
+        ),
       ),
     );
   }
@@ -1372,6 +1703,8 @@ class _BalanceChart extends StatefulWidget {
     required this.latestValue,
     required this.latestDate,
     required this.currency,
+    required this.showBalance,
+    required this.periodMonths,
   });
 
   final List<double> values;
@@ -1380,6 +1713,8 @@ class _BalanceChart extends StatefulWidget {
   final double latestValue;
   final DateTime latestDate;
   final String currency;
+  final bool showBalance;
+  final int periodMonths;
 
   @override
   State<_BalanceChart> createState() => _BalanceChartState();
@@ -1424,7 +1759,7 @@ class _BalanceChartState extends State<_BalanceChart> {
         borderRadius: BorderRadius.circular(m.radius.lg),
         border: Border.all(color: Colors.white.withValues(alpha: 0.055)),
       ),
-      padding: EdgeInsets.fromLTRB(m.spacing(8), m.h(7), m.spacing(5), m.h(4)),
+      padding: EdgeInsets.fromLTRB(m.spacing(7), m.h(4), m.spacing(4), m.h(3)),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final minValue = values.isEmpty
@@ -1441,8 +1776,37 @@ class _BalanceChartState extends State<_BalanceChart> {
                     ? 0.0
                     : chartWidth * selectedIndex / (values.length - 1));
 
+          final selectedValue = values.isEmpty
+              ? widget.latestValue
+              : values[selectedIndex];
+          final selectedDate = widget.dates.isEmpty
+              ? widget.latestDate
+              : widget.dates[selectedIndex];
+
           const tooltipWidth = 96.0;
-          final tooltipLeft = (selectedX - tooltipWidth / 2)
+          const tooltipHeight = 48.0;
+
+          // Keep the tooltip away from the selected curve point. Prefer
+          // above the point, then below it, and finally the opposite side.
+          final selectedNormalizedY =
+              values.isEmpty || (maxValue - minValue).abs() < 1
+              ? 0.5
+              : 1 -
+                    ((selectedValue - minValue) / (maxValue - minValue)).clamp(
+                      0.0,
+                      1.0,
+                    );
+
+          final chartHeight = constraints.maxHeight - 24;
+          final selectedY = chartHeight * selectedNormalizedY;
+
+          double tooltipLeft = selectedX - tooltipWidth / 2;
+          if (selectedX < tooltipWidth * 0.85) {
+            tooltipLeft = selectedX + 10;
+          } else if (selectedX > chartWidth - tooltipWidth * 0.85) {
+            tooltipLeft = selectedX - tooltipWidth - 10;
+          }
+          tooltipLeft = tooltipLeft
               .clamp(
                 2.0,
                 (constraints.maxWidth - tooltipWidth - 2).clamp(
@@ -1452,12 +1816,23 @@ class _BalanceChartState extends State<_BalanceChart> {
               )
               .toDouble();
 
-          final selectedValue = values.isEmpty
-              ? widget.latestValue
-              : values[selectedIndex];
-          final selectedDate = widget.dates.isEmpty
-              ? widget.latestDate
-              : widget.dates[selectedIndex];
+          final pointGap = m.h(16);
+          final topCandidate = selectedY - tooltipHeight - pointGap;
+          final bottomCandidate = selectedY + pointGap;
+
+          // Prefer a position that does not cover the selected point.
+          final maxTop = constraints.maxHeight - tooltipHeight - 2;
+          double tooltipTop;
+          if (topCandidate >= 2) {
+            tooltipTop = topCandidate;
+          } else if (bottomCandidate <= maxTop) {
+            tooltipTop = bottomCandidate;
+          } else {
+            tooltipTop = selectedY < constraints.maxHeight / 2 ? maxTop : 2;
+          }
+          tooltipTop = tooltipTop.clamp(2.0, maxTop).toDouble();
+
+          final visibleLabels = _visibleChartLabels(widget.labels);
 
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -1478,57 +1853,74 @@ class _BalanceChartState extends State<_BalanceChart> {
                     ),
                   ),
                 ),
+
+                // Tooltip moves to a clear side of the selected point.
                 Positioned(
                   left: tooltipLeft,
-                  top: 0,
-                  child: Container(
-                    width: tooltipWidth,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: m.spacing(6),
-                      vertical: m.h(4),
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF062D35),
-                      borderRadius: BorderRadius.circular(m.radius.md),
-                      border: Border.all(
-                        color: const Color(0xFF14DDB1).withValues(alpha: 0.28),
+                  top: tooltipTop,
+                  child: IgnorePointer(
+                    child: Container(
+                      width: tooltipWidth,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: m.spacing(6),
+                        vertical: m.h(4),
                       ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '${_formatMoney(selectedValue)} ${widget.currency}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: const Color(0xFF35E0B5),
-                            fontSize: m.text(10),
-                            fontWeight: FontWeight.w800,
-                          ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF062D35),
+                        borderRadius: BorderRadius.circular(m.radius.md),
+                        border: Border.all(
+                          color: const Color(
+                            0xFF14DDB1,
+                          ).withValues(alpha: 0.28),
                         ),
-                        SizedBox(height: m.h(1)),
-                        Text(
-                          '${_GroupFinancialData._monthLabel(selectedDate.month)} ${selectedDate.day}',
-                          style: TextStyle(
-                            color: Colors.white60,
-                            fontSize: m.text(8.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.20),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.showBalance
+                                ? '${_formatMoney(selectedValue)} ${widget.currency}'
+                                : '•••• ${widget.currency}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: const Color(0xFF35E0B5),
+                              fontSize: m.text(10),
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          SizedBox(height: m.h(1)),
+                          Text(
+                            '${_GroupFinancialData._monthLabel(selectedDate.month)} ${selectedDate.day}',
+                            style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: m.text(8.5),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
+
                 Positioned(
                   right: 0,
-                  top: m.h(5),
-                  bottom: m.h(20),
+                  top: m.h(2),
+                  bottom: m.h(18),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: _chartScaleLabels(minValue, maxValue, m),
                   ),
                 ),
+
                 Positioned(
                   left: m.spacing(4),
                   right: m.spacing(28),
@@ -1536,7 +1928,7 @@ class _BalanceChartState extends State<_BalanceChart> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      for (final label in widget.labels) _ChartLabel(label),
+                      for (final label in visibleLabels) _ChartLabel(label),
                     ],
                   ),
                 ),
@@ -1548,10 +1940,26 @@ class _BalanceChartState extends State<_BalanceChart> {
     );
   }
 
-  // The chart receives the selected currency through the parent data; this
-  // label is kept separate so the tooltip remains readable.
-  String selectedCurrencyLabel(BuildContext context) {
-    return 'EGP';
+  List<String> _visibleChartLabels(List<String> labels) {
+    if (labels.isEmpty) return const [];
+
+    final step = switch (widget.periodMonths) {
+      12 => 3,
+      6 => 2,
+      _ => 2,
+    };
+
+    final visible = <String>[];
+    for (int i = 0; i < labels.length; i += step) {
+      visible.add(labels[i]);
+    }
+
+    // Keep the last month visible when it was skipped by the step.
+    if (visible.last != labels.last) {
+      visible.add(labels.last);
+    }
+
+    return visible;
   }
 
   List<Widget> _chartScaleLabels(
@@ -1575,7 +1983,8 @@ String _formatCompact(double value) {
   if (absolute >= 1000000) {
     return '${(value / 1000000).toStringAsFixed(1)}M';
   } else if (absolute >= 1000) {
-    return '${(value / 1000).toStringAsFixed(1)}k';
+    final compact = value / 1000;
+    return '${compact.toStringAsFixed(compact.abs() >= 10 ? 0 : 1)}k';
   }
 
   return value.round().toString();
