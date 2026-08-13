@@ -12,6 +12,8 @@ import '../../../../core/planning/infrastructure/persistence/hive_allocation_rec
 import '../../../../core/planning/services/available_balance_projection_service.dart';
 import '../../../../theme/responsive_metrics.dart';
 import 'accounts_group_details_logic.dart';
+import '../../../../screens/accounts/add_account/add_account_screen.dart';
+import '../../../../models/enums/section_type.dart';
 
 class AccountsGroupDetailsScreen extends StatefulWidget {
   const AccountsGroupDetailsScreen({super.key});
@@ -34,44 +36,54 @@ class _AccountsGroupDetailsScreenState
     return Scaffold(
       backgroundColor: const Color(0xFF020D16),
       body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: _Header(
-                m: m,
-                showBalances: _showBalances,
-                onToggleBalanceVisibility: () {
-                  setState(() => _showBalances = !_showBalances);
-                },
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: _BalanceOverview(
-                m: m,
-                currencyFilter: _currencyFilter,
-                selectedPeriod: _selectedPeriod,
-                showBalances: _showBalances,
+        child: Stack(
+          children: [
+            CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: _Header(
+                    m: m,
+                    showBalances: _showBalances,
+                    onToggleBalanceVisibility: () {
+                      setState(() => _showBalances = !_showBalances);
+                    },
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: _BalanceOverview(
+                    m: m,
+                    currencyFilter: _currencyFilter,
+                    selectedPeriod: _selectedPeriod,
+                    showBalances: _showBalances,
 
-                onCurrencyFilterChanged: (value) {
-                  setState(() => _currencyFilter = value);
-                },
-                onPeriodChanged: (value) {
-                  setState(() => _selectedPeriod = value);
-                },
-              ),
+                    onCurrencyFilterChanged: (value) {
+                      setState(() => _currencyFilter = value);
+                    },
+                    onPeriodChanged: (value) {
+                      setState(() => _selectedPeriod = value);
+                    },
+                  ),
+                ),
+                SliverToBoxAdapter(child: _AccountsHeader(m: m)),
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    m.spacing(20),
+                    0,
+                    m.spacing(20),
+                    m.spacing(24),
+                  ),
+                  sliver: _AccountsList(m: m, showBalances: _showBalances),
+                ),
+                SliverToBoxAdapter(child: SizedBox(height: m.h(90))),
+              ],
             ),
-            SliverToBoxAdapter(child: _AccountsHeader(m: m)),
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                m.spacing(20),
-                0,
-                m.spacing(20),
-                m.spacing(24),
-              ),
-              sliver: _AccountsList(m: m, showBalances: _showBalances),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _AddAccountButton(m: m),
             ),
-            SliverToBoxAdapter(child: _AddAccountButton(m: m)),
           ],
         ),
       ),
@@ -285,7 +297,7 @@ class _BalanceOverview extends StatelessWidget {
                           ),
                           SizedBox(height: m.h(8)),
                           SizedBox(
-                            height: m.isCompactHeight ? m.h(155) : m.h(180),
+                            height: m.isCompactHeight ? m.h(148) : m.h(180),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -1128,40 +1140,74 @@ class _AddAccountButton extends StatelessWidget {
         m.spacing(50),
         m.spacing(2),
         m.spacing(50),
-        m.spacing(2),
+        m.spacing(8),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            // TODO: Navigate to AddAccountScreen.
+          onTap: () async {
+            final created = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    const AddAccountScreen(sectionType: SectionType.liquidity),
+              ),
+            );
+
+            await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    const AddAccountScreen(sectionType: SectionType.liquidity),
+              ),
+            );
           },
           borderRadius: BorderRadius.circular(m.radius.lg),
           child: Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(vertical: m.spacing(11)),
+            height: m.h(50),
             decoration: BoxDecoration(
-              color: const Color(0xFF35E0B5).withValues(alpha: 0.07),
+              color: const Color(0xFF0D5C5A),
               borderRadius: BorderRadius.circular(m.radius.lg),
               border: Border.all(
-                color: const Color(0xFF35E0B5).withValues(alpha: 0.24),
+                color: const Color(0xFF35E0B5).withValues(alpha: 0.32),
+                width: 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.28),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.add_rounded,
-                  color: const Color(0xFF35E0B5),
-                  size: m.size(19),
+                Container(
+                  width: m.size(28),
+                  height: m.size(28),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF35E0B5).withValues(alpha: 0.10),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFF35E0B5).withValues(alpha: 1),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.add_rounded,
+                    color: const Color(0xFF35E0B5),
+                    size: m.size(18),
+                  ),
                 ),
-                SizedBox(width: m.spacing(6)),
+                SizedBox(width: m.spacing(8)),
                 Text(
                   'Add account',
                   style: TextStyle(
                     color: const Color(0xFF35E0B5),
                     fontSize: m.text(13),
                     fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
                   ),
                 ),
               ],
@@ -1172,7 +1218,6 @@ class _AddAccountButton extends StatelessWidget {
     );
   }
 }
-
 // ================================================================
 // UI COMPONENTS
 // ================================================================
