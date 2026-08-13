@@ -6,6 +6,7 @@ import '../../../models/account.dart';
 import '../../../models/enums/section_type.dart';
 import '../add_account/add_account_screen.dart';
 import '../group_accounts_screen.dart';
+import '../accounts_group/accounts_group_details_screen/accounts_group_details_screen.dart';
 import '../account_details_screen.dart';
 
 /// Centralized navigation for the Accounts module only.
@@ -73,6 +74,15 @@ abstract final class AccountsNavigator {
     required SectionType sectionType,
     bool isSavings = false,
   }) {
+    // Liquidity now uses the new AccountsGroupDetailsScreen.
+    // Other account groups keep the existing GroupAccountsScreen.
+    if (sectionType == SectionType.liquidity) {
+      return Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const AccountsGroupDetailsScreen()),
+      );
+    }
+
     return Navigator.push(
       context,
       MaterialPageRoute(

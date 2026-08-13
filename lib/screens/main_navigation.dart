@@ -14,7 +14,6 @@ import 'manage/manage_screen.dart';
 import 'package:wafferly/features/financial_action_center/financial_action_center.dart';
 import '../widgets/notifications/wafferly_toast.dart';
 import '../widgets/common/expense_toast_layer.dart';
-import 'accounts/accounts_group/accounts_group_details_screen/accounts_group_details_screen.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -34,12 +33,11 @@ class _MainNavigationState extends State<MainNavigation> {
     PlanningScreen(),
     ManageScreen(),
     AnalysisScreen(),
-    AccountsGroupDetailsScreen(), // مؤقتًا للتطوير
     SizedBox(), // More
   ];
 
   void _onItemTapped(int index) {
-    if (index == 6) {
+    if (index == 5) {
       setState(() {
         _showMoreMenu = !_showMoreMenu;
       });
@@ -126,12 +124,6 @@ class _MainNavigationState extends State<MainNavigation> {
                   icon: Icon(Icons.analytics_outlined),
                   activeIcon: Icon(Icons.analytics),
                   label: 'Analysis',
-                ),
-
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.account_tree_outlined),
-                  activeIcon: Icon(Icons.account_tree),
-                  label: 'Group Details',
                 ),
 
                 BottomNavigationBarItem(
