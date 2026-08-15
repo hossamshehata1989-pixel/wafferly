@@ -234,6 +234,24 @@ class _BalanceOverview extends StatelessWidget {
                     projectionService: projectionService,
                   ),
                   builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+  return SliverToBoxAdapter(
+    child: Container(
+      height: 260,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(16),
+      child: Text(
+        'Balance error:\n${snapshot.error}',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Colors.redAccent,
+          fontSize: 12,
+        ),
+      ),
+    ),
+  );
+}
+
                     if (!snapshot.hasData) {
                       return const SizedBox(
                         height: 260,
@@ -293,16 +311,8 @@ class _BalanceOverview extends StatelessWidget {
                             onPeriodChanged: onPeriodChanged,
                           ),
                           SizedBox(height: m.h(6)),
-                          _AccountTypeSummary(
-                            m: m,
-                            items: data.accountTypeBreakdown,
-                            showBalance: showBalances,
-                            displayCurrency: selectedCurrency,
-                            isEmptyState: data.availableCurrencies.isEmpty,
-                          ),
-                          SizedBox(height: m.h(6)),
                           SizedBox(
-                            height: m.isCompactHeight ? m.h(146) : m.h(164),
+                            height: m.isCompactHeight ? m.h(155) : m.h(180),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -336,6 +346,14 @@ class _BalanceOverview extends StatelessWidget {
                                 ),
                               ],
                             ),
+                          ),
+                          SizedBox(height: m.h(6)),
+                          _AccountTypeSummary(
+                            m: m,
+                            items: data.accountTypeBreakdown,
+                            showBalance: showBalances,
+                            displayCurrency: selectedCurrency,
+                            isEmptyState: data.availableCurrencies.isEmpty,
                           ),
                         ],
                       ),
@@ -589,19 +607,30 @@ class _AccountTypeSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visibleItems = isEmptyState
-        ? [
-            for (final type in const [
-              AccountTypeFilter.cash,
-              AccountTypeFilter.wallet,
-              AccountTypeFilter.card,
-              AccountTypeFilter.bank,
-            ])
-              AccountTypeAmount(type: type, amount: 0, isLiability: false),
-          ]
-        : items.where((item) => item.amount.abs() > 0.0001).toList();
+    const order = [
+      AccountTypeFilter.cash,
+      AccountTypeFilter.wallet,
+      AccountTypeFilter.card,
+      AccountTypeFilter.bank,
+    ];
 
-    if (visibleItems.isEmpty) return const SizedBox.shrink();
+    final byType = <AccountTypeFilter, AccountTypeAmount>{
+      for (final item in items) item.type: item,
+    };
+
+    // Keep all four account types visible. This is intentional UX: a zero
+    // value still communicates that the account type exists and preserves
+    // the stable four-column layout. Empty state uses the same structure.
+    final visibleItems = [
+      for (final type in order)
+        byType[type] ??
+            AccountTypeAmount(type: type, amount: 0, isLiability: false),
+    ];
+
+    final totalAmount = visibleItems.fold<double>(
+      0,
+      (sum, item) => sum + item.amount,
+    );
 
     return Container(
       width: double.infinity,
@@ -614,27 +643,31 @@ class _AccountTypeSummary extends StatelessWidget {
         ),
       ),
       child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (int i = 0; i < visibleItems.length; i++) ...[
-              if (i > 0)
-                Container(
-                  width: 1,
-                  height: m.h(25),
-                  margin: EdgeInsets.symmetric(horizontal: m.spacing(6)),
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
-              _AccountTypeSummaryItem(
-                m: m,
-                item: visibleItems[i],
-                showBalance: showBalance,
-                displayCurrency: displayCurrency,
-              ),
-            ],
-          ],
+  scrollDirection: Axis.horizontal,
+  child: Row(
+    children: [
+      for (int i = 0; i < visibleItems.length; i++) ...[
+        if (i > 0)
+          Container(
+            width: 1,
+            height: m.h(25),
+            margin: EdgeInsets.symmetric(horizontal: m.spacing(6)),
+            color: Colors.white.withValues(alpha: 0.08),
+          ),
+        SizedBox(
+          width: m.size(80),
+          child: _AccountTypeSummaryItem(
+            m: m,
+            item: visibleItems[i],
+            showBalance: showBalance,
+            displayCurrency: displayCurrency,
+            totalAmount: totalAmount,
+          ),
         ),
-      ),
+      ],
+    ],
+  ),
+),
     );
   }
 }
@@ -645,47 +678,88 @@ class _AccountTypeSummaryItem extends StatelessWidget {
     required this.item,
     required this.showBalance,
     required this.displayCurrency,
+    required this.totalAmount,
   });
 
   final ResponsiveMetrics m;
   final AccountTypeAmount item;
   final bool showBalance;
   final String displayCurrency;
+  final double totalAmount;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: m.isCompactHeight ? 68 : 76,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(item.icon, color: item.color, size: m.size(15)),
-          SizedBox(height: m.h(2)),
-          Text(
-            item.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.58),
-              fontSize: m.text(8),
-              fontWeight: FontWeight.w600,
+    final percentage = totalAmount <= 0
+        ? 0.0
+        : (item.amount / totalAmount) * 100;
+    final color = item.type.color;
+    final label = switch (item.type) {
+      AccountTypeFilter.cash => 'Cash',
+      AccountTypeFilter.wallet => 'Wallets',
+      AccountTypeFilter.card => 'Cards',
+      AccountTypeFilter.bank => 'Banks',
+      _ => item.label,
+    };
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(item.icon, color: color, size: m.size(15)),
+        SizedBox(height: m.h(3)),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.62),
+                  fontSize: m.text(9),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-          ),
-          SizedBox(height: m.h(1)),
-          Text(
-            showBalance
-                ? '${formatMoney(item.amount)} $displayCurrency'
-                : '••••',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: item.color,
-              fontSize: m.text(9),
-              fontWeight: FontWeight.w800,
+            SizedBox(width: m.spacing(3)),
+            Text(
+              '${percentage.toStringAsFixed(0)}%',
+              style: TextStyle(
+                color: color,
+                fontSize: m.text(8.5),
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+        SizedBox(height: m.h(2)),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                showBalance ? formatMoney(item.amount) : '••••',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: m.text(11),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            SizedBox(width: m.spacing(3)),
+            Text(
+              showBalance ? displayCurrency : '•••',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.52),
+                fontSize: m.text(7.5),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -785,7 +859,7 @@ class _MetricsColumn extends StatelessWidget {
             m: m,
           ),
         ),
-        SizedBox(height: m.spacing(1)),
+        SizedBox(height: m.spacing(7)),
         Expanded(
           child: _BalanceMetric(
             title: 'Reserved',
@@ -969,8 +1043,7 @@ class _AccountTypeFilterButton extends StatelessWidget {
 // ================================================================
 // ACCOUNTS LIST
 // ================================================================
-
-class _AccountsList extends StatelessWidget {
+class _AccountsList extends StatefulWidget {
   const _AccountsList({
     required this.m,
     required this.selectedCurrency,
@@ -984,109 +1057,226 @@ class _AccountsList extends StatelessWidget {
   final bool showBalances;
 
   @override
-  Widget build(BuildContext context) {
-    final accountsBox = Hive.box<Account>('accounts');
-    final transactionsBox = Hive.box<Transaction>('transactions');
-    final planningAllocationsBox = Hive.box<HiveAllocationRecord>(
+  State<_AccountsList> createState() => _AccountsListState();
+}
+
+class _AccountsListState extends State<_AccountsList> {
+  late final Box<Account> _accountsBox;
+  late final Box<Transaction> _transactionsBox;
+  late final Box<HiveAllocationRecord> _planningAllocationsBox;
+
+  late AvailableBalanceProjectionService _projectionService;
+
+  Future<List<AccountData>>? _accountsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _accountsBox = Hive.box<Account>('accounts');
+    _transactionsBox = Hive.box<Transaction>('transactions');
+    _planningAllocationsBox = Hive.box<HiveAllocationRecord>(
       'planning_allocations',
     );
 
-    return ValueListenableBuilder<Box<Account>>(
-      valueListenable: accountsBox.listenable(),
-      builder: (context, _, __) {
-        return ValueListenableBuilder<Box<Transaction>>(
-          valueListenable: transactionsBox.listenable(),
-          builder: (context, _, __) {
-            return ValueListenableBuilder<Box<HiveAllocationRecord>>(
-              valueListenable: planningAllocationsBox.listenable(),
-              builder: (context, _, __) {
-                final projectionService = context
-                    .read<AvailableBalanceProjectionService>();
+    _accountsBox.listenable().addListener(_onDataChanged);
+    _transactionsBox.listenable().addListener(_onDataChanged);
+    _planningAllocationsBox.listenable().addListener(_onDataChanged);
+  }
 
-                return FutureBuilder<List<AccountData>>(
-                  future: AccountsGroupDetailsLogic.buildAccountList(
-                    projectionService: projectionService,
-                    filter: selectedFilter,
-                  ),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const SliverToBoxAdapter(
-                        child: SizedBox(
-                          height: 120,
-                          child: Center(
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      );
-                    }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-                    final accounts = snapshot.data!;
+    _projectionService =
+        context.read<AvailableBalanceProjectionService>();
 
-                    if (accounts.isEmpty) {
-                      return SliverToBoxAdapter(
-                        child: _LiquidityEmptyState(m: m),
-                      );
-                    }
+    _loadAccounts();
+  }
 
-                    if (m.isDesktop) {
-                      return SliverGrid(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: m.spacing(12),
-                          mainAxisSpacing: m.spacing(12),
-                          childAspectRatio: 1.2,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => _AccountCard(
-                            data: accounts[index],
-                            m: m,
-                            showBalances: showBalances,
-                          ),
-                          childCount: accounts.length,
-                        ),
-                      );
-                    }
+  @override
+  void didUpdateWidget(covariant _AccountsList oldWidget) {
+    super.didUpdateWidget(oldWidget);
 
-                    if (m.isTablet) {
-                      return SliverGrid(
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: m.spacing(12),
-                          mainAxisSpacing: m.spacing(12),
-                          childAspectRatio: 1.3,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => _AccountCard(
-                            data: accounts[index],
-                            m: m,
-                            showBalances: showBalances,
-                          ),
-                          childCount: accounts.length,
-                        ),
-                      );
-                    }
+    if (oldWidget.selectedFilter != widget.selectedFilter ||
+        oldWidget.selectedCurrency != widget.selectedCurrency) {
+      _loadAccounts();
+    }
+  }
 
-                    return SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _AccountCard(
-                          data: accounts[index],
-                          m: m,
-                          showBalances: showBalances,
-                        ),
-                        childCount: accounts.length,
-                      ),
-                    );
-                  },
+  void _onDataChanged() {
+    if (!mounted) return;
+
+    _loadAccounts();
+  }
+
+  void _loadAccounts() {
+    _accountsFuture = AccountsGroupDetailsLogic.buildAccountList(
+      projectionService: _projectionService,
+      filter: widget.selectedFilter,
+    );
+
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _accountsBox.listenable().removeListener(_onDataChanged);
+    _transactionsBox.listenable().removeListener(_onDataChanged);
+    _planningAllocationsBox.listenable().removeListener(_onDataChanged);
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final future = _accountsFuture;
+
+    if (future == null) {
+      return const SliverToBoxAdapter(
+        child: SizedBox(
+          height: 260,
+          child: Center(
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    return FutureBuilder<List<AccountData>>(
+      future: future,
+      builder: (context, snapshot) {
+        // ============================================================
+        // ERROR
+        // ============================================================
+
+        if (snapshot.hasError) {
+          return SliverToBoxAdapter(
+            child: Container(
+              height: 260,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Balance error:\n${snapshot.error}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.redAccent,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // LOADING
+        // ============================================================
+
+        if (!snapshot.hasData) {
+          return const SliverToBoxAdapter(
+            child: SizedBox(
+              height: 260,
+              child: Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                ),
+              ),
+            ),
+          );
+        }
+
+        // ============================================================
+        // DATA
+        // ============================================================
+
+        final accounts = snapshot.data!;
+
+        // ============================================================
+        // EMPTY
+        // ============================================================
+
+        if (accounts.isEmpty) {
+          return SliverToBoxAdapter(
+            child: _LiquidityEmptyState(
+              m: widget.m,
+            ),
+          );
+        }
+
+        // ============================================================
+        // DESKTOP
+        // ============================================================
+
+        if (widget.m.isDesktop) {
+          return SliverGrid(
+            gridDelegate:
+                SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: widget.m.spacing(12),
+              mainAxisSpacing: widget.m.spacing(12),
+              childAspectRatio: 1.2,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                return _AccountCard(
+                  data: accounts[index],
+                  m: widget.m,
+                  showBalances: widget.showBalances,
                 );
               },
-            );
-          },
+              childCount: accounts.length,
+            ),
+          );
+        }
+
+        // ============================================================
+        // TABLET
+        // ============================================================
+
+        if (widget.m.isTablet) {
+          return SliverGrid(
+            gridDelegate:
+                SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: widget.m.spacing(12),
+              mainAxisSpacing: widget.m.spacing(12),
+              childAspectRatio: 1.3,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                return _AccountCard(
+                  data: accounts[index],
+                  m: widget.m,
+                  showBalances: widget.showBalances,
+                );
+              },
+              childCount: accounts.length,
+            ),
+          );
+        }
+
+        // ============================================================
+        // MOBILE
+        // ============================================================
+
+        return SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              return _AccountCard(
+                data: accounts[index],
+                m: widget.m,
+                showBalances: widget.showBalances,
+              );
+            },
+            childCount: accounts.length,
+          ),
         );
       },
     );
   }
 }
-
 class _LiquidityEmptyState extends StatelessWidget {
   const _LiquidityEmptyState({required this.m});
 
@@ -1340,8 +1530,11 @@ class _AddAccountButton extends StatelessWidget {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () {
-                // TODO: Navigate to AddAccountScreen.
+              onTap: () async {
+                await AccountsNavigator.showCreateAccount(
+                  context: context,
+                  sectionType: SectionType.liquidity,
+                );
               },
               borderRadius: BorderRadius.circular(m.radius.lg),
               child: Container(
