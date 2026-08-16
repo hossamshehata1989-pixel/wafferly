@@ -219,6 +219,7 @@ class AccountsGroupDetailsLogic {
     final iconColor = _colorForAccountType(account.type, isLiability);
 
     return AccountData(
+      accountId: account.id,
       iconAsset: _resolveAccountIcon(account),
       iconColor: iconColor,
       iconBackground: iconColor.withValues(alpha: 0.18),
@@ -966,6 +967,7 @@ class AccountTypeAmount {
 // ============================================================================
 
 class AccountData {
+  final String accountId;
   final String iconAsset;
 
   final Color iconColor;
@@ -991,6 +993,7 @@ class AccountData {
   final bool isLiability;
 
   const AccountData({
+    required this.accountId,
     required this.iconAsset,
     required this.iconColor,
     required this.iconBackground,

@@ -7,7 +7,7 @@ import '../../../models/enums/section_type.dart';
 import '../add_account/add_account_screen.dart';
 import '../group_accounts_screen.dart';
 import '../accounts_group/accounts_group_details_screen/accounts_group_details_screen.dart';
-import '../account_details_screen.dart';
+import '../account_deatails/account_details_screen.dart';
 
 /// Centralized navigation for the Accounts module only.
 ///

@@ -1606,7 +1606,12 @@ class _AccountCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(m.radius.lg),
-          onTap: () {},
+          onTap: () {
+  AccountsNavigator.showAccountDetails(
+    context: context,
+    accountId: data.accountId,
+  );
+},
           child: Padding(
             padding: EdgeInsets.fromLTRB(
               m.spacing(10),
