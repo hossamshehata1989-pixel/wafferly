@@ -19,9 +19,9 @@ import 'data/hive_account_details_repository.dart';
 
 
 /// Stage 10 — Explicit responsive sizing; no global scale.
-/// Page-local density override.
-/// Keeps the existing responsive breakpoints/layout logic intact while
-/// rendering this screen at 75% of its previous visual density.
+/// Explicit responsive sizing for this screen.
+/// Keeps the existing responsive breakpoints/layout logic intact without
+/// applying any global scale.
 class _AccountPageMetrics {
   // Stage 10: no global scaling.
   // Keep sizing explicit and responsive so important text/icons remain readable
@@ -432,7 +432,7 @@ class _HeroCard extends StatelessWidget {
           // Chart = 2/3, Expected = 1/3 at every breakpoint.
           // The Expected card uses a compact mobile presentation.
           SizedBox(
-            height: m.h(m.isDesktop ? 205 : (m.isCompactHeight ? 174 : 190)),
+            height: m.h(m.isDesktop ? 205 : (m.isCompactHeight ? 215 : 225)),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
