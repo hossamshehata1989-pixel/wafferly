@@ -17,6 +17,33 @@ import 'account_details_models.dart';
 import 'data/account_details_repository.dart';
 import 'data/hive_account_details_repository.dart';
 
+
+/// Stage 10 — Explicit responsive sizing; no global scale.
+/// Page-local density override.
+/// Keeps the existing responsive breakpoints/layout logic intact while
+/// rendering this screen at 75% of its previous visual density.
+class _AccountPageMetrics {
+  // Stage 10: no global scaling.
+  // Keep sizing explicit and responsive so important text/icons remain readable
+  // on iPhone SE instead of shrinking the entire page uniformly.
+  final ResponsiveMetrics base;
+
+  _AccountPageMetrics(this.base);
+
+  bool get isMobile => base.isMobile;
+  bool get isTablet => base.isTablet;
+  bool get isDesktop => base.isDesktop;
+  bool get isCompactHeight => base.isCompactHeight;
+
+  double size(double value) => base.size(value);
+  double spacing(double value) => base.spacing(value);
+  double h(double value) => base.h(value);
+  double text(double value) => base.text(value);
+
+  get typography => base.typography;
+  get icon => base.icon;
+}
+
 class AccountDetailsScreen extends StatefulWidget {
   const AccountDetailsScreen({super.key, required this.accountId});
 
@@ -51,7 +78,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final m = ResponsiveMetrics.of(context);
+    final m = _AccountPageMetrics(ResponsiveMetrics.of(context));
 
     return Scaffold(
       backgroundColor: const Color(0xFF020D16),
@@ -85,37 +112,53 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
               );
             }
 
-            return CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: _Header(
-                    m: m,
-                    data: data,
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: _ResponsiveTop(
-                    m: m,
-                    data: data,
-                    chartPeriod: _chartPeriod,
-                    onChartPeriodChanged: (value) {
-                      setState(() => _chartPeriod = value);
-                    },
-                  ),
-                ),
-                SliverPadding(
-                  padding: EdgeInsets.fromLTRB(
-                    m.spacing(m.isDesktop ? 24 : 16),
-                    m.spacing(14),
-                    m.spacing(m.isDesktop ? 24 : 16),
-                    m.spacing(32),
-                  ),
-                  sliver: SliverToBoxAdapter(
-                    child: _OverviewSection(
-                      m: m,
-                      data: data,
+            // STEP: Keep the account action bar pinned while the account details scroll.
+            return Stack(
+              children: [
+                CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: _Header(
+                        m: m,
+                        data: data,
+                      ),
                     ),
+                    SliverToBoxAdapter(
+                      child: _ResponsiveTop(
+                        m: m,
+                        data: data,
+                        chartPeriod: _chartPeriod,
+                        onChartPeriodChanged: (value) {
+                          setState(() => _chartPeriod = value);
+                        },
+                      ),
+                    ),
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                        m.spacing(m.isDesktop ? 24 : 16),
+                        m.spacing(14),
+                        m.spacing(m.isDesktop ? 24 : 16),
+                        // Leave enough room so the final content is never hidden
+                        // behind the pinned action bar.
+                        m.spacing(m.isMobile ? 104 : 92),
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: _OverviewSection(
+                          m: m,
+                          data: data,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: SafeArea(
+                    top: false,
+                    child: _PinnedAccountActions(m: m),
                   ),
                 ),
               ],
@@ -130,7 +173,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
 class _Header extends StatelessWidget {
   const _Header({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -192,7 +235,7 @@ class _ResponsiveTop extends StatelessWidget {
     required this.onChartPeriodChanged,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
   final _AccountChartPeriod chartPeriod;
   final ValueChanged<_AccountChartPeriod> onChartPeriodChanged;
@@ -219,7 +262,7 @@ class _HeroCard extends StatelessWidget {
     required this.onChartPeriodChanged,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
   final _AccountChartPeriod chartPeriod;
   final ValueChanged<_AccountChartPeriod> onChartPeriodChanged;
@@ -389,7 +432,7 @@ class _HeroCard extends StatelessWidget {
           // Chart = 2/3, Expected = 1/3 at every breakpoint.
           // The Expected card uses a compact mobile presentation.
           SizedBox(
-            height: m.isDesktop ? 205 : (m.isCompactHeight ? 174 : 190),
+            height: m.h(m.isDesktop ? 205 : (m.isCompactHeight ? 174 : 190)),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -422,6 +465,7 @@ class _HeroCard extends StatelessWidget {
     required _AccountChartPeriod current,
     required ValueChanged<_AccountChartPeriod> onChanged,
   }) {
+    final m = ResponsiveMetrics.of(context);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF071823),
@@ -432,20 +476,20 @@ class _HeroCard extends StatelessWidget {
             shrinkWrap: true,
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
             children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(4, 4, 4, 8),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
                 child: Text(
                   'Chart period',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: m.text(18),
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
               for (final period in _AccountChartPeriod.values)
                 ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  contentPadding: EdgeInsets.symmetric(horizontal: m.spacing(4)),
                   leading: Icon(
                     period.icon,
                     color: period == current
@@ -485,52 +529,77 @@ class _HeroCard extends StatelessWidget {
 class _MiniHealthCard extends StatelessWidget {
   const _MiniHealthCard({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
   Widget build(BuildContext context) {
     final score = data.health.score.clamp(0, 100).toDouble();
+    final status = data.health.label;
 
     return Container(
-      width: m.isMobile ? 116 : 145,
-      height: m.isMobile ? 78 : 86,
-      padding: EdgeInsets.symmetric(
-        horizontal: m.spacing(6),
-        vertical: m.spacing(5),
-      ),
+      width: m.isMobile ? 124 : 142,
+      height: m.isMobile ? 72 : 80,
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFF061923),
-        borderRadius: BorderRadius.circular(m.size(11)),
-        border: Border.all(color: Colors.white.withValues(alpha: .07)),
+        color: const Color(0xFF071B26),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF39D98A).withValues(alpha: .18)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF39D98A).withValues(alpha: .05),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
       ),
       child: Row(
         children: [
           SizedBox(
-            width: m.isMobile ? 58 : 64,
-            height: m.isMobile ? 58 : 64,
+            width: 52,
+            height: 52,
             child: CustomPaint(
-              painter: _HealthPainter(value: score / 100),
+              painter: _ProfessionalHealthPainter(value: score / 100),
               child: Center(
-                child: Icon(
-                  Icons.monitor_heart_outlined,
-                  color: const Color(0xFF39D98A),
-                  size: m.isMobile ? 17 : 19,
+                child: Text(
+                  '${score.round()}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
           ),
-          SizedBox(width: m.spacing(5)),
+          const SizedBox(width: 6),
           Expanded(
-            child: Text(
-              data.health.label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: const Color(0xFF39D98A),
-                fontSize: m.isMobile ? 10 : 11,
-                fontWeight: FontWeight.w800,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Health',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  status,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF39D98A),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -542,7 +611,7 @@ class _MiniHealthCard extends StatelessWidget {
 class _ExpectedAmountCard extends StatelessWidget {
   const _ExpectedAmountCard({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   double _expectedAvailable() {
@@ -569,7 +638,7 @@ class _ExpectedAmountCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       height: double.infinity,
-      padding: EdgeInsets.all(m.spacing(compact ? 8 : 12)),
+      padding: EdgeInsets.all(m.spacing(compact ? 7 : 12)),
       decoration: BoxDecoration(
         color: const Color(0xFF0A0B25),
         borderRadius: BorderRadius.circular(m.size(14)),
@@ -589,7 +658,7 @@ class _ExpectedAmountCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: m.text(compact ? 13 : 16),
+                    fontSize: m.text(compact ? 14.5 : 16),
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -602,13 +671,13 @@ class _ExpectedAmountCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF9B6CFF).withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(m.size(20)),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Recurring-based',
                     style: TextStyle(
                       color: Color(0xFFB58BFF),
-                      fontSize: 9,
+                      fontSize: m.text(9),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -624,7 +693,7 @@ class _ExpectedAmountCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: Colors.white.withValues(alpha: .55),
-              fontSize: compact ? 9 : m.typography.caption,
+              fontSize: compact ? 10 : m.typography.caption,
             ),
           ),
           SizedBox(height: m.h(compact ? 4 : 5)),
@@ -636,7 +705,7 @@ class _ExpectedAmountCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: const Color(0xFFB58BFF),
-              fontSize: m.text(compact ? 17 : (m.isDesktop ? 26 : 23)),
+              fontSize: m.text(compact ? 19 : (m.isDesktop ? 26 : 23)),
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -649,48 +718,75 @@ class _ExpectedAmountCard extends StatelessWidget {
               color: delta >= 0
                   ? const Color(0xFF39D98A)
                   : const Color(0xFFFF5B67),
-              fontSize: compact ? 8 : m.typography.caption,
+              fontSize: compact ? 9 : m.typography.caption,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const Spacer(),
-          InkWell(
-            onTap: () => _showWhy(context),
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(
-                horizontal: m.spacing(compact ? 6 : 10),
-                vertical: m.spacing(compact ? 6 : 8),
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .025),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white.withValues(alpha: .06)),
-              ),
+          if (compact) ...[
+            const Spacer(),
+            InkWell(
+              onTap: () => _showWhy(context),
+              borderRadius: BorderRadius.circular(m.size(8)),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: Text(
-                      compact ? 'Why?' : 'Why is this expected?',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: .72),
-                        fontSize: compact ? 9 : m.typography.caption,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  Text(
+                    'Why?',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: .68),
+                      fontSize: m.text(8.5),
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  Icon(
+                  SizedBox(width: m.spacing(2)),
+                  const Icon(
                     Icons.chevron_right_rounded,
                     color: Colors.white54,
-                    size: compact ? 14 : 18,
+                    size: 12,
                   ),
                 ],
               ),
             ),
-          ),
+          ] else ...[
+            const Spacer(),
+            InkWell(
+              onTap: () => _showWhy(context),
+              borderRadius: BorderRadius.circular(m.size(10)),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(
+                  horizontal: m.spacing(10),
+                  vertical: m.spacing(8),
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .025),
+                  borderRadius: BorderRadius.circular(m.size(10)),
+                  border: Border.all(color: Colors.white.withValues(alpha: .06)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Why is this expected?',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: .72),
+                          fontSize: m.typography.caption,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.white54,
+                      size: 18,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -706,13 +802,14 @@ class _ExpectedAmountCard extends StatelessWidget {
   }
 
   static void _showWhy(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF071823),
       showDragHandle: true,
-      builder: (context) => const SafeArea(
+      builder: (context) => SafeArea(
         child: Padding(
-          padding: EdgeInsets.fromLTRB(20, 8, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -721,11 +818,11 @@ class _ExpectedAmountCard extends StatelessWidget {
                 'Why is this expected?',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: m.text(18),
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              SizedBox(height: 12),
+              SizedBox(height: m.spacing(12)),
               Text(
                 'This first version uses the current available balance plus scheduled recurring income and expenses due before the end of the month. It does not yet use a prediction engine for new or variable expenses.',
                 style: TextStyle(
@@ -784,7 +881,7 @@ class _TopFilter extends StatelessWidget {
     required this.onTap,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -812,7 +909,7 @@ class _TopFilter extends StatelessWidget {
           children: [
             Icon(
               icon,
-              size: m.isMobile ? 15 : 17,
+              size: m.size(m.isMobile ? 15 : 17),
               color: Colors.white70,
             ),
             SizedBox(width: m.spacing(5)),
@@ -851,7 +948,7 @@ class _AccountBalanceChart extends StatelessWidget {
     required this.onPeriodChanged,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
   final _AccountChartPeriod period;
   final double availableRatio;
@@ -997,7 +1094,7 @@ class _ChartRangeChip extends StatelessWidget {
     required this.onTap,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -1006,7 +1103,7 @@ class _ChartRangeChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(m.size(20)),
       child: Container(
         alignment: Alignment.center,
         padding: EdgeInsets.symmetric(vertical: m.spacing(5)),
@@ -1014,13 +1111,13 @@ class _ChartRangeChip extends StatelessWidget {
           color: selected
               ? const Color(0xFF39D98A)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(m.size(20)),
         ),
         child: Text(
         label,
         style: TextStyle(
           color: selected ? const Color(0xFF04131B) : Colors.white70,
-          fontSize: m.isMobile ? 9.5 : 11,
+          fontSize: m.text(m.isMobile ? 9.5 : 11),
             fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
           ),
         ),
@@ -1040,7 +1137,7 @@ class _BalanceMetricCard extends StatelessWidget {
     required this.icon,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final String title;
   final String subtitle;
   final double amount;
@@ -1076,7 +1173,7 @@ class _BalanceMetricCard extends StatelessWidget {
               Icon(
                 icon,
                 color: color,
-                size: m.isMobile ? 17 : 19,
+                size: m.size(m.isMobile ? 17 : 19),
               ),
             ],
           ),
@@ -1087,7 +1184,7 @@ class _BalanceMetricCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: Colors.white.withValues(alpha: .55),
-              fontSize: m.isMobile ? 8.5 : 10,
+              fontSize: m.text(m.isMobile ? 8.5 : 10),
             ),
           ),
           SizedBox(height: m.h(5)),
@@ -1116,7 +1213,7 @@ class _LegendDot extends StatelessWidget {
 
   final Color color;
   final String label;
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
 
   @override
   Widget build(BuildContext context) {
@@ -1136,7 +1233,7 @@ class _LegendDot extends StatelessWidget {
           label,
           style: TextStyle(
             color: Colors.white.withValues(alpha: .65),
-            fontSize: m.isMobile ? 9.5 : 11,
+            fontSize: m.text(m.isMobile ? 9.5 : 11),
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -1284,7 +1381,7 @@ class _AccountBalanceChartPainter extends CustomPainter {
         text: labels[i],
         style: const TextStyle(
           color: Colors.white54,
-          fontSize: 9,
+          fontSize: 8.0,
           fontWeight: FontWeight.w500,
         ),
       );
@@ -1311,7 +1408,7 @@ class _AccountBalanceChartPainter extends CustomPainter {
         text: _formatCompact(value),
         style: const TextStyle(
           color: Colors.white38,
-          fontSize: 8.5,
+          fontSize: 7.5,
         ),
       );
       scalePainter.layout();
@@ -1422,7 +1519,7 @@ class _AccountBalanceChartPainter extends CustomPainter {
 class _HealthCard extends StatelessWidget {
   const _HealthCard({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -1525,7 +1622,7 @@ class _Tabs extends StatelessWidget {
     required this.onChanged,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final int selected;
   final ValueChanged<int> onChanged;
 
@@ -1557,7 +1654,7 @@ class _Tabs extends StatelessWidget {
             final active = index == selected;
             return InkWell(
               onTap: () => onChanged(index),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(m.size(10)),
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: m.spacing(2)),
                 child: Column(
@@ -1599,7 +1696,7 @@ class _TabBody extends StatelessWidget {
     required this.tab,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
   final int tab;
 
@@ -1625,7 +1722,7 @@ class _TabBody extends StatelessWidget {
 class _OverviewSection extends StatelessWidget {
   const _OverviewSection({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -1650,9 +1747,6 @@ class _OverviewSection extends StatelessWidget {
         ),
         SizedBox(height: m.spacing(10)),
         activityCard,
-        SizedBox(height: m.spacing(12)),
-        // Actions follow the content; they are not pinned to the screen bottom.
-        _BottomAccountActions(m: m),
       ],
     );
   }
@@ -1661,7 +1755,7 @@ class _OverviewSection extends StatelessWidget {
 class _ReservedPreviewCard extends StatelessWidget {
   const _ReservedPreviewCard({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -1681,7 +1775,7 @@ class _ReservedPreviewCard extends StatelessWidget {
               SizedBox(width: m.spacing(7)),
               Expanded(
                 child: Text(
-                  'Reserved Money',
+                  m.isMobile ? 'Reserved' : 'Reserved Money',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -1708,7 +1802,7 @@ class _ReservedPreviewCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: .52),
-                    fontSize: 9,
+                    fontSize: m.text(9),
                   ),
                 ),
                 SizedBox(height: m.h(3)),
@@ -1718,7 +1812,7 @@ class _ReservedPreviewCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: const Color(0xFFFFAA2C),
-                    fontSize: 16,
+                    fontSize: m.text(16),
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1784,7 +1878,7 @@ class _ReservedPreviewCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: m.isMobile ? 10.5 : 12,
+                              fontSize: m.text(m.isMobile ? 10.5 : 12),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -1798,7 +1892,7 @@ class _ReservedPreviewCard extends StatelessWidget {
                             textAlign: TextAlign.end,
                             style: TextStyle(
                               color: const Color(0xFFFFAA2C),
-                              fontSize: m.isMobile ? 10.5 : 12,
+                              fontSize: m.text(m.isMobile ? 10.5 : 12),
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -1818,7 +1912,7 @@ class _ReservedPreviewCard extends StatelessWidget {
 class _RecurringPreviewCard extends StatelessWidget {
   const _RecurringPreviewCard({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -1899,7 +1993,7 @@ class _PreviewRow extends StatelessWidget {
     required this.amountColor,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final IconData icon;
   final Color iconColor;
   final String title;
@@ -1966,7 +2060,7 @@ class _PreviewRow extends StatelessWidget {
 class _RecentActivityPanel extends StatelessWidget {
   const _RecentActivityPanel({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -2019,16 +2113,16 @@ class _RecentActivityPanel extends StatelessWidget {
 class _SeeMoreText extends StatelessWidget {
   const _SeeMoreText({required this.m, required this.onTap});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(m.size(8)),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        padding: EdgeInsets.symmetric(horizontal: m.spacing(4), vertical: m.spacing(4)),
         child: Text(
           'See more',
           style: TextStyle(
@@ -2042,10 +2136,10 @@ class _SeeMoreText extends StatelessWidget {
   }
 }
 
-class _BottomAccountActions extends StatelessWidget {
-  const _BottomAccountActions({required this.m});
+class _PinnedAccountActions extends StatelessWidget {
+  const _PinnedAccountActions({required this.m});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
 
   @override
   Widget build(BuildContext context) {
@@ -2057,12 +2151,30 @@ class _BottomAccountActions extends StatelessWidget {
       (Icons.more_horiz_rounded, 'More'),
     ];
 
-    return _Panel(
-      m: m,
+    return Container(
+      margin: EdgeInsets.fromLTRB(
+        m.spacing(m.isDesktop ? 24 : 12),
+        0,
+        m.spacing(m.isDesktop ? 24 : 12),
+        m.spacing(8),
+      ),
+      padding: EdgeInsets.all(m.isMobile ? 5 : 9),
+      decoration: BoxDecoration(
+        color: const Color(0xFF061923).withValues(alpha: .98),
+        borderRadius: BorderRadius.circular(m.size(16)),
+        border: Border.all(color: Colors.white.withValues(alpha: .08)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 18,
+            offset: Offset(0, -5),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           for (var i = 0; i < actions.length; i++) ...[
-            if (i > 0) SizedBox(width: m.spacing(m.isMobile ? 4 : 8)),
+            if (i > 0) SizedBox(width: m.isMobile ? 3 : 8),
             Expanded(
               child: _ActionButton(
                 icon: actions[i].$1,
@@ -2081,7 +2193,7 @@ class _BottomAccountActions extends StatelessWidget {
 class _ThisMonthPanel extends StatelessWidget {
   const _ThisMonthPanel({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -2133,7 +2245,7 @@ class _ThisMonthPanel extends StatelessWidget {
 class _BalanceChartPanel extends StatelessWidget {
   const _BalanceChartPanel({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -2178,7 +2290,7 @@ class _BalanceChartPanel extends StatelessWidget {
 class _CommittedSection extends StatelessWidget {
   const _CommittedSection({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -2229,7 +2341,7 @@ class _CommittedSection extends StatelessWidget {
 class _RecurringSection extends StatelessWidget {
   const _RecurringSection({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -2262,7 +2374,7 @@ class _RecurringSection extends StatelessWidget {
 class _RecurringTile extends StatelessWidget {
   const _RecurringTile({required this.m, required this.item});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final RecurringAccountItem item;
 
   @override
@@ -2327,7 +2439,7 @@ class _RecurringTile extends StatelessWidget {
 class _PlanningSection extends StatelessWidget {
   const _PlanningSection({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -2369,7 +2481,7 @@ class _PlanningSection extends StatelessWidget {
 class _AccountInfoSection extends StatelessWidget {
   const _AccountInfoSection({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -2431,7 +2543,7 @@ class _AccountInfoSection extends StatelessWidget {
 class _ActivitySection extends StatelessWidget {
   const _ActivitySection({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -2450,7 +2562,7 @@ class _ActivityContent extends StatelessWidget {
     this.compact = false,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
   final bool compact;
 
@@ -2532,7 +2644,7 @@ class _ActivityContent extends StatelessWidget {
 class _InsightsPanel extends StatelessWidget {
   const _InsightsPanel({required this.m, required this.data});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final AccountDetailsData data;
 
   @override
@@ -2568,7 +2680,7 @@ class _InsightsPanel extends StatelessWidget {
 class _QuickActionsPanel extends StatelessWidget {
   const _QuickActionsPanel({required this.m});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
 
   @override
   Widget build(BuildContext context) {
@@ -2607,7 +2719,7 @@ class _QuickActionsPanel extends StatelessWidget {
 class _QuickActions extends StatelessWidget {
   const _QuickActions({required this.m});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
 
   @override
   Widget build(BuildContext context) {
@@ -2684,7 +2796,7 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final m = ResponsiveMetrics.of(context);
+    final m = _AccountPageMetrics(ResponsiveMetrics.of(context));
 
     return Container(
       width: fill
@@ -2692,10 +2804,10 @@ class _ActionButton extends StatelessWidget {
           : compact
               ? m.size(m.isMobile ? 72 : 92)
               : m.size(m.isMobile ? 96 : 100),
-      height: compact ? m.size(m.isMobile ? 62 : 72) : null,
+      height: compact ? (m.isMobile ? 50 : 72) : null,
       padding: EdgeInsets.symmetric(
         horizontal: m.spacing(5),
-        vertical: m.spacing(compact ? 7 : 11),
+        vertical: m.spacing(compact ? 5 : 11),
       ),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: .035),
@@ -2708,7 +2820,7 @@ class _ActionButton extends StatelessWidget {
           Icon(
             icon,
             color: Colors.white70,
-            size: m.isMobile ? 19 : m.icon.medium,
+            size: m.isMobile ? m.size(19) : m.icon.medium,
           ),
           SizedBox(height: m.h(4)),
           Text(
@@ -2718,7 +2830,7 @@ class _ActionButton extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: .78),
-              fontSize: m.isMobile ? 9.5 : m.typography.caption,
+              fontSize: m.isMobile ? 8.5 : m.typography.caption,
               height: 1.05,
             ),
           ),
@@ -2738,7 +2850,7 @@ class _BalanceSplit extends StatelessWidget {
     required this.color,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final String title;
   final double amount;
   final String currency;
@@ -2775,7 +2887,7 @@ class _BalanceSplit extends StatelessWidget {
           ),
           SizedBox(height: m.h(7)),
           ClipRRect(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(m.size(20)),
             child: LinearProgressIndicator(
               minHeight: 5,
               value: ratio,
@@ -2799,7 +2911,7 @@ class _MetricBar extends StatelessWidget {
     required this.currency,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final String label;
   final double value;
   final double max;
@@ -2855,7 +2967,7 @@ class _Metric extends StatelessWidget {
     required this.color,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final String label;
   final double value;
   final String currency;
@@ -2901,7 +3013,7 @@ class _Insight extends StatelessWidget {
     required this.text,
   });
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final IconData icon;
   final String text;
 
@@ -2935,7 +3047,7 @@ class _Insight extends StatelessWidget {
 class _Panel extends StatelessWidget {
   const _Panel({required this.m, required this.child});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final Widget child;
 
   @override
@@ -2958,7 +3070,7 @@ class _Panel extends StatelessWidget {
 class _PanelTitle extends StatelessWidget {
   const _PanelTitle({required this.m, required this.title});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final String title;
 
   @override
@@ -2986,7 +3098,7 @@ class _StatusChip extends StatelessWidget {
 
   final String label;
   final bool active;
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
 
   @override
   Widget build(BuildContext context) {
@@ -2998,7 +3110,7 @@ class _StatusChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: (active ? const Color(0xFF39D98A) : Colors.white54)
             .withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(m.size(20)),
       ),
       child: Text(
         label,
@@ -3015,7 +3127,7 @@ class _StatusChip extends StatelessWidget {
 class _AccountAvatar extends StatelessWidget {
   const _AccountAvatar({required this.m, required this.account});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final Account account;
 
   @override
@@ -3056,7 +3168,7 @@ class _SmallAction extends StatelessWidget {
   const _SmallAction({required this.icon, required this.m});
 
   final IconData icon;
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
 
   @override
   Widget build(BuildContext context) {
@@ -3076,7 +3188,7 @@ class _SmallAction extends StatelessWidget {
 class _EmptyLine extends StatelessWidget {
   const _EmptyLine({required this.m, required this.text});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final String text;
 
   @override
@@ -3107,9 +3219,10 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(m.spacing(24)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -3118,13 +3231,13 @@ class _ErrorState extends StatelessWidget {
               color: Colors.redAccent,
               size: 40,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: m.spacing(12)),
             Text(
               '$error',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white70),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: m.spacing(12)),
             ElevatedButton(
               onPressed: onRetry,
               child: const Text('Retry'),
@@ -3139,7 +3252,7 @@ class _ErrorState extends StatelessWidget {
 class _ChartPeriodChip extends StatelessWidget {
   const _ChartPeriodChip({required this.m, required this.label});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
   final String label;
 
   @override
@@ -3178,13 +3291,13 @@ class _ChartPeriodChip extends StatelessWidget {
 class _ChartEmptyState extends StatelessWidget {
   const _ChartEmptyState({required this.m});
 
-  final ResponsiveMetrics m;
+  final _AccountPageMetrics m;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: m.isMobile ? 112 : 130,
+      height: m.h(m.isMobile ? 112 : 130),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: .018),
@@ -3217,6 +3330,56 @@ class _ChartEmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ProfessionalHealthPainter extends CustomPainter {
+  const _ProfessionalHealthPainter({required this.value});
+
+  final double value;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2 - 6;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    final track = Paint()
+      ..color = Colors.white.withValues(alpha: .07)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 7
+      ..strokeCap = StrokeCap.round;
+
+    final glow = Paint()
+      ..color = const Color(0xFF39D98A).withValues(alpha: .12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 11
+      ..strokeCap = StrokeCap.round;
+
+    final progress = Paint()
+      ..shader = const SweepGradient(
+        colors: [
+          Color(0xFF20C982),
+          Color(0xFF5BE39D),
+          Color(0xFF20C982),
+        ],
+      ).createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 7
+      ..strokeCap = StrokeCap.round;
+
+    const start = -math.pi * .75;
+    const sweep = math.pi * 1.5;
+
+    canvas.drawArc(rect, start, sweep, false, track);
+    if (value > 0) {
+      canvas.drawArc(rect, start, sweep * value.clamp(0, 1), false, glow);
+      canvas.drawArc(rect, start, sweep * value.clamp(0, 1), false, progress);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ProfessionalHealthPainter oldDelegate) =>
+      oldDelegate.value != value;
 }
 
 class _HealthPainter extends CustomPainter {
