@@ -254,6 +254,181 @@ class _ResponsiveTop extends StatelessWidget {
   }
 }
 
+
+class _ChartHealthCard extends StatelessWidget {
+  const _ChartHealthCard({required this.m, required this.data});
+
+  final _AccountPageMetrics m;
+  final AccountDetailsData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = data.health.score.clamp(0, 100).toDouble();
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: m.spacing(8),
+        vertical: m.spacing(7),
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF071E29),
+        borderRadius: BorderRadius.circular(m.size(14)),
+        border: Border.all(
+          color: const Color(0xFF0A6658).withValues(alpha: .55),
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.monitor_heart_outlined,
+                color: const Color(0xFF39D98A),
+                size: m.size(14),
+              ),
+              SizedBox(width: m.spacing(4)),
+              Expanded(
+                child: Text(
+                  'Health',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: m.text(11),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: m.spacing(4)),
+          SizedBox(
+            width: m.size(m.isMobile ? 55 : 64),
+            height: m.size(m.isMobile ? 55 : 64),
+            child: CustomPaint(
+              painter: _ProfessionalHealthPainter(value: score / 100),
+              child: Center(
+                child: Text(
+                  '${score.toStringAsFixed(0)}%',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: m.text(11),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: m.spacing(2)),
+          Text(
+            data.health.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: const Color(0xFF39D98A),
+              fontSize: m.text(9.5),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniThisMonthCard extends StatelessWidget {
+  const _MiniThisMonthCard({required this.m, required this.data});
+
+  final _AccountPageMetrics m;
+  final AccountDetailsData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final net = data.monthIn - data.monthOut;
+    final positive = net >= 0;
+
+    Widget amountRow(String label, String value, Color color) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: .52),
+                fontSize: m.text(8.5),
+              ),
+            ),
+          ),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: TextStyle(
+                  color: color,
+                  fontSize: m.text(10.5),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: m.spacing(8),
+        vertical: m.spacing(7),
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF071E29),
+        borderRadius: BorderRadius.circular(m.size(14)),
+        border: Border.all(color: Colors.white.withValues(alpha: .08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'This Month',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: m.text(11),
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          SizedBox(height: m.spacing(5)),
+          amountRow('In', '+${_money(data.monthIn)}', const Color(0xFF39D98A)),
+          SizedBox(height: m.spacing(4)),
+          amountRow('Out', '-${_money(data.monthOut)}', const Color(0xFFFF5B67)),
+          SizedBox(height: m.spacing(4)),
+          Divider(
+            color: Colors.white.withValues(alpha: .07),
+            height: 1,
+          ),
+          SizedBox(height: m.spacing(4)),
+          amountRow(
+            'Net',
+            '${positive ? '+' : ''}${_money(net)}',
+            positive ? const Color(0xFF39D98A) : const Color(0xFFFF5B67),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _HeroCard extends StatelessWidget {
   const _HeroCard({
     required this.m,
@@ -341,7 +516,7 @@ class _HeroCard extends StatelessWidget {
 
           SizedBox(height: m.spacing(m.isMobile ? 13 : 16)),
 
-          // STEP: Total balance + small health card.
+          // STEP: Total balance + compact expected amount card.
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -391,7 +566,7 @@ class _HeroCard extends StatelessWidget {
                 ),
               ),
               SizedBox(width: m.spacing(10)),
-              _MiniHealthCard(m: m, data: data),
+              _MiniExpectedCard(m: m, data: data),
             ],
           ),
 
@@ -416,11 +591,12 @@ class _HeroCard extends StatelessWidget {
                 child: _BalanceMetricCard(
                   m: m,
                   title: 'Reserved',
-                  subtitle: 'Your reserved money',
+                  subtitle: 'Tap to view',
                   amount: data.reserved,
                   currency: data.account.currency,
                   color: const Color(0xFFFFAA2C),
                   icon: Icons.lock_outline_rounded,
+                  onTap: () => _openReservedMoney(context, data),
                 ),
               ),
             ],
@@ -428,11 +604,10 @@ class _HeroCard extends StatelessWidget {
 
           SizedBox(height: m.spacing(10)),
 
-          // STEP: Chart + Expected amount always share the same row.
-          // Chart = 2/3, Expected = 1/3 at every breakpoint.
-          // The Expected card uses a compact mobile presentation.
+          // STEP: Keep the chart at 2/3 and use the remaining 1/3 for
+          // compact Health + This Month cards.
           SizedBox(
-            height: m.h(m.isDesktop ? 205 : (m.isCompactHeight ? 215 : 225)),
+            height: m.h(m.isDesktop ? 205 : (m.isCompactHeight ? 232 : 238)),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -450,7 +625,17 @@ class _HeroCard extends StatelessWidget {
                 SizedBox(width: m.spacing(m.isMobile ? 6 : 10)),
                 Expanded(
                   flex: 1,
-                  child: _ExpectedAmountCard(m: m, data: data),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: _ChartHealthCard(m: m, data: data),
+                      ),
+                      SizedBox(height: m.spacing(m.isCompactHeight ? 5 : 7)),
+                      Expanded(
+                        child: _MiniThisMonthCard(m: m, data: data),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -526,83 +711,389 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
-class _MiniHealthCard extends StatelessWidget {
-  const _MiniHealthCard({required this.m, required this.data});
+class _MiniExpectedCard extends StatelessWidget {
+  const _MiniExpectedCard({required this.m, required this.data});
 
   final _AccountPageMetrics m;
   final AccountDetailsData data;
 
-  @override
-  Widget build(BuildContext context) {
-    final score = data.health.score.clamp(0, 100).toDouble();
-    final status = data.health.label;
+  double _expectedAvailableAt(DateTime target) {
+    final now = DateTime.now();
+    final endOfTargetDay = DateTime(
+      target.year,
+      target.month,
+      target.day,
+      23,
+      59,
+      59,
+    );
 
-    return Container(
-      width: m.isMobile ? 124 : 142,
-      height: m.isMobile ? 72 : 80,
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF071B26),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF39D98A).withValues(alpha: .18)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF39D98A).withValues(alpha: .05),
-            blurRadius: 12,
-            spreadRadius: 1,
-          ),
-        ],
+    var recurringNet = 0.0;
+    for (final item in data.recurring) {
+      final due = item.nextOccurrence;
+      if (due == null) continue;
+      if (due.isBefore(now)) continue;
+      if (due.isAfter(endOfTargetDay)) continue;
+      recurringNet += item.isIncome ? item.amount : -item.amount;
+    }
+
+    return data.available + recurringNet;
+  }
+
+  double _expectedMonthEnd() {
+    final now = DateTime.now();
+    return _expectedAvailableAt(
+      DateTime(now.year, now.month + 1, 0),
+    );
+  }
+
+  String _compactMoney(double value) {
+    final abs = value.abs();
+    if (abs >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
+    if (abs >= 1000) {
+      return '${(value / 1000).toStringAsFixed(abs >= 10000 ? 0 : 1)}K';
+    }
+    return value.toStringAsFixed(0);
+  }
+
+  String _monthShort(int month) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return months[(month - 1).clamp(0, 11)];
+  }
+
+  Future<void> _openForecast(BuildContext context) async {
+    final now = DateTime.now();
+    final monthEnd = DateTime(now.year, now.month + 1, 0);
+    var selectedDate = monthEnd;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF071823),
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 52,
-            height: 52,
-            child: CustomPaint(
-              painter: _ProfessionalHealthPainter(value: score / 100),
-              child: Center(
-                child: Text(
-                  '${score.round()}%',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                  ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final expected = _expectedAvailableAt(selectedDate);
+            final delta = expected - data.available;
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.auto_graph_rounded,
+                          color: Color(0xFFB58BFF),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Expected balance',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: selectedDate.isBefore(now)
+                                  ? now
+                                  : selectedDate,
+                              firstDate: DateTime(now.year, now.month, now.day),
+                              lastDate: DateTime(now.year + 2, 12, 31),
+                              builder: (context, child) {
+                                return Theme(
+                                  data: Theme.of(context).copyWith(
+                                    colorScheme: const ColorScheme.dark(
+                                      primary: Color(0xFF39D98A),
+                                      surface: Color(0xFF071823),
+                                    ),
+                                  ),
+                                  child: child!,
+                                );
+                              },
+                            );
+                            if (picked != null) {
+                              setSheetState(() => selectedDate = picked);
+                            }
+                          },
+                          child: const Text('Choose date'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0A0B25),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF9B6CFF).withValues(alpha: .22),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Expected available on ${selectedDate.day} ${_monthShort(selectedDate.month)}',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            '${_money(expected)} ${data.account.currency}',
+                            style: const TextStyle(
+                              color: Color(0xFFB58BFF),
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${delta >= 0 ? '↑' : '↓'} ${_money(delta.abs())} ${data.account.currency} vs current available',
+                            style: TextStyle(
+                              color: delta >= 0
+                                  ? const Color(0xFF39D98A)
+                                  : const Color(0xFFFF5B67),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _ForecastQuickDateButton(
+                            label: 'Today',
+                            selected: _isSameDay(selectedDate, now),
+                            onTap: () => setSheetState(() => selectedDate = now),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _ForecastQuickDateButton(
+                            label: '15th',
+                            selected: selectedDate.day == 15 &&
+                                selectedDate.month == now.month &&
+                                selectedDate.year == now.year,
+                            onTap: () {
+                              final day = math.min(
+                                15,
+                                DateTime(now.year, now.month + 1, 0).day,
+                              );
+                              setSheetState(
+                                () => selectedDate = DateTime(
+                                  now.year,
+                                  now.month,
+                                  day,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _ForecastQuickDateButton(
+                            label: 'Month end',
+                            selected: _isSameDay(selectedDate, monthEnd),
+                            onTap: () =>
+                                setSheetState(() => selectedDate = monthEnd),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Based on current available balance and known recurring activity due by the selected date. Variable spending prediction will be added later through the Prediction Engine.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .55),
+                        fontSize: 11,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  @override
+  Widget build(BuildContext context) {
+    final expected = _expectedMonthEnd();
+    final delta = expected - data.available;
+    final monthEnd = DateTime(DateTime.now().year, DateTime.now().month + 1, 0);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openForecast(context),
+        borderRadius: BorderRadius.circular(13),
+        child: Container(
+          width: m.isMobile ? 116 : 132,
+          height: m.isMobile ? 68 : 74,
+          padding: EdgeInsets.symmetric(
+            horizontal: m.spacing(9),
+            vertical: m.spacing(7),
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFF080B1F),
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: const Color(0xFF9B6CFF).withValues(alpha: .20),
             ),
           ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Health',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.auto_graph_rounded,
+                    color: Color(0xFFB58BFF),
+                    size: 13,
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  status,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF39D98A),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
+                  const SizedBox(width: 4),
+                  const Expanded(
+                    child: Text(
+                      'Expected',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white38,
+                    size: 13,
+                  ),
+                ],
+              ),
+              SizedBox(height: m.h(3)),
+              Text(
+                '${_compactMoney(expected)} ${data.account.currency}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: const Color(0xFFB58BFF),
+                  fontSize: m.text(14),
+                  fontWeight: FontWeight.w800,
                 ),
-              ],
-            ),
+              ),
+              SizedBox(height: m.h(2)),
+              Row(
+                children: [
+                  Text(
+                    'By ${monthEnd.day} ${_monthShort(monthEnd.month)}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: .48),
+                      fontSize: m.text(7.5),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${delta >= 0 ? '↑' : '↓'}${_compactMoney(delta.abs())}',
+                    style: TextStyle(
+                      color: delta >= 0
+                          ? const Color(0xFF39D98A)
+                          : const Color(0xFFFF5B67),
+                      fontSize: m.text(7.5),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ForecastQuickDateButton extends StatelessWidget {
+  const _ForecastQuickDateButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFF39D98A).withValues(alpha: .12)
+              : Colors.white.withValues(alpha: .025),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF39D98A).withValues(alpha: .45)
+                : Colors.white.withValues(alpha: .08),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? const Color(0xFF39D98A) : Colors.white70,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
     );
   }
@@ -1135,6 +1626,7 @@ class _BalanceMetricCard extends StatelessWidget {
     required this.currency,
     required this.color,
     required this.icon,
+    this.onTap,
   });
 
   final _AccountPageMetrics m;
@@ -1144,10 +1636,11 @@ class _BalanceMetricCard extends StatelessWidget {
   final String currency;
   final Color color;
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       padding: EdgeInsets.all(m.spacing(11)),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: .025),
@@ -1199,6 +1692,17 @@ class _BalanceMetricCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) return card;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(m.size(13)),
+        child: card,
       ),
     );
   }
@@ -1719,6 +2223,233 @@ class _TabBody extends StatelessWidget {
   }
 }
 
+
+// STEP: Detail navigation from overview cards.
+void _openReservedMoney(BuildContext context, AccountDetailsData data) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => _AccountReservedMoneyScreen(data: data),
+    ),
+  );
+}
+
+void _openRecurring(BuildContext context, AccountDetailsData data) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => _AccountRecurringScreen(data: data),
+    ),
+  );
+}
+
+void _openTransactions(BuildContext context, AccountDetailsData data) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => _AccountTransactionsScreen(data: data),
+    ),
+  );
+}
+
+class _AccountDetailScaffold extends StatelessWidget {
+  const _AccountDetailScaffold({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF020914),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF020914),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white70),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _AccountReservedMoneyScreen extends StatelessWidget {
+  const _AccountReservedMoneyScreen({required this.data});
+
+  final AccountDetailsData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = _AccountPageMetrics(ResponsiveMetrics.of(context));
+    return _AccountDetailScaffold(
+      title: 'Reserved Money',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Panel(
+            m: m,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.lock_outline_rounded, color: Color(0xFFFFAA2C)),
+                    SizedBox(width: 8),
+                    Text('Total Reserved', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                  ],
+                ),
+                SizedBox(height: m.spacing(8)),
+                Text(
+                  '${_money(data.reserved)} ${data.account.currency}',
+                  style: TextStyle(color: const Color(0xFFFFAA2C), fontSize: m.text(24), fontWeight: FontWeight.w800),
+                ),
+                SizedBox(height: m.spacing(6)),
+                Text(
+                  'Money set aside for this account.',
+                  style: TextStyle(color: Colors.white.withValues(alpha: .58), fontSize: m.typography.body),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: m.spacing(12)),
+          _Panel(
+            m: m,
+            child: data.reserved == 0
+                ? _EmptyLine(m: m, text: 'No reserved money for this account.')
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _PanelTitle(m: m, title: 'Reserved Allocations'),
+                      SizedBox(height: m.spacing(10)),
+                      Container(
+                        padding: EdgeInsets.all(m.spacing(12)),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: .035),
+                          borderRadius: BorderRadius.circular(m.size(12)),
+                          border: Border.all(color: Colors.white.withValues(alpha: .06)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: m.size(36),
+                              height: m.size(36),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFAA2C).withValues(alpha: .12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.account_balance_wallet_outlined, color: Color(0xFFFFAA2C), size: 18),
+                            ),
+                            SizedBox(width: m.spacing(10)),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Reserved allocations', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                                  SizedBox(height: 2),
+                                  Text('Managed from Reserved Money', style: TextStyle(color: Colors.white54, fontSize: 11)),
+                                ],
+                              ),
+                            ),
+                            Text('${_money(data.reserved)} ${data.account.currency}', style: const TextStyle(color: Color(0xFFFFAA2C), fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountRecurringScreen extends StatelessWidget {
+  const _AccountRecurringScreen({required this.data});
+
+  final AccountDetailsData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = _AccountPageMetrics(ResponsiveMetrics.of(context));
+    return _AccountDetailScaffold(
+      title: 'Recurring',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _Panel(
+            m: m,
+            child: Row(
+              children: [
+                const Icon(Icons.sync_rounded, color: Color(0xFF9B6CFF)),
+                SizedBox(width: m.spacing(8)),
+                const Expanded(child: Text('Recurring linked to this account', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800))),
+                Text('${data.recurring.length}', style: const TextStyle(color: Color(0xFF9B6CFF), fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+          SizedBox(height: m.spacing(12)),
+          if (data.recurring.isEmpty)
+            _Panel(m: m, child: _EmptyLine(m: m, text: 'No recurring financial actions are linked to this account.'))
+          else
+            for (final item in data.recurring)
+              Padding(
+                padding: EdgeInsets.only(bottom: m.spacing(8)),
+                child: _Panel(m: m, child: _RecurringTile(m: m, item: item)),
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountTransactionsScreen extends StatelessWidget {
+  const _AccountTransactionsScreen({required this.data});
+
+  final AccountDetailsData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = _AccountPageMetrics(ResponsiveMetrics.of(context));
+    return _AccountDetailScaffold(
+      title: 'Transactions',
+      child: _Panel(
+        m: m,
+        child: data.activity.isEmpty
+            ? _EmptyLine(m: m, text: 'No transactions for this account yet.')
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PanelTitle(m: m, title: 'Account Transactions'),
+                  SizedBox(height: m.spacing(10)),
+                  for (final item in data.activity)
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: m.spacing(7)),
+                      child: _PreviewRow(
+                        m: m,
+                        icon: item.isIncome ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+                        iconColor: item.isIncome ? const Color(0xFF39D98A) : const Color(0xFFFF5B67),
+                        title: item.title,
+                        subtitle: '${item.category} • ${_shortDate(item.date)}',
+                        amount: '${item.isIncome ? '+' : '-'}${_money(item.amount)} ${data.account.currency}',
+                        amountColor: item.isIncome ? const Color(0xFF39D98A) : const Color(0xFFFF5B67),
+                      ),
+                    ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
 class _OverviewSection extends StatelessWidget {
   const _OverviewSection({required this.m, required this.data});
 
@@ -1727,26 +2458,18 @@ class _OverviewSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reservedCard = _ReservedPreviewCard(m: m, data: data);
-    final recurringCard = _RecurringPreviewCard(m: m, data: data);
-    final activityCard = _RecentActivityPanel(
-      m: m,
-      data: data,
-    );
-
-    // STEP: Reserved Money + Recurring stay side-by-side at every breakpoint.
-    return Column(
+    // STEP: Reserved is already surfaced by the Reserved metric card above.
+    // Keep only Recurring + Recent Transactions as the lower detail previews.
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: reservedCard),
-            SizedBox(width: m.spacing(m.isMobile ? 8 : 12)),
-            Expanded(child: recurringCard),
-          ],
+        Expanded(
+          child: _RecurringPreviewCard(m: m, data: data),
         ),
-        SizedBox(height: m.spacing(10)),
-        activityCard,
+        SizedBox(width: m.spacing(m.isMobile ? 8 : 12)),
+        Expanded(
+          child: _RecentActivityPanel(m: m, data: data),
+        ),
       ],
     );
   }
@@ -1760,7 +2483,10 @@ class _ReservedPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _Panel(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _openReservedMoney(context, data),
+      child: _Panel(
       m: m,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1775,7 +2501,7 @@ class _ReservedPreviewCard extends StatelessWidget {
               SizedBox(width: m.spacing(7)),
               Expanded(
                 child: Text(
-                  m.isMobile ? 'Reserved' : 'Reserved Money',
+                  'Reserved',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -1787,7 +2513,7 @@ class _ReservedPreviewCard extends StatelessWidget {
               ),
               _SeeMoreText(
                 m: m,
-                onTap: () {},
+                onTap: () => _openReservedMoney(context, data),
               ),
             ],
           ),
@@ -1905,6 +2631,7 @@ class _ReservedPreviewCard extends StatelessWidget {
             ),
         ],
       ),
+      ),
     );
   }
 }
@@ -1919,7 +2646,10 @@ class _RecurringPreviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = data.recurring.take(3).toList();
 
-    return _Panel(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _openRecurring(context, data),
+      child: _Panel(
       m: m,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1944,7 +2674,7 @@ class _RecurringPreviewCard extends StatelessWidget {
                   ),
                 ),
               ),
-              _SeeMoreText(m: m, onTap: () {}),
+              _SeeMoreText(m: m, onTap: () => _openRecurring(context, data)),
             ],
           ),
           SizedBox(height: m.spacing(8)),
@@ -1977,6 +2707,7 @@ class _RecurringPreviewCard extends StatelessWidget {
                 ),
               ),
         ],
+      ),
       ),
     );
   }
@@ -2067,7 +2798,10 @@ class _RecentActivityPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = data.activity.take(3).toList();
 
-    return _Panel(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _openTransactions(context, data),
+      child: _Panel(
       m: m,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2077,7 +2811,7 @@ class _RecentActivityPanel extends StatelessWidget {
               Expanded(
                 child: _PanelTitle(m: m, title: 'Recent Transactions'),
               ),
-              _SeeMoreText(m: m, onTap: () {}),
+              _SeeMoreText(m: m, onTap: () => _openTransactions(context, data)),
             ],
           ),
           SizedBox(height: m.spacing(8)),
@@ -2105,6 +2839,7 @@ class _RecentActivityPanel extends StatelessWidget {
                 ),
               ),
         ],
+      ),
       ),
     );
   }

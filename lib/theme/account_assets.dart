@@ -25,6 +25,9 @@ class AccountAssets {
   static const wallet4 =
       'assets/icons/financial/accounts/liquidity/wallet4.svg';
 
+static const wewallet =
+      'assets/icons/financial/accounts/liquidity/wewallet.svg';
+
   static const bank1 = 'assets/icons/financial/accounts/liquidity/bank1.svg';
 
   static const bank2 = 'assets/icons/financial/accounts/liquidity/bank2.svg';
