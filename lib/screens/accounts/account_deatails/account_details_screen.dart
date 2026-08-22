@@ -23,9 +23,9 @@ import 'data/hive_account_details_repository.dart';
 /// Keeps the existing responsive breakpoints/layout logic intact without
 /// applying any global scale.
 class _AccountPageMetrics {
-  // Stage 10: no global scaling.
-  // Keep sizing explicit and responsive so important text/icons remain readable
-  // on iPhone SE instead of shrinking the entire page uniformly.
+  // Stage 11: explicit 20% compact sizing.
+  // No Transform.scale: typography, spacing, heights and icon sizes are reduced
+  // through the responsive metrics wrapper so layout remains responsive.
   final ResponsiveMetrics base;
 
   _AccountPageMetrics(this.base);
@@ -35,10 +35,10 @@ class _AccountPageMetrics {
   bool get isDesktop => base.isDesktop;
   bool get isCompactHeight => base.isCompactHeight;
 
-  double size(double value) => base.size(value);
-  double spacing(double value) => base.spacing(value);
-  double h(double value) => base.h(value);
-  double text(double value) => base.text(value);
+  double size(double value) => base.size(value) * 0.8;
+  double spacing(double value) => base.spacing(value) * 0.8;
+  double h(double value) => base.h(value) * 0.8;
+  double text(double value) => base.text(value) * 0.8;
 
   get typography => base.typography;
   get icon => base.icon;
@@ -212,7 +212,7 @@ class _Header extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: .55),
-                    fontSize: m.typography.body,
+                    fontSize: m.text(m.typography.body),
                   ),
                 ),
               ],
@@ -254,9 +254,11 @@ class _ResponsiveTop extends StatelessWidget {
   }
 }
 
-
 class _ChartHealthCard extends StatelessWidget {
-  const _ChartHealthCard({required this.m, required this.data});
+  const _ChartHealthCard({
+    required this.m,
+    required this.data,
+  });
 
   final _AccountPageMetrics m;
   final AccountDetailsData data;
@@ -267,9 +269,10 @@ class _ChartHealthCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
+      height: double.infinity,
       padding: EdgeInsets.symmetric(
         horizontal: m.spacing(8),
-        vertical: m.spacing(7),
+        vertical: m.spacing(6),
       ),
       decoration: BoxDecoration(
         color: const Color(0xFF071E29),
@@ -279,14 +282,17 @@ class _ChartHealthCard extends StatelessWidget {
         ),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ===========================
+          // Health Header
+          // ===========================
           Row(
             children: [
               Icon(
                 Icons.monitor_heart_outlined,
                 color: const Color(0xFF39D98A),
-                size: m.size(14),
+                size: m.size(5),
               ),
               SizedBox(width: m.spacing(4)),
               Expanded(
@@ -296,48 +302,112 @@ class _ChartHealthCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: m.text(11),
+                    fontSize: m.text(12),
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ],
           ),
+
           SizedBox(height: m.spacing(4)),
+
+          // ===========================
+          // Health Content
+          // ===========================
+         Expanded(
+  child: LayoutBuilder(
+    builder: (context, constraints) {
+      // Responsive size for narrow screens like iPhone SE.
+      final isNarrow = constraints.maxWidth < 145;
+
+      final circleSize = isNarrow
+          ? m.size(52)
+          : m.size(64);
+
+      final gap = isNarrow
+          ? m.spacing(5)
+          : m.spacing(8);
+
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // ===========================
+          // Health Circle
+          // ===========================
           SizedBox(
-            width: m.size(m.isMobile ? 55 : 64),
-            height: m.size(m.isMobile ? 55 : 64),
+            width: circleSize,
+            height: circleSize,
             child: CustomPaint(
-              painter: _ProfessionalHealthPainter(value: score / 100),
+              painter: _ProfessionalHealthPainter(
+                value: score / 100,
+                strokeWidth: m.size(3),
+              ),
               child: Center(
                 child: Text(
                   '${score.toStringAsFixed(0)}%',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: m.text(11),
+                    fontSize: isNarrow
+                        ? m.text(8)
+                        : m.text(10),
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ),
           ),
-          SizedBox(height: m.spacing(2)),
-          Text(
-            data.health.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: const Color(0xFF39D98A),
-              fontSize: m.text(9.5),
-              fontWeight: FontWeight.w800,
+
+          SizedBox(width: gap),
+
+          // ===========================
+          // Health Status
+          // ===========================
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  data.health.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: const Color(0xFF39D98A),
+                    fontSize: isNarrow
+                        ? m.text(10)
+                        : m.text(11),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+
+                SizedBox(height: m.spacing(2)),
+
+                Text(
+                  'Good standing',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .45),
+                    fontSize: isNarrow
+                        ? m.text(6)
+                        : m.text(7),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
+        ],
+      );
+    },
+  ),
+),
         ],
       ),
     );
   }
 }
-
 class _MiniThisMonthCard extends StatelessWidget {
   const _MiniThisMonthCard({required this.m, required this.data});
 
@@ -500,7 +570,7 @@ class _HeroCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: .58),
-                        fontSize: m.typography.body,
+                        fontSize: m.text(m.typography.body),
                       ),
                     ),
                   ],
@@ -514,7 +584,7 @@ class _HeroCard extends StatelessWidget {
             ],
           ),
 
-          SizedBox(height: m.spacing(m.isMobile ? 13 : 16)),
+          SizedBox(height: m.spacing(m.isMobile ? 2 : 5)),
 
           // STEP: Total balance + compact expected amount card.
           Row(
@@ -528,7 +598,7 @@ class _HeroCard extends StatelessWidget {
                       'Total Balance',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: .58),
-                        fontSize: m.typography.body,
+                        fontSize: m.text(m.typography.body),
                       ),
                     ),
                     SizedBox(height: m.h(3)),
@@ -555,7 +625,7 @@ class _HeroCard extends StatelessWidget {
                             data.account.currency,
                             style: TextStyle(
                               color: Colors.white70,
-                              fontSize: m.typography.body,
+                              fontSize: m.text(m.typography.body),
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -628,10 +698,12 @@ class _HeroCard extends StatelessWidget {
                   child: Column(
                     children: [
                       Expanded(
+                        flex: 2,
                         child: _ChartHealthCard(m: m, data: data),
                       ),
                       SizedBox(height: m.spacing(m.isCompactHeight ? 5 : 7)),
                       Expanded(
+                        flex: 3,
                         child: _MiniThisMonthCard(m: m, data: data),
                       ),
                     ],
@@ -850,7 +922,7 @@ class _MiniExpectedCard extends StatelessWidget {
                     const SizedBox(height: 14),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: const Color(0xFF0A0B25),
                         borderRadius: BorderRadius.circular(16),
@@ -1184,7 +1256,7 @@ class _ExpectedAmountCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: Colors.white.withValues(alpha: .55),
-              fontSize: compact ? 10 : m.typography.caption,
+              fontSize: compact ? 10 : m.text(m.typography.caption),
             ),
           ),
           SizedBox(height: m.h(compact ? 4 : 5)),
@@ -1209,7 +1281,7 @@ class _ExpectedAmountCard extends StatelessWidget {
               color: delta >= 0
                   ? const Color(0xFF39D98A)
                   : const Color(0xFFFF5B67),
-              fontSize: compact ? 9 : m.typography.caption,
+              fontSize: compact ? 9 : m.text(m.typography.caption),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1263,7 +1335,7 @@ class _ExpectedAmountCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: .72),
-                          fontSize: m.typography.caption,
+                          fontSize: m.text(m.typography.caption),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1521,7 +1593,7 @@ class _AccountBalanceChart extends StatelessWidget {
                       'No balance movement yet',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: .45),
-                        fontSize: m.typography.caption,
+                        fontSize: m.text(m.typography.caption),
                       ),
                     ),
                   ),
@@ -2078,7 +2150,7 @@ class _HealthCard extends StatelessWidget {
                     item,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: .72),
-                      fontSize: m.typography.body,
+                      fontSize: m.text(m.typography.body),
                     ),
                   ),
                 ),
@@ -2170,7 +2242,7 @@ class _Tabs extends StatelessWidget {
                         color: active
                             ? const Color(0xFF39D98A)
                             : Colors.white.withValues(alpha: .58),
-                        fontSize: m.typography.body,
+                        fontSize: m.text(m.typography.body),
                         fontWeight:
                             active ? FontWeight.w700 : FontWeight.w500,
                       ),
@@ -2315,7 +2387,7 @@ class _AccountReservedMoneyScreen extends StatelessWidget {
                 SizedBox(height: m.spacing(6)),
                 Text(
                   'Money set aside for this account.',
-                  style: TextStyle(color: Colors.white.withValues(alpha: .58), fontSize: m.typography.body),
+                  style: TextStyle(color: Colors.white.withValues(alpha: .58), fontSize: m.text(m.typography.body)),
                 ),
               ],
             ),
@@ -2552,7 +2624,7 @@ class _ReservedPreviewCard extends StatelessWidget {
                     'Total reserved',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: .52),
-                      fontSize: m.typography.caption,
+                      fontSize: m.text(m.typography.caption),
                     ),
                   ),
                 ),
@@ -2756,7 +2828,7 @@ class _PreviewRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: m.typography.body,
+                  fontSize: m.text(m.typography.body),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -2766,7 +2838,7 @@ class _PreviewRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: .45),
-                  fontSize: m.typography.caption,
+                  fontSize: m.text(m.typography.caption),
                 ),
               ),
             ],
@@ -2779,7 +2851,7 @@ class _PreviewRow extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: amountColor,
-            fontSize: m.typography.caption,
+            fontSize: m.text(m.typography.caption),
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -2862,7 +2934,7 @@ class _SeeMoreText extends StatelessWidget {
           'See more',
           style: TextStyle(
             color: const Color(0xFF4CA7FF),
-            fontSize: m.typography.caption,
+            fontSize: m.text(m.typography.caption),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -3052,7 +3124,7 @@ class _CommittedSection extends StatelessWidget {
                 : '${((data.reserved / data.balance) * 100).clamp(0, 100).toStringAsFixed(0)}% of total balance',
             style: TextStyle(
               color: Colors.white.withValues(alpha: .55),
-              fontSize: m.typography.caption,
+              fontSize: m.text(m.typography.caption),
             ),
           ),
           SizedBox(height: m.spacing(12)),
@@ -3140,7 +3212,7 @@ class _RecurringTile extends StatelessWidget {
                   item.title,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: m.typography.body,
+                    fontSize: m.text(m.typography.body),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -3149,7 +3221,7 @@ class _RecurringTile extends StatelessWidget {
                   '${item.subtitle} • Next ${_shortDate(item.nextOccurrence)}',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: .5),
-                    fontSize: m.typography.caption,
+                    fontSize: m.text(m.typography.caption),
                   ),
                 ),
               ],
@@ -3161,7 +3233,7 @@ class _RecurringTile extends StatelessWidget {
               color: income
                   ? const Color(0xFF39D98A)
                   : const Color(0xFFFF5B67),
-              fontSize: m.typography.body,
+              fontSize: m.text(m.typography.body),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -3190,7 +3262,7 @@ class _PlanningSection extends StatelessWidget {
             'Available',
             style: TextStyle(
               color: Colors.white.withValues(alpha: .55),
-              fontSize: m.typography.body,
+              fontSize: m.text(m.typography.body),
             ),
           ),
           SizedBox(height: m.h(2)),
@@ -3251,7 +3323,7 @@ class _AccountInfoSection extends StatelessWidget {
                       row.key,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: .55),
-                        fontSize: m.typography.body,
+                        fontSize: m.text(m.typography.body),
                       ),
                     ),
                   ),
@@ -3261,7 +3333,7 @@ class _AccountInfoSection extends StatelessWidget {
                       textAlign: TextAlign.end,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: .88),
-                        fontSize: m.typography.body,
+                        fontSize: m.text(m.typography.body),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -3344,7 +3416,7 @@ class _ActivityContent extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: m.typography.body,
+                            fontSize: m.text(m.typography.body),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -3352,7 +3424,7 @@ class _ActivityContent extends StatelessWidget {
                           '${item.category} • ${_shortDate(item.date)}',
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: .45),
-                            fontSize: m.typography.caption,
+                            fontSize: m.text(m.typography.caption),
                           ),
                         ),
                       ],
@@ -3364,7 +3436,7 @@ class _ActivityContent extends StatelessWidget {
                       color: item.isIncome
                           ? const Color(0xFF39D98A)
                           : const Color(0xFFFF5B67),
-                      fontSize: m.typography.body,
+                      fontSize: m.text(m.typography.body),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -3565,7 +3637,7 @@ class _ActionButton extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: .78),
-              fontSize: m.isMobile ? 8.5 : m.typography.caption,
+              fontSize: m.isMobile ? 8.5 : m.text(m.typography.caption),
               height: 1.05,
             ),
           ),
@@ -3608,7 +3680,7 @@ class _BalanceSplit extends StatelessWidget {
             title,
             style: TextStyle(
               color: Colors.white.withValues(alpha: .55),
-              fontSize: m.typography.caption,
+              fontSize: m.text(m.typography.caption),
             ),
           ),
           SizedBox(height: m.h(4)),
@@ -3667,7 +3739,7 @@ class _MetricBar extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: Colors.white70,
-                  fontSize: m.typography.body,
+                  fontSize: m.text(m.typography.body),
                 ),
               ),
             ),
@@ -3675,7 +3747,7 @@ class _MetricBar extends StatelessWidget {
               '${_money(value)} $currency',
               style: TextStyle(
                 color: color,
-                fontSize: m.typography.body,
+                fontSize: m.text(m.typography.body),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -3717,7 +3789,7 @@ class _Metric extends StatelessWidget {
           label,
           style: TextStyle(
             color: Colors.white.withValues(alpha: .55),
-            fontSize: m.typography.caption,
+            fontSize: m.text(m.typography.caption),
           ),
         ),
         SizedBox(height: m.h(4)),
@@ -3733,7 +3805,7 @@ class _Metric extends StatelessWidget {
           currency,
           style: TextStyle(
             color: color.withValues(alpha: .8),
-            fontSize: m.typography.caption,
+            fontSize: m.text(m.typography.caption),
           ),
         ),
       ],
@@ -3769,7 +3841,7 @@ class _Insight extends StatelessWidget {
               text,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: .72),
-                fontSize: m.typography.caption,
+                fontSize: m.text(m.typography.caption),
               ),
             ),
           ),
@@ -3851,7 +3923,7 @@ class _StatusChip extends StatelessWidget {
         label,
         style: TextStyle(
           color: active ? const Color(0xFF39D98A) : Colors.white60,
-          fontSize: m.typography.caption,
+          fontSize: m.text(m.typography.caption),
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -3939,7 +4011,7 @@ class _EmptyLine extends StatelessWidget {
         text,
         style: TextStyle(
           color: Colors.white.withValues(alpha: .5),
-          fontSize: m.typography.body,
+          fontSize: m.text(m.typography.body),
         ),
       ),
     );
@@ -4011,7 +4083,7 @@ class _ChartPeriodChip extends StatelessWidget {
             label,
             style: TextStyle(
               color: Colors.white.withValues(alpha: .72),
-              fontSize: m.typography.caption,
+              fontSize: m.text(m.typography.caption),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -4048,7 +4120,7 @@ class _ChartEmptyState extends StatelessWidget {
             'No balance movement yet',
             style: TextStyle(
               color: Colors.white.withValues(alpha: .68),
-              fontSize: m.typography.body,
+              fontSize: m.text(m.typography.body),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -4058,7 +4130,7 @@ class _ChartEmptyState extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: .38),
-              fontSize: m.typography.caption,
+              fontSize: m.text(m.typography.caption),
             ),
           ),
         ],
@@ -4068,28 +4140,47 @@ class _ChartEmptyState extends StatelessWidget {
 }
 
 class _ProfessionalHealthPainter extends CustomPainter {
-  const _ProfessionalHealthPainter({required this.value});
+  const _ProfessionalHealthPainter({
+    required this.value,
+    this.strokeWidth = 4.0,
+  });
 
   final double value;
+  final double strokeWidth;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
-    final radius = size.shortestSide / 2 - 6;
-    final rect = Rect.fromCircle(center: center, radius: radius);
 
+    // دائرة أكبر مع ترك مساحة بسيطة للحواف
+    final radius = size.shortestSide / 2 - strokeWidth;
+
+    final rect = Rect.fromCircle(
+      center: center,
+      radius: radius,
+    );
+
+    // ===========================
+    // Background Track
+    // ===========================
     final track = Paint()
       ..color = Colors.white.withValues(alpha: .07)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
+    // ===========================
+    // Glow
+    // ===========================
     final glow = Paint()
-      ..color = const Color(0xFF39D98A).withValues(alpha: .12)
+      ..color = const Color(0xFF39D98A).withValues(alpha: .10)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 11
+      ..strokeWidth = strokeWidth + 4
       ..strokeCap = StrokeCap.round;
 
+    // ===========================
+    // Progress
+    // ===========================
     final progress = Paint()
       ..shader = const SweepGradient(
         colors: [
@@ -4099,24 +4190,51 @@ class _ProfessionalHealthPainter extends CustomPainter {
         ],
       ).createShader(rect)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
+      ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round;
 
     const start = -math.pi * .75;
     const sweep = math.pi * 1.5;
 
-    canvas.drawArc(rect, start, sweep, false, track);
+    // Track
+    canvas.drawArc(
+      rect,
+      start,
+      sweep,
+      false,
+      track,
+    );
+
+    // Progress
     if (value > 0) {
-      canvas.drawArc(rect, start, sweep * value.clamp(0, 1), false, glow);
-      canvas.drawArc(rect, start, sweep * value.clamp(0, 1), false, progress);
+      final progressSweep = sweep * value.clamp(0, 1);
+
+      canvas.drawArc(
+        rect,
+        start,
+        progressSweep,
+        false,
+        glow,
+      );
+
+      canvas.drawArc(
+        rect,
+        start,
+        progressSweep,
+        false,
+        progress,
+      );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _ProfessionalHealthPainter oldDelegate) =>
-      oldDelegate.value != value;
+  bool shouldRepaint(
+    covariant _ProfessionalHealthPainter oldDelegate,
+  ) {
+    return oldDelegate.value != value ||
+        oldDelegate.strokeWidth != strokeWidth;
+  }
 }
-
 class _HealthPainter extends CustomPainter {
   const _HealthPainter({required this.value});
 
