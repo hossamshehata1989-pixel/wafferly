@@ -138,4 +138,11 @@ class AccountService {
 
   /// ✅ مصدر استماع لتغييرات الحسابات (يخفي تفاصيل Hive)
   Listenable get accountsListenable => box.listenable();
+
+  // ===========================
+// Get account by ID
+// ===========================
+Account? getById(String id) {
+  return box.get(id);
+}
 }

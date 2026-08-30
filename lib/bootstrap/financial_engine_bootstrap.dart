@@ -1,4 +1,5 @@
 import '../financial_engine/domain_guard/balance_domain_guard.dart';
+import '../financial_engine/domain_guard/transfer_domain_guard.dart';
 import '../financial_engine/domain_guard/domain_guard_pipeline.dart';
 import '../financial_engine/engine/financial_operation_engine.dart';
 import '../financial_engine/execution/create_allocation_mutation_handler.dart';
@@ -19,6 +20,7 @@ import '../infrastructure/memory/memory_allocation_repository.dart';
 import '../infrastructure/memory/memory_journal_entry_repository.dart';
 import 'financial_engine_context.dart';
 import '../services/balance_service.dart';
+import '../services/account_service.dart';
 import '../infrastructure/hive/hive_balance_port.dart';
 import '../financial_engine/adapters/hive_transaction_port.dart';
 import '../financial_engine/handlers/create_transaction_mutation_handler.dart';
@@ -66,6 +68,7 @@ final class FinancialEngineBootstrap {
 
     final balancePort = HiveBalancePort(balanceService: balanceService);
     final balanceGuard = BalanceDomainGuard(balancePort: balancePort);
+    final transferGuard = TransferDomainGuard(accountService: AccountService());
 
     final registry = MutationHandlerRegistry(
       handlers: {
@@ -93,7 +96,7 @@ final class FinancialEngineBootstrap {
     );
     final engine = FinancialOperationEngine(
       interpreter: const DefaultFinancialInterpreter(),
-      domainGuardPipeline: DomainGuardPipeline(guards: [balanceGuard]),
+      domainGuardPipeline: DomainGuardPipeline(guards: [transferGuard, balanceGuard]),
       planner: planner,
       integrityChecker: const DefaultFinancialIntegrityChecker(),
       executor: executor,

@@ -1,6 +1,7 @@
 // lib/services/transaction_application_service.dart
 
 import '../models/transaction.dart';
+import 'account_service.dart';
 import 'transaction_service.dart';
 import '../financial_engine/engine/financial_operation_engine.dart';
 import '../financial_engine/execution_context/execution_context.dart';
@@ -132,6 +133,9 @@ class TransactionApplicationService {
       idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
     );
 
+    final sourceAccount = AccountService().getById(fromAccountId);
+    final currencyCode = sourceAccount?.currency ?? 'EGP';
+
     final command = TransferCommand(
       intent: TransferIntent(
         fromAccountId: fromAccountId,
@@ -142,7 +146,7 @@ class TransactionApplicationService {
         occurredAt: occurredAt,
         note: note,
         paymentMethod: 'default',
-        currencyCode: 'EGP',
+        currencyCode: currencyCode,
       ),
       context: context,
     );

@@ -2,13 +2,19 @@
 
 import 'package:flutter/material.dart';
 import '../../controllers/transaction_entry_controller.dart';
+import '../../financial_engine/results/operation_result.dart';
 import '../../models/account.dart';
 import '../../l10n/app_localizations.dart';
 
 class TransferForm extends StatefulWidget {
   final TransactionEntryController controller;
+  final VoidCallback? onSuccess;
 
-  const TransferForm({super.key, required this.controller});
+  const TransferForm({
+    super.key,
+    required this.controller,
+    this.onSuccess,
+  });
 
   @override
   State<TransferForm> createState() => _TransferFormState();
@@ -46,6 +52,10 @@ class _TransferFormState extends State<TransferForm> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
     final accounts = widget.controller.availableAccounts;
+    final destinationAccounts = accounts
+        .where((account) =>
+            account.id != widget.controller.selectedFromAccountId)
+        .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -66,7 +76,7 @@ class _TransferFormState extends State<TransferForm> {
           _buildLabel(t.toAccount),
           const SizedBox(height: 8),
           _buildAccountPicker(
-            accounts: accounts,
+            accounts: destinationAccounts,
             selectedId: widget.controller.selectedToAccountId,
             selectedName: widget.controller.selectedToAccountName,
             onSelect: (id, name) => widget.controller.selectToAccount(id, name),
@@ -374,17 +384,37 @@ class _TransferFormState extends State<TransferForm> {
     }
 
     final success = await widget.controller.saveTransfer();
-    if (success && mounted) {
+
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.hideCurrentSnackBar();
+
+    if (success) {
       _amountController.clear();
       _noteController.clear();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(t.transferSuccess)));
-    } else if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(t.transferFailed)));
+      widget.onSuccess?.call();
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(t.transferSuccess),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
     }
+
+    final message =
+        widget.controller.lastErrorMessage ?? t.transferFailed;
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   Color _getAccountColor(String type) {

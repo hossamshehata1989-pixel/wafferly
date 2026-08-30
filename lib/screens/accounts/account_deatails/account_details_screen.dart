@@ -3,8 +3,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
+import '../../../controllers/transaction_entry_controller.dart';
+import '../../../services/transaction_application_service.dart';
+import '../../../widgets/expense_entry/transfer_form.dart';
 import '../../../models/account.dart';
 import '../../../theme/responsive_metrics.dart';
 import '../../../core/planning/services/available_balance_projection_service.dart';
@@ -158,7 +162,18 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                   bottom: 0,
                   child: SafeArea(
                     top: false,
-                    child: _PinnedAccountActions(m: m),
+                    child: _PinnedAccountActions(
+                      m: m,
+                      accountId: widget.accountId,
+                      onCompleted: () {
+                        setState(() {
+                          _future = AccountDetailsLogic.load(
+                            repository: _repository,
+                            accountId: widget.accountId,
+                          );
+                        });
+                      },
+                    ),
                   ),
                 ),
               ],
@@ -2943,10 +2958,57 @@ class _SeeMoreText extends StatelessWidget {
   }
 }
 
+Future<bool> _showAccountTransferForm(
+  BuildContext context, {
+  required String accountId,
+}) async {
+  final applicationService = context.read<TransactionApplicationService>();
+  final controller = TransactionEntryController(
+    transactionService: applicationService,
+  );
+
+  final account = Hive.box<Account>('accounts').get(accountId);
+  if (account != null) {
+    controller.selectFromAccount(account.id, account.name);
+  }
+
+  var completed = false;
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: const Color(0xFF071823),
+    showDragHandle: true,
+    builder: (sheetContext) {
+      return FractionallySizedBox(
+        heightFactor: .94,
+        child: SafeArea(
+          child: TransferForm(
+            controller: controller,
+            onSuccess: () {
+              completed = true;
+              Navigator.of(sheetContext).pop();
+            },
+          ),
+        ),
+      );
+    },
+  );
+
+  controller.dispose();
+  return completed;
+}
+
 class _PinnedAccountActions extends StatelessWidget {
-  const _PinnedAccountActions({required this.m});
+  const _PinnedAccountActions({
+    required this.m,
+    required this.accountId,
+    required this.onCompleted,
+  });
 
   final _AccountPageMetrics m;
+  final String accountId;
+  final VoidCallback onCompleted;
 
   @override
   Widget build(BuildContext context) {
@@ -2988,6 +3050,15 @@ class _PinnedAccountActions extends StatelessWidget {
                 label: actions[i].$2,
                 compact: true,
                 fill: true,
+                onTap: actions[i].$2 == 'Transfer'
+                    ? () async {
+                        final completed = await _showAccountTransferForm(
+                          context,
+                          accountId: accountId,
+                        );
+                        if (completed) onCompleted();
+                      }
+                    : null,
               ),
             ),
           ],
@@ -3594,59 +3665,70 @@ class _ActionButton extends StatelessWidget {
     required this.label,
     this.compact = false,
     this.fill = false,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool compact;
   final bool fill;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final m = _AccountPageMetrics(ResponsiveMetrics.of(context));
 
-    return Container(
-      width: fill
-          ? null
-          : compact
-              ? m.size(m.isMobile ? 72 : 92)
-              : m.size(m.isMobile ? 96 : 100),
-      height: compact ? (m.isMobile ? 50 : 72) : null,
-      padding: EdgeInsets.symmetric(
-        horizontal: m.spacing(5),
-        vertical: m.spacing(compact ? 5 : 11),
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .035),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(m.size(10)),
-        border: Border.all(color: Colors.white.withValues(alpha: .06)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: Colors.white70,
-            size: m.isMobile ? m.size(19) : m.icon.medium,
+        child: Container(
+          width: fill
+              ? null
+              : compact
+                  ? m.size(m.isMobile ? 72 : 92)
+                  : m.size(m.isMobile ? 96 : 100),
+          height: compact ? (m.isMobile ? 50 : 72) : null,
+          padding: EdgeInsets.symmetric(
+            horizontal: m.spacing(5),
+            vertical: m.spacing(compact ? 5 : 11),
           ),
-          SizedBox(height: m.h(4)),
-          Text(
-            label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: .78),
-              fontSize: m.isMobile ? 8.5 : m.text(m.typography.caption),
-              height: 1.05,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .035),
+            borderRadius: BorderRadius.circular(m.size(10)),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: .06),
             ),
           ),
-        ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: Colors.white70,
+                size: m.isMobile ? m.size(19) : m.icon.medium,
+              ),
+              SizedBox(height: m.h(4)),
+              Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: .78),
+                  fontSize:
+                      m.isMobile ? 8.5 : m.text(m.typography.caption),
+                  height: 1.05,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
-
 class _BalanceSplit extends StatelessWidget {
   const _BalanceSplit({
     required this.m,
