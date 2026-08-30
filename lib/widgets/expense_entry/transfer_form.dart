@@ -1,8 +1,8 @@
 // lib/widgets/expense_entry/transfer_form.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../controllers/transaction_entry_controller.dart';
-import '../../financial_engine/results/operation_result.dart';
 import '../../models/account.dart';
 import '../../l10n/app_localizations.dart';
 
@@ -23,12 +23,14 @@ class TransferForm extends StatefulWidget {
 class _TransferFormState extends State<TransferForm> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
+  String? _formErrorMessage;
 
   @override
   void initState() {
     super.initState();
     _amountController.addListener(_onAmountChanged);
     _noteController.addListener(_onNoteChanged);
+    widget.controller.addListener(_onControllerChanged);
   }
 
   void _onAmountChanged() {
@@ -39,10 +41,21 @@ class _TransferFormState extends State<TransferForm> {
     widget.controller.setNote(_noteController.text);
   }
 
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _clearFormError() {
+    if (_formErrorMessage != null) {
+      setState(() => _formErrorMessage = null);
+    }
+  }
+
   @override
   void dispose() {
     _amountController.removeListener(_onAmountChanged);
     _noteController.removeListener(_onNoteChanged);
+    widget.controller.removeListener(_onControllerChanged);
     _amountController.dispose();
     _noteController.dispose();
     super.dispose();
@@ -52,10 +65,6 @@ class _TransferFormState extends State<TransferForm> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
     final accounts = widget.controller.availableAccounts;
-    final destinationAccounts = accounts
-        .where((account) =>
-            account.id != widget.controller.selectedFromAccountId)
-        .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -76,7 +85,7 @@ class _TransferFormState extends State<TransferForm> {
           _buildLabel(t.toAccount),
           const SizedBox(height: 8),
           _buildAccountPicker(
-            accounts: destinationAccounts,
+            accounts: accounts,
             selectedId: widget.controller.selectedToAccountId,
             selectedName: widget.controller.selectedToAccountName,
             onSelect: (id, name) => widget.controller.selectToAccount(id, name),
@@ -245,15 +254,21 @@ class _TransferFormState extends State<TransferForm> {
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white, fontSize: 18),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                hintText: '0',
-                hintStyle: TextStyle(color: Colors.white54),
-              ),
-            ),
+  controller: _amountController,
+  keyboardType: TextInputType.number,
+  inputFormatters: [
+    FilteringTextInputFormatter.digitsOnly,
+  ],
+  style: const TextStyle(
+    color: Colors.white,
+    fontSize: 18,
+  ),
+  decoration: const InputDecoration(
+    border: InputBorder.none,
+    hintText: '0',
+    hintStyle: TextStyle(color: Colors.white54),
+  ),
+),
           ),
         ],
       ),
@@ -324,97 +339,130 @@ class _TransferFormState extends State<TransferForm> {
   Widget _buildSaveButton() {
     final t = AppLocalizations.of(context)!;
     final isSaving = widget.controller.saveStatus == SaveStatus.saving;
+    final errorMessage =
+        _formErrorMessage ?? widget.controller.lastErrorMessage;
 
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: isSaving ? null : () => _saveTransfer(),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (errorMessage != null && errorMessage.trim().isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.redAccent.withOpacity(0.45)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 1),
+                  child: Icon(
+                    Icons.error_outline,
+                    color: Colors.redAccent,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    errorMessage,
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 14,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: isSaving ? null : () => _saveTransfer(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    t.save,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
           ),
         ),
-        child: isSaving
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
-            : Text(
-                t.save,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-      ),
+      ],
     );
   }
 
   Future<void> _saveTransfer() async {
     final t = AppLocalizations.of(context)!;
-    final amount = double.tryParse(_amountController.text) ?? 0;
 
-    if (amount <= 0) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(t.pleaseEnterValidAmount)));
+    setState(() => _formErrorMessage = null);
+
+    final amountText = _amountController.text.trim();
+    final amount = double.tryParse(amountText);
+
+    if (amount == null || amount <= 0) {
+      setState(() => _formErrorMessage = t.pleaseEnterValidAmount);
       return;
     }
 
     if (widget.controller.selectedFromAccountId.isEmpty ||
         widget.controller.selectedToAccountId.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(t.selectBothAccounts)));
+      setState(() => _formErrorMessage = t.selectBothAccounts);
       return;
     }
 
     if (widget.controller.selectedFromAccountId ==
         widget.controller.selectedToAccountId) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(t.sameAccountError)));
+      setState(() => _formErrorMessage = t.sameAccountError);
       return;
     }
 
     final success = await widget.controller.saveTransfer();
-
     if (!mounted) return;
 
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    messenger.hideCurrentSnackBar();
-
     if (success) {
-      _amountController.clear();
-      _noteController.clear();
-      widget.onSuccess?.call();
+  _amountController.clear();
+  _noteController.clear();
 
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(t.transferSuccess),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(t.transferSuccess)),
+  );
+
+  widget.onSuccess?.call();
+
+  return;
+}
+
+    // saveTransfer() stores the exact Financial Engine error in
+    // controller.lastErrorMessage. The controller listener rebuilds this
+    // form, so the error is displayed inline above the Save button.
+    // Keep a generic fallback only if the controller returned no message.
+    if (widget.controller.lastErrorMessage == null ||
+        widget.controller.lastErrorMessage!.trim().isEmpty) {
+      setState(() => _formErrorMessage = t.transferFailed);
     }
-
-    final message =
-        widget.controller.lastErrorMessage ?? t.transferFailed;
-
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-      ),
-    );
   }
 
   Color _getAccountColor(String type) {
