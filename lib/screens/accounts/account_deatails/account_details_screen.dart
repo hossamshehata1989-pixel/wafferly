@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 import '../../../controllers/transaction_entry_controller.dart';
 import '../../../services/transaction_application_service.dart';
 import '../../../widgets/expense_entry/transfer_form.dart';
+import '../../../widgets/planning/account_reserve_form.dart';
+import '../../../services/manual_reserve_application_service.dart';
 import '../../../models/account.dart';
 import '../../../theme/responsive_metrics.dart';
 import '../../../core/planning/services/available_balance_projection_service.dart';
@@ -165,6 +167,7 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
                     child: _PinnedAccountActions(
                       m: m,
                       accountId: widget.accountId,
+                      data: data,
                       onCompleted: () {
                         setState(() {
                           _future = AccountDetailsLogic.load(
@@ -2999,15 +3002,55 @@ Future<bool> _showAccountTransferForm(
   return completed;
 }
 
+
+Future<bool> _showAccountReserveForm(
+  BuildContext context, {
+  required String accountId,
+  required AccountDetailsData data,
+}) async {
+  final account = Hive.box<Account>('accounts').get(accountId);
+  if (account == null) return false;
+
+  if (!context.mounted) return false;
+
+  final service = context.read<ManualReserveApplicationService>();
+
+  final completed = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: const Color(0xFF071823),
+    showDragHandle: true,
+    builder: (sheetContext) {
+      return FractionallySizedBox(
+        heightFactor: .78,
+        child: SafeArea(
+          child: AccountReserveForm(
+            accountId: accountId,
+            accountName: account.name,
+            available: data.available,
+            currency: account.currency,
+            applicationService: service,
+            onSuccess: () => Navigator.of(sheetContext).pop(true),
+          ),
+        ),
+      );
+    },
+  );
+
+  return completed == true;
+}
+
 class _PinnedAccountActions extends StatelessWidget {
   const _PinnedAccountActions({
     required this.m,
     required this.accountId,
+    required this.data,
     required this.onCompleted,
   });
 
   final _AccountPageMetrics m;
   final String accountId;
+  final AccountDetailsData data;
   final VoidCallback onCompleted;
 
   @override
@@ -3058,7 +3101,16 @@ class _PinnedAccountActions extends StatelessWidget {
                         );
                         if (completed) onCompleted();
                       }
-                    : null,
+                    : actions[i].$2 == 'Reserve'
+                        ? () async {
+                            final completed = await _showAccountReserveForm(
+                              context,
+                              accountId: accountId,
+                              data: data,
+                            );
+                            if (completed) onCompleted();
+                          }
+                        : null,
               ),
             ),
           ],

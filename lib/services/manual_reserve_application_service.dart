@@ -1,3 +1,4 @@
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../core/planning/operations/reserve_operation.dart';
@@ -24,6 +25,7 @@ final class ManualReserveApplicationService {
   Future<String> reserve({
     required String accountId,
     required double amount,
+    String? name,
     DateTime? createdAt,
   }) async {
     final sourceId = _uuid.v4();
@@ -37,6 +39,15 @@ final class ManualReserveApplicationService {
     );
 
     await _engine.execute(operation);
+
+    // Reserve names are UI metadata. The Planning Engine remains the sole
+    // owner of the reservation state itself.
+    final trimmedName = name?.trim();
+    if (trimmedName != null && trimmedName.isNotEmpty) {
+      final box = await Hive.openBox<String>('manual_reserve_names');
+      await box.put(sourceId, trimmedName);
+    }
+
     return sourceId;
   }
 }
