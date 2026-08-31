@@ -3025,6 +3025,7 @@ Future<bool> _showAccountReserveForm(
       child: AccountReserveForm(
         accountId: accountId,
         accountName: account.name,
+        accountIcon: account.icon,
         available: data.available,
         reserved: data.reserved,
         currency: account.currency,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../services/manual_reserve_application_service.dart';
 
@@ -13,6 +14,7 @@ class AccountReserveForm extends StatefulWidget {
     super.key,
     required this.accountId,
     required this.accountName,
+    this.accountIcon,
     required this.available,
     required this.currency,
     required this.applicationService,
@@ -22,6 +24,7 @@ class AccountReserveForm extends StatefulWidget {
 
   final String accountId;
   final String accountName;
+  final String? accountIcon;
   final double available;
 
   /// Amount already reserved before this form opened.
@@ -233,6 +236,7 @@ class _AccountReserveFormState extends State<AccountReserveForm> {
                     children: [
                       _IntroCard(
                         accountName: widget.accountName,
+                        accountIcon: widget.accountIcon,
                         currency: widget.currency,
                         compact: compact,
                       ),
@@ -462,7 +466,6 @@ class _Header extends StatelessWidget {
             borderRadius: BorderRadius.circular(99),
           ),
         ),
-
         SizedBox(
           height: veryCompact
               ? 8
@@ -470,51 +473,40 @@ class _Header extends StatelessWidget {
                   ? 11
                   : 15,
         ),
-
         Padding(
           padding: EdgeInsets.symmetric(
             horizontal: veryCompact ? 18 : 20,
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Reserve Money',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: veryCompact
-                            ? 20
-                            : compact
-                                ? 21
-                                : 24,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -.3,
-                      ),
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    Text(
-                      'Set money aside from this account.',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white60,
-                        fontSize: compact ? 12.5 : 14,
-                      ),
-                    ),
-                  ],
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Reserve Money',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: veryCompact
+                        ? 20
+                        : compact
+                            ? 21
+                            : 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -.3,
+                  ),
                 ),
-              ),
-
-              const SizedBox(width: 10),
-
-              const _ReserveIcon(),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  'Set money aside from this account.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: compact ? 12.5 : 14,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -526,29 +518,6 @@ class _Header extends StatelessWidget {
 // RESERVE ICON
 // ============================================================================
 
-class _ReserveIcon extends StatelessWidget {
-  const _ReserveIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        color: const Color(0xFFB995FF).withValues(alpha: .10),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: const Color(0xFFB995FF).withValues(alpha: .25),
-        ),
-      ),
-      child: const Icon(
-        Icons.bookmark_rounded,
-        color: Color(0xFFB995FF),
-        size: 24,
-      ),
-    );
-  }
-}
 
 // ============================================================================
 // ACCOUNT CARD
@@ -557,16 +526,21 @@ class _ReserveIcon extends StatelessWidget {
 class _IntroCard extends StatelessWidget {
   const _IntroCard({
     required this.accountName,
+    required this.accountIcon,
     required this.currency,
     this.compact = false,
   });
 
   final String accountName;
+  final String? accountIcon;
   final String currency;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final iconBoxSize = compact ? 38.0 : 42.0;
+    final iconSize = compact ? 23.0 : 25.0;
+
     return Container(
       padding: EdgeInsets.all(compact ? 10 : 13),
       decoration: BoxDecoration(
@@ -579,21 +553,30 @@ class _IntroCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: compact ? 38 : 42,
-            height: compact ? 38 : 42,
+            width: iconBoxSize,
+            height: iconBoxSize,
+            padding: EdgeInsets.all(compact ? 7 : 8),
             decoration: BoxDecoration(
               color: const Color(0xFF37D991).withValues(alpha: .10),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
-              Icons.account_balance_wallet_outlined,
-              color: const Color(0xFF37D991),
-              size: compact ? 19 : 21,
-            ),
+            child: accountIcon != null && accountIcon!.isNotEmpty
+                ? SvgPicture.asset(
+                    accountIcon!,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: const Color(0xFF37D991),
+                      size: iconSize,
+                    ),
+                  )
+                : Icon(
+                    Icons.account_balance_wallet_outlined,
+                    color: const Color(0xFF37D991),
+                    size: iconSize,
+                  ),
           ),
-
           SizedBox(width: compact ? 9 : 12),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -605,9 +588,7 @@ class _IntroCard extends StatelessWidget {
                     fontSize: 10.5,
                   ),
                 ),
-
                 const SizedBox(height: 2),
-
                 Text(
                   accountName,
                   maxLines: 1,
@@ -621,9 +602,7 @@ class _IntroCard extends StatelessWidget {
               ],
             ),
           ),
-
           const SizedBox(width: 8),
-
           Text(
             currency,
             style: const TextStyle(
