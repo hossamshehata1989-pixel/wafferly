@@ -3016,26 +3016,24 @@ Future<bool> _showAccountReserveForm(
   final service = context.read<ManualReserveApplicationService>();
 
   final completed = await showModalBottomSheet<bool>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: const Color(0xFF071823),
-    showDragHandle: true,
-    builder: (sheetContext) {
-      return FractionallySizedBox(
-        heightFactor: .78,
-        child: SafeArea(
-          child: AccountReserveForm(
-            accountId: accountId,
-            accountName: account.name,
-            available: data.available,
-            currency: account.currency,
-            applicationService: service,
-            onSuccess: () => Navigator.of(sheetContext).pop(true),
-          ),
-        ),
-      );
-    },
-  );
+  context: context,
+  isScrollControlled: true,
+  backgroundColor: const Color(0xFF071823),
+  showDragHandle: false, // مهم: الـ Form عنده handle بالفعل
+  builder: (sheetContext) {
+    return SafeArea(
+      child: AccountReserveForm(
+        accountId: accountId,
+        accountName: account.name,
+        available: data.available,
+        reserved: data.reserved,
+        currency: account.currency,
+        applicationService: service,
+        onSuccess: () => Navigator.of(sheetContext).pop(true),
+      ),
+    );
+  },
+);
 
   return completed == true;
 }
