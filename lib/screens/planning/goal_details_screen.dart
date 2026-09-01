@@ -435,35 +435,92 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   }
 
   Future<void> _cancelGoal() async {
-    final fundingSources = await _fundingProjectionService.getFundingSources(
-      widget.goal.id,
-    );
+    final fundingSources =
+        await _fundingProjectionService.getFundingSources(widget.goal.id);
 
-    final totalAmount = fundingSources.fold<double>(
-      0,
-      (sum, source) => sum + source.amount,
-    );
+    // Transfer-to-Saving goals are archived directly.
+    if (!widget.goal.reserveMoney) {
+      await _archiveGoal();
+      return;
+    }
 
-    final confirm = await showCancelGoalDialog(
-      context,
-      fundingSources: fundingSources,
+    // A reserve goal with currently reserved money must first choose
+    // what to do with those funds.
+    if (fundingSources.isNotEmpty) {
+      final action = await showCancelGoalDialog(
+        context,
+        fundingSources: fundingSources,
+      );
+
+      if (action == null) {
+        return;
+      }
+
+      if (action == 'keep') {
+        await _archiveGoal();
+        return;
+      }
+
+      if (action == 'release') {
+        await _goalAllocationService.releaseGoal(widget.goal.id);
+
+        for (final source in fundingSources) {
+          await _activityService.addActivity(
+            GoalActivity.create(
+              goalId: widget.goal.id,
+              type: GoalActivityType.release,
+              amount: source.amount,
+              sourceAccountId: source.accountId,
+              notes: 'Released while archiving goal',
+            ),
+          );
+        }
+
+        await _archiveGoal();
+        return;
+      }
+
+      if (action == 'transfer') {
+        final transferSuccess = await _transferAllToSaving();
+
+        if (!transferSuccess) {
+          return;
+        }
+
+        await _archiveGoal();
+        return;
+      }
+    }
+
+    // A reserve goal with financial history but no current reservation
+    // cannot be cancelled again; archive it instead.
+    if (_activityService.hasFinancialHistory(widget.goal.id)) {
+      await _archiveGoal();
+      return;
+    }
+
+    // No financial history and no current reservation: this is a real
+    // cancellation, not an archive.
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Cancel Goal'),
+        content: const Text('Are you sure you want to cancel this goal?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Back'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Cancel Goal'),
+          ),
+        ],
+      ),
     );
 
     if (confirm != true) {
       return;
-    }
-
-    await _goalAllocationService.releaseGoal(widget.goal.id);
-
-    for (final source in fundingSources) {
-      await _activityService.addActivity(
-        GoalActivity.create(
-          goalId: widget.goal.id,
-          type: 'cancel',
-          amount: source.amount,
-          sourceAccountId: source.accountId,
-        ),
-      );
     }
 
     await _goalService.update(
@@ -473,6 +530,8 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     await _loadData();
 
     if (!mounted) return;
+
+    Navigator.pop(context);
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Goal cancelled successfully')),
@@ -562,9 +621,9 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
 
     Navigator.pop(context);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Goal moved to archive')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Goal moved to archive')),
+    );
   }
 
   @override
@@ -680,7 +739,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _archiveGoal,
+                  onPressed: _cancelGoal,
                   icon: const Icon(Icons.archive),
                   label: const Text('Archive Goal'),
                 ),
@@ -710,7 +769,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _archiveGoal,
+                  onPressed: _cancelGoal,
                   icon: const Icon(Icons.archive),
                   label: const Text('Move To Archive'),
                 ),

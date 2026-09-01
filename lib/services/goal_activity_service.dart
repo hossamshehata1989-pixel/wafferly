@@ -24,4 +24,23 @@ class GoalActivityService {
 
     return items;
   }
+
+  /// Returns true if the goal has ever been involved
+  /// in any financial operation.
+  ///
+  /// Important:
+  /// Once financial history exists, the goal can no longer
+  /// be cancelled, even if its current reserved amount is zero.
+  bool hasFinancialHistory(String goalId) {
+    final activities = getGoalActivities(goalId);
+
+    return activities.any(
+      (activity) =>
+          activity.type == GoalActivityType.reserve ||
+          activity.type == GoalActivityType.release ||
+          activity.type == GoalActivityType.transferToSaving ||
+          activity.type == GoalActivityType.completedReserved ||
+          activity.type == GoalActivityType.completedRelease,
+    );
+  }
 }
