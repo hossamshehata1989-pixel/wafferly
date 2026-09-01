@@ -2,6 +2,7 @@ import 'package:uuid/uuid.dart';
 
 import '../core/planning/engine/planning_engine.dart';
 import '../core/planning/operations/reserve_operation.dart';
+import '../core/planning/operations/release_operation.dart';
 import '../core/planning/value_objects/planning_source_type.dart';
 
 import '../models/allocation.dart';
@@ -18,7 +19,6 @@ class GoalAllocationService {
        _projectionService = projectionService;
 
   final PlanningEngine _engine;
-
   final AllocationService _allocationService = AllocationService();
   final GoalService _goalService = GoalService();
   final GoalFundingProjectionService _projectionService;
@@ -28,44 +28,16 @@ class GoalAllocationService {
     required String goalId,
     required double amount,
   }) async {
-    if (amount <= 0) {
-      return false;
-    }
-
-    // ---------------------------------------------------------------
-    // STEP 1 — Validate Goal
-    // ---------------------------------------------------------------
+    if (amount <= 0) return false;
 
     final goal = _goalService.getById(goalId);
-    if (goal == null) {
-      return false;
-    }
-
-    if (goal.targetAmount <= 0) {
-      return false;
-    }
-
-    // ---------------------------------------------------------------
-    // STEP 2 — Validate Goal Target
-    // ---------------------------------------------------------------
-    //
-    // Goal business rule remains here.
-    // Planning does not know about Goal target semantics.
-    //
-    // ---------------------------------------------------------------
+    if (goal == null || goal.targetAmount <= 0) return false;
 
     final projection = await _projectionService.getProjection(goalId);
-
     final currentProgress = projection.totalProgress;
     final newProgress = currentProgress + amount;
 
-    if (newProgress > goal.targetAmount) {
-      return false;
-    }
-
-    // ---------------------------------------------------------------
-    // STEP 3 — Create Planning Operation
-    // ---------------------------------------------------------------
+    if (newProgress > goal.targetAmount) return false;
 
     final operation = ReserveOperation(
       id: const Uuid().v4(),
@@ -76,10 +48,6 @@ class GoalAllocationService {
       amount: amount,
     );
 
-    // ---------------------------------------------------------------
-    // STEP 4 — Planning Engine owns the mutation
-    // ---------------------------------------------------------------
-
     try {
       await _engine.execute(operation);
       return true;
@@ -88,32 +56,28 @@ class GoalAllocationService {
     }
   }
 
-  // ===============================================================
-  // LEGACY OPERATIONS
-  // ===============================================================
-  //
-  // These remain temporarily until their corresponding Planning
-  // operations are migrated and tested.
-  //
-  // ===============================================================
-
-  /// Release all goal allocations.
-  ///
-  /// TEMPORARY LEGACY PATH.
+  /// Release all active Goal funding through the Planning Engine.
   Future<void> releaseGoal(String goalId) async {
-    final allocations = _allocationService
-        .getAll()
-        .where((a) => a.type == AllocationType.goal && a.referenceId == goalId)
-        .toList();
+    final sources = await _projectionService.getFundingSources(goalId);
 
-    for (final allocation in allocations) {
-      await _allocationService.delete(allocation.id);
+    for (final source in sources) {
+      if (source.amount <= 0) continue;
+
+      final operation = ReleaseOperation(
+        id: const Uuid().v4(),
+        createdAt: DateTime.now(),
+        sourceId: goalId,
+        sourceType: PlanningSourceType.goal,
+        accountId: source.accountId,
+        amount: source.amount,
+      );
+
+      await _engine.execute(operation);
     }
   }
 
-  /// Reduce allocations for a specific goal/account.
-  ///
-  /// TEMPORARY LEGACY PATH.
+  /// Reduce a Goal allocation for a specific funding account.
+  /// ReleasePlanner handles FIFO consumption across active allocations.
   Future<void> reduceAllocation({
     required String goalId,
     required String accountId,
@@ -123,102 +87,45 @@ class GoalAllocationService {
       throw Exception('Reduction amount must be greater than zero');
     }
 
-    final allocations = _allocationService
-        .getAll()
-        .where(
-          (a) =>
-              a.type == AllocationType.goal &&
-              a.referenceId == goalId &&
-              a.accountId == accountId,
-        )
-        .toList();
+    final operation = ReleaseOperation(
+      id: const Uuid().v4(),
+      createdAt: DateTime.now(),
+      sourceId: goalId,
+      sourceType: PlanningSourceType.goal,
+      accountId: accountId,
+      amount: reductionAmount,
+    );
 
-    if (allocations.isEmpty) {
-      throw Exception(
-        'No allocation found for goal $goalId and account $accountId',
-      );
-    }
-
-    allocations.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
-    double remaining = reductionAmount;
-
-    for (final allocation in allocations) {
-      if (remaining <= 0) {
-        break;
-      }
-
-      final currentAmount = allocation.amount;
-
-      if (currentAmount <= remaining) {
-        await _allocationService.delete(allocation.id);
-        remaining -= currentAmount;
-      } else {
-        final newAmount = currentAmount - remaining;
-
-        final updated = allocation.copyWith(amount: newAmount);
-
-        await _allocationService.update(updated);
-        remaining = 0;
-      }
-    }
-
-    if (remaining > 0) {
-      throw Exception(
-        'Insufficient allocation amount. '
-        '$remaining EGP remains after consuming all allocations.',
-      );
-    }
+    await _engine.execute(operation);
   }
 
-  /// Increase allocation.
-  ///
-  /// TEMPORARY LEGACY PATH.
+  /// Re-reserve an amount for rollback/recovery through the Planning Engine.
   Future<void> increaseAllocation({
     required String goalId,
     required String accountId,
     required double increaseAmount,
   }) async {
     if (increaseAmount <= 0) {
-      throw Exception('Increase amount must be greater than zero');
-    }
-
-    final allocations = _allocationService
-        .getAll()
-        .where(
-          (a) =>
-              a.type == AllocationType.goal &&
-              a.referenceId == goalId &&
-              a.accountId == accountId,
-        )
-        .toList();
-
-    if (allocations.isEmpty) {
-      final newAllocation = Allocation.create(
-        accountId: accountId,
-        amount: increaseAmount,
-        type: AllocationType.goal,
-        referenceId: goalId,
+      throw ArgumentError.value(
+        increaseAmount,
+        'increaseAmount',
+        'Must be greater than zero',
       );
-
-      await _allocationService.add(newAllocation);
-      return;
     }
 
-    allocations.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-
-    final allocation = allocations.first;
-
-    final updated = allocation.copyWith(
-      amount: allocation.amount + increaseAmount,
+    final operation = ReserveOperation(
+      id: const Uuid().v4(),
+      createdAt: DateTime.now(),
+      sourceId: goalId,
+      sourceType: PlanningSourceType.goal,
+      accountId: accountId,
+      amount: increaseAmount,
     );
 
-    await _allocationService.update(updated);
+    await _engine.execute(operation);
   }
 
-  /// Get all allocations for a Goal.
-  ///
-  /// TEMPORARY LEGACY PATH.
+  /// Temporary compatibility read for existing callers.
   List getGoalAllocations(String goalId) {
     return _allocationService
         .getAll()
@@ -226,25 +133,28 @@ class GoalAllocationService {
         .toList();
   }
 
-  /// Release all allocations from one funding account.
-  ///
-  /// TEMPORARY LEGACY PATH.
+  /// Release all funding from one Goal funding account through the
+  /// Planning Engine.
   Future<void> releaseFundingSource({
     required String goalId,
     required String accountId,
   }) async {
-    final allocations = _allocationService
-        .getAll()
-        .where(
-          (a) =>
-              a.type == AllocationType.goal &&
-              a.referenceId == goalId &&
-              a.accountId == accountId,
-        )
-        .toList();
+    final sources = await _projectionService.getFundingSources(goalId);
 
-    for (final allocation in allocations) {
-      await _allocationService.delete(allocation.id);
+    for (final source in sources) {
+      if (source.accountId != accountId || source.amount <= 0) continue;
+
+      final operation = ReleaseOperation(
+        id: const Uuid().v4(),
+        createdAt: DateTime.now(),
+        sourceId: goalId,
+        sourceType: PlanningSourceType.goal,
+        accountId: accountId,
+        amount: source.amount,
+      );
+
+      await _engine.execute(operation);
+      return;
     }
   }
 }
