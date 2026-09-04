@@ -6,7 +6,6 @@ import '../l10n/app_localizations.dart';
 import 'accounts/accounts_screen.dart';
 import 'expenses_screen.dart';
 import 'transactions/transactions_screen.dart';
-import 'planning/planning_screen.dart';
 import '../constants/transaction_constants.dart';
 import '../features/members/screens/members_screen.dart';
 import 'package:wafferly/features/settings/presentation/screens/settings_screen.dart';
@@ -30,14 +29,13 @@ class _MainNavigationState extends State<MainNavigation> {
   final List<Widget> _pages = const [
     AccountsScreen(),
     TransactionsScreen(),
-    PlanningScreen(),
     ManageScreen(),
     AnalysisScreen(),
     SizedBox(), // More
   ];
 
   void _onItemTapped(int index) {
-    if (index == 5) {
+    if (index == 4) {
       setState(() {
         _showMoreMenu = !_showMoreMenu;
       });
@@ -107,12 +105,6 @@ class _MainNavigationState extends State<MainNavigation> {
                 const BottomNavigationBarItem(
                   icon: Icon(Icons.receipt_long),
                   label: 'Transactions',
-                ),
-
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.flag_outlined),
-                  activeIcon: Icon(Icons.flag),
-                  label: 'Planning',
                 ),
 
                 const BottomNavigationBarItem(
