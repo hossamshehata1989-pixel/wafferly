@@ -1,6 +1,6 @@
-import 'package\:flutter/material.dart';
+import 'package:flutter/material.dart';
 
-import 'package\:provider/provider.dart';
+import 'package:provider/provider.dart';
 
 import '../../models/enums/account_enums.dart';
 
@@ -13,6 +13,8 @@ import '../../models/enums/scheduled_action_kind.dart';
 import '../../services/account_service.dart';
 
 import '../../services/goal_service.dart';
+
+import '../../services/goal_funding_projection_service.dart';
 
 import '../../services/budget_service.dart';
 
@@ -36,7 +38,7 @@ import '../planning/reserved_money_screen.dart';
 
 import 'outgoing_screen.dart';
 
-import 'package\:wafferly/features/financial_action_center/financial_action_center.dart';
+import 'package:wafferly/features/financial_action_center/financial_action_center.dart';
 
 /// Manage — redesigned around the user's financial system.
 ///
@@ -86,11 +88,17 @@ class _ManageScreenState extends State<ManageScreen> {
 
         context.read<ReservedMoneyProjectionService>();
 
+    final goalFundingProjectionService =
+
+        context.read<GoalFundingProjectionService>();
+
     return _ManageDataLoader(
 
       availableProjectionService: availableProjectionService,
 
       reservedProjectionService: reservedProjectionService,
+
+      goalFundingProjectionService: goalFundingProjectionService,
 
       accountService: AccountService(),
 
@@ -185,6 +193,8 @@ class _ManageScreenState extends State<ManageScreen> {
     );
 
   }
+
+
 
 
 
@@ -322,11 +332,18 @@ class _ManageScreenState extends State<ManageScreen> {
 
   },
 
-  mustCount: data.debtCount,
-
-  needCount: 0,
-
-  wantCount: 0,
+  firstLabel: 'Overdue',
+  secondLabel: 'Due Soon',
+  thirdLabel: 'Upcoming',
+  firstCount: 0,
+  secondCount: 0,
+  thirdCount: data.debtCount,
+  firstAmount: 0,
+  secondAmount: 0,
+  thirdAmount: data.totalCommitments,
+  firstColor: const Color(0xFFFF405A),
+  secondColor: const Color(0xFFFFB11A),
+  thirdColor: const Color(0xFF19D89B),
 
   footerCount: data.debtCount,
 
@@ -362,11 +379,20 @@ class _ManageScreenState extends State<ManageScreen> {
 
   },
 
-  mustCount: data.recurringCount,
+  firstLabel: 'Must',
+  firstCount: data.recurringCount,
+  firstAmount: data.totalCommitments,
+  firstColor: const Color(0xFFFF405A),
 
-  needCount: 0,
+  secondLabel: 'Need',
+  secondCount: 0,
+  secondAmount: 0,
+  secondColor: const Color(0xFFFFB11A),
 
-  wantCount: 0,
+  thirdLabel: 'Want',
+  thirdCount: 0,
+  thirdAmount: 0,
+  thirdColor: const Color(0xFF19D89B),
 
   footerCount: data.recurringCount,
 
@@ -414,7 +440,11 @@ class _ManageScreenState extends State<ManageScreen> {
 
                           metricLabel: 'active',
 
-                          secondary: 'Goal management',
+                          secondaryMetric: _formatMoneyMinor(data.goalProgressTotal),
+
+                          secondaryMetricLabel: 'EGP',
+
+                          secondary: 'funded in total',
 
                           onTap: _openGoals,
 
@@ -436,7 +466,11 @@ class _ManageScreenState extends State<ManageScreen> {
 
                           metricLabel: 'active',
 
-                          secondary: 'Spending plans',
+                          secondaryMetric: '${data.budgetUsagePercent}%',
+
+                          secondaryMetricLabel: null,
+
+                          secondary: 'average used',
 
                           onTap: null,
 
@@ -520,6 +554,8 @@ class _ManageDataLoader {
 
     required this.reservedProjectionService,
 
+    required this.goalFundingProjectionService,
+
     required this.accountService,
 
     required this.balanceService,
@@ -533,6 +569,8 @@ class _ManageDataLoader {
   final AvailableBalanceProjectionService availableProjectionService;
 
   final ReservedMoneyProjectionService reservedProjectionService;
+
+  final GoalFundingProjectionService goalFundingProjectionService;
 
   final AccountService accountService;
 
@@ -623,15 +661,82 @@ class _ManageDataLoader {
     // Goals and Budgets are read through their application services.
     // Manage never opens Hive boxes directly, so the UI does not care whether
     // persistence is Hive today or Supabase later.
-    final activeGoalCount = goalService
+    final goals = goalService.getAll();
 
-        .getAll()
+    final activeGoals = goals
 
         .where((goal) => goal.status == GoalStatus.active)
 
-        .length;
+        .toList();
 
-    final budgetCount = budgetService.getAllBudgets().length;
+    final activeGoalCount = activeGoals.length;
+
+    final goalProjections = await Future.wait(
+
+      activeGoals.map(
+
+        (goal) => goalFundingProjectionService.getProjection(goal.id),
+
+      ),
+
+    );
+
+    final goalProgressTotalMinor = goalProjections.fold<int>(
+
+      0,
+
+      (sum, projection) => sum + _toMinor(projection.totalProgress),
+
+    );
+
+    final nowForBudgets = DateTime.now();
+
+    final budgets = budgetService.getAllBudgets();
+
+    final budgetUsagePercent = budgets.isEmpty
+
+        ? 0
+
+        : (budgets.fold<double>(
+
+              0,
+
+              (sum, budget) {
+
+                final range = budgetService.getDateRangeForPeriod(
+
+                  budget.period,
+
+                  nowForBudgets,
+
+                );
+
+                final funding = budget.amount;
+
+                if (funding <= 0) return sum;
+
+                final spent = budgetService.getSpentAmount(
+
+                  budget.categoryId,
+
+                  range.start,
+
+                  range.end,
+
+                );
+
+                return sum + ((spent / funding) * 100).clamp(0, 100);
+
+              },
+
+            ) /
+
+            budgets.length)
+
+        .round();
+
+    final budgetCount = budgets.length;
+
 
     final debtCount = accounts
 
@@ -665,7 +770,11 @@ class _ManageDataLoader {
 
       goalCount: activeGoalCount,
 
+      goalProgressTotal: goalProgressTotalMinor,
+
       budgetCount: budgetCount,
+
+      budgetUsagePercent: budgetUsagePercent,
 
       reservedAmount: _toMinor(reservedProjection.totalReserved),
 
@@ -695,7 +804,11 @@ class _ManageData {
 
   final int goalCount;
 
+  final int goalProgressTotal;
+
   final int budgetCount;
+
+  final int budgetUsagePercent;
 
   final int reservedAmount;
 
@@ -719,7 +832,11 @@ class _ManageData {
 
     required this.goalCount,
 
+    required this.goalProgressTotal,
+
     required this.budgetCount,
+
+    required this.budgetUsagePercent,
 
     required this.reservedAmount,
 
@@ -1685,11 +1802,21 @@ class _SystemCard extends StatelessWidget {
 
   final VoidCallback onTap;
 
-  final int mustCount;
+  final String firstLabel;
+  final String secondLabel;
+  final String thirdLabel;
 
-  final int needCount;
+  final int firstCount;
+  final int secondCount;
+  final int thirdCount;
 
-  final int wantCount;
+  final int firstAmount;
+  final int secondAmount;
+  final int thirdAmount;
+
+  final Color firstColor;
+  final Color secondColor;
+  final Color thirdColor;
 
   final int footerCount;
 
@@ -1711,11 +1838,21 @@ class _SystemCard extends StatelessWidget {
 
     required this.onTap,
 
-    required this.mustCount,
+    required this.firstLabel,
+    required this.secondLabel,
+    required this.thirdLabel,
 
-    required this.needCount,
+    required this.firstCount,
+    required this.secondCount,
+    required this.thirdCount,
 
-    required this.wantCount,
+    required this.firstAmount,
+    required this.secondAmount,
+    required this.thirdAmount,
+
+    required this.firstColor,
+    required this.secondColor,
+    required this.thirdColor,
 
     required this.footerCount,
 
@@ -1734,13 +1871,17 @@ class _SystemCard extends StatelessWidget {
     return GestureDetector(
 
 
+
       behavior: HitTestBehavior.opaque,
+
 
 
       onTap: onTap,
 
 
+
       child: _Panel(
+
 
 
         borderColor: color.withValues(alpha: .38),
@@ -1887,37 +2028,37 @@ class _SystemCard extends StatelessWidget {
 
                 _PriorityBox(
 
-                  label: 'Must',
+                  label: firstLabel,
 
-                  count: mustCount,
+                  count: firstCount,
 
-                  amount: mustCount == 0 ? 0 : footerAmount,
+                  amount: firstAmount,
 
-                  color: const Color(0xFFFF405A),
-
-                ),
-
-                _PriorityBox(
-
-                  label: 'Need',
-
-                  count: needCount,
-
-                  amount: 0,
-
-                  color: const Color(0xFFFFB11A),
+                  color: firstColor,
 
                 ),
 
                 _PriorityBox(
 
-                  label: 'Want',
+                  label: secondLabel,
 
-                  count: wantCount,
+                  count: secondCount,
 
-                  amount: 0,
+                  amount: secondAmount,
 
-                  color: const Color(0xFF19D89B),
+                  color: secondColor,
+
+                ),
+
+                _PriorityBox(
+
+                  label: thirdLabel,
+
+                  count: thirdCount,
+
+                  amount: thirdAmount,
+
+                  color: thirdColor,
 
                 ),
 
@@ -1929,11 +2070,19 @@ class _SystemCard extends StatelessWidget {
 
                   Expanded(child: boxes[0]),
 
-                  SizedBox(width: ResponsiveMetrics.of(context).spacing(6)),
+                  Container(
+                    width: ResponsiveMetrics.of(context).size(1),
+                    height: ResponsiveMetrics.of(context).h(62),
+                    color: Colors.white.withValues(alpha: .14),
+                  ),
 
                   Expanded(child: boxes[1]),
 
-                  SizedBox(width: ResponsiveMetrics.of(context).spacing(6)),
+                  Container(
+                    width: ResponsiveMetrics.of(context).size(1),
+                    height: ResponsiveMetrics.of(context).h(62),
+                    color: Colors.white.withValues(alpha: .14),
+                  ),
 
                   Expanded(child: boxes[2]),
 
@@ -2068,97 +2217,87 @@ class _PriorityBox extends StatelessWidget {
   });
 
   @override
-
   Widget build(BuildContext context) {
 
-    return Container(
-
-      // Do not force a fixed height here. On narrow phones the text
-      // metrics can be a few pixels taller than the fixed box and Flutter
-      // reports a bottom overflow. A minimum height preserves the design
-      // without constraining the intrinsic content height.
-      constraints: BoxConstraints(minHeight: ResponsiveMetrics.of(context).h(62)),
-
-      padding: EdgeInsets.fromLTRB(ResponsiveMetrics.of(context).spacing(7), ResponsiveMetrics.of(context).h(7), ResponsiveMetrics.of(context).spacing(7), ResponsiveMetrics.of(context).h(5)),
-
-      decoration: BoxDecoration(
-
-        color: color.withValues(alpha: .07),
-
-        borderRadius: BorderRadius.circular(4),
-
-        border: Border.all(color: color.withValues(alpha: .24)),
-
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minHeight: ResponsiveMetrics.of(context).h(62),
       ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          ResponsiveMetrics.of(context).spacing(7),
+          ResponsiveMetrics.of(context).h(7),
+          ResponsiveMetrics.of(context).spacing(7),
+          ResponsiveMetrics.of(context).h(5),
+        ),
+        child: Column(
 
-      child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
 
-        mainAxisAlignment: MainAxisAlignment.center,
+          children: [
 
-        children: [
+            Text(
 
-          Text(
+              label,
 
-            label,
+              maxLines: 1,
 
-            maxLines: 1,
+              softWrap: false,
 
-            softWrap: false,
+              style: TextStyle(
 
-            style: TextStyle(
+                color: color,
 
-              color: color,
+                fontSize: ResponsiveMetrics.of(context).text(11),
 
-              fontSize: ResponsiveMetrics.of(context).text(11),
+                fontWeight: FontWeight.w800,
 
-              fontWeight: FontWeight.w800,
-
-            ),
-
-          ),
-
-          SizedBox(height: ResponsiveMetrics.of(context).h(5)),
-
-          Text(
-
-            '$count',
-
-            style: TextStyle(
-
-              color: Colors.white,
-
-              fontSize: ResponsiveMetrics.of(context).text(19),
-
-              fontWeight: FontWeight.w800,
+              ),
 
             ),
 
-          ),
+            SizedBox(height: ResponsiveMetrics.of(context).h(5)),
 
-          Text(
+            Text(
 
-            '${_formatMoneyMinor(amount)} EGP',
+              '$count',
 
-            maxLines: 1,
+              style: TextStyle(
 
-            overflow: TextOverflow.ellipsis,
+                color: Colors.white,
 
-            style: TextStyle(
+                fontSize: ResponsiveMetrics.of(context).text(19),
 
-              color: color,
+                fontWeight: FontWeight.w800,
 
-              fontSize: ResponsiveMetrics.of(context).text(9),
-
-              fontWeight: FontWeight.w800,
+              ),
 
             ),
 
-          ),
+            Text(
 
-        ],
+              '${_formatMoneyMinor(amount)} EGP',
 
+              maxLines: 1,
+
+              overflow: TextOverflow.ellipsis,
+
+              style: TextStyle(
+
+                color: color,
+
+                fontSize: ResponsiveMetrics.of(context).text(9),
+
+                fontWeight: FontWeight.w800,
+
+              ),
+
+            ),
+
+          ],
+
+        ),
       ),
-
     );
 
   }
@@ -2181,6 +2320,10 @@ class _WideSystemCard extends StatelessWidget {
 
   final String secondary;
 
+  final String? secondaryMetric;
+
+  final String? secondaryMetricLabel;
+
   final VoidCallback? onTap;
 
   const _WideSystemCard({
@@ -2199,6 +2342,10 @@ class _WideSystemCard extends StatelessWidget {
 
     required this.secondary,
 
+    this.secondaryMetric,
+
+    this.secondaryMetricLabel,
+
     required this.onTap,
 
   });
@@ -2210,13 +2357,17 @@ class _WideSystemCard extends StatelessWidget {
     return GestureDetector(
 
 
+
       behavior: HitTestBehavior.opaque,
+
 
 
       onTap: onTap,
 
 
+
       child: _Panel(
+
 
 
         borderColor: color.withValues(alpha: .16),
@@ -2285,35 +2436,105 @@ class _WideSystemCard extends StatelessWidget {
 
             children: [
 
-              Text(
+              Row(
 
-                metric,
+                mainAxisSize: MainAxisSize.min,
 
-                style: TextStyle(
+                crossAxisAlignment: CrossAxisAlignment.end,
 
-                  color: color,
+                children: [
 
-                  fontSize: ResponsiveMetrics.of(context).text(16),
+                  Text(
 
-                  fontWeight: FontWeight.w800,
+                    metric,
 
-                ),
+                    style: TextStyle(
+
+                      color: color,
+
+                      fontSize: ResponsiveMetrics.of(context).text(16),
+
+                      fontWeight: FontWeight.w800,
+
+                    ),
+
+                  ),
+
+                  SizedBox(width: ResponsiveMetrics.of(context).spacing(4)),
+
+                  Text(
+
+                    metricLabel,
+
+                    style: TextStyle(
+
+                      color: Color(0xFFA9B3C7),
+
+                      fontSize: ResponsiveMetrics.of(context).text(8),
+
+                    ),
+
+                  ),
+
+                ],
 
               ),
 
-              Text(
+              if (secondaryMetric != null) ...[
 
-                metricLabel,
+                SizedBox(height: ResponsiveMetrics.of(context).h(2)),
 
-                style: TextStyle(
+                Row(
 
-                  color: Color(0xFFA9B3C7),
+                  mainAxisSize: MainAxisSize.min,
 
-                  fontSize: ResponsiveMetrics.of(context).text(8),
+                  crossAxisAlignment: CrossAxisAlignment.end,
+
+                  children: [
+
+                    Text(
+
+                      secondaryMetric!,
+
+                      style: TextStyle(
+
+                        color: color,
+
+                        fontSize: ResponsiveMetrics.of(context).text(16),
+
+                        fontWeight: FontWeight.w800,
+
+                      ),
+
+                    ),
+
+                    if (secondaryMetricLabel != null) ...[
+
+                      SizedBox(width: ResponsiveMetrics.of(context).spacing(3)),
+
+                      Text(
+
+                        secondaryMetricLabel!,
+
+                        style: TextStyle(
+
+                          color: color,
+
+                          fontSize: ResponsiveMetrics.of(context).text(10),
+
+                          fontWeight: FontWeight.w800,
+
+                        ),
+
+                      ),
+
+                    ],
+
+                  ],
 
                 ),
 
-              ),
+              ],
 
               SizedBox(height: ResponsiveMetrics.of(context).h(2)),
 
