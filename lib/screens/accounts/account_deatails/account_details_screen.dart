@@ -13,6 +13,7 @@ import '../../../widgets/planning/account_reserve_form.dart';
 import '../../../services/manual_reserve_application_service.dart';
 import '../../../models/account.dart';
 import '../../../theme/responsive_metrics.dart';
+import '../../../screens/planning/reserved_money_screen.dart';
 import '../../../core/planning/services/available_balance_projection_service.dart';
 import '../../../services/financial_action_engine.dart';
 import '../../../services/providers/commitment_action_provider.dart';
@@ -2318,7 +2319,7 @@ class _TabBody extends StatelessWidget {
 void _openReservedMoney(BuildContext context, AccountDetailsData data) {
   Navigator.of(context).push(
     MaterialPageRoute<void>(
-      builder: (_) => _AccountReservedMoneyScreen(data: data),
+      builder: (_) => const ReservedMoneyScreen(),
     ),
   );
 }

@@ -260,8 +260,11 @@ String? _lastErrorMessage;
   }
 
   double getTotalReservedBalance() {
-    return ReservedMoneyProjectionService().getTotalReservedAmount();
-  }
+  return ReservedMoneyService().getAll().fold<double>(
+    0,
+    (sum, item) => sum + item.amount,
+  );
+}
 
   List<ExpenseResolutionOption> getLiquidityOptions() {
     final options = <ExpenseResolutionOption>[];

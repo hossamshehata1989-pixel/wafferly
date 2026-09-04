@@ -70,6 +70,7 @@ import 'core/planning/ports/allocation_repository.dart';
 import 'core/planning/services/available_balance_projection_service.dart';
 import 'services/goal_allocation_service.dart';
 import 'services/goal_funding_projection_service.dart';
+import 'services/reserved_money_projection_service.dart';
 import 'core/planning/engine/guards/cannot_reserve_more_than_available_guard.dart';
 
 void main() async {
@@ -408,6 +409,12 @@ void main() async {
 
         Provider<GoalFundingProjectionService>(
           create: (_) => GoalFundingProjectionService(
+            allocationRepository: allocationRepository,
+          ),
+        ),
+
+        Provider<ReservedMoneyProjectionService>(
+          create: (_) => ReservedMoneyProjectionService(
             allocationRepository: allocationRepository,
           ),
         ),
