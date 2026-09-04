@@ -1393,7 +1393,7 @@ class _DueMiniCard extends StatelessWidget {
 
         color: _color.withValues(alpha: .055),
 
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(12),
 
         border: Border.all(color: _color.withValues(alpha: .16)),
 
@@ -1517,7 +1517,7 @@ class _OverviewMetric extends StatelessWidget {
 
     final titleSize = metrics.text(compact ? 7.5 : 11);
 
-    final valueSize = metrics.text(compact ? 15 : 22);
+    final valueSize = metrics.text(compact ? 17 : 22);
 
     final unitSize = metrics.text(compact ? 8 : 12);
 
@@ -1785,23 +1785,29 @@ class _SystemCard extends StatelessWidget {
 
                       children: [
 
-                        Text(
+                        FittedBox(
 
-                          title,
+                          fit: BoxFit.scaleDown,
 
-                          maxLines: 1,
+                          alignment: Alignment.centerLeft,
 
-                          softWrap: false,
+                          child: Text(
 
-                          overflow: TextOverflow.ellipsis,
+                            title,
 
-                          style: TextStyle(
+                            maxLines: 1,
 
-                            color: Colors.white,
+                            softWrap: false,
 
-                            fontSize: titleSize,
+                            style: TextStyle(
 
-                            fontWeight: FontWeight.w800,
+                              color: Colors.white,
+
+                              fontSize: titleSize,
+
+                              fontWeight: FontWeight.w800,
+
+                            ),
 
                           ),
 
@@ -2075,7 +2081,7 @@ class _PriorityBox extends StatelessWidget {
 
         color: color.withValues(alpha: .07),
 
-        borderRadius: BorderRadius.circular(0),
+        borderRadius: BorderRadius.circular(4),
 
         border: Border.all(color: color.withValues(alpha: .24)),
 
@@ -2087,41 +2093,27 @@ class _PriorityBox extends StatelessWidget {
 
         children: [
 
-          Container(
+          Text(
 
-            padding: EdgeInsets.symmetric(horizontal: ResponsiveMetrics.of(context).spacing(4), vertical: ResponsiveMetrics.of(context).h(3)),
+            label,
 
-            decoration: BoxDecoration(
+            maxLines: 1,
 
-              color: color.withValues(alpha: .18),
+            softWrap: false,
 
-              borderRadius: BorderRadius.circular(0),
+            style: TextStyle(
 
-            ),
+              color: color,
 
-            child: Text(
+              fontSize: ResponsiveMetrics.of(context).text(11),
 
-              label,
-
-              maxLines: 1,
-
-              softWrap: false,
-
-              style: TextStyle(
-
-                color: Colors.white,
-
-                fontSize: ResponsiveMetrics.of(context).text(8),
-
-                fontWeight: FontWeight.w800,
-
-              ),
+              fontWeight: FontWeight.w800,
 
             ),
 
           ),
 
-          SizedBox(height: ResponsiveMetrics.of(context).h(4)),
+          SizedBox(height: ResponsiveMetrics.of(context).h(5)),
 
           Text(
 
@@ -2131,7 +2123,7 @@ class _PriorityBox extends StatelessWidget {
 
               color: Colors.white,
 
-              fontSize: ResponsiveMetrics.of(context).text(16),
+              fontSize: ResponsiveMetrics.of(context).text(19),
 
               fontWeight: FontWeight.w800,
 
@@ -2151,7 +2143,7 @@ class _PriorityBox extends StatelessWidget {
 
               color: color,
 
-              fontSize: ResponsiveMetrics.of(context).text(8),
+              fontSize: ResponsiveMetrics.of(context).text(9),
 
               fontWeight: FontWeight.w800,
 
@@ -2451,7 +2443,7 @@ class _IconBox extends StatelessWidget {
 
         color: color.withValues(alpha: .16),
 
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(4),
 
         border: Border.all(color: color.withValues(alpha: .22)),
 
@@ -2495,7 +2487,7 @@ class _Panel extends StatelessWidget {
 
         color: const Color(0xFF071421).withValues(alpha: .94),
 
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(5),
 
         border: Border.all(color: borderColor),
 
