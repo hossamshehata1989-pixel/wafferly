@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package\:flutter/material.dart';
 
-import 'package:provider/provider.dart';
+import 'package\:provider/provider.dart';
 
 import '../../models/enums/account_enums.dart';
 
@@ -36,32 +36,20 @@ import '../planning/reserved_money_screen.dart';
 
 import 'outgoing_screen.dart';
 
-import 'package:wafferly/features/financial_action_center/financial_action_center.dart';
+import 'package\:wafferly/features/financial_action_center/financial_action_center.dart';
 
 /// Manage — redesigned around the user's financial system.
-
 ///
-
 /// The screen is intentionally a read/launch surface:
-
 /// - Financial Overview
-
 /// - Financial Action Center preview
-
 /// - Debts
-
 /// - Recurring
-
 /// - Goals
-
 /// - Budgets
-
 /// - Reserved Money
-
 ///
-
 /// Existing engines/services remain the source of truth.
-
 class ManageScreen extends StatefulWidget {
 
   const ManageScreen({super.key});
@@ -89,9 +77,7 @@ class _ManageScreenState extends State<ManageScreen> {
   Future<_ManageData> _load() {
 
     // Resolve all dependencies before entering async work. The loader itself
-
     // is a plain Dart class and never touches BuildContext.
-
     final availableProjectionService =
 
         context.read<AvailableBalanceProjectionService>();
@@ -199,6 +185,7 @@ class _ManageScreenState extends State<ManageScreen> {
     );
 
   }
+
 
 
   void _openReservedMoney() {
@@ -634,11 +621,8 @@ class _ManageDataLoader {
         await reservedProjectionService.getProjection();
 
     // Goals and Budgets are read through their application services.
-
     // Manage never opens Hive boxes directly, so the UI does not care whether
-
     // persistence is Hive today or Supabase later.
-
     final activeGoalCount = goalService
 
         .getAll()
@@ -656,9 +640,7 @@ class _ManageDataLoader {
         .length;
 
     // CommitmentActionProvider currently represents the active scheduled
-
     // commitment set, so this is the scheduled/recurring item count.
-
     final recurringCount = actions.length;
 
     final availableToSpendMinor =
@@ -1749,9 +1731,19 @@ class _SystemCard extends StatelessWidget {
 
   Widget build(BuildContext context) {
 
-    return _Panel(
+    return GestureDetector(
 
-      borderColor: color.withValues(alpha: .38),
+
+      behavior: HitTestBehavior.opaque,
+
+
+      onTap: onTap,
+
+
+      child: _Panel(
+
+
+        borderColor: color.withValues(alpha: .38),
 
       padding: EdgeInsets.fromLTRB(ResponsiveMetrics.of(context).spacing(9), ResponsiveMetrics.of(context).h(10), ResponsiveMetrics.of(context).spacing(9), ResponsiveMetrics.of(context).h(9)),
 
@@ -1764,9 +1756,7 @@ class _SystemCard extends StatelessWidget {
             builder: (context, constraints) {
 
               // These cards share a narrow row on phones. Keep the title on
-
               // one line so "Recurring" never breaks awkwardly.
-
               final compact = constraints.maxWidth < 180;
 
               final metrics = ResponsiveMetrics.of(context);
@@ -2047,7 +2037,9 @@ class _SystemCard extends StatelessWidget {
 
       ),
 
-    );
+    ),
+
+  );
 
   }
 
@@ -2082,13 +2074,9 @@ class _PriorityBox extends StatelessWidget {
     return Container(
 
       // Do not force a fixed height here. On narrow phones the text
-
       // metrics can be a few pixels taller than the fixed box and Flutter
-
       // reports a bottom overflow. A minimum height preserves the design
-
       // without constraining the intrinsic content height.
-
       constraints: BoxConstraints(minHeight: ResponsiveMetrics.of(context).h(62)),
 
       padding: EdgeInsets.fromLTRB(ResponsiveMetrics.of(context).spacing(7), ResponsiveMetrics.of(context).h(7), ResponsiveMetrics.of(context).spacing(7), ResponsiveMetrics.of(context).h(5)),
@@ -2219,9 +2207,19 @@ class _WideSystemCard extends StatelessWidget {
 
   Widget build(BuildContext context) {
 
-    return _Panel(
+    return GestureDetector(
 
-      borderColor: color.withValues(alpha: .16),
+
+      behavior: HitTestBehavior.opaque,
+
+
+      onTap: onTap,
+
+
+      child: _Panel(
+
+
+        borderColor: color.withValues(alpha: .16),
 
       padding: EdgeInsets.fromLTRB(ResponsiveMetrics.of(context).spacing(14), ResponsiveMetrics.of(context).h(13), ResponsiveMetrics.of(context).spacing(10), ResponsiveMetrics.of(context).h(13)),
 
@@ -2421,7 +2419,9 @@ class _WideSystemCard extends StatelessWidget {
 
       ),
 
-    );
+    ),
+
+  );
 
   }
 
