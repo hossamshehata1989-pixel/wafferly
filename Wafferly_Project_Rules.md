@@ -1268,6 +1268,14 @@ Repayments
 Debt schedules
 Interest
 Settlements
+Credit Cards
+Reusable Installment Facilities
+Single Installment Plans
+Borrowed Money
+Temporary Debt
+Rotating Savings / Saving Circle lifecycle where approved
+
+The detailed ownership boundary between Accounts and Manage is defined by ADR-032.
 
 Debt operations that create actual financial movements must execute through the Financial Operation Execution Engine.
 
@@ -1306,6 +1314,21 @@ Authentication
 Supabase cloud persistence
 Offline-first local persistence and synchronization
 Multi-device readiness
+ADR-032 — Debt Domain Architecture
+
+The Debt Domain uses a single financial source of truth while allowing Accounts and Manage to have different responsibilities. Accounts owns the structural financial-position representation of liabilities; Manage owns debt workflows and operational UX. Neither screen may maintain an independent authoritative debt balance.
+
+Debt workflows that create actual financial movements must use the Financial Operation Execution Engine and the authoritative Transaction / Ledger pipeline. Future payment expectations remain represented by Commitments and applicable Schedule Rules / Occurrences until actual execution occurs.
+
+Debt concepts may include Credit Cards, Reusable Installment Facilities, Single Installment Plans, Loans, Borrowed Money, Temporary Debt, and Rotating Savings / Saving Circle liabilities after actual receipt. Installment classification is based on the business concept; the existence of a limit is a facility property and is not the sole classification rule.
+
+Accounts may show debt categories as navigable rollups or representations of liability Accounts. Such items must reuse the underlying approved workflow rather than create duplicate CRUD or financial logic.
+
+Rotating Savings / Saving Circle expected payout does not automatically create an active liability. After the user confirms actual receipt, the approved financial operation establishes the resulting liability and actual financial records.
+
+Status:
+[APPROVED]
+
 Voice Input Safety Boundary
 
 Voice input must follow a controlled flow:
@@ -1394,6 +1417,12 @@ Repayments
 Schedules
 Interest where supported
 Settlements
+Credit Cards
+Reusable Installment Facilities
+Single Installment Plans
+Borrowed Money
+Temporary Debt
+Rotating Savings / Saving Circle lifecycle after actual receipt confirmation
 Multi-Currency:
 Base currency
 Transaction currencies
@@ -1431,7 +1460,6 @@ The following remain OUT OF SCOPE unless explicitly promoted by a later approved
 
 Bank integrations
 Collaboration / shared finances
-ROSCA
 Advanced accounting beyond the approved financial accounting model
 Additional authentication providers beyond the currently approved authentication plan
 Other speculative capabilities not explicitly approved
@@ -1736,6 +1764,12 @@ Commitment
 Projection
 → calculated view of current state
 
+Liability Account
+→ current debt financial position
+
+Manage
+→ debt workflow / operational UX
+
 Supabase
 → cloud persistence source of truth (current)
 
@@ -1746,6 +1780,53 @@ UI
 → presentation only
 
 When two components appear to own the same truth, stop and resolve the ownership before adding more code.
+
+Status:
+[APPROVED]
+
+DEBT DOMAIN / SCREEN OWNERSHIP RULES
+Rule 67: Accounts and Manage Have Separate Responsibilities
+
+Accounts is responsible for the structural financial network and current financial position. Manage is responsible for debt workflows and operational UX.
+
+Where a debt concept requires a financial position, the approved Liability Account model remains the financial source of truth. Manage must not maintain an independent authoritative debt balance.
+
+Credit Cards and Reusable Installment Facilities may be real operational liability Accounts. Loans, Borrowed Money, Temporary Debt, and other debt concepts requiring a liability position are represented internally through the approved liability Account architecture and are entered through their approved Manage workflows.
+
+Status:
+[APPROVED]
+
+Rule 68: Debt Display Items Must Remain Navigable
+
+Debt categories or rollups shown in Accounts may be display/navigation representations rather than direct CRUD entries. They must remain navigable when an approved underlying workflow exists.
+
+Selecting a debt display item must reuse the underlying details/workflow and must not create a second CRUD implementation or financial source of truth.
+
+The Accounts + Add flow must not expose duplicate generic Account-creation paths for workflow-owned debt concepts such as Loans, Borrowed Money, or Temporary Debt.
+
+Status:
+[APPROVED]
+
+Rule 69: Debt Financial Mutations Use the Canonical Pipeline
+
+Any debt workflow that creates an actual financial movement must use the approved Financial Operation Execution Engine and the authoritative Transaction / Ledger pipeline.
+
+Manage, DebtsScreen, or any debt-specific UI must not directly mutate authoritative balances or Ledger records and must not create an independent debt balance store.
+
+Future payment expectations remain distinct from executed Transactions and should be represented through the approved Commitment / Schedule architecture until actual execution occurs.
+
+Status:
+[APPROVED]
+
+Rule 70: Debt Status Is Derived, Not Hardcoded
+
+Debt status such as Overdue, Due Soon, and Upcoming is derived presentation state. It must be calculated from the approved future-payment information, including applicable Commitments, Schedule Rules, Schedule Occurrences, due dates, and settlement state.
+
+Do not hardcode these statuses in the UI or maintain them as an independent financial source of truth.
+
+Before introducing a new debt-status service, verify whether the existing Commitment / Schedule / Projection architecture already provides the required information.
+
+Rotating Savings / Saving Circle must not automatically become an active liability merely because an expected date has arrived. Actual receipt requires the appropriate user confirmation and approved financial operation.
 
 Status:
 [APPROVED]
