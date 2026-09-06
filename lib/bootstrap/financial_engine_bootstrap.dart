@@ -24,6 +24,7 @@ import '../services/account_service.dart';
 import '../infrastructure/hive/hive_balance_port.dart';
 import '../financial_engine/adapters/hive_transaction_port.dart';
 import '../financial_engine/handlers/create_transaction_mutation_handler.dart';
+import '../services/ledger_projection_service.dart';
 import '../financial_engine/mutations/create_transaction_mutation.dart';
 import 'package:hive/hive.dart';
 import '../models/transaction.dart';
@@ -53,9 +54,11 @@ final class FinancialEngineBootstrap {
       port: createAllocationRepository,
     );
     final transactionPort = HiveTransactionPort(transactionBox);
+    final ledgerProjectionService = LedgerProjectionService();
 
     final createTransactionHandler = CreateTransactionMutationHandler(
       transactionPort,
+      ledgerProjectionService,
     );
 
     final updateTransactionHandler = UpdateTransactionMutationHandler(

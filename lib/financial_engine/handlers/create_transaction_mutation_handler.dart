@@ -1,26 +1,26 @@
 import 'package:flutter/foundation.dart';
+
 import '../mutations/create_transaction_mutation.dart';
 import '../ports/transaction_port.dart';
 import '../execution/financial_mutation_handler.dart';
+import '../../services/ledger_projection_service.dart';
 
 /// Executes CreateTransactionMutation.
 ///
-/// This handler is responsible only for delegating the
-/// FinancialTransactionRecord to the TransactionPort.
+/// The handler coordinates:
+/// 1. Transaction persistence
+/// 2. Ledger projection
 ///
-/// It contains no business rules.
-///
-/// ADR-0012:
-/// Executor executes.
-/// Planner decides.
-///
-/// ADR-0013:
-/// Mapping to the persistence model happens behind the Port.
+/// It contains no accounting/business rules.
 final class CreateTransactionMutationHandler
     implements FinancialMutationHandler<CreateTransactionMutation> {
   final TransactionPort _transactionPort;
+  final LedgerProjectionService _ledgerProjectionService;
 
-  const CreateTransactionMutationHandler(this._transactionPort);
+  CreateTransactionMutationHandler(
+    this._transactionPort,
+    this._ledgerProjectionService,
+  );
 
   @override
   Future<void> execute(CreateTransactionMutation mutation) async {
@@ -29,5 +29,9 @@ final class CreateTransactionMutationHandler
     );
 
     await _transactionPort.save(mutation.record);
+
+    await _ledgerProjectionService.projectRecord(
+      mutation.record,
+    );
   }
 }
