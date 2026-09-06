@@ -29,6 +29,10 @@ class ScheduledActionExecutor {
       case ScheduledActionKind.budgetReset:
         await _executeBudgetReset(action);
         break;
+
+      case ScheduledActionKind.investment:
+        await _executeInvestment(action);
+        break;
     }
   }
 
@@ -53,4 +57,6 @@ class ScheduledActionExecutor {
   Future<void> _executeGoalContribution(ScheduledAction action) async {}
 
   Future<void> _executeBudgetReset(ScheduledAction action) async {}
+
+  Future<void> _executeInvestment(ScheduledAction action) async {}
 }

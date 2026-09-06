@@ -1,4 +1,4 @@
-import '../../financial_engine/planning/goal_activity_mutation.dart';
+import '../../financial_engine/mutations/goal_activity_mutation.dart';
 import '../../financial_engine/ports/goal_activity_port.dart';
 import '../../models/goal_activity.dart';
 import '../../services/goal_activity_service.dart';

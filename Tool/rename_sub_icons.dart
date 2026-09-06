@@ -1,8 +1,9 @@
 import 'dart:io';
-import 'package:wafferly/data/categories_data.dart';
+import 'package:wafferly/config/category_config.dart';
 
 void main() {
-  final dir = Directory('assets/icons/subcategories');
+  const dirPath = 'assets/icons/subcategories';
+  final dir = Directory(dirPath);
 
   if (!dir.existsSync()) {
     print('❌ Subcategories folder not found.');
@@ -13,20 +14,17 @@ void main() {
 
   print('\n========== RENAME SUB ICONS ==========\n');
 
-  for (final main in mainCategories) {
-    for (final sub in main.subCategories) {
+  for (final main in [...expenseCategories, ...incomeCategories]) {
+    for (final sub in main.subCategories ?? const []) {
       final id = sub.id;
 
-      // الاسم الصحيح المطلوب
       final correctName = 'sub_$id.svg';
       final correctPath = '${dir.path}/$correctName';
 
-      // لو الملف موجود بالفعل بالاسم الصح → سيبه
       if (File(correctPath).existsSync()) {
         continue;
       }
 
-      // دور على ملف يحتوي على الـ id في اسمه
       final match = files.firstWhere(
         (f) =>
             f.path.toLowerCase().contains(id.toLowerCase()) &&
@@ -36,7 +34,10 @@ void main() {
 
       if (match.path.isNotEmpty) {
         match.renameSync(correctPath);
-        print('✅ Renamed: ${match.path.split('/').last} → $correctName');
+        print(
+          '✅ Renamed: '
+          '${match.path.split(Platform.pathSeparator).last} → $correctName',
+        );
       } else {
         print('⚠️ No match found for id: $id');
       }

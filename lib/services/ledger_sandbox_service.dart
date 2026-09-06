@@ -1,7 +1,7 @@
 // lib/services/ledger_sandbox_service.dart
 import 'ledger_service.dart';
 import 'transaction_ledger_builder.dart';
-
+import '../models/enums/entry_type.dart';
 /// Sandbox Service لاختبار Ledger pipeline بشكل معزول.
 /// يستخدم LedgerService الحقيقي (ولكنه غير فعال حالياً لأنه لم يتم فتح box في main.dart).
 /// لا يتم استدعاؤها من أي مكان في التطبيق حالياً.
@@ -28,7 +28,7 @@ class LedgerSandboxService {
       // 2. Build LedgerEntries for an expense
       final entries = _builder.buildExpenseEntries(
         transactionId: mockTransactionId,
-        expenseAccountId: expenseAccountId,
+        expenseLedgerAccountId: expenseAccountId,
         sourceAccountId: sourceAccountId,
         amount: amount,
         date: date,

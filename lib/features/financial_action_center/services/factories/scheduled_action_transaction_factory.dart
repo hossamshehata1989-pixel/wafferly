@@ -1,5 +1,5 @@
-import '../../models/scheduled_action.dart';
-import '../../models/transaction.dart';
+import '../../../../models/scheduled_action.dart';
+import '../../../../models/transaction.dart';
 
 class ScheduledActionTransactionFactory {
   const ScheduledActionTransactionFactory();

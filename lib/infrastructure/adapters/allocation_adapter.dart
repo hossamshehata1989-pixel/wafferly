@@ -1,4 +1,4 @@
-import '../../financial_engine/planning/release_allocation_mutation.dart';
+import '../../financial_engine/mutations/release_allocation_mutation.dart';
 import '../../financial_engine/ports/allocation_port.dart';
 import '../../services/goal_allocation_service.dart';
 

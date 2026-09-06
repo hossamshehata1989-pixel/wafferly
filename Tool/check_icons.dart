@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:wafferly/data/categories_data.dart';
+import 'package:wafferly/config/category_config.dart';
 
 void main() {
   final missing = <String>[];
@@ -16,12 +16,12 @@ void main() {
     }
   }
 
-  for (final main in mainCategories) {
+  for (final main in [...expenseCategories, ...incomeCategories]) {
     checkId(main.id);
 
-    for (final sub in main.subCategories) {
-      checkId(sub.id);
-    }
+    for (final sub in main.subCategories ?? const []) {
+  checkId(sub.id);
+}
   }
 
   print('\n========== ICON CHECK REPORT ==========\n');
@@ -30,6 +30,7 @@ void main() {
     print('✅ All icons exist. Perfect 👌');
   } else {
     print('❌ Missing icons (${missing.length}):\n');
+
     for (final id in missing) {
       print('category_$id.svg OR sub_$id.svg');
     }
