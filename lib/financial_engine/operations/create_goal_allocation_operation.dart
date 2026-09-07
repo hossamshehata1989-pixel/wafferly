@@ -1,8 +1,10 @@
-import '../resolution/resolution.dart';
-import 'financial_operation.dart';
+import '../commands/shared/transaction_metadata.dart';
 import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
 import '../interpretation/normalized_intent.dart';
 import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
 
 final class CreateGoalAllocationOperation extends FinancialOperation {
   final String accountId;
@@ -10,11 +12,16 @@ final class CreateGoalAllocationOperation extends FinancialOperation {
   final double amount;
   final DateTime occurredAt;
 
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
+
   const CreateGoalAllocationOperation({
     required this.accountId,
     required this.goalId,
     required this.amount,
     required this.occurredAt,
+    required this.metadata,
+    required this.context,
     super.resolution,
   });
 
@@ -25,6 +32,8 @@ final class CreateGoalAllocationOperation extends FinancialOperation {
       goalId: goalId,
       amount: amount,
       occurredAt: occurredAt,
+      metadata: metadata,
+      context: context,
       resolution: resolution,
     );
   }
@@ -34,8 +43,11 @@ final class CreateGoalAllocationOperation extends FinancialOperation {
     required NormalizedIntent intent,
     required List<FinancialConstraint> constraints,
   }) {
-    throw UnimplementedError(
-      'CreateGoalAllocationOperation has not been migrated to the Financial Command Model yet.',
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
     );
   }
 }
