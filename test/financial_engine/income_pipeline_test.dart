@@ -10,16 +10,20 @@ import 'package:wafferly/financial_engine/commands/income/income_intent.dart';
 import 'package:wafferly/financial_engine/commands/shared/transaction_metadata.dart';
 import 'package:wafferly/financial_engine/execution_context/execution_context.dart';
 import 'package:wafferly/financial_engine/operations/income_operation.dart';
-import 'package:wafferly/financial_engine/resolution/resolution.dart';
 import 'package:wafferly/financial_engine/results/operation_result.dart';
 import 'package:wafferly/models/account.dart';
 import 'package:wafferly/models/enums/account_enums.dart';
+import 'package:wafferly/models/enums/entry_type.dart';
+import 'package:wafferly/models/enums/ledger_purpose.dart';
+import 'package:wafferly/models/ledger_entry.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/services/balance_service.dart';
 
 void main() {
   late Directory testDirectory;
   late Box<Transaction> transactionBox;
+  late Box<Account> accountsBox;
+  late Box<LedgerEntry> ledgerBox;
 
   setUpAll(() async {
     testDirectory = await Directory.systemTemp.createTemp(
@@ -44,22 +48,53 @@ void main() {
       Hive.registerAdapter(TransactionAdapter());
     }
 
-    await Hive.openBox<Transaction>('transactions');
-    await Hive.openBox<Account>('accounts');
+    if (!Hive.isAdapterRegistered(20)) {
+      Hive.registerAdapter(EntryTypeAdapter());
+    }
 
-    transactionBox = Hive.box<Transaction>('transactions');
+    if (!Hive.isAdapterRegistered(21)) {
+      Hive.registerAdapter(LedgerPurposeAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(22)) {
+      Hive.registerAdapter(LedgerEntryAdapter());
+    }
+
+    transactionBox = await Hive.openBox<Transaction>('transactions');
+    accountsBox = await Hive.openBox<Account>('accounts');
+    ledgerBox = await Hive.openBox<LedgerEntry>('ledger_entries');
   });
 
   tearDownAll(() async {
     await Hive.close();
-    await testDirectory.delete(recursive: true);
+
+    if (await testDirectory.exists()) {
+      await testDirectory.delete(recursive: true);
+    }
   });
 
   setUp(() async {
     await transactionBox.clear();
+    await accountsBox.clear();
+    await ledgerBox.clear();
+
+    await accountsBox.put(
+      'wallet',
+      Account(
+        id: 'wallet',
+        bookId: 'default',
+        memberId: 'owner',
+        name: 'Wallet',
+        type: 'wallet',
+        nature: AccountNature.asset,
+        currency: 'EGP',
+        createdAt: DateTime(2026, 1, 1),
+        group: AccountGroup.values.first,
+      ),
+    );
   });
 
-  test('Income operation creates one journal entry', () async {
+  test('Income operation creates one balanced journal entry', () async {
     final allocationRepository = MemoryAllocationRepository();
 
     final availableBalanceProjectionService =
@@ -81,19 +116,18 @@ void main() {
     );
 
     final operation = IncomeOperation(
-      intent: const IncomeIntent(
-        sourceAccountId: 'wallet',
-        categoryId: 'salary',
-        amount: 5000,
-        isExceptional: false,
-      ),
+  intent: const IncomeIntent(
+    sourceAccountId: 'wallet',
+    categoryId: 'salary',
+    amount: 5000,
+    isExceptional: false,
+  ),
       metadata: TransactionMetadata(
         occurredAt: DateTime(2026, 1, 1),
-        paymentMethod: 'cash',
+        paymentMethod: 'bank',
         currencyCode: 'EGP',
       ),
       context: executionContext,
-      resolution: Resolution.execute,
     );
 
     final result = await context.engine.execute(
@@ -122,8 +156,18 @@ void main() {
     final credit = entry.lines.last;
 
     expect(
+      debit.accountId,
+      'wallet',
+    );
+
+    expect(
       debit.debit,
       5000,
+    );
+
+    expect(
+      credit.accountId,
+      'income_account',
     );
 
     expect(
