@@ -66,12 +66,13 @@ import 'services/manual_reserve_application_service.dart';
 
 import 'services/balance_service.dart';
 import 'features/members/services/member_seeder.dart';
-import 'core/planning/ports/allocation_repository.dart';
 import 'core/planning/services/available_balance_projection_service.dart';
 import 'services/goal_allocation_service.dart';
 import 'services/goal_funding_projection_service.dart';
 import 'services/reserved_money_projection_service.dart';
-import 'core/planning/engine/guards/cannot_reserve_more_than_available_guard.dart';
+import 'services/ledger_account_seeder.dart';
+
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -259,6 +260,7 @@ void main() async {
   await Hive.openBox<Transaction>('transactions');
   await Hive.openBox<LedgerEntry>('ledger_entries');
   await Hive.openBox<LedgerAccount>('ledger_accounts');
+  await LedgerAccountSeeder().seedIfNeeded();
   await Hive.openBox<Budget>('budgets');
   await Hive.openBox<ReservedMoney>('reserved_money');
   await Hive.openBox<Goal>('goals');

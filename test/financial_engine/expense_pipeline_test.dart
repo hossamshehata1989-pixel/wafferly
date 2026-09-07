@@ -14,16 +14,25 @@ import 'package:wafferly/financial_engine/operations/expense_operation.dart';
 import 'package:wafferly/financial_engine/results/operation_result.dart';
 import 'package:wafferly/models/account.dart';
 import 'package:wafferly/models/enums/account_enums.dart';
+import 'package:wafferly/models/enums/entry_type.dart';
+import 'package:wafferly/models/enums/ledger_purpose.dart';
+import 'package:wafferly/models/ledger_account.dart';
+import 'package:wafferly/models/ledger_entry.dart';
+import 'package:wafferly/models/enums/ledger_account_type.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/services/balance_service.dart';
+import 'package:wafferly/services/ledger_account_seeder.dart';
 
 void main() {
   late Directory testDirectory;
   late Box<Transaction> transactionBox;
+  late Box<Account> accountsBox;
+  late Box<LedgerEntry> ledgerBox;
+  late Box<LedgerAccount> ledgerAccountsBox;
 
   setUpAll(() async {
     testDirectory = await Directory.systemTemp.createTemp(
-      'wafferly_financial_engine_test_',
+      'wafferly_expense_pipeline_test_',
     );
 
     Hive.init(testDirectory.path);
@@ -44,23 +53,64 @@ void main() {
       Hive.registerAdapter(TransactionAdapter());
     }
 
-    transactionBox = await Hive.openBox<Transaction>('transactions');
+    if (!Hive.isAdapterRegistered(20)) {
+      Hive.registerAdapter(EntryTypeAdapter());
+    }
 
-    // AccountService is constructed by FinancialEngineBootstrap.
-    // Its Hive account box must therefore exist as Box<Account>.
-    await Hive.openBox<Account>('accounts');
+    if (!Hive.isAdapterRegistered(21)) {
+      Hive.registerAdapter(LedgerPurposeAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(22)) {
+      Hive.registerAdapter(LedgerEntryAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(30)) {
+      Hive.registerAdapter(LedgerAccountTypeAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(31)) {
+      Hive.registerAdapter(LedgerAccountAdapter());
+    }
+
+    transactionBox = await Hive.openBox<Transaction>('transactions');
+    accountsBox = await Hive.openBox<Account>('accounts');
+    ledgerBox = await Hive.openBox<LedgerEntry>('ledger_entries');
+    ledgerAccountsBox = await Hive.openBox<LedgerAccount>('ledger_accounts');
+
+    await LedgerAccountSeeder().seedIfNeeded();
   });
 
   tearDownAll(() async {
     await Hive.close();
-    await testDirectory.delete(recursive: true);
+
+    if (await testDirectory.exists()) {
+      await testDirectory.delete(recursive: true);
+    }
   });
 
   setUp(() async {
     await transactionBox.clear();
+    await accountsBox.clear();
+    await ledgerBox.clear();
+
+    await accountsBox.put(
+      'wallet',
+      Account(
+        id: 'wallet',
+        bookId: 'default',
+        memberId: 'owner',
+        name: 'Wallet',
+        type: 'wallet',
+        nature: AccountNature.asset,
+        currency: 'EGP',
+        createdAt: DateTime(2026, 1, 1),
+        group: AccountGroup.values.first,
+      ),
+    );
   });
 
-  test('Expense operation creates one journal entry', () async {
+  test('Expense operation creates one balanced journal entry and ledger projection', () async {
     final allocationRepository = MemoryAllocationRepository();
 
     final availableBalanceProjectionService =
@@ -72,8 +122,6 @@ void main() {
       availableBalanceProjectionService: availableBalanceProjectionService,
     );
 
-    // Seed the source account with an opening balance so the
-    // BalanceDomainGuard can validate the expense.
     await transactionBox.put(
       'initial-wallet-balance',
       Transaction(
@@ -99,12 +147,12 @@ void main() {
     final operation = ExpenseOperation(
       intent: const ExpenseIntent(
         sourceAccountId: 'wallet',
-        categoryId: 'transport',
+        categoryId: 'dailyTransport',
         amount: 50,
         isExceptional: false,
       ),
       metadata: TransactionMetadata(
-        occurredAt: DateTime.now(),
+        occurredAt: DateTime(2026, 1, 1),
         paymentMethod: 'cash',
         currencyCode: 'EGP',
       ),
@@ -129,5 +177,34 @@ void main() {
 
     expect(debit.debit, 50);
     expect(credit.credit, 50);
+
+    final transaction = transactionBox.values.singleWhere(
+      (item) => item.type == TransactionType.expense,
+    );
+
+    final ledgerEntries = ledgerBox.values
+        .where((item) => item.transactionId == transaction.id)
+        .toList();
+
+    expect(ledgerEntries.length, 2);
+
+    final transportLedgerAccount = ledgerAccountsBox.values.singleWhere(
+      (account) => account.categoryId == 'dailyTransport',
+    );
+
+    final ledgerDebit = ledgerEntries.singleWhere(
+      (item) => item.entryType == EntryType.debit,
+    );
+    final ledgerCredit = ledgerEntries.singleWhere(
+      (item) => item.entryType == EntryType.credit,
+    );
+
+    expect(ledgerDebit.accountId, transportLedgerAccount.id);
+    expect(ledgerDebit.amount, 50);
+    expect(ledgerDebit.purpose, LedgerPurpose.expense);
+
+    expect(ledgerCredit.accountId, 'wallet');
+    expect(ledgerCredit.amount, 50);
+    expect(ledgerCredit.purpose, LedgerPurpose.expense);
   });
 }

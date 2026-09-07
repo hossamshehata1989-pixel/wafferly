@@ -15,15 +15,19 @@ import 'package:wafferly/models/account.dart';
 import 'package:wafferly/models/enums/account_enums.dart';
 import 'package:wafferly/models/enums/entry_type.dart';
 import 'package:wafferly/models/enums/ledger_purpose.dart';
+import 'package:wafferly/models/ledger_account.dart';
 import 'package:wafferly/models/ledger_entry.dart';
+import 'package:wafferly/models/enums/ledger_account_type.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/services/balance_service.dart';
+import 'package:wafferly/services/ledger_account_seeder.dart';
 
 void main() {
   late Directory testDirectory;
   late Box<Transaction> transactionBox;
   late Box<Account> accountsBox;
   late Box<LedgerEntry> ledgerBox;
+  late Box<LedgerAccount> ledgerAccountsBox;
 
   setUpAll(() async {
     testDirectory = await Directory.systemTemp.createTemp(
@@ -60,9 +64,20 @@ void main() {
       Hive.registerAdapter(LedgerEntryAdapter());
     }
 
+    if (!Hive.isAdapterRegistered(30)) {
+      Hive.registerAdapter(LedgerAccountTypeAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(31)) {
+      Hive.registerAdapter(LedgerAccountAdapter());
+    }
+
     transactionBox = await Hive.openBox<Transaction>('transactions');
     accountsBox = await Hive.openBox<Account>('accounts');
     ledgerBox = await Hive.openBox<LedgerEntry>('ledger_entries');
+    ledgerAccountsBox = await Hive.openBox<LedgerAccount>('ledger_accounts');
+
+    await LedgerAccountSeeder().seedIfNeeded();
   });
 
   tearDownAll(() async {
@@ -94,7 +109,7 @@ void main() {
     );
   });
 
-  test('Income operation creates one balanced journal entry', () async {
+  test('Income operation creates one balanced journal entry and ledger projection', () async {
     final allocationRepository = MemoryAllocationRepository();
 
     final availableBalanceProjectionService =
@@ -116,12 +131,12 @@ void main() {
     );
 
     final operation = IncomeOperation(
-  intent: const IncomeIntent(
-    sourceAccountId: 'wallet',
-    categoryId: 'salary',
-    amount: 5000,
-    isExceptional: false,
-  ),
+      intent: const IncomeIntent(
+        sourceAccountId: 'wallet',
+        categoryId: 'salary',
+        amount: 5000,
+        isExceptional: false,
+      ),
       metadata: TransactionMetadata(
         occurredAt: DateTime(2026, 1, 1),
         paymentMethod: 'bank',
@@ -135,44 +150,50 @@ void main() {
       executionContext,
     );
 
-    expect(
-      result,
-      isA<OperationSucceeded>(),
-    );
+    expect(result, isA<OperationSucceeded>());
 
-    expect(
-      context.repository.entries.length,
-      1,
-    );
+    expect(context.repository.entries.length, 1);
 
     final entry = context.repository.entries.single;
 
-    expect(
-      entry.lines.length,
-      2,
-    );
+    expect(entry.lines.length, 2);
 
     final debit = entry.lines.first;
     final credit = entry.lines.last;
 
-    expect(
-      debit.accountId,
-      'wallet',
+    expect(debit.accountId, 'wallet');
+    expect(debit.debit, 5000);
+
+    expect(credit.accountId, 'income_account');
+    expect(credit.credit, 5000);
+
+    final transaction = transactionBox.values.singleWhere(
+      (item) => item.type == 'income',
     );
 
-    expect(
-      debit.debit,
-      5000,
+    final ledgerEntries = ledgerBox.values
+        .where((item) => item.transactionId == transaction.id)
+        .toList();
+
+    expect(ledgerEntries.length, 2);
+
+    final salaryLedgerAccount = ledgerAccountsBox.values.singleWhere(
+      (account) => account.categoryId == 'salary',
     );
 
-    expect(
-      credit.accountId,
-      'income_account',
+    final ledgerDebit = ledgerEntries.singleWhere(
+      (item) => item.entryType == EntryType.debit,
+    );
+    final ledgerCredit = ledgerEntries.singleWhere(
+      (item) => item.entryType == EntryType.credit,
     );
 
-    expect(
-      credit.credit,
-      5000,
-    );
+    expect(ledgerDebit.accountId, 'wallet');
+    expect(ledgerDebit.amount, 5000);
+    expect(ledgerDebit.purpose, LedgerPurpose.income);
+
+    expect(ledgerCredit.accountId, salaryLedgerAccount.id);
+    expect(ledgerCredit.amount, 5000);
+    expect(ledgerCredit.purpose, LedgerPurpose.income);
   });
 }
