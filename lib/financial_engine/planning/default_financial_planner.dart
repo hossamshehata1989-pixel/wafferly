@@ -15,36 +15,41 @@ import '../../models/goal_activity.dart';
 
 final class DefaultFinancialPlanner implements FinancialPlanner {
   final ChartOfAccounts _chartOfAccounts;
-  final dynamic _transactionLookupPort;
 
   const DefaultFinancialPlanner({
     required ChartOfAccounts chartOfAccounts,
     dynamic transactionLookupPort,
-  }) : _chartOfAccounts = chartOfAccounts,
-       _transactionLookupPort = transactionLookupPort;
+  }) : _chartOfAccounts = chartOfAccounts;
 
   @override
   Future<FinancialExecutionPlan> build(PlanningContext context) async {
     final intent = context.intent;
+
     switch (intent.action) {
       case FinancialActionType.expense:
         return _planExpense(context);
+
       case FinancialActionType.income:
         return _planIncome(context);
+
       case FinancialActionType.transfer:
-  return _planTransfer(context);
+        return _planTransfer(context);
+
       case FinancialActionType.goalTransfer:
         return _planGoalTransfer(context);
+
       case FinancialActionType.createGoalAllocation:
         return _planGoalAllocation(intent);
-        case FinancialActionType.openingBalance:
-  return _planOpeningBalance(context);
 
-case FinancialActionType.correction:
-  return await _planCorrection(context);
+      case FinancialActionType.openingBalance:
+        return _planOpeningBalance(context);
 
-case FinancialActionType.deletion:
-  return await _planDeletion(context);
+      case FinancialActionType.correction:
+        return _planCorrection(context);
+
+      case FinancialActionType.deletion:
+        return _planDeletion(context);
+
       default:
         throw UnimplementedError(
           'Planner not implemented for ${intent.action}',
@@ -54,11 +59,15 @@ case FinancialActionType.deletion:
 
   FinancialExecutionPlan _planExpense(PlanningContext context) {
     final intent = context.intent;
+
     final categoryId =
         intent.categoryId ?? (throw StateError('Category is required'));
+
     final expenseAccountId =
         _chartOfAccounts.accountForCategory(categoryId) ??
-        (throw StateError('No account mapping found for category $categoryId'));
+            (throw StateError(
+              'No account mapping found for category $categoryId',
+            ));
 
     final transactionRecord = FinancialTransactionRecord(
       transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
@@ -86,22 +95,34 @@ case FinancialActionType.deletion:
           journalEntryId: 'journal-1',
           description: 'Expense',
           lines: [
-            EntryLine(accountId: expenseAccountId, debit: intent.amount),
-            EntryLine(accountId: intent.sourceAccountId, credit: intent.amount),
+            EntryLine(
+              accountId: expenseAccountId,
+              debit: intent.amount,
+            ),
+            EntryLine(
+              accountId: intent.sourceAccountId,
+              credit: intent.amount,
+            ),
           ],
         ),
-        CreateTransactionMutation(record: transactionRecord),
+        CreateTransactionMutation(
+          record: transactionRecord,
+        ),
       ],
     );
   }
 
   FinancialExecutionPlan _planIncome(PlanningContext context) {
     final intent = context.intent;
+
     final categoryId =
         intent.categoryId ?? (throw StateError('Category is required'));
+
     final incomeAccountId =
         _chartOfAccounts.accountForCategory(categoryId) ??
-        (throw StateError('No account mapping found for category $categoryId'));
+            (throw StateError(
+              'No account mapping found for category $categoryId',
+            ));
 
     final transactionRecord = FinancialTransactionRecord(
       transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
@@ -129,71 +150,82 @@ case FinancialActionType.deletion:
           journalEntryId: 'journal-1',
           description: 'Income',
           lines: [
-            EntryLine(accountId: intent.sourceAccountId, debit: intent.amount),
-            EntryLine(accountId: incomeAccountId, credit: intent.amount),
+            EntryLine(
+              accountId: intent.sourceAccountId,
+              debit: intent.amount,
+            ),
+            EntryLine(
+              accountId: incomeAccountId,
+              credit: intent.amount,
+            ),
           ],
         ),
-        CreateTransactionMutation(record: transactionRecord),
+        CreateTransactionMutation(
+          record: transactionRecord,
+        ),
       ],
     );
   }
 
-FinancialExecutionPlan _planTransfer(PlanningContext context) {
-  final intent = context.intent;
+  FinancialExecutionPlan _planTransfer(PlanningContext context) {
+    final intent = context.intent;
 
-  final destinationAccountId =
-      intent.destinationAccountId ??
-      (throw StateError('Destination account is required'));
+    final destinationAccountId =
+        intent.destinationAccountId ??
+            (throw StateError('Destination account is required'));
 
-  final transactionRecord = FinancialTransactionRecord(
-    transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
-    type: 'transfer',
-    fromAccountId: intent.sourceAccountId,
-    toAccountId: destinationAccountId,
-    categoryId: null,
-    subCategoryId: null,
-    amount: intent.amount,
-    currencyCode: context.metadata.currencyCode,
-    paymentMethod: context.metadata.paymentMethod,
-    occurredAt: context.metadata.occurredAt,
-    note: context.metadata.note,
-    isExceptional: intent.isExceptional,
-    source: 'manual',
-    actorMemberId: intent.actorMemberId,
-  );
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'transfer',
+      fromAccountId: intent.sourceAccountId,
+      toAccountId: destinationAccountId,
+      categoryId: null,
+      subCategoryId: null,
+      amount: intent.amount,
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: intent.isExceptional,
+      source: 'manual',
+      actorMemberId: intent.actorMemberId,
+    );
 
-  return FinancialExecutionPlan(
-    planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
-    operationId: 'operation',
-    idempotencyKey: 'temporary',
-    mutations: [
-      CreateTransactionMutation(
-        record: transactionRecord,
-      ),
-      JournalEntryMutation(
-        journalEntryId: 'journal-1',
-        description: 'Transfer',
-        lines: [
-          EntryLine(
-            accountId: destinationAccountId,
-            debit: intent.amount,
-          ),
-          EntryLine(
-            accountId: intent.sourceAccountId,
-            credit: intent.amount,
-          ),
-        ],
-      ),
-    ],
-  );
-}
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [
+        CreateTransactionMutation(
+          record: transactionRecord,
+        ),
+        JournalEntryMutation(
+          journalEntryId: 'journal-1',
+          description: 'Transfer',
+          lines: [
+            EntryLine(
+              accountId: destinationAccountId,
+              debit: intent.amount,
+            ),
+            EntryLine(
+              accountId: intent.sourceAccountId,
+              credit: intent.amount,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
   FinancialExecutionPlan _planGoalTransfer(PlanningContext context) {
     final intent = context.intent;
+
     final destinationAccountId =
         intent.destinationAccountId ??
-        (throw StateError('Savings account is required'));
-    final goalId = intent.goalId ?? (throw StateError('Goal id is required'));
+            (throw StateError('Savings account is required'));
+
+    final goalId =
+        intent.goalId ?? (throw StateError('Goal id is required'));
 
     final transactionRecord = FinancialTransactionRecord(
       transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
@@ -218,15 +250,23 @@ FinancialExecutionPlan _planTransfer(PlanningContext context) {
       idempotencyKey: 'temporary',
       mutations: [
         // 1. Transaction / financial truth
-        CreateTransactionMutation(record: transactionRecord),
+        CreateTransactionMutation(
+          record: transactionRecord,
+        ),
 
         // 2. Accounting
         JournalEntryMutation(
           journalEntryId: 'journal-1',
           description: 'Goal Transfer',
           lines: [
-            EntryLine(accountId: destinationAccountId, debit: intent.amount),
-            EntryLine(accountId: intent.sourceAccountId, credit: intent.amount),
+            EntryLine(
+              accountId: destinationAccountId,
+              debit: intent.amount,
+            ),
+            EntryLine(
+              accountId: intent.sourceAccountId,
+              credit: intent.amount,
+            ),
           ],
         ),
 
@@ -250,7 +290,8 @@ FinancialExecutionPlan _planTransfer(PlanningContext context) {
   }
 
   FinancialExecutionPlan _planGoalAllocation(NormalizedIntent intent) {
-    final goalId = intent.goalId ?? (throw StateError('Goal id is required'));
+    final goalId =
+        intent.goalId ?? (throw StateError('Goal id is required'));
 
     return FinancialExecutionPlan(
       planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
@@ -265,80 +306,86 @@ FinancialExecutionPlan _planTransfer(PlanningContext context) {
       ],
     );
   }
-  FinancialExecutionPlan _planOpeningBalance(PlanningContext context) {
-  final intent = context.intent;
 
-  const openingEquityAccountId =
-      ChartOfAccounts.openingBalanceEquityAccountId;
+  FinancialExecutionPlan _planOpeningBalance(
+    PlanningContext context,
+  ) {
+    final intent = context.intent;
 
-  final accountId = intent.sourceAccountId;
-  final amount = intent.amount;
+    const openingEquityAccountId =
+        ChartOfAccounts.openingBalanceEquityAccountId;
 
-  final accountReceivesDebit = !intent.isLiability;
+    final accountId = intent.sourceAccountId;
+    final amount = intent.amount;
+    final accountReceivesDebit = !intent.isLiability;
 
-  final transactionRecord = FinancialTransactionRecord(
-    transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
-    type: 'initial_balance',
-    fromAccountId: accountReceivesDebit ? null : accountId,
-    toAccountId: accountReceivesDebit ? accountId : null,
-    categoryId: 'initial_balance',
-    subCategoryId: null,
-    amount: amount,
-    currencyCode: context.metadata.currencyCode,
-    paymentMethod: context.metadata.paymentMethod,
-    occurredAt: context.metadata.occurredAt,
-    note: context.metadata.note,
-    isExceptional: false,
-    source: 'account_creation',
-    actorMemberId: null,
-  );
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'initial_balance',
+      fromAccountId: accountReceivesDebit ? null : accountId,
+      toAccountId: accountReceivesDebit ? accountId : null,
+      categoryId: 'initial_balance',
+      subCategoryId: null,
+      amount: amount,
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: false,
+      source: 'account_creation',
+      actorMemberId: null,
+    );
 
-  return FinancialExecutionPlan(
-    planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
-    operationId: 'operation',
-    idempotencyKey: 'temporary',
-    mutations: [
-      JournalEntryMutation(
-        journalEntryId: 'journal-1',
-        description: 'Opening Balance',
-        lines: accountReceivesDebit
-            ? [
-                EntryLine(
-                  accountId: accountId,
-                  debit: amount,
-                ),
-                EntryLine(
-                  accountId: openingEquityAccountId,
-                  credit: amount,
-                ),
-              ]
-            : [
-                EntryLine(
-                  accountId: openingEquityAccountId,
-                  debit: amount,
-                ),
-                EntryLine(
-                  accountId: accountId,
-                  credit: amount,
-                ),
-              ],
-      ),
-      CreateTransactionMutation(
-        record: transactionRecord,
-      ),
-    ],
-  );
-}
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [
+        JournalEntryMutation(
+          journalEntryId: 'journal-1',
+          description: 'Opening Balance',
+          lines: accountReceivesDebit
+              ? [
+                  EntryLine(
+                    accountId: accountId,
+                    debit: amount,
+                  ),
+                  EntryLine(
+                    accountId: openingEquityAccountId,
+                    credit: amount,
+                  ),
+                ]
+              : [
+                  EntryLine(
+                    accountId: openingEquityAccountId,
+                    debit: amount,
+                  ),
+                  EntryLine(
+                    accountId: accountId,
+                    credit: amount,
+                  ),
+                ],
+        ),
+        CreateTransactionMutation(
+          record: transactionRecord,
+        ),
+      ],
+    );
+  }
 
-FinancialExecutionPlan _planCorrection(PlanningContext context) {
-  throw UnimplementedError(
-    'Correction planning is not implemented yet',
-  );
-}
+  FinancialExecutionPlan _planCorrection(
+    PlanningContext context,
+  ) {
+    throw UnimplementedError(
+      'Correction planning is not implemented yet',
+    );
+  }
 
-FinancialExecutionPlan _planDeletion(PlanningContext context) {
-  throw UnimplementedError(
-    'Deletion planning is not implemented yet',
-  );
-}
+  FinancialExecutionPlan _planDeletion(
+    PlanningContext context,
+  ) {
+    throw UnimplementedError(
+      'Deletion planning is not implemented yet',
+    );
+  }
 }
