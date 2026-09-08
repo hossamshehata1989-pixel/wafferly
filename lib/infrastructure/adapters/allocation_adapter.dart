@@ -1,18 +1,25 @@
+import '../../core/planning/engine/planning_engine.dart';
+import '../../core/planning/operations/release_operation.dart';
+import '../../core/planning/value_objects/planning_source_type.dart';
 import '../../financial_engine/mutations/release_allocation_mutation.dart';
 import '../../financial_engine/ports/allocation_port.dart';
-import '../../services/goal_allocation_service.dart';
 
 final class AllocationAdapter implements AllocationPort {
-  final GoalAllocationService service;
+  final PlanningEngine planningEngine;
 
-  const AllocationAdapter({required this.service});
+  const AllocationAdapter({required this.planningEngine});
 
   @override
   Future<void> releaseAllocation(ReleaseAllocationMutation mutation) {
-    return service.reduceAllocation(
-      goalId: mutation.goalId,
+    final operation = ReleaseOperation(
+      id: 'release-${mutation.goalId}-${mutation.accountId}-${mutation.amount}',
+      createdAt: DateTime.now(),
+      sourceId: mutation.goalId,
+      sourceType: PlanningSourceType.goal,
       accountId: mutation.accountId,
-      reductionAmount: mutation.amount,
+      amount: mutation.amount,
     );
+
+    return planningEngine.execute(operation);
   }
 }

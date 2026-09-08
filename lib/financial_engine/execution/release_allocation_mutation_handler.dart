@@ -7,7 +7,7 @@ final class ReleaseAllocationMutationHandler
   final AllocationPort _port;
 
   const ReleaseAllocationMutationHandler({required AllocationPort port})
-    : _port = port;
+      : _port = port;
 
   @override
   Future<void> execute(ReleaseAllocationMutation mutation) {

@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 
 import 'package:wafferly/bootstrap/financial_engine_bootstrap.dart';
-import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/core/planning/infrastructure/repositories/memory_allocation_repository.dart';
 import 'package:wafferly/core/planning/services/available_balance_projection_service.dart';
 import 'package:wafferly/financial_engine/commands/shared/transaction_metadata.dart';
@@ -15,16 +14,21 @@ import 'package:wafferly/financial_engine/results/operation_result.dart';
 import 'package:wafferly/models/account.dart';
 import 'package:wafferly/models/enums/account_enums.dart';
 import 'package:wafferly/models/transaction.dart';
+import 'package:wafferly/constants/transaction_constants.dart';
+import 'package:wafferly/models/ledger_account.dart';
+import 'package:wafferly/models/enums/ledger_account_type.dart';
 import 'package:wafferly/models/ledger_entry.dart';
 import 'package:wafferly/models/enums/entry_type.dart';
 import 'package:wafferly/models/enums/ledger_purpose.dart';
 import 'package:wafferly/services/balance_service.dart';
+import 'package:wafferly/services/ledger_account_seeder.dart';
 
 void main() {
   late Directory testDirectory;
   late Box<Transaction> transactionBox;
   late Box<Account> accountsBox;
   late Box<LedgerEntry> ledgerBox;
+  late Box<LedgerAccount> ledgerAccountsBox;
 
   setUpAll(() async {
     testDirectory = await Directory.systemTemp.createTemp(
@@ -61,9 +65,21 @@ void main() {
       Hive.registerAdapter(LedgerEntryAdapter());
     }
 
+    if (!Hive.isAdapterRegistered(30)) {
+      Hive.registerAdapter(LedgerAccountTypeAdapter());
+    }
+
+    if (!Hive.isAdapterRegistered(31)) {
+      Hive.registerAdapter(LedgerAccountAdapter());
+    }
+
     transactionBox = await Hive.openBox<Transaction>('transactions');
     accountsBox = await Hive.openBox<Account>('accounts');
     ledgerBox = await Hive.openBox<LedgerEntry>('ledger_entries');
+    ledgerAccountsBox =
+        await Hive.openBox<LedgerAccount>('ledger_accounts');
+
+    await LedgerAccountSeeder().seedIfNeeded();
   });
 
   tearDownAll(() async {
@@ -78,6 +94,7 @@ void main() {
     await transactionBox.clear();
     await accountsBox.clear();
     await ledgerBox.clear();
+    await ledgerAccountsBox.clear();
 
     await accountsBox.put(
       'wallet',
@@ -108,20 +125,9 @@ void main() {
         group: AccountGroup.values.first,
       ),
     );
-  });
 
-  test('Transfer operation creates one balanced journal entry', () async {
-    final allocationRepository = MemoryAllocationRepository();
-
-    final availableBalanceProjectionService =
-        AvailableBalanceProjectionService(
-      allocationRepository: allocationRepository,
-    );
-
-    final balanceService = BalanceService(
-      availableBalanceProjectionService: availableBalanceProjectionService,
-    );
-
+    // Seed the source account with an opening balance so the
+    // BalanceDomainGuard can validate the transfer.
     await transactionBox.put(
       'initial-wallet-balance',
       Transaction(
@@ -134,73 +140,94 @@ void main() {
         currencyCode: 'EGP',
       ),
     );
-
-    final context = FinancialEngineBootstrap.create(
-      balanceService: balanceService,
-      transactionBox: transactionBox,
-    );
-
-    const executionContext = ExecutionContext(
-      idempotencyKey: 'transfer-test',
-    );
-
-    final operation = TransferOperation(
-      intent: const TransferIntent(
-        fromAccountId: 'wallet',
-        toAccountId: 'bank',
-        amount: 100,
-      ),
-      metadata: TransactionMetadata(
-        occurredAt: DateTime(2026, 1, 1),
-        paymentMethod: 'cash',
-        currencyCode: 'EGP',
-      ),
-      context: executionContext,
-    );
-
-    final result = await context.engine.execute(
-      operation,
-      executionContext,
-    );
-
-    expect(
-      result,
-      isA<OperationSucceeded>(),
-    );
-
-    expect(
-      context.repository.entries.length,
-      1,
-    );
-
-    final entry = context.repository.entries.single;
-
-    expect(
-      entry.lines.length,
-      2,
-    );
-
-    final debit = entry.lines.first;
-    final credit = entry.lines.last;
-
-    expect(
-      debit.accountId,
-      'bank',
-    );
-
-    expect(
-      debit.debit,
-      100,
-    );
-
-    expect(
-      credit.accountId,
-      'wallet',
-    );
-
-    expect(
-      credit.credit,
-      100,
-    );
   });
+
+  test(
+    'Transfer operation creates one balanced journal entry and ledger projection',
+    () async {
+      final allocationRepository = MemoryAllocationRepository();
+
+      final availableBalanceProjectionService =
+          AvailableBalanceProjectionService(
+        allocationRepository: allocationRepository,
+      );
+
+      final balanceService = BalanceService(
+        availableBalanceProjectionService: availableBalanceProjectionService,
+      );
+
+      final context = FinancialEngineBootstrap.create(
+        balanceService: balanceService,
+        transactionBox: transactionBox,
+      );
+
+      const executionContext = ExecutionContext(
+        idempotencyKey: 'transfer-test',
+      );
+
+      final operation = TransferOperation(
+        intent: const TransferIntent(
+          fromAccountId: 'wallet',
+          toAccountId: 'bank',
+          amount: 100,
+        ),
+        metadata: TransactionMetadata(
+          occurredAt: DateTime(2026, 1, 1),
+          paymentMethod: 'cash',
+          currencyCode: 'EGP',
+        ),
+        context: executionContext,
+      );
+
+      final result = await context.engine.execute(
+        operation,
+        executionContext,
+      );
+
+      expect(result, isA<OperationSucceeded>());
+
+      // Accounting intent produced by the Planner.
+      expect(context.repository.entries.length, 1);
+
+      final journalEntry = context.repository.entries.single;
+
+      expect(journalEntry.lines.length, 2);
+
+      final debit = journalEntry.lines.first;
+      final credit = journalEntry.lines.last;
+
+      expect(debit.accountId, 'bank');
+      expect(debit.debit, 100);
+
+      expect(credit.accountId, 'wallet');
+      expect(credit.credit, 100);
+
+      // Persisted transaction created by the canonical Transaction write path.
+      final transaction = transactionBox.values.singleWhere(
+        (item) => item.type == 'transfer',
+      );
+
+      // Persisted Ledger projection created from the FinancialTransactionRecord.
+      final ledgerEntries = ledgerBox.values
+          .where((item) => item.transactionId == transaction.id)
+          .toList();
+
+      expect(ledgerEntries.length, 2);
+
+      final ledgerDebit = ledgerEntries.singleWhere(
+        (item) => item.entryType == EntryType.debit,
+      );
+      final ledgerCredit = ledgerEntries.singleWhere(
+        (item) => item.entryType == EntryType.credit,
+      );
+
+      expect(ledgerDebit.accountId, 'bank');
+      expect(ledgerDebit.amount, 100);
+      expect(ledgerDebit.purpose, LedgerPurpose.transfer);
+
+      expect(ledgerCredit.accountId, 'wallet');
+      expect(ledgerCredit.amount, 100);
+      expect(ledgerCredit.purpose, LedgerPurpose.transfer);
+    },
+  );
 }

@@ -1,24 +1,32 @@
-import '../resolution/resolution.dart';
-import 'financial_operation.dart';
 import '../domain_guard/financial_constraint.dart';
 import '../interpretation/normalized_intent.dart';
 import '../planning/planning_context.dart';
+import '../commands/shared/transaction_metadata.dart';
+import '../execution_context/execution_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
 
+/// Financial operation for moving real money from an account into
+/// a savings account in the context of a Goal.
+///
+/// The operation itself carries the command metadata/context needed by the
+/// Financial Command Model. Planning and execution decisions remain outside
+/// this value object.
 final class GoalTransferOperation extends FinancialOperation {
   final String sourceAccountId;
   final String savingsAccountId;
   final String goalId;
   final double amount;
-  final DateTime occurredAt;
-  final String? note;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
 
   const GoalTransferOperation({
     required this.sourceAccountId,
     required this.savingsAccountId,
     required this.goalId,
     required this.amount,
-    required this.occurredAt,
-    this.note,
+    required this.metadata,
+    required this.context,
     super.resolution,
   });
 
@@ -29,8 +37,8 @@ final class GoalTransferOperation extends FinancialOperation {
       savingsAccountId: savingsAccountId,
       goalId: goalId,
       amount: amount,
-      occurredAt: occurredAt,
-      note: note,
+      metadata: metadata,
+      context: context,
       resolution: resolution,
     );
   }
@@ -40,8 +48,11 @@ final class GoalTransferOperation extends FinancialOperation {
     required NormalizedIntent intent,
     required List<FinancialConstraint> constraints,
   }) {
-    throw UnimplementedError(
-      'GoalTransferOperation has not been migrated to the Financial Command Model yet.',
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
     );
   }
 }

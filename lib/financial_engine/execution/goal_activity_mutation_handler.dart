@@ -7,7 +7,7 @@ final class GoalActivityMutationHandler
   final GoalActivityPort _port;
 
   const GoalActivityMutationHandler({required GoalActivityPort port})
-    : _port = port;
+      : _port = port;
 
   @override
   Future<void> execute(GoalActivityMutation mutation) {
