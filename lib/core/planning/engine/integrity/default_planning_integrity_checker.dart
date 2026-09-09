@@ -1,9 +1,29 @@
 import '../planner/planning_execution_plan.dart';
+import '../planner/planning_mutation.dart';
 
 import 'planning_integrity_checker.dart';
 
 /// ===============================================================
 /// DefaultPlanningIntegrityChecker
+/// ===============================================================
+///
+/// Validates the final PlanningExecutionPlan immediately before
+/// execution.
+///
+/// Responsibilities:
+/// - Validate the structural integrity of the complete plan.
+/// - Validate mutation payloads.
+/// - Validate mutation ordering constraints that can be proven
+///   without accessing repositories or external state.
+///
+/// This checker intentionally does NOT:
+/// - validate business rules owned by Guards,
+/// - make planning decisions,
+/// - access AllocationRepository,
+/// - calculate available balance,
+/// - mutate any state,
+/// - execute mutations.
+///
 /// ===============================================================
 final class DefaultPlanningIntegrityChecker
     implements PlanningIntegrityChecker {
@@ -11,6 +31,217 @@ final class DefaultPlanningIntegrityChecker
 
   @override
   Future<void> validate(PlanningExecutionPlan plan) async {
-    // No integrity rules yet.
+    _validatePlan(plan);
+  }
+
+  // ===============================================================
+  // Plan validation
+  // ===============================================================
+
+  void _validatePlan(PlanningExecutionPlan plan) {
+    if (plan.mutations.isEmpty) {
+      throw StateError(
+        'Planning execution plan must contain at least one mutation.',
+      );
+    }
+
+    final deactivatedAllocationIds = <String>{};
+
+    for (var index = 0; index < plan.mutations.length; index++) {
+      final mutation = plan.mutations[index];
+
+      switch (mutation) {
+        case CreateAllocationMutation():
+          _validateCreateMutation(
+            mutation,
+            index: index,
+            deactivatedAllocationIds: deactivatedAllocationIds,
+          );
+
+        case IncreaseAllocationMutation():
+          _validateIncreaseMutation(
+            mutation,
+            index: index,
+            deactivatedAllocationIds: deactivatedAllocationIds,
+          );
+
+        case DecreaseAllocationMutation():
+          _validateDecreaseMutation(
+            mutation,
+            index: index,
+            deactivatedAllocationIds: deactivatedAllocationIds,
+          );
+
+        case DeactivateAllocationMutation():
+          _validateDeactivateMutation(
+            mutation,
+            index: index,
+            deactivatedAllocationIds: deactivatedAllocationIds,
+          );
+      }
+    }
+  }
+
+  // ===============================================================
+  // Create
+  // ===============================================================
+
+  void _validateCreateMutation(
+    CreateAllocationMutation mutation, {
+    required int index,
+    required Set<String> deactivatedAllocationIds,
+  }) {
+    _requireNonBlank(
+      mutation.allocationId,
+      field: 'allocationId',
+      mutationIndex: index,
+    );
+
+    _requireNonBlank(
+      mutation.sourceId,
+      field: 'sourceId',
+      mutationIndex: index,
+    );
+
+    _requireNonBlank(
+      mutation.accountId,
+      field: 'accountId',
+      mutationIndex: index,
+    );
+
+    _requirePositiveFiniteAmount(
+      mutation.amount,
+      field: 'amount',
+      mutationIndex: index,
+    );
+
+    if (deactivatedAllocationIds.contains(mutation.allocationId)) {
+      throw StateError(
+        'Invalid planning execution plan at mutation $index: '
+        'allocation "${mutation.allocationId}" is already deactivated.',
+      );
+    }
+  }
+
+  // ===============================================================
+  // Increase
+  // ===============================================================
+
+  void _validateIncreaseMutation(
+    IncreaseAllocationMutation mutation, {
+    required int index,
+    required Set<String> deactivatedAllocationIds,
+  }) {
+    _requireNonBlank(
+      mutation.allocationId,
+      field: 'allocationId',
+      mutationIndex: index,
+    );
+
+    _requirePositiveFiniteAmount(
+      mutation.amount,
+      field: 'amount',
+      mutationIndex: index,
+    );
+
+    _ensureNotDeactivated(
+      allocationId: mutation.allocationId,
+      mutationIndex: index,
+      deactivatedAllocationIds: deactivatedAllocationIds,
+    );
+  }
+
+  // ===============================================================
+  // Decrease
+  // ===============================================================
+
+  void _validateDecreaseMutation(
+    DecreaseAllocationMutation mutation, {
+    required int index,
+    required Set<String> deactivatedAllocationIds,
+  }) {
+    _requireNonBlank(
+      mutation.allocationId,
+      field: 'allocationId',
+      mutationIndex: index,
+    );
+
+    _requirePositiveFiniteAmount(
+      mutation.amount,
+      field: 'amount',
+      mutationIndex: index,
+    );
+
+    _ensureNotDeactivated(
+      allocationId: mutation.allocationId,
+      mutationIndex: index,
+      deactivatedAllocationIds: deactivatedAllocationIds,
+    );
+  }
+
+  // ===============================================================
+  // Deactivate
+  // ===============================================================
+
+  void _validateDeactivateMutation(
+    DeactivateAllocationMutation mutation, {
+    required int index,
+    required Set<String> deactivatedAllocationIds,
+  }) {
+    _requireNonBlank(
+      mutation.allocationId,
+      field: 'allocationId',
+      mutationIndex: index,
+    );
+
+    if (!deactivatedAllocationIds.add(mutation.allocationId)) {
+      throw StateError(
+        'Invalid planning execution plan at mutation $index: '
+        'allocation "${mutation.allocationId}" is deactivated more than once.',
+      );
+    }
+  }
+
+  // ===============================================================
+  // Shared validation helpers
+  // ===============================================================
+
+  void _requireNonBlank(
+    String value, {
+    required String field,
+    required int mutationIndex,
+  }) {
+    if (value.trim().isEmpty) {
+      throw StateError(
+        'Invalid planning execution plan at mutation $mutationIndex: '
+        '$field must not be blank.',
+      );
+    }
+  }
+
+  void _requirePositiveFiniteAmount(
+    double amount, {
+    required String field,
+    required int mutationIndex,
+  }) {
+    if (!amount.isFinite || amount <= 0) {
+      throw StateError(
+        'Invalid planning execution plan at mutation $mutationIndex: '
+        '$field must be finite and greater than zero.',
+      );
+    }
+  }
+
+  void _ensureNotDeactivated({
+    required String allocationId,
+    required int mutationIndex,
+    required Set<String> deactivatedAllocationIds,
+  }) {
+    if (deactivatedAllocationIds.contains(allocationId)) {
+      throw StateError(
+        'Invalid planning execution plan at mutation $mutationIndex: '
+        'allocation "$allocationId" is already deactivated.',
+      );
+    }
   }
 }

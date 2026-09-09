@@ -33,19 +33,19 @@ final class DefaultPlanningExecutor implements PlanningExecutor {
           );
 
         case IncreaseAllocationMutation():
-          final allocation = await repository.findById(mutation.allocationId);
+  final allocation = await repository.findById(mutation.allocationId);
 
-          if (allocation == null) {
-            throw StateError('Allocation not found.');
-          }
+  if (allocation == null) {
+    throw StateError('Allocation not found.');
+  }
 
-          await repository.update(
-            allocation.copyWith(
-              amount: allocation.amount + mutation.amount,
-              version: allocation.version + 1,
-              updatedAt: DateTime.now(),
-            ),
-          );
+  await repository.update(
+    allocation.copyWith(
+      amount: allocation.amount + mutation.amount,
+      version: allocation.version + 1,
+      updatedAt: DateTime.now(),
+    ),
+  );
 
         case DecreaseAllocationMutation():
           final allocation = await repository.findById(mutation.allocationId);
