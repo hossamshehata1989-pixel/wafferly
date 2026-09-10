@@ -45,6 +45,8 @@ class AccountTypeAdapter extends TypeAdapter<AccountType> {
         return AccountType.realSaving;
       case 15:
         return AccountType.savingCircle;
+      case 16:
+        return AccountType.moneyBorrowed;
       default:
         return AccountType.cash;
     }
@@ -100,6 +102,9 @@ class AccountTypeAdapter extends TypeAdapter<AccountType> {
         break;
       case AccountType.savingCircle:
         writer.writeByte(15);
+        break;
+      case AccountType.moneyBorrowed:
+        writer.writeByte(16);
         break;
     }
   }

@@ -38,6 +38,9 @@ enum AccountType {
 
   @HiveField(15)
   savingCircle,
+
+  @HiveField(16)
+  moneyBorrowed,
 }
 
 extension AccountTypeExtension on AccountType {
@@ -75,6 +78,8 @@ extension AccountTypeExtension on AccountType {
         return 'realSaving';
       case AccountType.savingCircle:
         return 'savingCircle';
+        case AccountType.moneyBorrowed:
+        return 'moneyBorrowed';
     }
   }
 
@@ -112,6 +117,8 @@ extension AccountTypeExtension on AccountType {
         return AccountType.realSaving;
       case 'savingCircle':
         return AccountType.savingCircle;
+              case 'moneyBorrowed':
+        return AccountType.moneyBorrowed;
       default:
         return AccountType.cash;
     }

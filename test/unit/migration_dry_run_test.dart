@@ -1,23 +1,30 @@
-// test/unit/migration_dry_run_test.dart
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+
 import 'package:wafferly/models/account.dart';
 import 'package:wafferly/models/enums/account_enums.dart';
 import 'package:wafferly/utils/account_mapper.dart';
 
 void main() async {
+  late String testPath;
+
   setUpAll(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await Hive.initFlutter();
+    testPath = Directory.systemTemp
+        .createTempSync('wafferly_migration_test_')
+        .path;
+
+    Hive.init(testPath);
 
     if (!Hive.isAdapterRegistered(1)) {
       Hive.registerAdapter(AccountAdapter());
     }
+
     if (!Hive.isAdapterRegistered(2)) {
       Hive.registerAdapter(AccountNatureAdapter());
     }
+
     if (!Hive.isAdapterRegistered(3)) {
       Hive.registerAdapter(AccountGroupAdapter());
     }
@@ -26,35 +33,51 @@ void main() async {
   });
 
   tearDownAll(() async {
-    await Hive.deleteBoxFromDisk('migration_test_accounts');
+    if (Hive.isBoxOpen('migration_test_accounts')) {
+      final box = Hive.box<Account>('migration_test_accounts');
+
+      await box.clear();
+      await box.close();
+    }
+
+    final directory = Directory(testPath);
+
+    if (directory.existsSync()) {
+      await directory.delete(recursive: true);
+    }
   });
 
   tearDown(() async {
-    await Hive.box<Account>('migration_test_accounts').clear();
+    if (Hive.isBoxOpen('migration_test_accounts')) {
+      await Hive.box<Account>('migration_test_accounts').clear();
+    }
   });
 
   Future<Account> createLegacyAccount({
-    required String name,
-    required String type,
-    required AccountNature nature,
-    required AccountGroup group,
-  }) async {
-    final box = Hive.box<Account>('migration_test_accounts');
-    final account = Account(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      bookId: 'test',
-      memberId: 'tester',
-      name: name,
-      type: type,
-      currency: 'EGP',
-      createdAt: DateTime.now(),
-      group: group,
-      nature: nature,
-      isArchived: false,
-    );
-    await box.put(account.id, account);
-    return account;
-  }
+  required String name,
+  required String type,
+  required AccountNature nature,
+  required AccountGroup group,
+}) async {
+  final box = Hive.box<Account>('migration_test_accounts');
+
+  final account = Account(
+    id: '${type}_${name.replaceAll(' ', '_')}',
+    bookId: 'test',
+    memberId: 'tester',
+    name: name,
+    type: type,
+    currency: 'EGP',
+    createdAt: DateTime.now(),
+    group: group,
+    nature: nature,
+    isArchived: false,
+  );
+
+  await box.put(account.id, account);
+
+  return account;
+}
 
   group('Migration Dry Run - Nature Migration', () {
     late Box<Account> box;
@@ -66,35 +89,35 @@ void main() async {
         name: 'Legacy Debt',
         type: 'debt',
         nature: AccountNature.asset,
-        group: AccountGroup.moneyYouOwe,
+        group: AccountGroup.liabilities,
       );
 
       await createLegacyAccount(
         name: 'Legacy Loan',
         type: 'loan',
         nature: AccountNature.asset,
-        group: AccountGroup.moneyYouOwe,
+        group: AccountGroup.liabilities,
       );
 
       await createLegacyAccount(
         name: 'Legacy Credit Card',
         type: 'creditCard',
         nature: AccountNature.asset,
-        group: AccountGroup.moneyYouOwe,
+        group: AccountGroup.liabilities,
       );
 
       await createLegacyAccount(
         name: 'Legacy Installment',
         type: 'installment',
         nature: AccountNature.asset,
-        group: AccountGroup.moneyYouOwe,
+        group: AccountGroup.liabilities,
       );
 
       await createLegacyAccount(
         name: 'Correct Cash',
         type: 'cash',
         nature: AccountNature.asset,
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
       );
 
       await createLegacyAccount(
@@ -107,10 +130,12 @@ void main() async {
 
     test('Migration Dry Run - Scan and Identify', () async {
       final allAccounts = box.values.toList();
+
       int needsNatureMigration = 0;
 
       for (final account in allAccounts) {
         final expectedNature = resolveNature(account.type);
+
         if (account.nature != expectedNature) {
           needsNatureMigration++;
         }
@@ -125,70 +150,82 @@ void main() async {
 
     setUp(() async {
       box = Hive.box<Account>('migration_test_accounts');
+
       await box.clear();
 
       await createLegacyAccount(
         name: 'Legacy Gold',
         type: 'gold',
         nature: AccountNature.asset,
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
       );
 
       await createLegacyAccount(
         name: 'Legacy Stocks',
         type: 'stocks',
         nature: AccountNature.asset,
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
       );
 
       await createLegacyAccount(
         name: 'Legacy Certificates',
         type: 'certificates',
         nature: AccountNature.asset,
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
       );
 
       await createLegacyAccount(
         name: 'Legacy Lent',
         type: 'lent',
         nature: AccountNature.asset,
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
       );
 
       await createLegacyAccount(
         name: 'Legacy Rosca',
         type: 'rosca',
         nature: AccountNature.asset,
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
       );
 
       await createLegacyAccount(
         name: 'Legacy Credit Card Group',
         type: 'creditCard',
         nature: AccountNature.liability,
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
       );
 
       await createLegacyAccount(
         name: 'Legacy Loan Group',
         type: 'loan',
         nature: AccountNature.liability,
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
       );
     });
 
     test('Migration Dry Run - Group Migration Scan', () async {
       final allAccounts = box.values.toList();
+
       int needsGroupMigration = 0;
 
-      for (final account in allAccounts) {
-        final expectedGroup = resolveGroup(account.type);
-        if (account.group != expectedGroup) {
-          needsGroupMigration++;
-        }
-      }
+for (final account in allAccounts) {
+  final expectedGroup = resolveGroup(account.type);
 
-      expect(needsGroupMigration, 7);
+  print(
+    'MIGRATION CHECK: '
+    '${account.type} | '
+    'current=${account.group} | '
+    'expected=$expectedGroup',
+  );
+
+  if (account.group != expectedGroup) {
+    needsGroupMigration++;
+  }
+}
+
+print('MIGRATION GROUP COUNT: $needsGroupMigration');
+
+expect(needsGroupMigration, 7);
     });
   });
 
@@ -202,7 +239,7 @@ void main() async {
         type: 'loan',
         currency: 'EGP',
         createdAt: DateTime.now(),
-        group: AccountGroup.moneyYouHave,
+        group: AccountGroup.liquidity,
         nature: AccountNature.asset,
         isArchived: false,
       );
@@ -233,7 +270,7 @@ void main() async {
           type: 'loan',
           currency: 'EGP',
           createdAt: DateTime.now(),
-          group: AccountGroup.moneyYouHave,
+          group: AccountGroup.liquidity,
           nature: AccountNature.asset,
           isArchived: false,
         ),
@@ -245,7 +282,7 @@ void main() async {
           type: 'cash',
           currency: 'EGP',
           createdAt: DateTime.now(),
-          group: AccountGroup.moneyYouHave,
+          group: AccountGroup.liquidity,
           nature: AccountNature.asset,
           isArchived: false,
         ),
@@ -258,18 +295,24 @@ void main() async {
         );
       }).toList();
 
-      final balances = {'loan_1': -50000.0, 'cash_1': 10000.0};
+      final balances = {
+        'loan_1': -50000.0,
+        'cash_1': 10000.0,
+      };
 
       double calculateNetWorth(List<Account> accounts) {
         double total = 0;
+
         for (final account in accounts) {
           final balance = balances[account.id] ?? 0;
+
           if (account.nature == AccountNature.asset) {
             total += balance;
           } else if (account.nature == AccountNature.liability) {
             total -= balance.abs();
           }
         }
+
         return total;
       }
 
