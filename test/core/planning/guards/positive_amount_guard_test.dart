@@ -5,7 +5,7 @@ import 'package:wafferly/core/planning/engine/interpreter/planning_interpreter.d
 import 'package:wafferly/core/planning/engine/planning_execution_context.dart';
 import 'package:wafferly/core/planning/operations/reserve_operation.dart';
 import 'package:wafferly/core/planning/value_objects/planning_source_type.dart';
-
+import 'package:wafferly/core/money/money.dart';
 void main() {
   group('PositiveAmountGuard', () {
     const guard = PositiveAmountGuard();
@@ -18,7 +18,7 @@ void main() {
           sourceId: 'goal',
           sourceType: PlanningSourceType.goal,
           accountId: 'cash',
-          amount: 500,
+          amount: Money.parse('500'),
         ),
         intent: PlanningIntent.reserve,
       );
@@ -34,7 +34,7 @@ void main() {
           sourceId: 'goal',
           sourceType: PlanningSourceType.goal,
           accountId: 'cash',
-          amount: 0,
+          amount: Money.zero,
         ),
         intent: PlanningIntent.reserve,
       );
@@ -50,8 +50,8 @@ void main() {
           sourceId: 'goal',
           sourceType: PlanningSourceType.goal,
           accountId: 'cash',
-          amount: -250,
-        ),
+amount: Money.parse('-250'),  
+      ),
         intent: PlanningIntent.reserve,
       );
 

@@ -1,3 +1,5 @@
+import '../../../core/money/money.dart';
+
 import '../ports/allocation_repository.dart';
 import '../projections/available_balance_projection.dart';
 import '../value_objects/allocation_status.dart';
@@ -40,17 +42,23 @@ final class AvailableBalanceProjectionService {
     required String accountId,
     required double balance,
   }) async {
-    final allocations = await _allocationRepository.findByAccount(accountId);
+    final allocations =
+        await _allocationRepository.findByAccount(accountId);
 
     final reserved = allocations
         .where((allocation) => allocation.status == AllocationStatus.active)
-        .fold<double>(0, (total, allocation) => total + allocation.amount);
+        .fold<Money>(
+          Money.zero,
+          (total, allocation) => total + allocation.amount,
+        );
+
+    final moneyBalance = Money.fromDouble(balance);
 
     return AvailableBalanceProjection(
       accountId: accountId,
-      balance: balance,
+      balance: moneyBalance,
       reserved: reserved,
-      available: balance - reserved,
+      available: moneyBalance - reserved,
     );
   }
 }

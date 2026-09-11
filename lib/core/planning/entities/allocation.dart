@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../value_objects/allocation_status.dart';
 import '../value_objects/planning_source_type.dart';
-
+import '../../../core/money/money.dart';
 /// ===============================================================
 /// Allocation
 /// ===============================================================
@@ -54,7 +54,7 @@ final class Allocation {
   final String accountId;
 
   /// Reserved amount.
-  final double amount;
+  final Money amount;
 
   /// Current lifecycle state.
   final AllocationStatus status;
@@ -73,7 +73,7 @@ final class Allocation {
     String? sourceId,
     PlanningSourceType? sourceType,
     String? accountId,
-    double? amount,
+    Money? amount,
     AllocationStatus? status,
     int? version,
     DateTime? createdAt,

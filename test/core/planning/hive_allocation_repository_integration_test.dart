@@ -1,10 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+
+import 'package:wafferly/core/money/money.dart';
 import 'package:hive/hive.dart';
 
 import 'package:wafferly/core/planning/bootstrap/planning_engine_bootstrap.dart';
-import 'package:wafferly/core/planning/entities/allocation.dart';
 import 'package:wafferly/core/planning/infrastructure/persistence/hive_allocation_record.dart';
 import 'package:wafferly/core/planning/infrastructure/repositories/hive_allocation_repository.dart';
 import 'package:wafferly/core/planning/operations/reserve_operation.dart';
@@ -55,7 +56,7 @@ void main() {
       sourceId: sourceId,
       sourceType: PlanningSourceType.manual,
       accountId: 'account-001',
-      amount: 1500,
+      amount: Money.parse('1500'),
     );
 
     await engine.execute(operation);
@@ -69,7 +70,7 @@ void main() {
     expect(allocation.sourceId, sourceId);
     expect(allocation.sourceType, PlanningSourceType.manual);
     expect(allocation.accountId, 'account-001');
-    expect(allocation.amount, 1500);
+    expect(allocation.amount, Money.parse('1500'));
     expect(allocation.status, AllocationStatus.active);
 
     expect(box.length, 1);
@@ -92,7 +93,7 @@ void main() {
         sourceId: sourceId,
         sourceType: PlanningSourceType.manual,
         accountId: 'account-002',
-        amount: 2000,
+        amount: Money.parse('2000'),
       );
 
       await engine.execute(operation);
@@ -106,7 +107,7 @@ void main() {
       expect(allocation!.sourceId, sourceId);
       expect(allocation.sourceType, PlanningSourceType.manual);
       expect(allocation.accountId, 'account-002');
-      expect(allocation.amount, 2000);
+      expect(allocation.amount, Money.parse('2000'));
       expect(allocation.status, AllocationStatus.active);
     },
   );

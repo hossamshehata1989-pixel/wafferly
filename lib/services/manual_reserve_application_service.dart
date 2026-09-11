@@ -4,7 +4,7 @@ import 'package:uuid/uuid.dart';
 import '../core/planning/operations/reserve_operation.dart';
 import '../core/planning/engine/planning_engine.dart';
 import '../core/planning/value_objects/planning_source_type.dart';
-
+import 'package:wafferly/core/money/money.dart';
 /// Application boundary for Manual Reserve.
 ///
 /// This service creates PlanningOperations and delegates all reservation
@@ -35,8 +35,8 @@ final class ManualReserveApplicationService {
       sourceId: sourceId,
       sourceType: PlanningSourceType.manual,
       accountId: accountId,
-      amount: amount,
-    );
+amount: Money.fromDouble(amount),  
+  );
 
     await _engine.execute(operation);
 

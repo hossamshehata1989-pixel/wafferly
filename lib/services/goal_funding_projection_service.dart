@@ -32,8 +32,8 @@ class GoalFundingProjectionService {
 
     for (final allocation in activeGoalAllocations) {
       totals[allocation.accountId] =
-          (totals[allocation.accountId] ?? 0) + allocation.amount;
-    }
+(totals[allocation.accountId] ?? 0) +
+    allocation.amount.toDouble();    }
 
     return totals.entries.map((entry) {
       final account = _accountService.getAccountById(entry.key);

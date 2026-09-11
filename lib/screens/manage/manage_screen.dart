@@ -608,7 +608,8 @@ class _ManageDataLoader {
 
       totalBalanceMinor += _toMinor(balance);
 
-      totalAvailableAfterReservationsMinor += _toMinor(projection.available);
+      totalAvailableAfterReservationsMinor +=
+    _toMinor(projection.available.toDouble());
 
     }
 

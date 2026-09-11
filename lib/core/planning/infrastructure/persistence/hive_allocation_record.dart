@@ -3,7 +3,7 @@ import 'package:hive/hive.dart';
 import '../../entities/allocation.dart';
 import '../../value_objects/allocation_status.dart';
 import '../../value_objects/planning_source_type.dart';
-
+import '../../../money/money.dart';
 /// Persistence representation of the Planning Allocation.
 ///
 /// This type belongs to Infrastructure and must not be used by the
@@ -37,7 +37,7 @@ final class HiveAllocationRecord {
       sourceId: allocation.sourceId,
       sourceTypeIndex: allocation.sourceType.index,
       accountId: allocation.accountId,
-      amount: allocation.amount,
+      amount: allocation.amount.toDouble(),
       statusIndex: allocation.status.index,
       version: allocation.version,
       createdAt: allocation.createdAt,
@@ -51,7 +51,7 @@ final class HiveAllocationRecord {
       sourceId: sourceId,
       sourceType: PlanningSourceType.values[sourceTypeIndex],
       accountId: accountId,
-      amount: amount,
+      amount: Money.fromDouble(amount),
       status: AllocationStatus.values[statusIndex],
       version: version,
       createdAt: createdAt,

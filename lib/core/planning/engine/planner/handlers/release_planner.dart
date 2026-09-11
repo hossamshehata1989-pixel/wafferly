@@ -6,7 +6,7 @@ import '../../planning_execution_context.dart';
 import '../planning_execution_plan.dart';
 import '../planning_mutation.dart';
 import 'planning_operation_handler.dart';
-
+import '../../../../money/money.dart';
 /// ===============================================================
 /// ReleasePlanner
 /// ===============================================================
@@ -42,7 +42,7 @@ final class ReleasePlanner implements PlanningOperationHandler {
               (allocation) =>
                   allocation.status == AllocationStatus.active &&
                   allocation.accountId == operation.accountId &&
-                  allocation.amount > 0,
+                  allocation.amount > Money.zero,
             )
             .toList()
           ..sort((a, b) {
@@ -68,7 +68,7 @@ final class ReleasePlanner implements PlanningOperationHandler {
     final mutations = <PlanningMutation>[];
 
     for (final allocation in candidates) {
-      if (remaining <= 0) {
+      if (remaining <= Money.zero) {
         break;
       }
 
@@ -83,7 +83,7 @@ final class ReleasePlanner implements PlanningOperationHandler {
           ),
         );
 
-        remaining = 0;
+        remaining = Money.zero;
         break;
       }
 
@@ -93,7 +93,7 @@ final class ReleasePlanner implements PlanningOperationHandler {
       remaining -= allocationAmount;
     }
 
-    if (remaining > 0) {
+    if (remaining > Money.zero) {
       throw StateError(
         'Insufficient allocation amount. '
         '$remaining remains after consuming all active allocations.',

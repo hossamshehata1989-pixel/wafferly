@@ -1,6 +1,6 @@
 import '../value_objects/planning_source_reference.dart';
 import 'planning_operation.dart';
-
+import '../../../core/money/money.dart';
 /// ===============================================================
 /// SplitOperation
 /// ===============================================================
@@ -30,5 +30,4 @@ final class SplitOperation extends PlanningOperation {
 
   final String accountId;
 
-  final double amount;
-}
+final Money amount;}

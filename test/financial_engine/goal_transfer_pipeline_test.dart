@@ -26,7 +26,7 @@ import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/services/balance_service.dart';
 import 'package:wafferly/services/ledger_account_seeder.dart';
-
+import 'package:wafferly/core/money/money.dart';
 void main() {
   late Directory testDirectory;
   late Box<Transaction> transactionBox;
@@ -172,8 +172,7 @@ void main() {
           sourceId: 'goal-1',
           sourceType: PlanningSourceType.goal,
           accountId: 'cash',
-          amount: 500,
-        ),
+amount: Money.fromDouble(500),        ),
       );
 
       const executionContext = ExecutionContext(

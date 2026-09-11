@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:wafferly/core/money/money.dart';
+
 import 'package:wafferly/core/planning/engine/interpreter/planning_interpreter.dart';
 import 'package:wafferly/core/planning/engine/planner/default_planning_planner.dart';
 import 'package:wafferly/core/planning/engine/planner/handlers/merge_planner.dart';
@@ -31,7 +33,7 @@ void main() {
             sourceId: 'vacation',
             sourceType: PlanningSourceType.goal,
             accountId: 'cash',
-            amount: 1000,
+            amount: Money.parse('1000'),
             status: AllocationStatus.active,
             createdAt: DateTime(2026, 8, 7),
           ),
@@ -63,7 +65,7 @@ void main() {
               type: PlanningSourceType.goal,
             ),
             accountId: 'cash',
-            amount: 400,
+            amount: Money.parse('400'),
           ),
           intent: PlanningIntent.split,
         );
@@ -75,10 +77,10 @@ void main() {
         final decrease = plan.mutations[0] as DecreaseAllocationMutation;
         final create = plan.mutations[1] as CreateAllocationMutation;
 
-        expect(decrease.amount, 400);
+        expect(decrease.amount, Money.parse('400'));
         expect(decrease.allocationId, 'vacation-allocation');
 
-        expect(create.amount, 400);
+        expect(create.amount, Money.parse('400'));
         expect(create.sourceId, 'emergency');
         expect(create.accountId, 'cash');
       },
@@ -95,7 +97,7 @@ void main() {
             sourceId: 'vacation',
             sourceType: PlanningSourceType.goal,
             accountId: 'cash',
-            amount: 1000,
+            amount: Money.parse('1000'),
             status: AllocationStatus.active,
             createdAt: DateTime(2026, 8, 7),
           ),
@@ -107,7 +109,7 @@ void main() {
             sourceId: 'emergency',
             sourceType: PlanningSourceType.goal,
             accountId: 'cash',
-            amount: 250,
+            amount: Money.parse('250'),
             status: AllocationStatus.active,
             createdAt: DateTime(2026, 8, 7),
           ),
@@ -139,7 +141,7 @@ void main() {
               type: PlanningSourceType.goal,
             ),
             accountId: 'cash',
-            amount: 400,
+            amount: Money.parse('400'),
           ),
           intent: PlanningIntent.split,
         );
@@ -152,10 +154,10 @@ void main() {
         final increase = plan.mutations[1] as IncreaseAllocationMutation;
 
         expect(decrease.allocationId, 'vacation-allocation');
-        expect(decrease.amount, 400);
+        expect(decrease.amount, Money.parse('400'));
 
         expect(increase.allocationId, 'emergency-allocation');
-        expect(increase.amount, 400);
+        expect(increase.amount, Money.parse('400'));
       },
     );
 
@@ -188,7 +190,7 @@ void main() {
             type: PlanningSourceType.goal,
           ),
           accountId: 'cash',
-          amount: 400,
+          amount: Money.parse('400'),
         ),
         intent: PlanningIntent.split,
       );

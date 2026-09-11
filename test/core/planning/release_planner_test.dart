@@ -8,7 +8,7 @@ import 'package:wafferly/core/planning/infrastructure/repositories/memory_alloca
 import 'package:wafferly/core/planning/operations/release_operation.dart';
 import 'package:wafferly/core/planning/value_objects/planning_source_type.dart';
 import 'package:wafferly/core/planning/engine/interpreter/planning_interpreter.dart';
-
+import 'package:wafferly/core/money/money.dart';
 void main() {
   test('ReleasePlanner releases allocations in FIFO order', () async {
     final repository = MemoryAllocationRepository();
@@ -18,8 +18,8 @@ void main() {
       sourceId: 'goal-1',
       sourceType: PlanningSourceType.goal,
       accountId: 'account-1',
-      amount: 1000,
-      createdAt: DateTime(2026, 8, 1),
+amount: Money.parse('1000'),     
+ createdAt: DateTime(2026, 8, 1),
     );
 
     final allocationB = Allocation(
@@ -27,8 +27,7 @@ void main() {
       sourceId: 'goal-1',
       sourceType: PlanningSourceType.goal,
       accountId: 'account-1',
-      amount: 500,
-      createdAt: DateTime(2026, 8, 2),
+amount: Money.parse('500'),      createdAt: DateTime(2026, 8, 2),
     );
 
     final allocationC = Allocation(
@@ -36,8 +35,8 @@ void main() {
       sourceId: 'goal-1',
       sourceType: PlanningSourceType.goal,
       accountId: 'account-1',
-      amount: 700,
-      createdAt: DateTime(2026, 8, 3),
+amount: Money.parse('700'),     
+ createdAt: DateTime(2026, 8, 3),
     );
 
     await repository.create(allocationA);
@@ -52,7 +51,7 @@ void main() {
       sourceId: 'goal-1',
       sourceType: PlanningSourceType.goal,
       accountId: 'account-1',
-      amount: 1200,
+amount: Money.parse('1200'),
     );
 
     final context = PlanningExecutionContext(
@@ -74,6 +73,6 @@ void main() {
     final secondMutation = plan.mutations[1] as DecreaseAllocationMutation;
 
     expect(secondMutation.allocationId, 'allocation-b');
-    expect(secondMutation.amount, 200);
+    expect(secondMutation.amount, Money.parse('200'));
   });
 }

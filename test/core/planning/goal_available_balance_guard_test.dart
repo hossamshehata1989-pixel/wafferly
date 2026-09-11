@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:wafferly/core/money/money.dart';
+
 import 'package:wafferly/core/planning/bootstrap/planning_engine_bootstrap.dart';
 import 'package:wafferly/core/planning/infrastructure/repositories/memory_allocation_repository.dart';
 import 'package:wafferly/core/planning/operations/reserve_operation.dart';
@@ -57,7 +59,7 @@ void main() {
           sourceId: 'goal-1',
           sourceType: PlanningSourceType.goal,
           accountId: accountId,
-          amount: 4000,
+          amount: Money.parse('4000'),
         );
 
         await engine.execute(firstReserve);
@@ -71,9 +73,9 @@ void main() {
           balance: accountBalance,
         );
 
-        expect(afterFirstReserve.balance, 4000);
-        expect(afterFirstReserve.reserved, 4000);
-        expect(afterFirstReserve.available, 0);
+        expect(afterFirstReserve.balance, Money.parse('4000'));
+        expect(afterFirstReserve.reserved, Money.parse('4000'));
+        expect(afterFirstReserve.available, Money.zero);
 
         // ============================================================
         // STEP 6 — Second Goal tries to reserve 1000
@@ -85,7 +87,7 @@ void main() {
           sourceId: 'goal-2',
           sourceType: PlanningSourceType.goal,
           accountId: accountId,
-          amount: 1000,
+          amount: Money.parse('1000'),
         );
 
         // ============================================================
@@ -103,7 +105,7 @@ void main() {
         expect(allocations, hasLength(1));
 
         expect(allocations.single.sourceId, 'goal-1');
-        expect(allocations.single.amount, 4000);
+        expect(allocations.single.amount, Money.parse('4000'));
       },
     );
   });

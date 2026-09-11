@@ -51,10 +51,10 @@ class HiveAccountDetailsRepository implements AccountDetailsRepository {
     );
 
     return AccountProjection(
-      balance: projection.balance,
-      available: projection.available,
-      reserved: projection.reserved,
-    );
+  balance: projection.balance.toDouble(),
+  available: projection.available.toDouble(),
+  reserved: projection.reserved.toDouble(),
+);
   }
 
   @override

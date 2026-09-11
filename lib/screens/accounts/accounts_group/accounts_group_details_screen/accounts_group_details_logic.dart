@@ -9,7 +9,6 @@ import '../../../../services/balance_service.dart';
 import '../../../../core/planning/services/available_balance_projection_service.dart';
 import '../../../../theme/account_asset_resolver.dart';
 import '../../../../models/enums/section_type.dart';
-
 // ============================================================================
 // OVERVIEW PERIOD
 // ============================================================================
@@ -211,8 +210,8 @@ class AccountsGroupDetailsLogic {
       balance: balance,
     );
 
-    final reserved = projection.reserved;
-    final available = projection.available;
+    final reserved = projection.reserved.toDouble();
+final available = projection.available.toDouble();
 
     final isLiability = account.nature.name == 'liability';
 
@@ -554,8 +553,10 @@ class GroupFinancialData {
       // Reserved cannot exceed current balance.
       // ----------------------------------------------------------------------
 
-      final reserved = item.reserved.clamp(0.0, item.balance).toDouble();
-
+      final reserved = item.reserved
+    .toDouble()
+    .clamp(0.0, item.balance)
+    .toDouble();
       // ----------------------------------------------------------------------
       // Available cannot become negative.
       // ----------------------------------------------------------------------

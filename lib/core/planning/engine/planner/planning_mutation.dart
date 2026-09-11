@@ -1,5 +1,5 @@
 import '../../value_objects/planning_source_type.dart';
-
+import '../../../../core/money/money.dart';
 sealed class PlanningMutation {
   const PlanningMutation();
 }
@@ -24,8 +24,7 @@ final class CreateAllocationMutation extends PlanningMutation {
   final PlanningSourceType sourceType;
   final String accountId;
 
-  final double amount;
-}
+final Money amount;}
 
 /// ===============================================================
 /// IncreaseAllocationMutation
@@ -38,8 +37,7 @@ final class IncreaseAllocationMutation extends PlanningMutation {
 
   final String allocationId;
 
-  final double amount;
-}
+final Money amount;}
 
 /// ===============================================================
 /// DecreaseAllocationMutation
@@ -52,8 +50,7 @@ final class DecreaseAllocationMutation extends PlanningMutation {
 
   final String allocationId;
 
-  final double amount;
-}
+final Money amount;}
 
 /// ===============================================================
 /// DeactivateAllocationMutation

@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:wafferly/core/money/money.dart';
+
 import 'package:wafferly/core/planning/entities/allocation.dart';
 import 'package:wafferly/core/planning/ports/allocation_repository.dart';
 import 'package:wafferly/core/planning/services/available_balance_projection_service.dart';
@@ -75,7 +77,7 @@ void main() {
           sourceId: 'manual-1',
           sourceType: PlanningSourceType.manual,
           accountId: 'account-1',
-          amount: 1500,
+          amount: Money.parse('1500'),
           createdAt: DateTime(2026, 8, 8),
         ),
       );
@@ -90,9 +92,9 @@ void main() {
       );
 
       expect(projection.accountId, 'account-1');
-      expect(projection.balance, 5000);
-      expect(projection.reserved, 1500);
-      expect(projection.available, 3500);
+      expect(projection.balance, Money.parse('5000'));
+      expect(projection.reserved, Money.parse('1500'));
+      expect(projection.available, Money.parse('3500'));
     });
 
     test('ignores non-active allocations', () async {
@@ -104,7 +106,7 @@ void main() {
           sourceId: 'manual-active',
           sourceType: PlanningSourceType.manual,
           accountId: 'account-2',
-          amount: 1000,
+          amount: Money.parse('1000'),
           createdAt: DateTime(2026, 8, 8),
           status: AllocationStatus.active,
         ),
@@ -116,7 +118,7 @@ void main() {
           sourceId: 'manual-released',
           sourceType: PlanningSourceType.manual,
           accountId: 'account-2',
-          amount: 2000,
+          amount: Money.parse('2000'),
           createdAt: DateTime(2026, 8, 8),
           status: AllocationStatus.released,
         ),
@@ -131,8 +133,8 @@ void main() {
         balance: 5000,
       );
 
-      expect(projection.reserved, 1000);
-      expect(projection.available, 4000);
+      expect(projection.reserved, Money.parse('1000'));
+      expect(projection.available, Money.parse('4000'));
     });
   });
 }

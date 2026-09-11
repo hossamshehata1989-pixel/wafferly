@@ -1,6 +1,6 @@
 import 'planning_operation.dart';
 import '../value_objects/planning_source_type.dart';
-
+import '../../../core/money/money.dart';
 /// ===============================================================
 /// ReleaseOperation
 /// ===============================================================
@@ -28,5 +28,5 @@ final class ReleaseOperation extends PlanningOperation {
   final String accountId;
 
   /// Amount to release.
-  final double amount;
-}
+final Money amount;}
+

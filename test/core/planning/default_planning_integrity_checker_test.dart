@@ -8,7 +8,7 @@ import 'package:wafferly/core/planning/engine/planner/'
     'planning_mutation.dart';
 import 'package:wafferly/core/planning/value_objects/'
     'planning_source_type.dart';
-
+import 'package:wafferly/core/money/money.dart';
 void main() {
   group('DefaultPlanningIntegrityChecker', () {
     const checker = DefaultPlanningIntegrityChecker();
@@ -22,7 +22,7 @@ void main() {
             sourceId: 'goal-1',
             sourceType: PlanningSourceType.goal,
             accountId: 'cash',
-            amount: 500,
+            amount: Money.parse('500'),
           ),
         ],
       );
@@ -55,8 +55,7 @@ void main() {
             sourceId: 'goal-1',
             sourceType: PlanningSourceType.goal,
             accountId: 'cash',
-            amount: 500,
-          ),
+amount: Money.parse('500'),          ),
         ],
       );
 
@@ -75,8 +74,7 @@ void main() {
             sourceId: '',
             sourceType: PlanningSourceType.goal,
             accountId: 'cash',
-            amount: 500,
-          ),
+amount: Money.parse('500'),          ),
         ],
       );
 
@@ -95,8 +93,7 @@ void main() {
             sourceId: 'goal-1',
             sourceType: PlanningSourceType.goal,
             accountId: '',
-            amount: 500,
-          ),
+amount: Money.parse('500'),          ),
         ],
       );
 
@@ -115,7 +112,7 @@ void main() {
             sourceId: 'goal-1',
             sourceType: PlanningSourceType.goal,
             accountId: 'cash',
-            amount: 0,
+            amount: Money.zero,
           ),
         ],
       );
@@ -135,48 +132,7 @@ void main() {
             sourceId: 'goal-1',
             sourceType: PlanningSourceType.goal,
             accountId: 'cash',
-            amount: -100,
-          ),
-        ],
-      );
-
-      await expectLater(
-        checker.validate(plan),
-        throwsA(isA<StateError>()),
-      );
-    });
-
-    test('rejects NaN amount', () async {
-      final plan = PlanningExecutionPlan(
-        mutations: [
-          CreateAllocationMutation(
-            allocationId: 'allocation-1',
-            createdAt: DateTime(2026, 9, 9),
-            sourceId: 'goal-1',
-            sourceType: PlanningSourceType.goal,
-            accountId: 'cash',
-            amount: double.nan,
-          ),
-        ],
-      );
-
-      await expectLater(
-        checker.validate(plan),
-        throwsA(isA<StateError>()),
-      );
-    });
-
-    test('rejects infinite amount', () async {
-      final plan = PlanningExecutionPlan(
-        mutations: [
-          CreateAllocationMutation(
-            allocationId: 'allocation-1',
-            createdAt: DateTime(2026, 9, 9),
-            sourceId: 'goal-1',
-            sourceType: PlanningSourceType.goal,
-            accountId: 'cash',
-            amount: double.infinity,
-          ),
+amount: Money.parse('-100'),          ),
         ],
       );
 
@@ -191,7 +147,7 @@ void main() {
         mutations: [
           IncreaseAllocationMutation(
             allocationId: 'allocation-1',
-            amount: 200,
+            amount: Money.parse('200'),
           ),
         ],
       );
@@ -207,8 +163,7 @@ void main() {
         mutations: [
           DecreaseAllocationMutation(
             allocationId: 'allocation-1',
-            amount: 200,
-          ),
+amount: Money.parse('200'),          ),
         ],
       );
 
@@ -241,8 +196,7 @@ void main() {
           ),
           IncreaseAllocationMutation(
             allocationId: 'allocation-1',
-            amount: 100,
-          ),
+amount: Money.parse('100'),          ),
         ],
       );
 
@@ -260,8 +214,7 @@ void main() {
           ),
           DecreaseAllocationMutation(
             allocationId: 'allocation-1',
-            amount: 100,
-          ),
+amount: Money.parse('100'),          ),
         ],
       );
 
@@ -294,8 +247,7 @@ void main() {
         mutations: [
           IncreaseAllocationMutation(
             allocationId: ' ',
-            amount: 100,
-          ),
+amount: Money.parse('100'),          ),
         ],
       );
 
@@ -310,8 +262,7 @@ void main() {
         mutations: [
           DecreaseAllocationMutation(
             allocationId: '',
-            amount: 100,
-          ),
+amount: Money.parse('100'),          ),
         ],
       );
 
@@ -341,12 +292,10 @@ void main() {
         mutations: [
           DecreaseAllocationMutation(
             allocationId: 'allocation-1',
-            amount: 100,
-          ),
+amount: Money.parse('100'),          ),
           IncreaseAllocationMutation(
             allocationId: 'allocation-2',
-            amount: 200,
-          ),
+amount: Money.parse('200'),          ),
           DeactivateAllocationMutation(
             allocationId: 'allocation-3',
           ),

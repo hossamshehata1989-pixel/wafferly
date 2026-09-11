@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../core/money/money.dart';
+
 /// ===============================================================
 /// AvailableBalanceProjection
 /// ===============================================================
@@ -28,11 +30,11 @@ final class AvailableBalanceProjection {
   final String accountId;
 
   /// Current account balance from the Account/Balance side.
-  final double balance;
+  final Money balance;
 
   /// Total amount currently reserved by active Planning Allocations.
-  final double reserved;
+  final Money reserved;
 
   /// Amount currently available after reservations.
-  final double available;
+  final Money available;
 }

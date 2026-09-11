@@ -3,7 +3,7 @@ import '../../ports/allocation_repository.dart';
 import '../planning_execution_context.dart';
 import 'planning_guard.dart';
 import '../../value_objects/allocation_status.dart';
-
+import '../../../money/money.dart';
 /// ===============================================================
 /// CannotReleaseMoreThanReservedGuard
 /// ===============================================================
@@ -32,11 +32,14 @@ final class CannotReleaseMoreThanReservedGuard implements PlanningGuard {
               (allocation) =>
                   allocation.status == AllocationStatus.active &&
                   allocation.accountId == operation.accountId &&
-                  allocation.amount > 0,
+                  allocation.amount > Money.zero,
             )
-            .fold<double>(0, (sum, allocation) => sum + allocation.amount);
+            .fold<Money>(
+  Money.zero,
+  (sum, allocation) => sum + allocation.amount,
+);
 
-        if (totalReserved <= 0) {
+        if (totalReserved <= Money.zero) {
           throw StateError(
             'No active allocation exists for this planning source '
             'and account.',

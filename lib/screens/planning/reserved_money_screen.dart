@@ -9,7 +9,7 @@ import '../../models/goal_activity.dart';
 import '../../services/goal_activity_service.dart';
 import '../../services/reserved_money_projection_service.dart';
 import '../../models/reserved_money_projection.dart';
-
+import '../../core/money/money.dart';
 /// Global Reserved Money management screen.
 ///
 /// CURRENT reservations are read from the Planning Engine allocation
@@ -99,8 +99,7 @@ class _ReservedMoneyScreenState extends State<ReservedMoneyScreen> {
         sourceId: item.sourceId,
         sourceType: _sourceTypeFromName(item.sourceType),
         accountId: item.accountId,
-        amount: item.amount,
-      );
+amount: Money.fromDouble(item.amount),      );
 
       await _planningEngine.execute(operation);
 
@@ -112,9 +111,7 @@ class _ReservedMoneyScreenState extends State<ReservedMoneyScreen> {
           GoalActivity.create(
             goalId: item.sourceId,
             type: GoalActivityType.release,
-            amount: item.amount,
-            sourceAccountId: item.accountId,
-            notes: 'Released from Reserved Money screen',
+amount: item.amount,            notes: 'Released from Reserved Money screen',
           ),
         );
       }

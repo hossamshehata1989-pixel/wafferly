@@ -1,6 +1,6 @@
 import '../value_objects/planning_source_type.dart';
 import 'planning_operation.dart';
-
+import '../../../core/money/money.dart';
 /// ===============================================================
 /// ReserveOperation
 /// ===============================================================
@@ -34,5 +34,5 @@ final class ReserveOperation extends PlanningOperation {
   final String accountId;
 
   /// Requested reserve amount.
-  final double amount;
+final Money amount;
 }

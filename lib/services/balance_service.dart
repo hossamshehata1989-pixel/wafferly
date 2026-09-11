@@ -147,6 +147,6 @@ class BalanceService {
       balance: balance,
     );
 
-    return projection.available;
+    return projection.available.toDouble();
   }
 }

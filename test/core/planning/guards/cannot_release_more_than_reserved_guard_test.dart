@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:wafferly/core/money/money.dart';
+
 import 'package:wafferly/core/planning/engine/guards/cannot_release_more_than_reserved_guard.dart';
 import 'package:wafferly/core/planning/engine/interpreter/planning_interpreter.dart';
 import 'package:wafferly/core/planning/engine/planning_execution_context.dart';
@@ -22,7 +24,7 @@ void main() {
         sourceId: 'goal-1',
         sourceType: PlanningSourceType.goal,
         accountId: 'cash',
-        amount: 100,
+        amount: Money.parse('100'),
       );
 
       final context = PlanningExecutionContext(
@@ -42,7 +44,7 @@ void main() {
           sourceId: 'goal-1',
           sourceType: PlanningSourceType.goal,
           accountId: 'cash',
-          amount: 100,
+          amount: Money.parse('100'),
           status: AllocationStatus.active,
           createdAt: DateTime(2026),
         ),
@@ -56,7 +58,7 @@ void main() {
         sourceId: 'goal-1',
         sourceType: PlanningSourceType.goal,
         accountId: 'cash',
-        amount: 150,
+        amount: Money.parse('150'),
       );
 
       final context = PlanningExecutionContext(
@@ -76,7 +78,7 @@ void main() {
           sourceId: 'goal-1',
           sourceType: PlanningSourceType.goal,
           accountId: 'cash',
-          amount: 100,
+          amount: Money.parse('100'),
           status: AllocationStatus.active,
           createdAt: DateTime(2026),
         ),
@@ -90,7 +92,7 @@ void main() {
         sourceId: 'goal-1',
         sourceType: PlanningSourceType.goal,
         accountId: 'cash',
-        amount: 60,
+        amount: Money.parse('60'),
       );
 
       final context = PlanningExecutionContext(
@@ -112,7 +114,7 @@ void main() {
             sourceId: 'goal-1',
             sourceType: PlanningSourceType.goal,
             accountId: 'cash',
-            amount: 100,
+            amount: Money.parse('100'),
             status: AllocationStatus.active,
             createdAt: DateTime(2026, 1, 1),
           ),
@@ -124,7 +126,7 @@ void main() {
             sourceId: 'goal-1',
             sourceType: PlanningSourceType.goal,
             accountId: 'cash',
-            amount: 200,
+            amount: Money.parse('200'),
             status: AllocationStatus.active,
             createdAt: DateTime(2026, 1, 2),
           ),
@@ -135,11 +137,11 @@ void main() {
         expect(allocations, hasLength(2));
 
         expect(
-          allocations.fold<double>(
-            0,
+          allocations.fold<Money>(
+            Money.zero,
             (sum, allocation) => sum + allocation.amount,
           ),
-          300,
+          Money.parse('300'),
         );
 
         final guard = CannotReleaseMoreThanReservedGuard(
@@ -152,7 +154,7 @@ void main() {
           sourceId: 'goal-1',
           sourceType: PlanningSourceType.goal,
           accountId: 'cash',
-          amount: 250,
+          amount: Money.parse('250'),
         );
 
         final context = PlanningExecutionContext(

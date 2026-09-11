@@ -5,7 +5,7 @@ import 'package:wafferly/core/planning/infrastructure/repositories/memory_alloca
 import 'package:wafferly/core/planning/operations/reserve_operation.dart';
 import 'package:wafferly/core/planning/value_objects/allocation_status.dart';
 import 'package:wafferly/core/planning/value_objects/planning_source_type.dart';
-
+import 'package:wafferly/core/money/money.dart';
 void main() {
   group('Goal Reserve Planning Integration', () {
     test(
@@ -26,7 +26,7 @@ void main() {
           sourceId: goalId,
           sourceType: PlanningSourceType.goal,
           accountId: accountId,
-          amount: 500,
+          amount: Money.parse('500'),
         );
 
         await engine.execute(operation);
@@ -40,7 +40,7 @@ void main() {
         expect(allocation.sourceId, goalId);
         expect(allocation.sourceType, PlanningSourceType.goal);
         expect(allocation.accountId, accountId);
-        expect(allocation.amount, 500);
+        expect(allocation.amount, Money.parse('500'));
         expect(allocation.status, AllocationStatus.active);
       },
     );

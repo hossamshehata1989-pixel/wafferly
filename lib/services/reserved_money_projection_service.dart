@@ -1,11 +1,9 @@
-import '../core/planning/entities/allocation.dart';
 import '../core/planning/ports/allocation_repository.dart';
 import '../core/planning/value_objects/allocation_status.dart';
-import '../models/goal.dart';
 import '../models/reserved_money_projection.dart';
 import 'account_service.dart';
 import 'goal_service.dart';
-
+import '../core/money/money.dart';
 /// Read-side projection for the global Reserved Money screen.
 ///
 /// The source of truth for CURRENT reservations is the Planning Engine's
@@ -29,7 +27,7 @@ class ReservedMoneyProjectionService {
 
     final active = allocations
         .where((allocation) => allocation.status == AllocationStatus.active)
-        .where((allocation) => allocation.amount > 0)
+        .where((allocation) => allocation.amount > Money.zero)
         .toList();
 
     final items = <ReservedMoneyItem>[];
@@ -48,7 +46,7 @@ class ReservedMoneyProjectionService {
           ),
           accountId: allocation.accountId,
           accountName: _resolveAccountName(allocation.accountId),
-          amount: allocation.amount,
+amount: allocation.amount.toDouble(),
           createdAt: allocation.createdAt,
         ),
       );

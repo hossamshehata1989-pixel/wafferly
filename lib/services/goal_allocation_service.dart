@@ -5,12 +5,11 @@ import '../core/planning/operations/reserve_operation.dart';
 import '../core/planning/operations/release_operation.dart';
 import '../core/planning/value_objects/planning_source_type.dart';
 
-import '../models/allocation.dart';
 import '../models/enums/allocation_type.dart';
 import 'allocation_service.dart';
 import 'goal_funding_projection_service.dart';
 import 'goal_service.dart';
-
+import '../core/money/money.dart';
 class GoalAllocationService {
   GoalAllocationService({
     required PlanningEngine engine,
@@ -45,7 +44,7 @@ class GoalAllocationService {
       sourceId: goalId,
       sourceType: PlanningSourceType.goal,
       accountId: accountId,
-      amount: amount,
+amount: Money.fromDouble(amount),
     );
 
     try {
@@ -69,7 +68,7 @@ class GoalAllocationService {
         sourceId: goalId,
         sourceType: PlanningSourceType.goal,
         accountId: source.accountId,
-        amount: source.amount,
+        amount: Money.fromDouble(source.amount),
       );
 
       await _engine.execute(operation);
@@ -93,7 +92,8 @@ class GoalAllocationService {
       sourceId: goalId,
       sourceType: PlanningSourceType.goal,
       accountId: accountId,
-      amount: reductionAmount,
+              amount: Money.fromDouble(reductionAmount),
+
     );
 
     await _engine.execute(operation);
@@ -119,7 +119,7 @@ class GoalAllocationService {
       sourceId: goalId,
       sourceType: PlanningSourceType.goal,
       accountId: accountId,
-      amount: increaseAmount,
+      amount: Money.fromDouble(increaseAmount),
     );
 
     await _engine.execute(operation);
@@ -150,8 +150,7 @@ class GoalAllocationService {
         sourceId: goalId,
         sourceType: PlanningSourceType.goal,
         accountId: accountId,
-        amount: source.amount,
-      );
+amount: Money.fromDouble(source.amount),      );
 
       await _engine.execute(operation);
       return;

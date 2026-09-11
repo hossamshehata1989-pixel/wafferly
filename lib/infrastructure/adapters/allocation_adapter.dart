@@ -3,7 +3,7 @@ import '../../core/planning/operations/release_operation.dart';
 import '../../core/planning/value_objects/planning_source_type.dart';
 import '../../financial_engine/mutations/release_allocation_mutation.dart';
 import '../../financial_engine/ports/allocation_port.dart';
-
+import '../../core/money/money.dart';
 final class AllocationAdapter implements AllocationPort {
   final PlanningEngine planningEngine;
 
@@ -17,7 +17,7 @@ final class AllocationAdapter implements AllocationPort {
       sourceId: mutation.goalId,
       sourceType: PlanningSourceType.goal,
       accountId: mutation.accountId,
-      amount: mutation.amount,
+amount: Money.fromDouble(mutation.amount),
     );
 
     return planningEngine.execute(operation);

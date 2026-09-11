@@ -1,3 +1,5 @@
+import '../../../../core/money/money.dart';
+
 import '../planner/planning_execution_plan.dart';
 import '../planner/planning_mutation.dart';
 
@@ -109,7 +111,7 @@ final class DefaultPlanningIntegrityChecker
       mutationIndex: index,
     );
 
-    _requirePositiveFiniteAmount(
+    _requirePositiveAmount(
       mutation.amount,
       field: 'amount',
       mutationIndex: index,
@@ -138,7 +140,7 @@ final class DefaultPlanningIntegrityChecker
       mutationIndex: index,
     );
 
-    _requirePositiveFiniteAmount(
+    _requirePositiveAmount(
       mutation.amount,
       field: 'amount',
       mutationIndex: index,
@@ -166,7 +168,7 @@ final class DefaultPlanningIntegrityChecker
       mutationIndex: index,
     );
 
-    _requirePositiveFiniteAmount(
+    _requirePositiveAmount(
       mutation.amount,
       field: 'amount',
       mutationIndex: index,
@@ -219,15 +221,15 @@ final class DefaultPlanningIntegrityChecker
     }
   }
 
-  void _requirePositiveFiniteAmount(
-    double amount, {
+  void _requirePositiveAmount(
+    Money amount, {
     required String field,
     required int mutationIndex,
   }) {
-    if (!amount.isFinite || amount <= 0) {
+    if (amount <= Money.zero) {
       throw StateError(
         'Invalid planning execution plan at mutation $mutationIndex: '
-        '$field must be finite and greater than zero.',
+        '$field must be greater than zero.',
       );
     }
   }

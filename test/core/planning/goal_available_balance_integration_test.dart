@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:wafferly/core/money/money.dart';
+
 import 'package:wafferly/core/planning/bootstrap/planning_engine_bootstrap.dart';
 import 'package:wafferly/core/planning/infrastructure/repositories/memory_allocation_repository.dart';
 import 'package:wafferly/core/planning/operations/reserve_operation.dart';
@@ -40,7 +42,7 @@ void main() {
           sourceId: goalId,
           sourceType: PlanningSourceType.goal,
           accountId: accountId,
-          amount: 300,
+          amount: Money.parse('300'),
         );
 
         await engine.execute(operation);
@@ -65,13 +67,13 @@ void main() {
         expect(projection.accountId, accountId);
 
         // The actual account balance did NOT change.
-        expect(projection.balance, 1000);
+        expect(projection.balance, Money.parse('1000'));
 
         // The Goal reservation is now reserved money.
-        expect(projection.reserved, 300);
+        expect(projection.reserved, Money.parse('300'));
 
         // Therefore only 700 remains available.
-        expect(projection.available, 700);
+        expect(projection.available, Money.parse('700'));
       },
     );
   });
