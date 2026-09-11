@@ -54,7 +54,7 @@ void main() {
 
   group('Migration Execution Test', () {
     test(
-      'Migrate legacy creditCard from moneyYouHave to moneyYouOwe',
+      'Migrate legacy creditCard from liquidity to liabilities',
       () async {
         final legacyAccount = Account(
           id: 'cc_1',
@@ -88,7 +88,7 @@ void main() {
     );
 
     test(
-      'Migrate legacy gold from moneyYouHave to investments',
+      'Migrate legacy gold from liquidity to investments',
       () async {
         final legacyAccount = Account(
           id: 'gold_1',
@@ -109,17 +109,20 @@ void main() {
           accountBox: testBox,
         );
 
-        await migrationService.migrateLegacyAccountClassification();
+        final fixedCount =
+            await migrationService.migrateLegacyAccountClassification();
 
         final migrated = testBox.get(legacyAccount.id);
 
         expect(migrated, isNotNull);
         expect(migrated!.group, AccountGroup.investments);
+        expect(migrated.nature, AccountNature.asset);
+        expect(fixedCount, 1);
       },
     );
 
     test(
-      'Migrate legacy lent from moneyYouHave to moneyYouWillGet',
+      'Migrate legacy lent from liquidity to receivable',
       () async {
         final legacyAccount = Account(
           id: 'lent_1',
@@ -140,12 +143,15 @@ void main() {
           accountBox: testBox,
         );
 
-        await migrationService.migrateLegacyAccountClassification();
+        final fixedCount =
+            await migrationService.migrateLegacyAccountClassification();
 
         final migrated = testBox.get(legacyAccount.id);
 
         expect(migrated, isNotNull);
         expect(migrated!.group, AccountGroup.receivable);
+        expect(migrated.nature, AccountNature.asset);
+        expect(fixedCount, 1);
       },
     );
 
@@ -172,6 +178,227 @@ void main() {
       final needsMigration = await migrationService.needsMigration();
 
       expect(needsMigration, false);
+
+      final fixedCount =
+          await migrationService.migrateLegacyAccountClassification();
+
+      expect(fixedCount, 0);
+
+      final migrated = testBox.get(correctAccount.id);
+
+      expect(migrated, isNotNull);
+      expect(migrated!.group, AccountGroup.liquidity);
+      expect(migrated.nature, AccountNature.asset);
     });
+
+    test(
+      'Migrate all legacy account classifications',
+      () async {
+        final legacyAccounts = <Account>[
+          Account(
+            id: 'gold_1',
+            bookId: 'test',
+            memberId: 'tester',
+            name: 'Legacy Gold',
+            type: 'gold',
+            currency: 'EGP',
+            createdAt: DateTime.now(),
+            group: AccountGroup.liquidity,
+            nature: AccountNature.asset,
+            isArchived: false,
+          ),
+          Account(
+            id: 'stocks_1',
+            bookId: 'test',
+            memberId: 'tester',
+            name: 'Legacy Stocks',
+            type: 'stocks',
+            currency: 'EGP',
+            createdAt: DateTime.now(),
+            group: AccountGroup.liquidity,
+            nature: AccountNature.asset,
+            isArchived: false,
+          ),
+          Account(
+            id: 'certificates_1',
+            bookId: 'test',
+            memberId: 'tester',
+            name: 'Legacy Certificates',
+            type: 'certificates',
+            currency: 'EGP',
+            createdAt: DateTime.now(),
+            group: AccountGroup.liquidity,
+            nature: AccountNature.asset,
+            isArchived: false,
+          ),
+          Account(
+            id: 'lent_1',
+            bookId: 'test',
+            memberId: 'tester',
+            name: 'Legacy Lent',
+            type: 'lent',
+            currency: 'EGP',
+            createdAt: DateTime.now(),
+            group: AccountGroup.liquidity,
+            nature: AccountNature.asset,
+            isArchived: false,
+          ),
+          Account(
+            id: 'rosca_1',
+            bookId: 'test',
+            memberId: 'tester',
+            name: 'Legacy Rosca',
+            type: 'rosca',
+            currency: 'EGP',
+            createdAt: DateTime.now(),
+            group: AccountGroup.liquidity,
+            nature: AccountNature.asset,
+            isArchived: false,
+          ),
+          Account(
+            id: 'credit_card_1',
+            bookId: 'test',
+            memberId: 'tester',
+            name: 'Legacy Credit Card',
+            type: 'creditCard',
+            currency: 'EGP',
+            createdAt: DateTime.now(),
+            group: AccountGroup.liquidity,
+            nature: AccountNature.asset,
+            isArchived: false,
+          ),
+          Account(
+            id: 'loan_1',
+            bookId: 'test',
+            memberId: 'tester',
+            name: 'Legacy Loan',
+            type: 'loan',
+            currency: 'EGP',
+            createdAt: DateTime.now(),
+            group: AccountGroup.liquidity,
+            nature: AccountNature.asset,
+            isArchived: false,
+          ),
+        ];
+
+        for (final account in legacyAccounts) {
+          await testBox.put(account.id, account);
+        }
+
+        final migrationService = MigrationService(
+          accountBox: testBox,
+        );
+
+        final fixedCount =
+            await migrationService.migrateLegacyAccountClassification();
+
+        expect(fixedCount, 7);
+
+        expect(
+          testBox.get('gold_1')!.group,
+          AccountGroup.investments,
+        );
+        expect(
+          testBox.get('stocks_1')!.group,
+          AccountGroup.investments,
+        );
+        expect(
+          testBox.get('certificates_1')!.group,
+          AccountGroup.investments,
+        );
+        expect(
+          testBox.get('lent_1')!.group,
+          AccountGroup.receivable,
+        );
+        expect(
+  testBox.get('rosca_1')!.group,
+  AccountGroup.receivable,
+);
+        expect(
+          testBox.get('credit_card_1')!.group,
+          AccountGroup.liabilities,
+        );
+        expect(
+          testBox.get('loan_1')!.group,
+          AccountGroup.liabilities,
+        );
+
+        expect(
+          testBox.get('gold_1')!.nature,
+          AccountNature.asset,
+        );
+        expect(
+          testBox.get('stocks_1')!.nature,
+          AccountNature.asset,
+        );
+        expect(
+          testBox.get('certificates_1')!.nature,
+          AccountNature.asset,
+        );
+        expect(
+          testBox.get('lent_1')!.nature,
+          AccountNature.asset,
+        );
+        expect(
+          testBox.get('rosca_1')!.nature,
+          AccountNature.asset,
+        );
+        expect(
+          testBox.get('credit_card_1')!.nature,
+          AccountNature.liability,
+        );
+        expect(
+          testBox.get('loan_1')!.nature,
+          AccountNature.liability,
+        );
+
+        expect(
+          await migrationService.needsMigration(),
+          false,
+        );
+      },
+    );
+
+    test(
+      'Migration is idempotent and second run makes no changes',
+      () async {
+        final legacyAccount = Account(
+          id: 'idempotent_loan',
+          bookId: 'test',
+          memberId: 'tester',
+          name: 'Legacy Loan',
+          type: 'loan',
+          currency: 'EGP',
+          createdAt: DateTime.now(),
+          group: AccountGroup.liquidity,
+          nature: AccountNature.asset,
+          isArchived: false,
+        );
+
+        await testBox.put(legacyAccount.id, legacyAccount);
+
+        final migrationService = MigrationService(
+          accountBox: testBox,
+        );
+
+        final firstRun =
+            await migrationService.migrateLegacyAccountClassification();
+
+        expect(firstRun, 1);
+        expect(await migrationService.needsMigration(), false);
+
+        final secondRun =
+            await migrationService.migrateLegacyAccountClassification();
+
+        expect(secondRun, 0);
+        expect(await migrationService.needsMigration(), false);
+
+        final migrated = testBox.get(legacyAccount.id);
+
+        expect(migrated, isNotNull);
+        expect(migrated!.group, AccountGroup.liabilities);
+        expect(migrated.nature, AccountNature.liability);
+      },
+    );
   });
 }

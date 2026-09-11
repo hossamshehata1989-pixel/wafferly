@@ -54,30 +54,30 @@ void main() async {
   });
 
   Future<Account> createLegacyAccount({
-  required String name,
-  required String type,
-  required AccountNature nature,
-  required AccountGroup group,
-}) async {
-  final box = Hive.box<Account>('migration_test_accounts');
+    required String name,
+    required String type,
+    required AccountNature nature,
+    required AccountGroup group,
+  }) async {
+    final box = Hive.box<Account>('migration_test_accounts');
 
-  final account = Account(
-    id: '${type}_${name.replaceAll(' ', '_')}',
-    bookId: 'test',
-    memberId: 'tester',
-    name: name,
-    type: type,
-    currency: 'EGP',
-    createdAt: DateTime.now(),
-    group: group,
-    nature: nature,
-    isArchived: false,
-  );
+    final account = Account(
+      id: '${type}_${name.replaceAll(' ', '_')}',
+      bookId: 'test',
+      memberId: 'tester',
+      name: name,
+      type: type,
+      currency: 'EGP',
+      createdAt: DateTime.now(),
+      group: group,
+      nature: nature,
+      isArchived: false,
+    );
 
-  await box.put(account.id, account);
+    await box.put(account.id, account);
 
-  return account;
-}
+    return account;
+  }
 
   group('Migration Dry Run - Nature Migration', () {
     late Box<Account> box;
@@ -128,21 +128,24 @@ void main() async {
       );
     });
 
-    test('Migration Dry Run - Scan and Identify', () async {
-      final allAccounts = box.values.toList();
+    test(
+      'Migration Dry Run - Scan and Identify',
+      () async {
+        final allAccounts = box.values.toList();
 
-      int needsNatureMigration = 0;
+        int needsNatureMigration = 0;
 
-      for (final account in allAccounts) {
-        final expectedNature = resolveNature(account.type);
+        for (final account in allAccounts) {
+          final expectedNature = resolveNature(account.type);
 
-        if (account.nature != expectedNature) {
-          needsNatureMigration++;
+          if (account.nature != expectedNature) {
+            needsNatureMigration++;
+          }
         }
-      }
 
-      expect(needsNatureMigration, 4);
-    });
+        expect(needsNatureMigration, 4);
+      },
+    );
   });
 
   group('Migration Dry Run - Group Migration', () {
@@ -203,66 +206,42 @@ void main() async {
       );
     });
 
-    test('Migration Dry Run - Group Migration Scan', () async {
-      final allAccounts = box.values.toList();
+    test(
+      'Migration Dry Run - Group Migration Scan',
+      () async {
+        final allAccounts = box.values.toList();
 
-      int needsGroupMigration = 0;
+        int needsGroupMigration = 0;
 
-for (final account in allAccounts) {
-  final expectedGroup = resolveGroup(account.type);
+        for (final account in allAccounts) {
+          final expectedGroup = resolveGroup(account.type);
 
-  print(
-    'MIGRATION CHECK: '
-    '${account.type} | '
-    'current=${account.group} | '
-    'expected=$expectedGroup',
-  );
+          print(
+            'MIGRATION CHECK: '
+            '${account.type} | '
+            'current=${account.group} | '
+            'expected=$expectedGroup',
+          );
 
-  if (account.group != expectedGroup) {
-    needsGroupMigration++;
-  }
-}
+          if (account.group != expectedGroup) {
+            needsGroupMigration++;
+          }
+        }
 
-print('MIGRATION GROUP COUNT: $needsGroupMigration');
+        print(
+          'MIGRATION GROUP COUNT: $needsGroupMigration',
+        );
 
-expect(needsGroupMigration, 7);
-    });
+        expect(needsGroupMigration, 7);
+      },
+    );
   });
 
   group('Migration Dry Run - Rollback Behavior', () {
-    test('Rollback simulation - Migration can be reversed', () async {
-      final beforeMigration = Account(
-        id: 'loan_1',
-        bookId: 'test',
-        memberId: 'tester',
-        name: 'Loan',
-        type: 'loan',
-        currency: 'EGP',
-        createdAt: DateTime.now(),
-        group: AccountGroup.liquidity,
-        nature: AccountNature.asset,
-        isArchived: false,
-      );
-
-      final afterMigration = beforeMigration.copyWith(
-        nature: resolveNature(beforeMigration.type),
-        group: resolveGroup(beforeMigration.type),
-      );
-
-      final rollback = afterMigration.copyWith(
-        nature: beforeMigration.nature,
-        group: beforeMigration.group,
-      );
-
-      expect(rollback.nature, beforeMigration.nature);
-      expect(rollback.group, beforeMigration.group);
-    });
-  });
-
-  group('Migration Dry Run - Money Conservation After Migration', () {
-    test('Money conservation preserved after simulated migration', () async {
-      final accountsBefore = [
-        Account(
+    test(
+      'Rollback simulation - Migration can be reversed',
+      () async {
+        final beforeMigration = Account(
           id: 'loan_1',
           bookId: 'test',
           memberId: 'tester',
@@ -273,53 +252,95 @@ expect(needsGroupMigration, 7);
           group: AccountGroup.liquidity,
           nature: AccountNature.asset,
           isArchived: false,
-        ),
-        Account(
-          id: 'cash_1',
-          bookId: 'test',
-          memberId: 'tester',
-          name: 'Cash',
-          type: 'cash',
-          currency: 'EGP',
-          createdAt: DateTime.now(),
-          group: AccountGroup.liquidity,
-          nature: AccountNature.asset,
-          isArchived: false,
-        ),
-      ];
-
-      final accountsAfter = accountsBefore.map((account) {
-        return account.copyWith(
-          nature: resolveNature(account.type),
-          group: resolveGroup(account.type),
         );
-      }).toList();
 
-      final balances = {
-        'loan_1': -50000.0,
-        'cash_1': 10000.0,
-      };
+        final afterMigration = beforeMigration.copyWith(
+          nature: resolveNature(beforeMigration.type),
+          group: resolveGroup(beforeMigration.type),
+        );
 
-      double calculateNetWorth(List<Account> accounts) {
-        double total = 0;
+        final rollback = afterMigration.copyWith(
+          nature: beforeMigration.nature,
+          group: beforeMigration.group,
+        );
 
-        for (final account in accounts) {
-          final balance = balances[account.id] ?? 0;
+        expect(
+          rollback.nature,
+          beforeMigration.nature,
+        );
 
-          if (account.nature == AccountNature.asset) {
-            total += balance;
-          } else if (account.nature == AccountNature.liability) {
-            total -= balance.abs();
+        expect(
+          rollback.group,
+          beforeMigration.group,
+        );
+      },
+    );
+  });
+
+  group('Migration Dry Run - Money Conservation After Migration', () {
+    test(
+      'Money conservation preserved after simulated migration',
+      () async {
+        final accountsBefore = [
+          Account(
+            id: 'loan_1',
+            bookId: 'test',
+            memberId: 'tester',
+            name: 'Loan',
+            type: 'loan',
+            currency: 'EGP',
+            createdAt: DateTime.now(),
+            group: AccountGroup.liquidity,
+            nature: AccountNature.asset,
+            isArchived: false,
+          ),
+          Account(
+            id: 'cash_1',
+            bookId: 'test',
+            memberId: 'tester',
+            name: 'Cash',
+            type: 'cash',
+            currency: 'EGP',
+            createdAt: DateTime.now(),
+            group: AccountGroup.liquidity,
+            nature: AccountNature.asset,
+            isArchived: false,
+          ),
+        ];
+
+        final accountsAfter = accountsBefore.map((account) {
+          return account.copyWith(
+            nature: resolveNature(account.type),
+            group: resolveGroup(account.type),
+          );
+        }).toList();
+
+        final balances = {
+          'loan_1': -50000.0,
+          'cash_1': 10000.0,
+        };
+
+        double calculateNetWorth(List<Account> accounts) {
+          double total = 0;
+
+          for (final account in accounts) {
+            final balance = balances[account.id] ?? 0;
+
+            if (account.nature == AccountNature.asset) {
+              total += balance;
+            } else if (account.nature == AccountNature.liability) {
+              total -= balance.abs();
+            }
           }
+
+          return total;
         }
 
-        return total;
-      }
+        final netWorthBefore = calculateNetWorth(accountsBefore);
+        final netWorthAfter = calculateNetWorth(accountsAfter);
 
-      final netWorthBefore = calculateNetWorth(accountsBefore);
-      final netWorthAfter = calculateNetWorth(accountsAfter);
-
-      expect(netWorthBefore, netWorthAfter);
-    });
+        expect(netWorthBefore, netWorthAfter);
+      },
+    );
   });
 }
