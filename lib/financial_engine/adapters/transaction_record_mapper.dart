@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 import '../../models/transaction.dart';
 import '../domain/financial_transaction_record.dart';
 
@@ -12,7 +13,7 @@ final class TransactionRecordMapper {
       toAccountId: transaction.toAccountId,
       categoryId: transaction.categoryId,
       subCategoryId: transaction.subCategoryId,
-      amount: transaction.amount,
+      amount: Money.fromDouble(transaction.amount),
       currencyCode: transaction.currencyCode,
       paymentMethod: transaction.paymentMethod,
       occurredAt: transaction.date,

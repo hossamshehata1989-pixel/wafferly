@@ -15,7 +15,7 @@ import 'package:wafferly/financial_engine/planning/chart_of_accounts.dart';
 import 'package:wafferly/financial_engine/planning/default_financial_planner.dart';
 import 'package:wafferly/financial_engine/ports/balance_port.dart';
 import 'package:wafferly/financial_engine/ports/transaction_lookup_port.dart';
-
+import 'package:wafferly/core/money/money.dart';
 final class _NoopBalancePort implements BalancePort {
   @override
   Future<double> availableBalance(String accountId) async {
@@ -83,7 +83,7 @@ void main() {
       expect(journal.lines.last.credit, 0);
 
       expect(transaction.type, TransactionType.initialBalance);
-      expect(transaction.amount, 0);
+      expect(transaction.amount, Money.zero);
       expect(transaction.toAccountId, 'account-1');
       expect(transaction.fromAccountId, isNull);
       expect(transaction.source, TransactionSource.accountCreation);

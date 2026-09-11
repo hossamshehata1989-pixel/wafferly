@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 import '../domain/financial_transaction_record.dart';
 import '../interpretation/financial_action_type.dart';
 import '../interpretation/normalized_intent.dart';
@@ -76,7 +77,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: null,
       categoryId: categoryId,
       subCategoryId: null,
-      amount: intent.amount,
+      amount: Money.fromDouble(intent.amount),
       currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
@@ -131,8 +132,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: intent.sourceAccountId,
       categoryId: categoryId,
       subCategoryId: null,
-      amount: intent.amount,
-      currencyCode: context.metadata.currencyCode,
+amount: Money.fromDouble(intent.amount),      currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
       note: context.metadata.note,
@@ -181,7 +181,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: destinationAccountId,
       categoryId: null,
       subCategoryId: null,
-      amount: intent.amount,
+      amount: Money.fromDouble(intent.amount),
       currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
@@ -234,8 +234,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: destinationAccountId,
       categoryId: null,
       subCategoryId: null,
-      amount: intent.amount,
-      currencyCode: context.metadata.currencyCode,
+amount: Money.fromDouble(intent.amount),      currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
       note: context.metadata.note,
@@ -326,7 +325,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: accountReceivesDebit ? accountId : null,
       categoryId: 'initial_balance',
       subCategoryId: null,
-      amount: amount,
+      amount: Money.fromDouble(amount),
       currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,

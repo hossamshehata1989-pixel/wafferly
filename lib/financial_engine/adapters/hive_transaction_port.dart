@@ -1,10 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
+import '../../core/money/money.dart';
 import '../../models/transaction.dart';
 import '../domain/financial_transaction_record.dart';
-import '../ports/transaction_port.dart';
 import '../ports/transaction_lookup_port.dart';
+import '../ports/transaction_port.dart';
 import '../ports/transaction_update_port.dart';
 
 final class HiveTransactionPort
@@ -19,7 +20,7 @@ final class HiveTransactionPort
 
     final transaction = Transaction(
       id: record.transactionId,
-      amount: record.amount,
+      amount: record.amount.toDouble(),
       type: record.type,
       fromAccountId: record.fromAccountId,
       toAccountId: record.toAccountId,
@@ -36,7 +37,9 @@ final class HiveTransactionPort
 
     await _box.put(transaction.id, transaction);
 
-    debugPrint('TX PORT: Saved ${transaction.id} (box count = ${_box.length})');
+    debugPrint(
+      'TX PORT: Saved ${transaction.id} (box count = ${_box.length})',
+    );
   }
 
   @override
@@ -54,7 +57,7 @@ final class HiveTransactionPort
       toAccountId: transaction.toAccountId,
       categoryId: transaction.categoryId,
       subCategoryId: transaction.subCategoryId,
-      amount: transaction.amount,
+      amount: Money.fromDouble(transaction.amount),
       currencyCode: transaction.currencyCode,
       paymentMethod: transaction.paymentMethod,
       occurredAt: transaction.date,
@@ -73,9 +76,13 @@ final class HiveTransactionPort
     debugPrint('================ UPDATE START ================');
     debugPrint('before.id = ${before.transactionId}');
     debugPrint('after.id  = ${after.transactionId}');
-    debugPrint('ids match = ${before.transactionId == after.transactionId}');
+    debugPrint(
+      'ids match = ${before.transactionId == after.transactionId}',
+    );
     debugPrint('box length before = ${_box.length}');
-    debugPrint('contains before = ${_box.containsKey(before.transactionId)}');
+    debugPrint(
+      'contains before = ${_box.containsKey(before.transactionId)}',
+    );
     debugPrint('contains after  = ${_box.containsKey(after.transactionId)}');
 
     final existing = _box.get(before.transactionId);
@@ -86,7 +93,7 @@ final class HiveTransactionPort
 
     final updated = Transaction(
       id: after.transactionId,
-      amount: after.amount,
+      amount: after.amount.toDouble(),
       type: after.type,
       fromAccountId: after.fromAccountId,
       toAccountId: after.toAccountId,

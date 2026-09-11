@@ -261,7 +261,7 @@ class LedgerProjectionService {
       transactionId: record.transactionId,
       fromAccountId: record.fromAccountId!,
       toAccountId: record.toAccountId!,
-      amount: record.amount,
+      amount: record.amount.toDouble(),
       date: record.occurredAt,
     );
   }
@@ -298,8 +298,7 @@ class LedgerProjectionService {
       transactionId: record.transactionId,
       expenseLedgerAccountId: expenseLedgerId,
       sourceAccountId: record.fromAccountId!,
-      amount: record.amount,
-      date: record.occurredAt,
+amount: record.amount.toDouble(),      date: record.occurredAt,
     );
   }
 
@@ -335,8 +334,7 @@ class LedgerProjectionService {
       transactionId: record.transactionId,
       destinationAccountId: record.toAccountId!,
       incomeLedgerAccountId: incomeLedgerId,
-      amount: record.amount,
-      date: record.occurredAt,
+amount: record.amount.toDouble(),      date: record.occurredAt,
     );
   }
 

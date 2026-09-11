@@ -1,3 +1,5 @@
+import '../../core/money/money.dart';
+
 /// Represents the financial transaction produced by the Financial Planner.
 ///
 /// This is a Domain Value Object owned by the Financial Engine.
@@ -33,17 +35,16 @@ final class FinancialTransactionRecord {
   final String? toAccountId;
 
   /// Main category.
-
+  ///
   /// Required for expense and income.
   /// Null for transfers.
-  ///
   final String? categoryId;
 
   /// Optional sub-category.
   final String? subCategoryId;
 
   /// Transaction amount.
-  final double amount;
+  final Money amount;
 
   /// Currency.
   final String currencyCode;

@@ -92,7 +92,7 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
         return NormalizedIntent(
           action: FinancialActionType.correction,
           sourceAccountId: sourceAccountId,
-          amount: after.amount,
+          amount: after.amount.toDouble(),
           categoryId: after.categoryId,
           actorMemberId: after.actorMemberId,
           isExceptional: after.isExceptional,
