@@ -51,6 +51,7 @@ import 'models/enums/frequency.dart';
 
 import 'services/financial_action_engine.dart';
 import 'services/providers/commitment_action_provider.dart';
+import 'services/schedule_occurrence_service.dart';
 import 'services/schedule_evaluator.dart';
 
 import 'services/transaction_service.dart';
@@ -71,6 +72,8 @@ import 'services/goal_allocation_service.dart';
 import 'services/goal_funding_projection_service.dart';
 import 'services/reserved_money_projection_service.dart';
 import 'services/ledger_account_seeder.dart';
+
+import 'services/schedule_rule_service.dart';
 
 
 
@@ -327,8 +330,12 @@ void main() async {
     {
       final engine = FinancialActionEngine(
         providers: [
-          CommitmentActionProvider(evaluator: const ScheduleEvaluator()),
-        ],
+CommitmentActionProvider(
+  evaluator: const ScheduleEvaluator(),
+  occurrenceService: ScheduleOccurrenceService(
+  ruleService: ScheduleRuleService(),
+),
+)        ],
       );
 
       final contexts = await engine.getActions(today: DateTime.now());

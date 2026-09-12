@@ -10,6 +10,7 @@ class TransactionSource {
   static const String importedCsv = 'imported_csv';
   static const String bankSync = 'bank_sync';
   static const String autoDetected = 'auto_detected';
+  static const String scheduled = 'scheduled';
 
   /// قائمة بكل المصادر (للقوائم والفلترة)
   static const List<String> all = [
@@ -21,6 +22,7 @@ class TransactionSource {
     importedCsv,
     bankSync,
     autoDetected,
+    scheduled
   ];
 
   /// هل المصدر تلقائي أم يدوي؟

@@ -23,8 +23,8 @@ import 'account_details_logic.dart';
 import 'account_details_models.dart';
 import 'data/account_details_repository.dart';
 import 'data/hive_account_details_repository.dart';
-
-
+import '../../../services/schedule_rule_service.dart';
+import '../../../services/schedule_occurrence_service.dart';
 /// Stage 10 — Explicit responsive sizing; no global scale.
 /// Explicit responsive sizing for this screen.
 /// Keeps the existing responsive breakpoints/layout logic intact without
@@ -73,8 +73,11 @@ class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
       projectionService: context.read<AvailableBalanceProjectionService>(),
       actionEngine: FinancialActionEngine(
         providers: [
-          CommitmentActionProvider(evaluator: const ScheduleEvaluator()),
-        ],
+CommitmentActionProvider(
+  evaluator: const ScheduleEvaluator(),
+occurrenceService: ScheduleOccurrenceService(
+  ruleService: ScheduleRuleService(),
+),)        ],
       ),
     );
     _future = AccountDetailsLogic.load(

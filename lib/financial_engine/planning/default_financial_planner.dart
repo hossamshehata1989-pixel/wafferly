@@ -13,7 +13,7 @@ import '../mutations/journal_entry_mutation.dart';
 import 'planning_context.dart';
 import '../mutations/release_allocation_mutation.dart';
 import '../../models/goal_activity.dart';
-
+import '../../constants/transaction_constants.dart';
 final class DefaultFinancialPlanner implements FinancialPlanner {
   final ChartOfAccounts _chartOfAccounts;
 
@@ -35,6 +35,9 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
 
       case FinancialActionType.transfer:
         return _planTransfer(context);
+
+        case FinancialActionType.commitmentPayment:
+  return _planCommitmentPayment(context);
 
       case FinancialActionType.goalTransfer:
         return _planGoalTransfer(context);
@@ -168,54 +171,107 @@ amount: Money.fromDouble(intent.amount),      currencyCode: context.metadata.cur
   }
 
   FinancialExecutionPlan _planTransfer(PlanningContext context) {
-    final intent = context.intent;
+  final intent = context.intent;
 
-    final destinationAccountId =
-        intent.destinationAccountId ??
-            (throw StateError('Destination account is required'));
+  final destinationAccountId =
+      intent.destinationAccountId ??
+      (throw StateError('Destination account is required'));
 
-    final transactionRecord = FinancialTransactionRecord(
-      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
-      type: 'transfer',
-      fromAccountId: intent.sourceAccountId,
-      toAccountId: destinationAccountId,
-      categoryId: null,
-      subCategoryId: null,
-      amount: Money.fromDouble(intent.amount),
-      currencyCode: context.metadata.currencyCode,
-      paymentMethod: context.metadata.paymentMethod,
-      occurredAt: context.metadata.occurredAt,
-      note: context.metadata.note,
-      isExceptional: intent.isExceptional,
-      source: 'manual',
-      actorMemberId: intent.actorMemberId,
-    );
+  final FinancialTransactionRecord transactionRecord =
+      FinancialTransactionRecord(
+    transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+    type: 'transfer',
+    fromAccountId: intent.sourceAccountId,
+    toAccountId: destinationAccountId,
+    categoryId: null,
+    subCategoryId: null,
+    amount: Money.fromDouble(intent.amount),
+    currencyCode: context.metadata.currencyCode,
+    paymentMethod: context.metadata.paymentMethod,
+    occurredAt: context.metadata.occurredAt,
+    note: context.metadata.note,
+    isExceptional: intent.isExceptional,
+    source: 'manual',
+    actorMemberId: intent.actorMemberId,
+  );
 
-    return FinancialExecutionPlan(
-      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
-      operationId: 'operation',
-      idempotencyKey: 'temporary',
-      mutations: [
-        CreateTransactionMutation(
-          record: transactionRecord,
-        ),
-        JournalEntryMutation(
-          journalEntryId: 'journal-1',
-          description: 'Transfer',
-          lines: [
-            EntryLine(
-              accountId: destinationAccountId,
-              debit: intent.amount,
-            ),
-            EntryLine(
-              accountId: intent.sourceAccountId,
-              credit: intent.amount,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+  return FinancialExecutionPlan(
+    planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+    operationId: 'operation',
+    idempotencyKey: 'temporary',
+    mutations: [
+      CreateTransactionMutation(
+        record: transactionRecord,
+      ),
+      JournalEntryMutation(
+        journalEntryId: 'journal-1',
+        description: 'Transfer',
+        lines: [
+          EntryLine(
+            accountId: destinationAccountId,
+            debit: intent.amount,
+          ),
+          EntryLine(
+            accountId: intent.sourceAccountId,
+            credit: intent.amount,
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+FinancialExecutionPlan _planCommitmentPayment(
+  PlanningContext context,
+) {
+  final intent = context.intent;
+
+  final liabilityAccountId =
+      intent.destinationAccountId ??
+      (throw StateError('Liability account is required'));
+
+  final transactionRecord = FinancialTransactionRecord(
+    transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+    type: 'transfer',
+    fromAccountId: intent.sourceAccountId,
+    toAccountId: liabilityAccountId,
+    categoryId: null,
+    subCategoryId: null,
+    amount: Money.fromDouble(intent.amount),
+    currencyCode: context.metadata.currencyCode,
+    paymentMethod: context.metadata.paymentMethod,
+    occurredAt: context.metadata.occurredAt,
+    note: context.metadata.note,
+    isExceptional: intent.isExceptional,
+    source: TransactionSource.scheduled,
+    actorMemberId: intent.actorMemberId,
+  );
+
+  return FinancialExecutionPlan(
+    planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+    operationId: 'operation',
+    idempotencyKey: context.executionContext.idempotencyKey,
+    mutations: [
+      CreateTransactionMutation(
+        record: transactionRecord,
+      ),
+      JournalEntryMutation(
+        journalEntryId: 'journal-1',
+        description: 'Commitment Payment',
+        lines: [
+          EntryLine(
+            accountId: liabilityAccountId,
+            debit: intent.amount,
+          ),
+          EntryLine(
+            accountId: intent.sourceAccountId,
+            credit: intent.amount,
+          ),
+        ],
+      ),
+    ],
+  );
+}
 
   FinancialExecutionPlan _planGoalTransfer(PlanningContext context) {
     final intent = context.intent;

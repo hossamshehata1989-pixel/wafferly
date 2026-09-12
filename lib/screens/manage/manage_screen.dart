@@ -39,7 +39,8 @@ import '../planning/reserved_money_screen.dart';
 import 'outgoing_screen.dart';
 
 import 'package:wafferly/features/financial_action_center/financial_action_center.dart';
-
+import '../../services/schedule_occurrence_service.dart';
+import '../../services/schedule_rule_service.dart';
 /// Manage — redesigned around the user's financial system.
 ///
 /// The screen is intentionally a read/launch surface:
@@ -617,8 +618,12 @@ class _ManageDataLoader {
 
       providers: [
 
-        CommitmentActionProvider(evaluator: const ScheduleEvaluator()),
-
+CommitmentActionProvider(
+  evaluator: const ScheduleEvaluator(),
+  occurrenceService: ScheduleOccurrenceService(
+    ruleService: ScheduleRuleService(),
+  ),
+),
       ],
 
     );

@@ -7,6 +7,8 @@ import '../../services/schedule_evaluator.dart';
 import 'controller/financial_action_center_controller.dart';
 import 'package:wafferly/features/financial_action_center/screens/financial_action_panel.dart';
 import 'services/financial_action_executor.dart';
+import '../../services/schedule_rule_service.dart';
+import '../../services/schedule_occurrence_service.dart';
 
 class FinancialActionCenter extends StatefulWidget {
   final VoidCallback onSkip;
@@ -28,8 +30,11 @@ class _FinancialActionCenterState extends State<FinancialActionCenter> {
     controller = FinancialActionCenterController(
       engine: FinancialActionEngine(
         providers: [
-          CommitmentActionProvider(evaluator: const ScheduleEvaluator()),
-        ],
+CommitmentActionProvider(
+  evaluator: const ScheduleEvaluator(),
+occurrenceService: ScheduleOccurrenceService(
+  ruleService: ScheduleRuleService(),
+),)        ],
       ),
     );
 
