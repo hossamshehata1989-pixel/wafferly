@@ -2,16 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
 import '../../models/commitment.dart';
-import '../../models/enums/commitment_type.dart';
-import '../../models/enums/scheduled_action_kind.dart';
 import '../../models/schedule_rule.dart';
 import '../../models/scheduled_action.dart';
+import '../../models/enums/commitment_type.dart';
+import '../../models/enums/scheduled_action_kind.dart';
+import 'schedule_evaluator.dart';
+import 'schedule_occurrence_service.dart';
+import 'providers/financial_action_provider.dart';
 import '../../models/scheduled_action_execution_context.dart';
-
-import '../schedule_evaluator.dart';
-import '../schedule_occurrence_service.dart';
-
-import 'financial_action_provider.dart';
 
 class CommitmentActionProvider implements FinancialActionProvider {
   final ScheduleEvaluator evaluator;
@@ -29,42 +27,25 @@ class CommitmentActionProvider implements FinancialActionProvider {
     final commitmentBox = Hive.box<Commitment>('commitments');
     final scheduleBox = Hive.box<ScheduleRule>('schedule_rules');
 
-    debugPrint('============================');
-    debugPrint('Commitments: ${commitmentBox.length}');
-    debugPrint('Schedule Rules: ${scheduleBox.length}');
-    debugPrint('============================');
-
     final List<ScheduledActionExecutionContext> actions = [];
-
     for (final commitment in commitmentBox.values) {
       debugPrint('Checking: ${commitment.title}');
-
       if (commitment.isArchived) {
-        debugPrint('${commitment.title} -> Archived');
         continue;
       }
 
       final rule = scheduleBox.get(commitment.scheduleRuleId);
-
       if (rule == null) {
-        debugPrint('${commitment.title} -> Missing Schedule Rule');
         continue;
       }
 
       final occurrence =
           await occurrenceService.getOrCreateCurrentOccurrence(rule);
-
       if (occurrence == null) {
-        debugPrint(
-          '${commitment.title} -> No current occurrence',
-        );
         continue;
       }
 
-      final state = evaluator.evaluate(
-        rule: rule,
-        today: today,
-      );
+      final state = evaluator.evaluate(rule: rule, today: today);
 
       final action = ScheduledAction(
         id: occurrence.id,
@@ -79,8 +60,6 @@ class CommitmentActionProvider implements FinancialActionProvider {
         commitmentId: commitment.id,
         liabilityAccountId: commitment.liabilityAccountId,
       );
-
-      debugPrint('${commitment.title} -> Action Created');
 
       actions.add(
         ScheduledActionExecutionContext(
@@ -99,13 +78,10 @@ class CommitmentActionProvider implements FinancialActionProvider {
     switch (type) {
       case CommitmentType.income:
         return ScheduledActionKind.income;
-
       case CommitmentType.expense:
         return ScheduledActionKind.expense;
-
       case CommitmentType.transfer:
         return ScheduledActionKind.transfer;
-
       case CommitmentType.liabilityPayment:
         return ScheduledActionKind.liabilityPayment;
     }

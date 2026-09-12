@@ -1,5 +1,7 @@
 import 'package:hive/hive.dart';
 
+import '../core/money/money.dart';
+
 import 'enums/commitment_amount_mode.dart';
 import 'enums/commitment_status.dart';
 import 'enums/commitment_type.dart';
@@ -20,7 +22,7 @@ class Commitment {
   final CommitmentStatus status;
 
   @HiveField(4)
-  final double amount;
+  final Money amount;
 
   @HiveField(5)
   final CommitmentAmountMode amountMode;
@@ -62,7 +64,7 @@ class Commitment {
     String? title,
     CommitmentType? type,
     CommitmentStatus? status,
-    double? amount,
+    Money? amount,
     CommitmentAmountMode? amountMode,
     String? sourceAccountId,
     String? destinationAccountId,
