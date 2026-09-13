@@ -1,14 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:hive/hive.dart';
+
+import 'package:wafferly/constants/transaction_constants.dart';
 
 import 'package:wafferly/core/money/money.dart';
 
 import 'package:wafferly/models/account.dart';
 
 import 'package:wafferly/models/commitment.dart';
-
-import 'package:wafferly/models/debt/debt_summary.dart';
 
 import 'package:wafferly/models/enums/account_enums.dart';
 
@@ -22,6 +24,8 @@ import 'package:wafferly/models/enums/frequency.dart';
 
 import 'package:wafferly/models/enums/schedule_occurrence_status.dart';
 
+import 'package:wafferly/models/enums/scheduled_action_state.dart';
+
 import 'package:wafferly/models/schedule_occurrence.dart';
 
 import 'package:wafferly/models/schedule_rule.dart';
@@ -31,28 +35,38 @@ import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/services/balance_service.dart';
 
 import 'package:wafferly/services/debt_query_service.dart';
-import 'package:wafferly/constants/transaction_constants.dart';
+
 void main() {
-  late Box<Transaction> transactions;
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-  late Box<Account> accounts;
+  late String hivePath;
 
-  late Box<Commitment> commitments;
+  late Box<Account> accountBox;
 
-  late Box<ScheduleRule> rules;
+  late Box<Transaction> txBox;
 
-  late Box<ScheduleOccurrence> occurrences;
+  late Box<Commitment> commitmentBox;
+
+  late Box<ScheduleRule> scheduleRuleBox;
+
+  late Box<ScheduleOccurrence> occurrenceBox;
+
+  late DebtQueryService service;
 
   setUpAll(() async {
-    Hive.init('test_debt_query_service');
+    hivePath = Directory.systemTemp
+        .createTempSync('wafferly_debt_query_test_')
+        .path;
+
+    Hive.init(hivePath);
 
     if (!Hive.isAdapterRegistered(1)) {
       Hive.registerAdapter(AccountAdapter());
     }
 
-if (!Hive.isAdapterRegistered(2)) {
-  Hive.registerAdapter(AccountNatureAdapter());
-}
+    if (!Hive.isAdapterRegistered(2)) {
+      Hive.registerAdapter(AccountNatureAdapter());
+    }
 
     if (!Hive.isAdapterRegistered(3)) {
       Hive.registerAdapter(AccountGroupAdapter());
@@ -94,183 +108,315 @@ if (!Hive.isAdapterRegistered(2)) {
       Hive.registerAdapter(ScheduleOccurrenceStatusAdapter());
     }
 
-    transactions = await Hive.openBox<Transaction>('transactions');
-
-    accounts = await Hive.openBox<Account>('accounts');
-
-    commitments = await Hive.openBox<Commitment>('commitments');
-
-    rules = await Hive.openBox<ScheduleRule>('schedule_rules');
-
-    occurrences =
+    accountBox = await Hive.openBox<Account>('accounts');
+    txBox = await Hive.openBox<Transaction>('transactions');
+    commitmentBox = await Hive.openBox<Commitment>('commitments');
+    scheduleRuleBox = await Hive.openBox<ScheduleRule>('schedule_rules');
+    occurrenceBox =
         await Hive.openBox<ScheduleOccurrence>('schedule_occurrences');
+
+    service = DebtQueryService(
+      balanceService: BalanceService(),
+      accountBox: accountBox,
+      commitmentBox: commitmentBox,
+      scheduleRuleBox: scheduleRuleBox,
+      occurrenceBox: occurrenceBox,
+    );
   });
 
-  tearDown(() async {
-    await transactions.clear();
-    await accounts.clear();
-    await commitments.clear();
-    await rules.clear();
-    await occurrences.clear();
+  setUp(() async {
+    await accountBox.clear();
+    await txBox.clear();
+    await commitmentBox.clear();
+    await scheduleRuleBox.clear();
+    await occurrenceBox.clear();
   });
 
   tearDownAll(() async {
     await Hive.close();
   });
 
-  Account liabilityAccount() => Account(
-        id: 'loan',
-        bookId: 'default',
-        memberId: 'owner',
-        name: 'Loan',
+  Account liability(String id, {bool archived = false}) => Account(
+        id: id,
+        bookId: 'book-1',
+        memberId: 'member-1',
+        name: id,
         type: 'loan',
-        nature: AccountNature.liability,
         currency: 'EGP',
         createdAt: DateTime(2026, 1, 1),
         group: AccountGroup.liabilities,
+        nature: AccountNature.liability,
+        isArchived: archived,
       );
 
-  Commitment payment({
-    required String id,
-    required String ruleId,
-    required String title,
+  Commitment payment(
+    String id,
+    String liabilityId,
+    String ruleId, {
+    bool archived = false,
+    CommitmentStatus status = CommitmentStatus.active,
   }) =>
       Commitment(
         id: id,
-        title: title,
+        title: id,
         type: CommitmentType.liabilityPayment,
-        status: CommitmentStatus.active,
+        status: status,
         amount: Money.parse('100'),
         amountMode: CommitmentAmountMode.fixed,
         scheduleRuleId: ruleId,
-        sourceAccountId: 'wallet',
-        liabilityAccountId: 'loan',
+        liabilityAccountId: liabilityId,
+        isArchived: archived,
+      );
+
+  ScheduleRule rule(String id, DateTime dueDate, Frequency frequency) =>
+      ScheduleRule(
+        id: id,
+        frequency: frequency,
+        startDate: dueDate,
+        nextDueDate: dueDate,
       );
 
   test(
     'projects current liability balance and next payment without mutation',
     () async {
-      final dueDate = DateTime(2026, 9, 12);
+      final dueDate = DateTime(2026, 9, 15);
 
-      await accounts.put('loan', liabilityAccount());
+      final account = liability('loan-1');
 
-      await transactions.put(
-        'initial-loan',
+      final schedule = rule('rule-1', dueDate, Frequency.monthly);
+
+      final commitment = payment('payment-1', account.id, schedule.id);
+
+      await accountBox.put(account.id, account);
+
+      await txBox.put(
+        'opening',
         Transaction(
-          id: 'initial-loan',
+          id: 'opening',
           amount: 1000,
           type: TransactionType.initialBalance,
-          toAccountId: 'loan',
+          toAccountId: account.id,
           date: DateTime(2026, 1, 1),
         ),
       );
 
-      await rules.put(
-        'rule-loan',
-        ScheduleRule(
-          id: 'rule-loan',
-          frequency: Frequency.monthly,
-          startDate: dueDate,
-          nextDueDate: dueDate,
-        ),
+      await scheduleRuleBox.put(schedule.id, schedule);
+
+      await commitmentBox.put(commitment.id, commitment);
+
+      final beforeOccurrences = occurrenceBox.length;
+
+      final summaries = service.getDebtSummaries(
+        today: DateTime(2026, 9, 13),
       );
 
-      await commitments.put(
-        'payment-loan',
-        payment(
-          id: 'payment-loan',
-          ruleId: 'rule-loan',
-          title: 'Loan Payment',
-        ),
+      expect(summaries, hasLength(1));
+
+      expect(summaries.single.outstanding, Money.parse('1000'));
+
+      expect(summaries.single.nextPayment?.id, commitment.id);
+
+      expect(summaries.single.scheduleRule?.id, schedule.id);
+
+      expect(
+        summaries.single.paymentState,
+        ScheduledActionState.upcoming,
       );
 
-      final service = DebtQueryService(
-        balanceService: BalanceService(),
-        accountBox: accounts,
-        commitmentBox: commitments,
-        scheduleRuleBox: rules,
-        occurrenceBox: occurrences,
-      );
-
-      final result = service.getDebtSummary(
-        'loan',
-        today: dueDate,
-      );
-
-      expect(result, isA<DebtSummary>());
-
-      expect(result!.outstanding, Money.parse('1000'));
-
-      expect(result.nextPayment!.id, 'payment-loan');
-
-      expect(result.scheduleRule!.nextDueDate, dueDate);
-
-      expect(result.paymentState!.name, 'due');
-
-      expect(occurrences.isEmpty, isTrue);
+      expect(occurrenceBox.length, beforeOccurrences);
     },
   );
 
   test(
-    'selects the earliest active liability payment and ignores archived payments',
+    'selects earliest active liability payment and ignores archived payments',
     () async {
-      await accounts.put('loan', liabilityAccount());
+      final account = liability('loan-1');
 
-      await rules.putAll({
-        'later': ScheduleRule(
-          id: 'later',
-          frequency: Frequency.monthly,
-          startDate: DateTime(2026, 10, 1),
-          nextDueDate: DateTime(2026, 10, 1),
-        ),
-        'earlier': ScheduleRule(
-          id: 'earlier',
-          frequency: Frequency.monthly,
-          startDate: DateTime(2026, 9, 15),
-          nextDueDate: DateTime(2026, 9, 15),
-        ),
-        'archived': ScheduleRule(
-          id: 'archived',
-          frequency: Frequency.monthly,
-          startDate: DateTime(2026, 9, 1),
-          nextDueDate: DateTime(2026, 9, 1),
-        ),
-      });
+      final later =
+          rule('later', DateTime(2026, 10, 1), Frequency.monthly);
 
-      await commitments.putAll({
-        'later-payment': payment(
-          id: 'later-payment',
-          ruleId: 'later',
-          title: 'Later',
-        ),
-        'earlier-payment': payment(
-          id: 'earlier-payment',
-          ruleId: 'earlier',
-          title: 'Earlier',
-        ),
-        'archived-payment': payment(
-          id: 'archived-payment',
-          ruleId: 'archived',
-          title: 'Archived',
-        ).copyWith(isArchived: true),
-      });
+      final earlier =
+          rule('earlier', DateTime(2026, 9, 20), Frequency.monthly);
 
-      final service = DebtQueryService(
-        balanceService: BalanceService(),
-        accountBox: accounts,
-        commitmentBox: commitments,
-        scheduleRuleBox: rules,
-        occurrenceBox: occurrences,
+      await accountBox.put(account.id, account);
+
+      await scheduleRuleBox.put(later.id, later);
+
+      await scheduleRuleBox.put(earlier.id, earlier);
+
+      await commitmentBox.put(
+        'archived',
+        payment(
+          'archived',
+          account.id,
+          later.id,
+          archived: true,
+        ),
       );
 
-      final result = service.getDebtSummary(
-        'loan',
-        today: DateTime(2026, 9, 12),
+      await commitmentBox.put(
+        'later-payment',
+        payment(
+          'later-payment',
+          account.id,
+          later.id,
+        ),
       );
 
-      expect(result!.nextPayment!.id, 'earlier-payment');
+      await commitmentBox.put(
+        'earlier-payment',
+        payment(
+          'earlier-payment',
+          account.id,
+          earlier.id,
+        ),
+      );
 
-      expect(result.scheduleRule!.id, 'earlier');
+      final summary = service.getDebtSummary(
+        account.id,
+        today: DateTime(2026, 9, 13),
+      );
+
+      expect(summary?.nextPayment?.id, 'earlier-payment');
+
+      expect(summary?.scheduleRule?.id, earlier.id);
+    },
+  );
+
+  test(
+    'returns overdue state for a payment whose due date has passed',
+    () async {
+      final account = liability('loan-overdue');
+
+      final schedule =
+          rule('rule-overdue', DateTime(2026, 9, 10), Frequency.monthly);
+
+      final commitment =
+          payment('payment-overdue', account.id, schedule.id);
+
+      await accountBox.put(account.id, account);
+
+      await scheduleRuleBox.put(schedule.id, schedule);
+
+      await commitmentBox.put(commitment.id, commitment);
+
+      final summary = service.getDebtSummary(
+        account.id,
+        today: DateTime(2026, 9, 13),
+      );
+
+      expect(summary?.nextPayment?.id, commitment.id);
+
+      expect(
+        summary?.paymentState,
+        ScheduledActionState.overdue,
+      );
+    },
+  );
+
+  test(
+    'returns outstanding only when liability has no payment commitment',
+    () async {
+      final account = liability('loan-no-payment');
+
+      await accountBox.put(account.id, account);
+
+      await txBox.put(
+        'opening',
+        Transaction(
+          id: 'opening',
+          amount: 750,
+          type: TransactionType.initialBalance,
+          toAccountId: account.id,
+          date: DateTime(2026, 1, 1),
+        ),
+      );
+
+      final summary = service.getDebtSummary(
+        account.id,
+        today: DateTime(2026, 9, 13),
+      );
+
+      expect(summary, isNotNull);
+
+      expect(summary!.outstanding, Money.parse('750'));
+
+      expect(summary.nextPayment, isNull);
+
+      expect(summary.scheduleRule, isNull);
+
+      expect(summary.occurrence, isNull);
+
+      expect(summary.paymentState, isNull);
+    },
+  );
+
+  test(
+    'excludes archived liability accounts',
+    () async {
+      await accountBox.put('active', liability('active'));
+
+      await accountBox.put(
+        'archived',
+        liability('archived', archived: true),
+      );
+
+      final summaries = service.getDebtSummaries(
+        today: DateTime(2026, 9, 13),
+      );
+
+      expect(
+        summaries.map((e) => e.liabilityAccount.id),
+        ['active'],
+      );
+    },
+  );
+
+  test(
+    'does not expose a completed one-time occurrence as next payment',
+    () async {
+      final account = liability('loan-one-time');
+
+      final dueDate = DateTime(2026, 9, 12);
+
+      final schedule =
+          rule('rule-one-time', dueDate, Frequency.oneTime);
+
+      final commitment =
+          payment('payment-one-time', account.id, schedule.id);
+
+      final occurrence = ScheduleOccurrence(
+        id: ScheduleOccurrence.idFor(
+          scheduleRuleId: schedule.id,
+          dueDate: schedule.nextDueDate,
+        ),
+        scheduleRuleId: schedule.id,
+        dueDate: dueDate,
+        status: ScheduleOccurrenceStatus.completed,
+      );
+
+      await accountBox.put(account.id, account);
+
+      await scheduleRuleBox.put(schedule.id, schedule);
+
+      await commitmentBox.put(commitment.id, commitment);
+
+      await occurrenceBox.put(occurrence.id, occurrence);
+
+      final summary = service.getDebtSummary(
+        account.id,
+        today: DateTime(2026, 9, 13),
+      );
+
+      expect(summary, isNotNull);
+
+      expect(summary!.nextPayment, isNull);
+
+      expect(summary.scheduleRule, isNull);
+
+      expect(summary.occurrence, isNull);
+
+      expect(summary.paymentState, isNull);
     },
   );
 }

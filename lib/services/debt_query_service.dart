@@ -7,6 +7,7 @@ import '../models/debt/debt_summary.dart';
 import '../models/enums/account_enums.dart';
 import '../models/enums/commitment_status.dart';
 import '../models/enums/commitment_type.dart';
+import '../models/enums/schedule_occurrence_status.dart';
 import '../models/schedule_occurrence.dart';
 import '../models/schedule_rule.dart';
 import 'balance_service.dart';
@@ -106,6 +107,19 @@ final class DebtQueryService {
       final rule = scheduleRuleBox.get(commitment.scheduleRuleId);
       if (rule == null) continue;
       if (rule.endDate != null && rule.nextDueDate.isAfter(rule.endDate!)) {
+        continue;
+      }
+
+      // A one-time occurrence that has already settled is no longer a
+      // pending future payment. Do not expose it as the next payment even
+      // if the one-time rule intentionally keeps its cursor unchanged.
+      final occurrence = occurrenceBox.get(
+        ScheduleOccurrence.idFor(
+          scheduleRuleId: rule.id,
+          dueDate: rule.nextDueDate,
+        ),
+      );
+      if (occurrence?.status == ScheduleOccurrenceStatus.completed) {
         continue;
       }
 
