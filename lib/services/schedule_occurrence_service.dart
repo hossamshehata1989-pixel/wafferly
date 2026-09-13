@@ -1,6 +1,7 @@
 import 'package:hive/hive.dart';
 
 import '../models/enums/frequency.dart';
+import '../models/enums/schedule_occurrence_status.dart';
 import '../models/schedule_occurrence.dart';
 import '../models/schedule_rule.dart';
 import 'schedule_rule_service.dart';
@@ -19,11 +20,6 @@ class ScheduleOccurrenceService {
 
   List<ScheduleOccurrence> getAllOccurrences() => _box.values.toList();
 
-  /// Creates (or returns) the occurrence represented by the rule cursor.
-  ///
-  /// Cursor advancement is deliberately separate. This prevents the read /
-  /// presentation path from consuming a future slot before that occurrence
-  /// has actually been processed.
   Future<ScheduleOccurrence?> getOrCreateCurrentOccurrence(
     ScheduleRule rule,
   ) async {
@@ -51,8 +47,24 @@ class ScheduleOccurrenceService {
     return occurrence;
   }
 
-  /// Advances the rule cursor only after the current occurrence has been
-  /// processed by the scheduling workflow.
+  Future<ScheduleOccurrence> completeOccurrence(
+    ScheduleOccurrence occurrence,
+  ) async {
+    if (occurrence.status == ScheduleOccurrenceStatus.completed) {
+      return occurrence;
+    }
+
+    final completed = ScheduleOccurrence(
+      id: occurrence.id,
+      scheduleRuleId: occurrence.scheduleRuleId,
+      dueDate: occurrence.dueDate,
+      status: ScheduleOccurrenceStatus.completed,
+    );
+
+    await _box.put(completed.id, completed);
+    return completed;
+  }
+
   Future<ScheduleRule> advanceRuleAfterOccurrence(
     ScheduleRule rule,
     ScheduleOccurrence occurrence,

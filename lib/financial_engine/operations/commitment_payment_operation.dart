@@ -1,23 +1,26 @@
-import '../resolution/resolution.dart';
-import 'financial_operation.dart';
+import '../commands/shared/transaction_metadata.dart';
 import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
 import '../interpretation/normalized_intent.dart';
 import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
 
-class CommitmentPaymentOperation extends FinancialOperation {
+final class CommitmentPaymentOperation extends FinancialOperation {
   final String sourceAccountId;
-
+  final String liabilityAccountId;
   final String commitmentId;
-
   final double amount;
-
-  final DateTime occurredAt;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
 
   const CommitmentPaymentOperation({
     required this.sourceAccountId,
+    required this.liabilityAccountId,
     required this.commitmentId,
     required this.amount,
-    required this.occurredAt,
+    required this.metadata,
+    required this.context,
     super.resolution,
   });
 
@@ -25,9 +28,11 @@ class CommitmentPaymentOperation extends FinancialOperation {
   CommitmentPaymentOperation resolve(Resolution resolution) {
     return CommitmentPaymentOperation(
       sourceAccountId: sourceAccountId,
+      liabilityAccountId: liabilityAccountId,
       commitmentId: commitmentId,
       amount: amount,
-      occurredAt: occurredAt,
+      metadata: metadata,
+      context: context,
       resolution: resolution,
     );
   }
@@ -37,8 +42,11 @@ class CommitmentPaymentOperation extends FinancialOperation {
     required NormalizedIntent intent,
     required List<FinancialConstraint> constraints,
   }) {
-    throw UnimplementedError(
-      'CommitmentPaymentOperation has not been migrated to the Financial Command Model yet.',
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
     );
   }
 }

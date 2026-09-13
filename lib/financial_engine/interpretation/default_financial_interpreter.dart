@@ -1,4 +1,5 @@
 import '../operations/expense_operation.dart';
+import '../operations/commitment_payment_operation.dart';
 import '../operations/financial_operation.dart';
 import '../operations/income_operation.dart';
 import '../operations/transfer_operation.dart';
@@ -29,6 +30,15 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
           actorMemberId: operation.intent.actorMemberId,
           isExceptional: operation.intent.isExceptional,
 
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case CommitmentPaymentOperation operation:
+        return NormalizedIntent(
+          action: FinancialActionType.commitmentPayment,
+          sourceAccountId: operation.sourceAccountId,
+          destinationAccountId: operation.liabilityAccountId,
+          amount: operation.amount,
           resolution: operation.resolution ?? Resolution.execute,
         );
 
