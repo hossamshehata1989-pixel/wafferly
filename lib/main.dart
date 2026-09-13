@@ -43,11 +43,13 @@ import 'models/goal_activity.dart';
 
 import 'models/commitment.dart';
 import 'models/schedule_rule.dart';
+import 'models/schedule_occurrence.dart';
 
 import 'models/enums/commitment_type.dart';
 import 'models/enums/commitment_status.dart';
 import 'models/enums/commitment_amount_mode.dart';
 import 'models/enums/frequency.dart';
+import 'models/enums/schedule_occurrence_status.dart';
 
 import 'services/financial_action_engine.dart';
 import 'services/providers/commitment_action_provider.dart';
@@ -243,6 +245,14 @@ void main() async {
     Hive.registerAdapter(ScheduleRuleAdapter());
   }
 
+  if (!Hive.isAdapterRegistered(98)) {
+    Hive.registerAdapter(ScheduleOccurrenceAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(99)) {
+    Hive.registerAdapter(ScheduleOccurrenceStatusAdapter());
+  }
+
   if (!Hive.isAdapterRegistered(96)) {
     Hive.registerAdapter(CommitmentAdapter());
   }
@@ -275,6 +285,7 @@ void main() async {
   await Hive.openBox<Commitment>('commitments');
 
   await Hive.openBox<ScheduleRule>('schedule_rules');
+  await Hive.openBox<ScheduleOccurrence>('schedule_occurrences');
 
   // ====================================================
   // Ledger Stress Test
