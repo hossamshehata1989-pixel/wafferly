@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
+import 'debt_palette.dart';
 
 class AppTheme {
   static ThemeData get darkTheme {
@@ -10,8 +11,24 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primary,
 
+      // ✅ ColorScheme — مربوط بـ AppColors عشان Generic UI colors
+      colorScheme: const ColorScheme.dark(
+        primary: AppColors.primary,
+        surface: AppColors.background,
+        onSurface: AppColors.textPrimary,
+        onSurfaceVariant: AppColors.textSecondary,
+        error: AppColors.error,
+      ),
+
+      // ✅ Debt Palette (ThemeExtension)
+      extensions: const [
+        DebtPalette.dark,
+      ],
+
       // ✅ Global Font Family
-      fontFamily: 'Almarai', // ✅ Input Decoration Theme
+      fontFamily: 'Almarai',
+
+      // ✅ Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.card,
@@ -47,6 +64,7 @@ class AppTheme {
           borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
       ),
+
       // ✅ Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

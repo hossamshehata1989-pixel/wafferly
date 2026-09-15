@@ -15,35 +15,24 @@ import '../../models/schedule_occurrence.dart';
 import '../../models/schedule_rule.dart';
 import '../../services/balance_service.dart';
 import '../../services/debt_query_service.dart';
+import '../../theme/debt_palette.dart';
+import '../../theme/responsive_metrics.dart';
 import '../accounts/account_details_screen.dart';
 
-class DebtsScreen extends StatelessWidget {
+class DebtsScreen extends StatefulWidget {
   const DebtsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _DebtsView();
-  }
+  State<DebtsScreen> createState() => _DebtsScreenState();
 }
 
-class _DebtsView extends StatefulWidget {
-  const _DebtsView();
-
-  @override
-  State<_DebtsView> createState() => _DebtsViewState();
-}
-
-class _DebtsViewState extends State<_DebtsView> {
+class _DebtsScreenState extends State<DebtsScreen> {
   late final DebtQueryService _queryService;
 
   Box<Account> get _accountBox => Hive.box<Account>('accounts');
-
-  Box<Commitment> get _commitmentBox =>
-      Hive.box<Commitment>('commitments');
-
+  Box<Commitment> get _commitmentBox => Hive.box<Commitment>('commitments');
   Box<ScheduleRule> get _scheduleRuleBox =>
       Hive.box<ScheduleRule>('schedule_rules');
-
   Box<ScheduleOccurrence> get _occurrenceBox =>
       Hive.box<ScheduleOccurrence>('schedule_occurrences');
 
@@ -61,264 +50,307 @@ class _DebtsViewState extends State<_DebtsView> {
   }
 
   @override
-Widget build(BuildContext context) {
-  return AnimatedBuilder(
-    animation: Listenable.merge([
-      _accountBox.listenable(),
-      _commitmentBox.listenable(),
-      _scheduleRuleBox.listenable(),
-      _occurrenceBox.listenable(),
-    ]),
-    builder: (context, _) {
-      return _buildScreen(context);
-    },
-  );
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return AnimatedBuilder(
+      animation: Listenable.merge([
+        _accountBox.listenable(),
+        _commitmentBox.listenable(),
+        _scheduleRuleBox.listenable(),
+        _occurrenceBox.listenable(),
+      ]),
+      builder: (context, _) {
+        return Scaffold(
+          backgroundColor: scheme.surface,
+          appBar: AppBar(
+            backgroundColor: scheme.surface,
+            elevation: 0,
+            toolbarHeight: ResponsiveMetrics.of(context).h(68),
+            leading: BackButton(color: scheme.onSurface),
+            titleSpacing: 0,
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Debts',
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: ResponsiveMetrics.of(context).text(27),
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+                SizedBox(height: ResponsiveMetrics.of(context).h(6)),
+                Text(
+                  'All your liabilities in one place.',
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: ResponsiveMetrics.of(context).text(11.5),
+                    height: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          body: SafeArea(
+            top: false,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return _DashboardCanvas(
+                  queryService: _queryService,
+                  accountBox: _accountBox,
+                  commitmentBox: _commitmentBox,
+                  scheduleRuleBox: _scheduleRuleBox,
+                  occurrenceBox: _occurrenceBox,
+                  availableWidth: constraints.maxWidth,
+                  availableHeight: constraints.maxHeight,
+                  onOpenAccount: (account) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => AccountDetailsScreen(
+                          accountId: account.id,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
-  Widget _buildScreen(BuildContext context) {
-    final now = DateTime.now();
+class _DashboardCanvas extends StatelessWidget {
+  final DebtQueryService queryService;
+  final Box<Account> accountBox;
+  final Box<Commitment> commitmentBox;
+  final Box<ScheduleRule> scheduleRuleBox;
+  final Box<ScheduleOccurrence> occurrenceBox;
+  final double availableWidth;
+  final double availableHeight;
+  final ValueChanged<Account> onOpenAccount;
 
-    final summaries = _queryService.getDebtSummaries(
-      today: now,
+  const _DashboardCanvas({
+    required this.queryService,
+    required this.accountBox,
+    required this.commitmentBox,
+    required this.scheduleRuleBox,
+    required this.occurrenceBox,
+    required this.availableWidth,
+    required this.availableHeight,
+    required this.onOpenAccount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateTime.now();
+    final palette = context.debtPalette;
+    final summaries = queryService.getDebtSummaries(today: today);
+    final categories = _categories(summaries, today, palette);
+
+    final totalOutstanding = summaries.fold<double>(
+      0,
+      (sum, item) => sum + item.outstanding.toDouble(),
     );
 
-    final totalOutstanding = summaries.fold<Money>(
-      Money.zero,
-      (sum, item) => sum + item.outstanding,
-    );
+    final totalThisMonth = _thisMonthTotal(summaries, today);
+    final overdue = _stateTotals(summaries, today, _DebtState.overdue);
+    final dueSoon = _stateTotals(summaries, today, _DebtState.dueSoon);
+    final upcoming = _stateTotals(summaries, today, _DebtState.upcoming);
 
-    final thisMonth = _calculateThisMonth(
-      now,
-      summaries,
-    );
+    final metrics = ResponsiveMetrics.of(context);
+    final compact = availableWidth < 500 || availableHeight < 680;
 
-    final overdue = _calculateState(
-      summaries,
-      now,
-      _DebtStateFilter.overdue,
-    );
-
-    final dueSoon = _calculateState(
-      summaries,
-      now,
-      _DebtStateFilter.dueSoon,
-    );
-
-    final upcoming = _calculateState(
-      summaries,
-      now,
-      _DebtStateFilter.upcoming,
-    );
-
-    final categories = _buildCategories(
-      summaries,
-      now,
-    );
-
-    return Scaffold(
-      backgroundColor: const Color(0xFF020914),
-      appBar: AppBar(
-        automaticallyImplyLeading: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        toolbarHeight: 82,
-        titleSpacing: 20,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Debts',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
-                height: 1.0,
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'All your liabilities in one place.',
-              style: TextStyle(
-                color: Color(0xFFB8C8E6),
-                fontSize: 15,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        compact ? metrics.spacing(10) : metrics.spacing(12),
+        metrics.h(4),
+        compact ? metrics.spacing(10) : metrics.spacing(12),
+        metrics.h(8),
       ),
-      body: SafeArea(
-        top: false,
-        child: RefreshIndicator(
-          color: const Color(0xFF3A7BFF),
-          backgroundColor: const Color(0xFF07182A),
-          onRefresh: () async {
-            setState(() {});
-          },
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              8,
-              16,
-              28,
+      child: Column(
+        children: [
+          // Summary Card → 30%
+          Expanded(
+            flex: 30,
+            child: _SummaryCard(
+              totalOutstanding: totalOutstanding,
+              thisMonth: totalThisMonth,
+              categories: categories,
+              overdue: overdue,
+              dueSoon: dueSoon,
+              upcoming: upcoming,
+              compact: compact,
             ),
-            children: [
-              _SummaryCard(
-                totalOutstanding: totalOutstanding.toDouble(),
-                thisMonth: thisMonth,
-                categories: categories,
-                overdueCount: overdue.count,
-                overdueAmount: overdue.amount,
-                dueSoonCount: dueSoon.count,
-                dueSoonAmount: dueSoon.amount,
-                upcomingCount: upcoming.count,
-                upcomingAmount: upcoming.amount,
-              ),
-
-              const SizedBox(height: 18),
-
-              _CategoryGrid(
-                categories: categories,
-                onTap: (category) {
-                  if (category.accounts.isEmpty) {
-                    return;
-                  }
-
-                  _openCategory(
-                    context,
-                    category,
-                  );
-                },
-              ),
-
-              const SizedBox(height: 18),
-
-              _ProgressCard(
-                totalOutstanding: totalOutstanding.toDouble(),
-              ),
-            ],
           ),
-        ),
+          SizedBox(height: metrics.h(8)),
+
+          // Category Grid → 55%
+          Expanded(
+            flex: 55,
+            child: _CategoryGrid(
+              categories: categories,
+              onTap: onOpenAccount,
+              compact: compact,
+            ),
+          ),
+          SizedBox(height: metrics.h(8)),
+
+          // Progress Card → 15%
+          Expanded(
+            flex: 15,
+            child: const _ProgressCard(),
+          ),
+        ],
       ),
     );
   }
 
-  List<_DebtCategory> _buildCategories(
+  List<_DebtCategory> _categories(
     List<DebtSummary> summaries,
     DateTime today,
+    DebtPalette palette,
   ) {
     return [
-      _createCategory(
+      _category(
         title: 'Loans',
-        shortTitle: 'Loans',
         icon: Icons.account_balance_rounded,
-        color: const Color(0xFF08C7F8),
+        color: palette.loans,
         type: 'loan',
-        summaries: summaries,
-        today: today,
         countLabel: 'loans',
+        summaries: summaries,
+        today: today,
       ),
-      _createCategory(
+      _category(
         title: 'Credit Cards',
-        shortTitle: 'Credit Cards',
         icon: Icons.credit_card_rounded,
-        color: const Color(0xFFFF2D6F),
+        color: palette.creditCards,
         type: 'creditCard',
-        summaries: summaries,
-        today: today,
         countLabel: 'cards',
+        summaries: summaries,
+        today: today,
       ),
-      _createCategory(
+      _category(
         title: 'Installment Companies',
-        shortTitle: 'Installments',
         icon: Icons.shopping_bag_rounded,
-        color: const Color(0xFFFFB000),
+        color: palette.installments,
         type: 'installment',
-        summaries: summaries,
-        today: today,
         countLabel: 'accounts',
-      ),
-      _createCategory(
-        title: 'Borrowed Money',
-        shortTitle: 'Borrowed',
-        icon: Icons.person_rounded,
-        color: const Color(0xFF00E3A8),
-        type: 'debt',
         summaries: summaries,
         today: today,
-        countLabel: 'people',
       ),
-      _createInactiveCategory(
+      _category(
+        title: 'Borrowed Money',
+        icon: Icons.person_rounded,
+        color: palette.borrowed,
+        type: 'debt',
+        countLabel: 'people',
+        summaries: summaries,
+        today: today,
+      ),
+      _inactiveCategory(
         title: 'Temporary Debt',
-        shortTitle: 'Temporary',
         icon: Icons.access_time_rounded,
-        color: const Color(0xFF8EA8D6),
+        color: palette.temporary,
         countLabel: 'items',
       ),
-      _createInactiveCategory(
+      _inactiveCategory(
         title: 'Rotating Savings (Collection)',
-        shortTitle: 'Rotating',
         icon: Icons.groups_rounded,
-        color: const Color(0xFF7F9CCF),
+        color: palette.rotating,
         countLabel: 'collections',
       ),
     ];
   }
 
-  _DebtCategory _createCategory({
+  _DebtCategory _category({
     required String title,
-    required String shortTitle,
     required IconData icon,
     required Color color,
     required String type,
+    required String countLabel,
     required List<DebtSummary> summaries,
     required DateTime today,
-    required String countLabel,
   }) {
-    final matching = summaries
+    final matches = summaries
         .where((summary) => summary.liabilityAccount.type == type)
         .toList();
 
-    final outstanding = matching.fold<double>(
+    final outstanding = matches.fold<double>(
       0,
       (sum, item) => sum + item.outstanding.toDouble(),
     );
 
-    final thisMonth = matching.fold<double>(
+    final thisMonth = matches.fold<double>(
       0,
-      (sum, item) =>
-          sum +
-          _thisMonthForAccount(
-            item.liabilityAccount.id,
-            today,
-          ),
+      (sum, item) => sum + _thisMonthForAccount(
+        item.liabilityAccount.id,
+        today,
+      ),
     );
 
     return _DebtCategory(
       title: title,
-      shortTitle: shortTitle,
       icon: icon,
       color: color,
-      accounts: matching.map((e) => e.liabilityAccount).toList(),
+      risk: _riskForSummaries(matches, today),
+      accounts: matches.map((item) => item.liabilityAccount).toList(),
       outstanding: outstanding,
       thisMonth: thisMonth,
       countLabel: countLabel,
-      inactive: matching.isEmpty,
+      inactive: matches.isEmpty,
     );
   }
 
-  _DebtCategory _createInactiveCategory({
+  _DebtRisk _riskForSummaries(
+    List<DebtSummary> summaries,
+    DateTime today,
+  ) {
+    var risk = _DebtRisk.upcoming;
+    final current = DateTime(today.year, today.month, today.day);
+
+    for (final summary in summaries) {
+      final rule = summary.scheduleRule;
+      if (summary.nextPayment == null || rule == null) continue;
+
+      final due = DateTime(
+        rule.nextDueDate.year,
+        rule.nextDueDate.month,
+        rule.nextDueDate.day,
+      );
+      final days = due.difference(current).inDays;
+
+      final candidate = days < 0
+          ? _DebtRisk.overdue
+          : days == 0
+              ? _DebtRisk.critical
+              : days <= 7
+                  ? _DebtRisk.dueSoon
+                  : _DebtRisk.upcoming;
+
+      if (candidate.index < risk.index) {
+        risk = candidate;
+      }
+    }
+
+    return risk;
+  }
+
+  _DebtCategory _inactiveCategory({
     required String title,
-    required String shortTitle,
     required IconData icon,
     required Color color,
     required String countLabel,
   }) {
     return _DebtCategory(
       title: title,
-      shortTitle: shortTitle,
       icon: icon,
       color: color,
+      risk: _DebtRisk.inactive,
       accounts: const [],
       outstanding: 0,
       thisMonth: 0,
@@ -327,13 +359,30 @@ Widget build(BuildContext context) {
     );
   }
 
+  double _thisMonthTotal(
+    List<DebtSummary> summaries,
+    DateTime today,
+  ) {
+    final seen = <String>{};
+    double total = 0;
+
+    for (final summary in summaries) {
+      final id = summary.liabilityAccount.id;
+      if (seen.add(id)) {
+        total += _thisMonthForAccount(id, today);
+      }
+    }
+
+    return total;
+  }
+
   double _thisMonthForAccount(
     String accountId,
     DateTime today,
   ) {
     double total = 0;
 
-    for (final commitment in _commitmentBox.values) {
+    for (final commitment in commitmentBox.values) {
       if (commitment.isArchived ||
           commitment.status != CommitmentStatus.active ||
           commitment.type != CommitmentType.liabilityPayment ||
@@ -341,33 +390,24 @@ Widget build(BuildContext context) {
         continue;
       }
 
-      final rule = _scheduleRuleBox.get(
-        commitment.scheduleRuleId,
-      );
-
-      if (rule == null) {
-        continue;
-      }
+      final rule = scheduleRuleBox.get(commitment.scheduleRuleId);
+      if (rule == null) continue;
 
       final dueDate = rule.nextDueDate;
 
-      final isThisMonth =
-          dueDate.year == today.year &&
-          dueDate.month == today.month;
-
-      if (!isThisMonth) {
+      if (dueDate.year != today.year ||
+          dueDate.month != today.month) {
         continue;
       }
 
-      final occurrence = _occurrenceBox.get(
+      final occurrence = occurrenceBox.get(
         ScheduleOccurrence.idFor(
           scheduleRuleId: rule.id,
           dueDate: dueDate,
         ),
       );
 
-      if (occurrence?.status ==
-          ScheduleOccurrenceStatus.completed) {
+      if (occurrence?.status == ScheduleOccurrenceStatus.completed) {
         continue;
       }
 
@@ -377,11 +417,13 @@ Widget build(BuildContext context) {
     return total;
   }
 
-  _DebtStateTotals _calculateState(
+  _DebtStateTotals _stateTotals(
     List<DebtSummary> summaries,
     DateTime today,
-    _DebtStateFilter filter,
+    _DebtState state,
   ) {
+    final current = DateTime(today.year, today.month, today.day);
+
     int count = 0;
     double amount = 0;
 
@@ -389,44 +431,23 @@ Widget build(BuildContext context) {
       final payment = summary.nextPayment;
       final rule = summary.scheduleRule;
 
-      if (payment == null || rule == null) {
-        continue;
-      }
+      if (payment == null || rule == null) continue;
 
-      final dueDate = DateTime(
+      final due = DateTime(
         rule.nextDueDate.year,
         rule.nextDueDate.month,
         rule.nextDueDate.day,
       );
 
-      final currentDate = DateTime(
-        today.year,
-        today.month,
-        today.day,
-      );
+      final days = due.difference(current).inDays;
 
-      final difference =
-          dueDate.difference(currentDate).inDays;
+      final matches = switch (state) {
+        _DebtState.overdue => days < 0,
+        _DebtState.dueSoon => days >= 0 && days <= 7,
+        _DebtState.upcoming => days > 7,
+      };
 
-      bool matches = false;
-
-      switch (filter) {
-        case _DebtStateFilter.overdue:
-          matches = difference < 0;
-          break;
-
-        case _DebtStateFilter.dueSoon:
-          matches = difference >= 0 && difference <= 7;
-          break;
-
-        case _DebtStateFilter.upcoming:
-          matches = difference > 7;
-          break;
-      }
-
-      if (!matches) {
-        continue;
-      }
+      if (!matches) continue;
 
       count++;
       amount += payment.amount.toDouble();
@@ -437,105 +458,20 @@ Widget build(BuildContext context) {
       amount: amount,
     );
   }
-
-  double _calculateThisMonth(
-    DateTime today,
-    List<DebtSummary> summaries,
-  ) {
-    double total = 0;
-
-    for (final summary in summaries) {
-      total += _thisMonthForAccount(
-        summary.liabilityAccount.id,
-        today,
-      );
-    }
-
-    return total;
-  }
-
-  void _openCategory(
-    BuildContext context,
-    _DebtCategory category,
-  ) {
-    if (category.accounts.length == 1) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => AccountDetailsScreen(
-            accountId: category.accounts.first.id,
-          ),
-        ),
-      );
-      return;
-    }
-
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF07182A),
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) {
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              8,
-              16,
-              24,
-            ),
-            children: [
-              Text(
-                category.title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 14),
-              ...category.accounts.map(
-                (account) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: _IconBubble(
-                    icon: category.icon,
-                    color: category.color,
-                  ),
-                  title: Text(
-                    account.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  trailing: const Icon(
-                    Icons.chevron_right_rounded,
-                    color: Colors.white70,
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => AccountDetailsScreen(
-                          accountId: account.id,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 }
 
-enum _DebtStateFilter {
+enum _DebtState {
   overdue,
   dueSoon,
   upcoming,
+}
+
+enum _DebtRisk {
+  overdue,
+  critical,
+  dueSoon,
+  upcoming,
+  inactive,
 }
 
 class _DebtStateTotals {
@@ -550,9 +486,9 @@ class _DebtStateTotals {
 
 class _DebtCategory {
   final String title;
-  final String shortTitle;
   final IconData icon;
   final Color color;
+  final _DebtRisk risk;
   final List<Account> accounts;
   final double outstanding;
   final double thisMonth;
@@ -561,9 +497,9 @@ class _DebtCategory {
 
   const _DebtCategory({
     required this.title,
-    required this.shortTitle,
     required this.icon,
     required this.color,
+    required this.risk,
     required this.accounts,
     required this.outstanding,
     required this.thisMonth,
@@ -576,230 +512,311 @@ class _SummaryCard extends StatelessWidget {
   final double totalOutstanding;
   final double thisMonth;
   final List<_DebtCategory> categories;
-
-  final int overdueCount;
-  final double overdueAmount;
-
-  final int dueSoonCount;
-  final double dueSoonAmount;
-
-  final int upcomingCount;
-  final double upcomingAmount;
+  final _DebtStateTotals overdue;
+  final _DebtStateTotals dueSoon;
+  final _DebtStateTotals upcoming;
+  final bool compact;
 
   const _SummaryCard({
     required this.totalOutstanding,
     required this.thisMonth,
     required this.categories,
-    required this.overdueCount,
-    required this.overdueAmount,
-    required this.dueSoonCount,
-    required this.dueSoonAmount,
-    required this.upcomingCount,
-    required this.upcomingAmount,
+    required this.overdue,
+    required this.dueSoon,
+    required this.upcoming,
+    required this.compact,
   });
 
   @override
   Widget build(BuildContext context) {
-    final activeCategories = categories
-        .where((category) => category.outstanding > 0)
-        .toList();
+    final metrics = ResponsiveMetrics.of(context);
+    final palette = context.debtPalette;
+    final active = categories.where((item) => item.outstanding > 0).toList();
 
     return Container(
+      padding: EdgeInsets.fromLTRB(
+        metrics.spacing(compact ? 10 : 12),
+        metrics.h(compact ? 8 : 10),
+        metrics.spacing(compact ? 10 : 12),
+        metrics.h(7),
+      ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: const LinearGradient(
+        borderRadius: BorderRadius.circular(metrics.size(20)),
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF082441),
-            Color(0xFF061629),
+            palette.summaryGradientStart,
+            palette.summaryGradientEnd,
           ],
         ),
-        border: Border.all(
-          color: const Color(0xFF007BBD),
-          width: 1,
-        ),
+        border: Border.all(color: palette.summaryBorder),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF008CFF).withOpacity(0.14),
-            blurRadius: 28,
-            spreadRadius: 1,
+            color: palette.summaryGlow.withOpacity(0.12),
+            blurRadius: metrics.size(24),
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(
-        18,
-        18,
-        18,
-        16,
-      ),
       child: Column(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 5,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Total Outstanding',
-                      style: TextStyle(
-                        color: Color(0xFFB7C8E7),
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    _AmountText(
-                      amount: totalOutstanding,
-                      fontSize: 32,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'This Month',
-                      style: TextStyle(
-                        color: Color(0xFFB7C8E7),
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    _AmountText(
-                      amount: thisMonth,
-                      fontSize: 24,
-                      color: const Color(0xFF00B9FF),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.north_east_rounded,
-                          color: Color(0xFFFF2D6F),
-                          size: 22,
-                        ),
-                        const SizedBox(width: 3),
-                        const Text(
-                          '12%',
-                          style: TextStyle(
-                            color: Color(0xFFFF2D6F),
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          'vs last month',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: _SummaryNumbers(
+                    totalOutstanding: totalOutstanding,
+                    thisMonth: thisMonth,
+                    compact: compact,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 4,
-                child: _DebtDonut(
-                  categories: activeCategories,
+                SizedBox(
+                  width: compact ? metrics.size(160) : metrics.size(170),
+                  child: _DonutWithLegend(categories: active),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 18),
-          const Divider(
-            color: Color(0xFF27405D),
-            height: 1,
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _StateMetric(
-                  count: overdueCount,
-                  label: 'Overdue',
-                  amount: overdueAmount,
-                  color: const Color(0xFFFF2D6F),
+          Container(height: metrics.h(1), color: palette.summaryDivider),
+          SizedBox(height: metrics.h(7)),
+          SizedBox(
+            height: metrics.h(compact ? 44 : 49),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _StateMetric(
+                    state: 'Overdue',
+                    value: overdue,
+                    color: palette.overdue,
+                  ),
                 ),
-              ),
-              _VerticalDivider(),
-              Expanded(
-                child: _StateMetric(
-                  count: dueSoonCount,
-                  label: 'Due Soon',
-                  amount: dueSoonAmount,
-                  color: const Color(0xFFFFB000),
+                _divider(context, compact, palette),
+                Expanded(
+                  child: _StateMetric(
+                    state: 'Due Soon',
+                    value: dueSoon,
+                    color: palette.dueSoon,
+                  ),
                 ),
-              ),
-              _VerticalDivider(),
-              Expanded(
-                child: _StateMetric(
-                  count: upcomingCount,
-                  label: 'Upcoming',
-                  amount: upcomingAmount,
-                  color: const Color(0xFF00AFFF),
+                _divider(context, compact, palette),
+                Expanded(
+                  child: _StateMetric(
+                    state: 'Upcoming',
+                    value: upcoming,
+                    color: palette.upcoming,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+
+  Widget _divider(BuildContext context, bool compact, DebtPalette palette) {
+    final metrics = ResponsiveMetrics.of(context);
+    return Container(
+      width: metrics.size(1),
+      height: metrics.h(compact ? 34 : 38),
+      color: palette.summaryDivider,
+    );
+  }
 }
 
-class _DebtDonut extends StatelessWidget {
+class _SummaryNumbers extends StatelessWidget {
+  final double totalOutstanding;
+  final double thisMonth;
+  final bool compact;
+
+  const _SummaryNumbers({
+    required this.totalOutstanding,
+    required this.thisMonth,
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final palette = context.debtPalette;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          'Total Outstanding',
+          style: TextStyle(
+            color: scheme.onSurfaceVariant,
+            fontSize: metrics.text(compact ? 10 : 11.5),
+          ),
+        ),
+        SizedBox(height: metrics.h(2)),
+        _Amount(
+          value: totalOutstanding,
+          size: metrics.text(compact ? 19 : 22),
+          color: scheme.onSurface,
+        ),
+        SizedBox(height: metrics.h(6)),
+        Row(
+          children: [
+            Icon(
+              Icons.north_east_rounded,
+              color: palette.overdue,
+              size: metrics.size(compact ? 15 : 17),
+            ),
+            SizedBox(width: metrics.spacing(2)),
+            Text(
+              '12%',
+              style: TextStyle(
+                color: palette.overdue,
+                fontSize: metrics.text(compact ? 13 : 15),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(width: metrics.spacing(3)),
+            Flexible(
+              child: Text(
+                'vs last month',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: metrics.text(compact ? 8 : 9.5),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _DonutWithLegend extends StatelessWidget {
   final List<_DebtCategory> categories;
 
-  const _DebtDonut({
+  const _DonutWithLegend({
     required this.categories,
   });
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
     final total = categories.fold<double>(
       0,
       (sum, item) => sum + item.outstanding,
     );
 
-    return SizedBox(
-      width: 150,
-      height: 170,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CustomPaint(
-            size: const Size(138, 138),
-            painter: _DonutPainter(
-              categories: categories,
-              total: total,
-            ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: metrics.size(96),
+          height: metrics.h(96),
+          child: Stack(
+            alignment: Alignment.center,
             children: [
-              Text(
-                categories.length.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 27,
-                  fontWeight: FontWeight.w800,
+              CustomPaint(
+                size: Size(metrics.size(96), metrics.size(96)),
+                painter: _DonutPainter(
+                  categories: categories,
+                  total: total,
                 ),
               ),
-              const Text(
-                'types',
-                style: TextStyle(
-                  color: Color(0xFFB7C8E7),
-                  fontSize: 13,
-                ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    categories.length.toString(),
+                    style: TextStyle(
+                      color: scheme.onSurface,
+                      fontSize: metrics.text(19),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    'types',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: metrics.text(8.5),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        ),
+        SizedBox(width: metrics.spacing(4)),
+        Expanded(
+          child: Column(
+            children: [
+              for (final category in categories.take(6))
+                Padding(
+                  padding: EdgeInsets.only(bottom: metrics.h(3)),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: metrics.size(9),
+                        height: metrics.size(9),
+                        decoration: BoxDecoration(
+                          color: category.color,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      SizedBox(width: metrics.spacing(4)),
+                      Expanded(
+                        child: Text(
+                          _legendName(category.title),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: scheme.onSurfaceVariant,
+                            fontSize: metrics.text(8.5),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${_percentage(category.outstanding, total)}%',
+                        style: TextStyle(
+                          color: scheme.onSurface,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
+  }
+
+  String _legendName(String title) {
+    switch (title) {
+      case 'Installment Companies':
+        return 'Installments';
+      case 'Borrowed Money':
+        return 'Borrowed';
+      case 'Temporary Debt':
+        return 'Temporary';
+      case 'Rotating Savings (Collection)':
+        return 'Rotating';
+      default:
+        return title;
+    }
+  }
+
+  int _percentage(double value, double total) {
+    if (total <= 0) return 0;
+    return ((value / total) * 100).round();
   }
 }
 
@@ -819,50 +836,41 @@ class _DonutPainter extends CustomPainter {
       size.height / 2,
     );
 
-    final radius =
-        math.min(size.width, size.height) / 2 - 7;
-
-    final rect = Rect.fromCircle(
-      center: center,
-      radius: radius,
-    );
+    final radius = math.min(size.width, size.height) / 2 - 8;
 
     final paint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 17
+      ..strokeWidth = 15
       ..strokeCap = StrokeCap.butt;
 
     if (total <= 0) {
-      paint.color = const Color(0xFF20344F);
-      canvas.drawCircle(
-        center,
-        radius,
-        paint,
-      );
+      paint.color = const Color(0xFF263A55);
+      canvas.drawCircle(center, radius, paint);
       return;
     }
 
-    double startAngle = -math.pi / 2;
+    var start = -math.pi / 2;
 
     for (final category in categories) {
-      if (category.outstanding <= 0) {
-        continue;
-      }
+      if (category.outstanding <= 0) continue;
 
       final sweep =
-          (category.outstanding / total) * math.pi * 2;
+          category.outstanding / total * math.pi * 2;
 
       paint.color = category.color;
 
       canvas.drawArc(
-        rect,
-        startAngle,
+        Rect.fromCircle(
+          center: center,
+          radius: radius,
+        ),
+        start,
         sweep,
         false,
         paint,
       );
 
-      startAngle += sweep;
+      start += sweep;
     }
   }
 
@@ -874,273 +882,456 @@ class _DonutPainter extends CustomPainter {
 }
 
 class _StateMetric extends StatelessWidget {
-  final int count;
-  final String label;
-  final double amount;
+  final String state;
+  final _DebtStateTotals value;
   final Color color;
 
   const _StateMetric({
-    required this.count,
-    required this.label,
-    required this.amount,
+    required this.state,
+    required this.value,
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            count.toString(),
-            style: TextStyle(
-              color: color,
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Color(0xFFB7C8E7),
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  _formatAmount(amount),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+    final metrics = ResponsiveMetrics.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final compact = MediaQuery.sizeOf(context).width < 500;
 
-class _VerticalDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 48,
-      color: const Color(0xFF3C516D),
+    return Row(
+      children: [
+        SizedBox(width: metrics.spacing(3)),
+        Text(
+          '${value.count}',
+          style: TextStyle(
+            color: color,
+            fontSize: metrics.text(compact ? 18 : 21),
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        SizedBox(width: metrics.spacing(5)),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                state,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: metrics.text(compact ? 8.5 : 10),
+                ),
+              ),
+              SizedBox(height: metrics.h(1)),
+              Text(
+                _formatAmount(value.amount),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: metrics.text(compact ? 9 : 10.5),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _CategoryGrid extends StatelessWidget {
   final List<_DebtCategory> categories;
-  final ValueChanged<_DebtCategory> onTap;
+  final ValueChanged<Account> onTap;
+  final bool compact;
 
   const _CategoryGrid({
     required this.categories,
     required this.onTap,
+    required this.compact,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: categories.length,
-      gridDelegate:
-          const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.20,
-      ),
-      itemBuilder: (context, index) {
-        final category = categories[index];
+    final metrics = ResponsiveMetrics.of(context);
 
-        return _DebtCategoryCard(
-          category: category,
-          onTap: () => onTap(category),
+    // عدد الصفوف = نصف عدد الكروت (2 columns)
+    final rowCount = (categories.length / 2).ceil();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // ارتفاع كل صف = (الارتفاع الكلي - المسافات) / عدد الصفوف
+        final totalSpacing = metrics.h(8) * (rowCount - 1);
+        final rowHeight = (constraints.maxHeight - totalSpacing) / rowCount;
+
+        return GridView.builder(
+          padding: EdgeInsets.zero,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: categories.length,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: metrics.spacing(8),
+            mainAxisSpacing: metrics.h(8),
+            mainAxisExtent: rowHeight.clamp(0, double.infinity),
+          ),
+          itemBuilder: (context, index) {
+            final category = categories[index];
+
+            return _DebtCard(
+              category: category,
+              onTap: () {
+                if (category.accounts.length == 1) {
+                  onTap(category.accounts.first);
+                } else if (category.accounts.length > 1) {
+                  _showAccounts(context, category, onTap);
+                }
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showAccounts(
+    BuildContext context,
+    _DebtCategory category,
+    ValueChanged<Account> onTap,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final metrics = ResponsiveMetrics.of(context);
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: scheme.surface,
+      showDragHandle: true,
+      builder: (_) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: EdgeInsets.fromLTRB(
+              metrics.spacing(12),
+              metrics.h(4),
+              metrics.spacing(12),
+              metrics.h(20),
+            ),
+            children: [
+              Text(
+                category.title,
+                style: TextStyle(
+                  color: scheme.onSurface,
+                  fontSize: metrics.text(20),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(height: metrics.h(8)),
+              ...category.accounts.map(
+                (account) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    category.icon,
+                    color: category.color,
+                  ),
+                  title: Text(
+                    account.name,
+                    style: TextStyle(color: scheme.onSurface),
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: scheme.onSurface.withOpacity(0.7),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    onTap(account);
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 }
 
-class _DebtCategoryCard extends StatelessWidget {
+class _DebtCard extends StatefulWidget {
   final _DebtCategory category;
   final VoidCallback onTap;
 
-  const _DebtCategoryCard({
-    required this.category,
-    required this.onTap,
-  });
+  const _DebtCard({required this.category, required this.onTap});
+
+  @override
+  State<_DebtCard> createState() => _DebtCardState();
+}
+
+class _DebtCardState extends State<_DebtCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+
+  _DebtCategory get category => widget.category;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _syncPulse();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DebtCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.category.risk != widget.category.risk) {
+      _syncPulse();
+    }
+  }
+
+  void _syncPulse() {
+    if (category.risk == _DebtRisk.overdue) {
+      _pulseController.repeat(reverse: true);
+    } else {
+      _pulseController.stop();
+      _pulseController.value = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
+    final palette = context.debtPalette;
+    final scheme = Theme.of(context).colorScheme;
+    final compact = MediaQuery.sizeOf(context).width < 500;
+
     final inactive = category.inactive;
+    final riskColor = _riskColor(category, palette);
+    final riskGlow = _riskGlow(category, palette);
 
-    final borderColor = inactive
-        ? const Color(0xFF344A68)
-        : category.color;
-
-    final backgroundColor = inactive
-        ? const Color(0xFF101F35)
-        : Color.lerp(
-            const Color(0xFF071629),
-            category.color,
-            0.12,
-          )!;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: inactive ? null : onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            color: backgroundColor,
-            border: Border.all(
-              color: borderColor,
-              width: 1.2,
-            ),
-            boxShadow: inactive
-                ? null
-                : [
-                    BoxShadow(
-                      color: category.color.withOpacity(0.10),
-                      blurRadius: 18,
-                      spreadRadius: 1,
-                    ),
-                  ],
-          ),
-          padding: const EdgeInsets.fromLTRB(
-            14,
-            14,
-            12,
-            12,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _IconBubble(
-                    icon: category.icon,
-                    color: category.color,
-                    inactive: inactive,
-                  ),
-                  const Spacer(),
-                  if (!inactive)
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Colors.white,
-                      size: 25,
-                    )
-                  else
-                    const _InactiveBadge(),
-                ],
-              ),
-              const Spacer(),
-              Text(
-                category.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: inactive
-                      ? const Color(0xFF9FB2D4)
-                      : Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Flexible(
-                    child: Text(
-                      _formatAmount(
-                        category.outstanding,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: inactive
-                            ? Colors.white
-                            : Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (!inactive) ...[
-                const SizedBox(height: 3),
-                Text(
-                  'This Month',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.65),
-                    fontSize: 12,
-                  ),
-                ),
-                Text(
-                  _formatAmount(
-                    category.thisMonth,
-                  ),
-                  style: TextStyle(
-                    color: category.color,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ] else ...[
-                const SizedBox(height: 3),
-                const Text(
-                  'This Month',
-                  style: TextStyle(
-                    color: Color(0xFF9FB2D4),
-                    fontSize: 12,
-                  ),
-                ),
-                Text(
-                  '0 EGP',
-                  style: TextStyle(
-                    color: category.color.withOpacity(0.8),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 2),
-              Text(
-                inactive
-                    ? 'No active items'
-                    : '${category.accounts.length} ${category.countLabel}',
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.72),
-                  fontSize: 12,
-                ),
-              ),
+    // التدرج الاحترافي: 3 stops — أغمق في الأعلى، أفتح في المنتصف، متوسط في الأسفل
+    final background = inactive
+        ? LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(palette.inactive, scheme.surface, 0.82)!,
+              Color.lerp(palette.inactive, scheme.surface, 0.88)!,
+              Color.lerp(palette.inactive, scheme.surface, 0.85)!,
             ],
+            stops: const [0.0, 0.55, 1.0],
+          )
+        : LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color.lerp(scheme.surface, riskColor, 0.44)!,
+              Color.lerp(scheme.surface, riskColor, 0.18)!,
+              Color.lerp(scheme.surface, riskColor, 0.30)!,
+            ],
+            stops: const [0.0, 0.55, 1.0],
+          );
+
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final pulse =
+            category.risk == _DebtRisk.overdue ? _pulseController.value : 0.0;
+        final borderWidth = inactive ? 1.0 : 1.0 + pulse * 0.8;
+
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: inactive ? null : widget.onTap,
+            borderRadius: BorderRadius.circular(metrics.size(15)),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: background,
+                borderRadius: BorderRadius.circular(metrics.size(15)),
+                border: Border.all(
+                  color: inactive
+                      ? palette.inactive.withOpacity(0.30)
+                      : riskColor.withOpacity(0.82 + pulse * 0.18),
+                  width: borderWidth,
+                ),
+                boxShadow: inactive
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: riskGlow.withOpacity(0.20 + pulse * 0.32),
+                          blurRadius: metrics.size(14 + pulse * 16),
+                          spreadRadius: pulse * metrics.size(1.5),
+                        ),
+                      ],
+              ),
+              padding: EdgeInsets.fromLTRB(
+                metrics.spacing(compact ? 8 : 9),
+                metrics.h(compact ? 6 : 7),
+                metrics.spacing(compact ? 7 : 8),
+                metrics.h(6),
+              ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final narrow = constraints.maxWidth < 180;
+                  final iconSize = metrics.size(narrow ? 30 : 34);
+
+                  return Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ===== الصف العلوي: Icon + Title + Arrow =====
+                      Row(
+                        children: [
+                          _IconBubble(
+                            icon: category.icon,
+                            color: riskColor,
+                            inactive: inactive,
+                            surface: scheme.surface,
+                            size: iconSize,
+                            iconSize: metrics.size(narrow ? 17 : 19),
+                          ),
+                          SizedBox(width: metrics.spacing(7)),
+                          Expanded(
+                            child: Text(
+                              category.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: inactive
+                                    ? scheme.onSurfaceVariant
+                                    : scheme.onSurface,
+                                fontSize: metrics.text(narrow ? 11 : 12),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: scheme.onSurface.withOpacity(0.7),
+                            size: metrics.size(18),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: metrics.h(4)),
+
+                      // ===== الصف السفلي =====
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            flex: 5,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _Amount(
+                                  value: category.outstanding,
+                                  size: metrics.text(narrow ? 14 : 15.5),
+                                  color: scheme.onSurface,
+                                ),
+                                SizedBox(height: metrics.h(2)),
+                                Text(
+                                  inactive
+                                      ? 'Inactive'
+                                      : '${category.accounts.length} ${category.countLabel}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color:
+                                        scheme.onSurface.withOpacity(0.62),
+                                    fontSize: metrics.text(8.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 1,
+                            height: metrics.h(28),
+                            color: scheme.onSurface.withOpacity(0.15),
+                          ),
+                          Expanded(
+                            flex: 4,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                  left: metrics.spacing(6)),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'This Month',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color:
+                                          scheme.onSurface.withOpacity(0.55),
+                                      fontSize: metrics.text(8),
+                                    ),
+                                  ),
+                                  SizedBox(height: metrics.h(2)),
+                                  Text(
+                                    _formatAmount(category.thisMonth),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: inactive
+                                          ? palette.inactive
+                                          : riskColor,
+                                      fontSize: metrics.text(10),
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
+  }
+
+  Color _riskColor(_DebtCategory category, DebtPalette palette) {
+    if (category.inactive) return palette.inactive;
+
+    switch (category.risk) {
+      case _DebtRisk.upcoming:
+        return category.color;
+      case _DebtRisk.dueSoon:
+        // blend قوي مع الأورنج عشان واضح
+        return Color.lerp(category.color, palette.dueSoon, 0.65)!;
+      case _DebtRisk.critical:
+        // blend قوي مع الأحمر
+        return Color.lerp(category.color, palette.critical, 0.78)!;
+      case _DebtRisk.overdue:
+        // أحمر قوي + glow + pulse
+        return palette.overdue;
+      case _DebtRisk.inactive:
+        return palette.inactive;
+    }
+  }
+
+  Color _riskGlow(_DebtCategory category, DebtPalette palette) {
+    if (category.risk == _DebtRisk.overdue) {
+      return palette.overdue;
+    }
+    return _riskColor(category, palette);
   }
 }
 
@@ -1148,175 +1339,156 @@ class _IconBubble extends StatelessWidget {
   final IconData icon;
   final Color color;
   final bool inactive;
+  final Color surface;
+  final double size;
+  final double iconSize;
 
   const _IconBubble({
     required this.icon,
     required this.color,
-    this.inactive = false,
+    required this.inactive,
+    required this.surface,
+    this.size = 34,
+    this.iconSize = 20,
   });
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
     return Container(
-      width: 44,
-      height: 44,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: inactive
-            ? const Color(0xFF243754)
-            : color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(13),
+            ? Color.lerp(surface, color, 0.10)!
+            : color.withOpacity(0.20),
+        borderRadius: BorderRadius.circular(metrics.size(10)),
       ),
-      alignment: Alignment.center,
       child: Icon(
         icon,
-        color: inactive
-            ? const Color(0xFF9BB0D7)
-            : color,
-        size: 26,
+        color: inactive ? scheme.onSurfaceVariant : color,
+        size: iconSize,
       ),
     );
   }
 }
 
-class _InactiveBadge extends StatelessWidget {
-  const _InactiveBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 11,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A2B44),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF38506F),
-        ),
-      ),
-      child: const Text(
-        'Inactive',
-        style: TextStyle(
-          color: Color(0xFF9DB3D8),
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-}
-
-class _AmountText extends StatelessWidget {
-  final double amount;
-  final double fontSize;
+class _Amount extends StatelessWidget {
+  final double value;
+  final double size;
   final Color color;
 
-  const _AmountText({
-    required this.amount,
-    required this.fontSize,
+  const _Amount({
+    required this.value,
+    required this.size,
     this.color = Colors.white,
   });
 
   @override
   Widget build(BuildContext context) {
-    return RichText(
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      text: TextSpan(
-        children: [
-          TextSpan(
-            text: _formatNumber(amount),
-            style: TextStyle(
-              color: color,
-              fontSize: fontSize,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
+    return FittedBox(
+      alignment: Alignment.centerLeft,
+      fit: BoxFit.scaleDown,
+      child: RichText(
+        maxLines: 1,
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: _formatNumber(value),
+              style: TextStyle(
+                color: color,
+                fontSize: size,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+              ),
             ),
-          ),
-          TextSpan(
-            text: ' EGP',
-            style: TextStyle(
-              color: color,
-              fontSize: fontSize * 0.55,
-              fontWeight: FontWeight.w700,
+            TextSpan(
+              text: ' EGP',
+              style: TextStyle(
+                color: color,
+                fontSize: size * 0.50,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
 class _ProgressCard extends StatelessWidget {
-  final double totalOutstanding;
-
-  const _ProgressCard({
-    required this.totalOutstanding,
-  });
+  const _ProgressCard();
 
   @override
   Widget build(BuildContext context) {
+    final metrics = ResponsiveMetrics.of(context);
+    final palette = context.debtPalette;
+    final scheme = Theme.of(context).colorScheme;
+    final compact = MediaQuery.sizeOf(context).width < 500;
+
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 15,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: metrics.spacing(11)),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: const LinearGradient(
+        borderRadius: BorderRadius.circular(metrics.size(16)),
+        gradient: LinearGradient(
           colors: [
-            Color(0xFF101A72),
-            Color(0xFF27106B),
+            palette.progressGradientStart,
+            palette.progressGradientEnd,
           ],
         ),
-        border: Border.all(
-          color: const Color(0xFF6B25FF),
-        ),
+        border: Border.all(color: palette.progressBorder),
       ),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
+            width: metrics.size(compact ? 30 : 32),
+            height: metrics.size(compact ? 30 : 32),
             decoration: BoxDecoration(
-              color: const Color(0xFF5A27A5).withOpacity(0.30),
-              borderRadius: BorderRadius.circular(14),
+              color: palette.progressAccent.withOpacity(0.30),
+              borderRadius: BorderRadius.circular(metrics.size(9)),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.bar_chart_rounded,
-              color: Color(0xFFC05CFF),
-              size: 28,
+              color: palette.progressAccent,
+              size: metrics.size(18),
             ),
           ),
-          const SizedBox(width: 13),
-          const Expanded(
+          SizedBox(width: metrics.spacing(9)),
+          Expanded(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   "You're doing well!",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Color(0xFFE05CFF),
-                    fontSize: 16,
+                    color: palette.progressAccent,
+                    fontSize: metrics.text(compact ? 11 : 12),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: 4),
+                SizedBox(height: metrics.h(2)),
                 Text(
                   'Your total debt decreased by 12% this month.',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Color(0xFFD3DDF1),
-                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                    fontSize: metrics.text(compact ? 8 : 9),
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(
+          Icon(
             Icons.chevron_right_rounded,
-            color: Colors.white,
-            size: 27,
+            color: scheme.onSurface,
+            size: metrics.size(22),
           ),
         ],
       ),
@@ -1327,15 +1499,12 @@ class _ProgressCard extends StatelessWidget {
 String _formatNumber(double value) {
   final rounded = value.round();
   final digits = rounded.toString();
-
   final buffer = StringBuffer();
 
   for (var i = 0; i < digits.length; i++) {
-    if (i > 0 &&
-        (digits.length - i) % 3 == 0) {
+    if (i > 0 && (digits.length - i) % 3 == 0) {
       buffer.write(',');
     }
-
     buffer.write(digits[i]);
   }
 

@@ -35,8 +35,7 @@ import '../../core/planning/services/available_balance_projection_service.dart';
 import '../planning/goals_screen.dart';
 
 import '../planning/reserved_money_screen.dart';
-
-import 'outgoing_screen.dart';
+import 'debts_screen.dart';
 
 import 'package:wafferly/features/financial_action_center/financial_action_center.dart';
 import '../../services/schedule_occurrence_service.dart';
@@ -325,7 +324,7 @@ class _ManageScreenState extends State<ManageScreen> {
 
       MaterialPageRoute(
 
-        builder: (_) => const OutgoingScreen(),
+        builder: (_) => const DebtsScreen(),
 
       ),
 
@@ -372,7 +371,7 @@ class _ManageScreenState extends State<ManageScreen> {
 
       MaterialPageRoute(
 
-        builder: (_) => const OutgoingScreen(),
+        builder: (_) => const DebtsScreen(),
 
       ),
 
