@@ -14,6 +14,7 @@ import '../../models/enums/schedule_occurrence_status.dart';
 import '../../models/schedule_occurrence.dart';
 import '../../models/schedule_rule.dart';
 import '../../models/transaction.dart';
+import 'credit_cards_screen.dart';
 
 import '../../services/balance_service.dart';
 import '../../services/debt_query_service.dart';
@@ -33,12 +34,18 @@ class DebtsScreen extends StatefulWidget {
 class _DebtsScreenState extends State<DebtsScreen> {
   late final DebtQueryService _queryService;
 
-  Box<Account> get _accountBox => Hive.box<Account>('accounts');
-  Box<Commitment> get _commitmentBox => Hive.box<Commitment>('commitments');
+  Box<Account> get _accountBox =>
+      Hive.box<Account>('accounts');
+
+  Box<Commitment> get _commitmentBox =>
+      Hive.box<Commitment>('commitments');
+
   Box<ScheduleRule> get _scheduleRuleBox =>
       Hive.box<ScheduleRule>('schedule_rules');
+
   Box<ScheduleOccurrence> get _occurrenceBox =>
       Hive.box<ScheduleOccurrence>('schedule_occurrences');
+
   Box<Transaction> get _transactionBox =>
       Hive.box<Transaction>('transactions');
 
@@ -73,27 +80,36 @@ class _DebtsScreenState extends State<DebtsScreen> {
           appBar: AppBar(
             backgroundColor: scheme.surface,
             elevation: 0,
-            toolbarHeight: ResponsiveMetrics.of(context).h(68),
-            leading: BackButton(color: scheme.onSurface),
+            toolbarHeight:
+                ResponsiveMetrics.of(context).h(68),
+            leading: BackButton(
+              color: scheme.onSurface,
+            ),
             titleSpacing: 0,
             title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
                   'Debts',
                   style: TextStyle(
                     color: scheme.onSurface,
-                    fontSize: ResponsiveMetrics.of(context).text(27),
+                    fontSize:
+                        ResponsiveMetrics.of(context).text(27),
                     fontWeight: FontWeight.w800,
                     height: 1,
                   ),
                 ),
-                SizedBox(height: ResponsiveMetrics.of(context).h(6)),
+                SizedBox(
+                  height:
+                      ResponsiveMetrics.of(context).h(6),
+                ),
                 Text(
                   'All your liabilities in one place.',
                   style: TextStyle(
                     color: scheme.onSurfaceVariant,
-                    fontSize: ResponsiveMetrics.of(context).text(11.5),
+                    fontSize:
+                        ResponsiveMetrics.of(context).text(11.5),
                     height: 1,
                   ),
                 ),
@@ -116,7 +132,8 @@ class _DebtsScreenState extends State<DebtsScreen> {
                   onOpenAccount: (account) {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => AccountDetailsScreen(
+                        builder: (_) =>
+                            AccountDetailsScreen(
                           accountId: account.id,
                         ),
                       ),
@@ -222,15 +239,6 @@ class _DashboardCanvas extends StatelessWidget {
   ) {
     return [
       _category(
-        title: 'Loans',
-        icon: Icons.account_balance_rounded,
-        color: palette.loans,
-        type: 'loan',
-        countLabel: 'loans',
-        summaries: summaries,
-        today: today,
-      ),
-      _category(
         title: 'Credit Cards',
         icon: Icons.credit_card_rounded,
         color: palette.creditCards,
@@ -238,7 +246,21 @@ class _DashboardCanvas extends StatelessWidget {
         countLabel: 'cards',
         summaries: summaries,
         today: today,
+                inactiveWhenEmpty: false,
+
       ),
+      _category(
+        title: 'Loans',
+        icon: Icons.account_balance_rounded,
+        color: palette.loans,
+        type: 'loan',
+        countLabel: 'loans',
+        summaries: summaries,
+        today: today,
+                inactiveWhenEmpty: false,
+
+      ),
+      
       _category(
         title: 'Installment Companies',
         icon: Icons.shopping_bag_rounded,
@@ -247,6 +269,8 @@ class _DashboardCanvas extends StatelessWidget {
         countLabel: 'accounts',
         summaries: summaries,
         today: today,
+        inactiveWhenEmpty: false,
+
       ),
       _category(
         title: 'Borrowed Money',
@@ -256,6 +280,8 @@ class _DashboardCanvas extends StatelessWidget {
         countLabel: 'people',
         summaries: summaries,
         today: today,
+        inactiveWhenEmpty: false,
+
       ),
       _inactiveCategory(
         title: 'Temporary Debt',
@@ -272,49 +298,45 @@ class _DashboardCanvas extends StatelessWidget {
     ];
   }
 
-  _DebtCategory _category({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required String type,
-    required String countLabel,
-    required List<DebtSummary> summaries,
-    required DateTime today,
-  }) {
-    final matches = summaries
-        .where((summary) => summary.liabilityAccount.type == type)
-        .toList();
+ _DebtCategory _category({
+  required String title,
+  required IconData icon,
+  required Color color,
+  required String type,
+  required String countLabel,
+  required List<DebtSummary> summaries,
+  required DateTime today,
+  bool inactiveWhenEmpty = true,
+}) {
+  final matches = summaries
+      .where((summary) => summary.liabilityAccount.type == type)
+      .toList();
 
-    final outstanding = matches.fold<double>(
-      0,
-      (sum, item) => sum + item.outstanding.toDouble(),
-    );
+  final outstanding = matches.fold<double>(
+    0,
+    (sum, item) => sum + item.outstanding.toDouble(),
+  );
 
-    final thisMonth = matches.fold<double>(
-      0,
-      (sum, item) => sum + _thisMonthForAccount(
-        item.liabilityAccount.id,
-        today,
-      ),
-    );
+  final thisMonth = matches.fold<double>(
+    0,
+    (sum, item) => sum + _thisMonthForAccount(
+      item.liabilityAccount.id,
+      today,
+    ),
+  );
 
-    final operationCount = _operationCountForAccounts(
-      matches.map((item) => item.liabilityAccount.id),
-    );
-
-    return _DebtCategory(
-      title: title,
-      icon: icon,
-      color: color,
-      risk: _riskForSummaries(matches, today),
-      accounts: matches.map((item) => item.liabilityAccount).toList(),
-      outstanding: outstanding,
-      thisMonth: thisMonth,
-      operationCount: operationCount,
-      countLabel: countLabel,
-      inactive: matches.isEmpty,
-    );
-  }
+  return _DebtCategory(
+    title: title,
+    icon: icon,
+    color: color,
+    risk: _riskForSummaries(matches, today),
+    accounts: matches.map((item) => item.liabilityAccount).toList(),
+    outstanding: outstanding,
+    thisMonth: thisMonth,
+    countLabel: countLabel,
+    inactive: inactiveWhenEmpty && matches.isEmpty,
+  );
+}
 
   _DebtRisk _riskForSummaries(
     List<DebtSummary> summaries,
@@ -364,21 +386,11 @@ class _DashboardCanvas extends StatelessWidget {
       accounts: const [],
       outstanding: 0,
       thisMonth: 0,
-      operationCount: 0,
       countLabel: countLabel,
       inactive: true,
     );
   }
 
-  int _operationCountForAccounts(Iterable<String> accountIds) {
-    final ids = accountIds.toSet();
-    if (ids.isEmpty) return 0;
-
-    return transactionBox.values.where((transaction) {
-      return ids.contains(transaction.fromAccountId) ||
-          ids.contains(transaction.toAccountId);
-    }).length;
-  }
 
   double _thisMonthTotal(
     List<DebtSummary> summaries,
@@ -503,7 +515,6 @@ class _DebtCategory {
   final List<Account> accounts;
   final double outstanding;
   final double thisMonth;
-  final int operationCount;
   final String countLabel;
   final bool inactive;
 
@@ -515,7 +526,6 @@ class _DebtCategory {
     required this.accounts,
     required this.outstanding,
     required this.thisMonth,
-    required this.operationCount,
     required this.countLabel,
     required this.inactive,
   });
@@ -1235,8 +1245,19 @@ class _DebtCardState extends State<_DebtCard>
         return Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(metrics.size(15)),
-            onTap: widget.onTap,
+  borderRadius: BorderRadius.circular(metrics.size(15)),
+  onTap: () {
+    if (category.title == 'Credit Cards') {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const CreditCardsScreen(),
+        ),
+      );
+      return;
+    }
+
+    widget.onTap();
+  },
             child: Container(
               decoration: BoxDecoration(
                 gradient: background,
@@ -1409,42 +1430,7 @@ class _DebtCardState extends State<_DebtCard>
                           ),
                         ],
                       ),
-
-                      SizedBox(height: metrics.h(6)),
-
-                      // ============================================================
-                      // Bottom row: transactions + chevron
-                      // ============================================================
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.description_outlined,
-                            size: metrics.size(narrow ? 13 : 14),
-                            color: inactive
-                                ? palette.inactive.withOpacity(0.7)
-                                : scheme.onSurfaceVariant,
-                          ),
-                          SizedBox(width: metrics.spacing(5)),
-                          Expanded(
-                            child: Text(
-                              inactive
-                                  ? '0 transactions'
-                                  : '${category.operationCount} '
-                                      '${category.operationCount == 1 ? 'transaction' : 'transactions'}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: inactive
-                                    ? palette.inactive.withOpacity(0.7)
-                                    : scheme.onSurfaceVariant,
-                                fontSize: metrics.text(narrow ? 8.5 : 9),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                      
                     ],
                   );
                 },
