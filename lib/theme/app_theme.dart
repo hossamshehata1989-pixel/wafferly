@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'debt_palette.dart';
+import 'manage_palette.dart';
 
 class AppTheme {
   static ThemeData get darkTheme {
@@ -11,7 +12,6 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primary,
 
-      // ✅ ColorScheme — مربوط بـ AppColors عشان Generic UI colors
       colorScheme: const ColorScheme.dark(
         primary: AppColors.primary,
         surface: AppColors.background,
@@ -20,52 +20,41 @@ class AppTheme {
         error: AppColors.error,
       ),
 
-      // ✅ Debt Palette (ThemeExtension)
       extensions: const [
         DebtPalette.dark,
+        ManagePalette.dark,
       ],
 
-      // ✅ Global Font Family
       fontFamily: 'Almarai',
 
-      // ✅ Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.card,
-
         isDense: true,
-
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 12,
         ),
-
         labelStyle: const TextStyle(color: AppColors.textSecondary),
-
         hintStyle: const TextStyle(color: AppColors.textHint),
-
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,
         ),
-
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
-
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
-
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
       ),
 
-      // ✅ Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
@@ -82,7 +71,6 @@ class AppTheme {
         style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
       ),
 
-      // ✅ AppBar Theme
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.background,
         scrolledUnderElevation: 0,
@@ -95,7 +83,6 @@ class AppTheme {
         ),
       ),
 
-      // ✅ Card Theme
       cardTheme: CardThemeData(
         color: AppColors.card,
         shape: RoundedRectangleBorder(
@@ -105,7 +92,6 @@ class AppTheme {
         elevation: 0,
       ),
 
-      // ✅ Divider Theme
       dividerTheme: const DividerThemeData(
         color: AppColors.border,
         thickness: 0.5,

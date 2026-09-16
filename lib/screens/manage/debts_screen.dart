@@ -13,10 +13,14 @@ import '../../models/enums/commitment_type.dart';
 import '../../models/enums/schedule_occurrence_status.dart';
 import '../../models/schedule_occurrence.dart';
 import '../../models/schedule_rule.dart';
+import '../../models/transaction.dart';
+
 import '../../services/balance_service.dart';
 import '../../services/debt_query_service.dart';
+
 import '../../theme/debt_palette.dart';
 import '../../theme/responsive_metrics.dart';
+
 import '../accounts/account_details_screen.dart';
 
 class DebtsScreen extends StatefulWidget {
@@ -35,6 +39,8 @@ class _DebtsScreenState extends State<DebtsScreen> {
       Hive.box<ScheduleRule>('schedule_rules');
   Box<ScheduleOccurrence> get _occurrenceBox =>
       Hive.box<ScheduleOccurrence>('schedule_occurrences');
+  Box<Transaction> get _transactionBox =>
+      Hive.box<Transaction>('transactions');
 
   @override
   void initState() {
@@ -59,6 +65,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
         _commitmentBox.listenable(),
         _scheduleRuleBox.listenable(),
         _occurrenceBox.listenable(),
+        _transactionBox.listenable(),
       ]),
       builder: (context, _) {
         return Scaffold(
@@ -103,6 +110,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
                   commitmentBox: _commitmentBox,
                   scheduleRuleBox: _scheduleRuleBox,
                   occurrenceBox: _occurrenceBox,
+                  transactionBox: _transactionBox,
                   availableWidth: constraints.maxWidth,
                   availableHeight: constraints.maxHeight,
                   onOpenAccount: (account) {
@@ -130,6 +138,7 @@ class _DashboardCanvas extends StatelessWidget {
   final Box<Commitment> commitmentBox;
   final Box<ScheduleRule> scheduleRuleBox;
   final Box<ScheduleOccurrence> occurrenceBox;
+  final Box<Transaction> transactionBox;
   final double availableWidth;
   final double availableHeight;
   final ValueChanged<Account> onOpenAccount;
@@ -140,6 +149,7 @@ class _DashboardCanvas extends StatelessWidget {
     required this.commitmentBox,
     required this.scheduleRuleBox,
     required this.occurrenceBox,
+    required this.transactionBox,
     required this.availableWidth,
     required this.availableHeight,
     required this.onOpenAccount,
@@ -174,7 +184,6 @@ class _DashboardCanvas extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Summary Card → 30%
           Expanded(
             flex: 30,
             child: _SummaryCard(
@@ -188,8 +197,6 @@ class _DashboardCanvas extends StatelessWidget {
             ),
           ),
           SizedBox(height: metrics.h(8)),
-
-          // Category Grid → 55%
           Expanded(
             flex: 55,
             child: _CategoryGrid(
@@ -199,8 +206,6 @@ class _DashboardCanvas extends StatelessWidget {
             ),
           ),
           SizedBox(height: metrics.h(8)),
-
-          // Progress Card → 15%
           Expanded(
             flex: 15,
             child: const _ProgressCard(),
@@ -293,6 +298,10 @@ class _DashboardCanvas extends StatelessWidget {
       ),
     );
 
+    final operationCount = _operationCountForAccounts(
+      matches.map((item) => item.liabilityAccount.id),
+    );
+
     return _DebtCategory(
       title: title,
       icon: icon,
@@ -301,6 +310,7 @@ class _DashboardCanvas extends StatelessWidget {
       accounts: matches.map((item) => item.liabilityAccount).toList(),
       outstanding: outstanding,
       thisMonth: thisMonth,
+      operationCount: operationCount,
       countLabel: countLabel,
       inactive: matches.isEmpty,
     );
@@ -354,9 +364,20 @@ class _DashboardCanvas extends StatelessWidget {
       accounts: const [],
       outstanding: 0,
       thisMonth: 0,
+      operationCount: 0,
       countLabel: countLabel,
       inactive: true,
     );
+  }
+
+  int _operationCountForAccounts(Iterable<String> accountIds) {
+    final ids = accountIds.toSet();
+    if (ids.isEmpty) return 0;
+
+    return transactionBox.values.where((transaction) {
+      return ids.contains(transaction.fromAccountId) ||
+          ids.contains(transaction.toAccountId);
+    }).length;
   }
 
   double _thisMonthTotal(
@@ -460,19 +481,9 @@ class _DashboardCanvas extends StatelessWidget {
   }
 }
 
-enum _DebtState {
-  overdue,
-  dueSoon,
-  upcoming,
-}
+enum _DebtState { overdue, dueSoon, upcoming }
 
-enum _DebtRisk {
-  overdue,
-  critical,
-  dueSoon,
-  upcoming,
-  inactive,
-}
+enum _DebtRisk { overdue, critical, dueSoon, upcoming, inactive }
 
 class _DebtStateTotals {
   final int count;
@@ -492,6 +503,7 @@ class _DebtCategory {
   final List<Account> accounts;
   final double outstanding;
   final double thisMonth;
+  final int operationCount;
   final String countLabel;
   final bool inactive;
 
@@ -503,6 +515,7 @@ class _DebtCategory {
     required this.accounts,
     required this.outstanding,
     required this.thisMonth,
+    required this.operationCount,
     required this.countLabel,
     required this.inactive,
   });
@@ -561,24 +574,27 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         children: [
           Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: _SummaryNumbers(
-                    totalOutstanding: totalOutstanding,
-                    thisMonth: thisMonth,
-                    compact: compact,
-                  ),
-                ),
-                SizedBox(
-                  width: compact ? metrics.size(160) : metrics.size(170),
-                  child: _DonutWithLegend(categories: active),
-                ),
-              ],
-            ),
-          ),
+  child: Row(
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      // ===== الشمال: Total / This Month / 12% =====
+      Expanded(
+        flex: 4,
+        child: _SummaryNumbers(
+          totalOutstanding: totalOutstanding,
+          thisMonth: thisMonth,
+          compact: compact,
+        ),
+      ),
+
+      // ===== اليمين: Donut + Legend =====
+      Expanded(
+        flex: 5,
+        child: _DonutWithLegend(categories: active),
+      ),
+    ],
+  ),
+),
           Container(height: metrics.h(1), color: palette.summaryDivider),
           SizedBox(height: metrics.h(7)),
           SizedBox(
@@ -647,11 +663,13 @@ class _SummaryNumbers extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        // ===== Total Outstanding =====
         Text(
           'Total Outstanding',
           style: TextStyle(
             color: scheme.onSurfaceVariant,
             fontSize: metrics.text(compact ? 10 : 11.5),
+            fontWeight: FontWeight.w500,
           ),
         ),
         SizedBox(height: metrics.h(2)),
@@ -660,13 +678,32 @@ class _SummaryNumbers extends StatelessWidget {
           size: metrics.text(compact ? 19 : 22),
           color: scheme.onSurface,
         ),
-        SizedBox(height: metrics.h(6)),
+        SizedBox(height: metrics.h(5)),
+
+        // ===== This Month =====
+        Text(
+          'This Month',
+          style: TextStyle(
+            color: scheme.onSurfaceVariant,
+            fontSize: metrics.text(compact ? 10 : 11.5),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        SizedBox(height: metrics.h(1)),
+        _Amount(
+          value: thisMonth,
+          size: metrics.text(compact ? 15 : 17),
+          color: palette.upcoming,
+        ),
+        SizedBox(height: metrics.h(5)),
+
+        // ===== 12% vs last month =====
         Row(
           children: [
             Icon(
               Icons.north_east_rounded,
               color: palette.overdue,
-              size: metrics.size(compact ? 15 : 17),
+              size: metrics.size(compact ? 14 : 16),
             ),
             SizedBox(width: metrics.spacing(2)),
             Text(
@@ -695,13 +732,10 @@ class _SummaryNumbers extends StatelessWidget {
     );
   }
 }
-
 class _DonutWithLegend extends StatelessWidget {
   final List<_DebtCategory> categories;
 
-  const _DonutWithLegend({
-    required this.categories,
-  });
+  const _DonutWithLegend({required this.categories});
 
   @override
   Widget build(BuildContext context) {
@@ -714,16 +748,18 @@ class _DonutWithLegend extends StatelessWidget {
     );
 
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        // ===== Donut =====
         SizedBox(
-          width: metrics.size(96),
-          height: metrics.h(96),
+          width: metrics.size(90),
+          height: metrics.h(90),
           child: Stack(
             alignment: Alignment.center,
             children: [
               CustomPaint(
-                size: Size(metrics.size(96), metrics.size(96)),
+                size: Size(metrics.size(90), metrics.size(90)),
                 painter: _DonutPainter(
                   categories: categories,
                   total: total,
@@ -736,7 +772,7 @@ class _DonutWithLegend extends StatelessWidget {
                     categories.length.toString(),
                     style: TextStyle(
                       color: scheme.onSurface,
-                      fontSize: metrics.text(19),
+                      fontSize: metrics.text(18),
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -744,7 +780,7 @@ class _DonutWithLegend extends StatelessWidget {
                     'types',
                     style: TextStyle(
                       color: scheme.onSurfaceVariant,
-                      fontSize: metrics.text(8.5),
+                      fontSize: metrics.text(8),
                     ),
                   ),
                 ],
@@ -752,9 +788,13 @@ class _DonutWithLegend extends StatelessWidget {
             ],
           ),
         ),
-        SizedBox(width: metrics.spacing(4)),
+
+        SizedBox(width: metrics.spacing(6)),
+
+        // ===== Legend =====
         Expanded(
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               for (final category in categories.take(6))
                 Padding(
@@ -831,11 +871,7 @@ class _DonutPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(
-      size.width / 2,
-      size.height / 2,
-    );
-
+    final center = Offset(size.width / 2, size.height / 2);
     final radius = math.min(size.width, size.height) / 2 - 8;
 
     final paint = Paint()
@@ -854,16 +890,12 @@ class _DonutPainter extends CustomPainter {
     for (final category in categories) {
       if (category.outstanding <= 0) continue;
 
-      final sweep =
-          category.outstanding / total * math.pi * 2;
+      final sweep = category.outstanding / total * math.pi * 2;
 
       paint.color = category.color;
 
       canvas.drawArc(
-        Rect.fromCircle(
-          center: center,
-          radius: radius,
-        ),
+        Rect.fromCircle(center: center, radius: radius),
         start,
         sweep,
         false,
@@ -957,13 +989,10 @@ class _CategoryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metrics = ResponsiveMetrics.of(context);
-
-    // عدد الصفوف = نصف عدد الكروت (2 columns)
     final rowCount = (categories.length / 2).ceil();
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // ارتفاع كل صف = (الارتفاع الكلي - المسافات) / عدد الصفوف
         final totalSpacing = metrics.h(8) * (rowCount - 1);
         final rowHeight = (constraints.maxHeight - totalSpacing) / rowCount;
 
@@ -979,7 +1008,6 @@ class _CategoryGrid extends StatelessWidget {
           ),
           itemBuilder: (context, index) {
             final category = categories[index];
-
             return _DebtCard(
               category: category,
               onTap: () {
@@ -1061,7 +1089,10 @@ class _DebtCard extends StatefulWidget {
   final _DebtCategory category;
   final VoidCallback onTap;
 
-  const _DebtCard({required this.category, required this.onTap});
+  const _DebtCard({
+    required this.category,
+    required this.onTap,
+  });
 
   @override
   State<_DebtCard> createState() => _DebtCardState();
@@ -1106,6 +1137,24 @@ class _DebtCardState extends State<_DebtCard>
     super.dispose();
   }
 
+  // ================================================================
+  // Risk → intensity (0.0 → 1.0)
+  // ================================================================
+  double _riskIntensity(_DebtRisk risk) {
+    switch (risk) {
+      case _DebtRisk.upcoming:
+        return 0.0;
+      case _DebtRisk.dueSoon:
+        return 0.35;
+      case _DebtRisk.critical:
+        return 0.65;
+      case _DebtRisk.overdue:
+        return 1.0;
+      case _DebtRisk.inactive:
+        return 0.0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final metrics = ResponsiveMetrics.of(context);
@@ -1114,70 +1163,104 @@ class _DebtCardState extends State<_DebtCard>
     final compact = MediaQuery.sizeOf(context).width < 500;
 
     final inactive = category.inactive;
-    final riskColor = _riskColor(category, palette);
-    final riskGlow = _riskGlow(category, palette);
 
-    // التدرج الاحترافي: 3 stops — أغمق في الأعلى، أفتح في المنتصف، متوسط في الأسفل
-    final background = inactive
-        ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(palette.inactive, scheme.surface, 0.82)!,
-              Color.lerp(palette.inactive, scheme.surface, 0.88)!,
-              Color.lerp(palette.inactive, scheme.surface, 0.85)!,
-            ],
-            stops: const [0.0, 0.55, 1.0],
-          )
-        : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.lerp(scheme.surface, riskColor, 0.44)!,
-              Color.lerp(scheme.surface, riskColor, 0.18)!,
-              Color.lerp(scheme.surface, riskColor, 0.30)!,
-            ],
-            stops: const [0.0, 0.55, 1.0],
-          );
+    // ✅ identityColor = category color (Loans=blue, Cards=red, ...)
+    final identityColor = inactive ? palette.inactive : category.color;
+
+    // ✅ riskIntensity بتزود شدة الخلفية والـ glow
+    final intensity = inactive ? 0.0 : _riskIntensity(category.risk);
+
+    // ================================================================
+    // Card gradient
+    // Strong category color in the top-left → deep dark surface
+    // ================================================================
+    final Color cardStart = inactive
+        ? Color.lerp(scheme.surface, palette.inactive, 0.08)!
+        : Color.lerp(
+            palette.cardSurface,
+            identityColor,
+            0.42 + intensity * 0.10,
+          )!;
+
+    final Color cardMiddle = inactive
+        ? Color.lerp(scheme.surface, palette.inactive, 0.045)!
+        : Color.lerp(
+            palette.cardSurface,
+            identityColor,
+            0.20 + intensity * 0.07,
+          )!;
+
+    final Color cardEnd = inactive
+        ? Color.lerp(scheme.surface, palette.inactive, 0.025)!
+        : palette.cardSurface;
+
+    final background = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [
+        cardStart,
+        cardMiddle,
+        cardEnd,
+      ],
+      stops: const [
+        0.0,
+        0.42,
+        1.0,
+      ],
+    );
 
     return AnimatedBuilder(
       animation: _pulseController,
       builder: (context, child) {
-        final pulse =
-            category.risk == _DebtRisk.overdue ? _pulseController.value : 0.0;
+        final pulse = category.risk == _DebtRisk.overdue
+            ? _pulseController.value
+            : 0.0;
+
         final borderWidth = inactive ? 1.0 : 1.0 + pulse * 0.8;
+
+        // ✅ البوردر بلون الـ category
+        final borderColor = inactive
+            ? palette.inactive.withOpacity(0.35)
+            : identityColor.withOpacity(0.55 + pulse * 0.35);
+
+        // ✅ الـ glow: بيزيد مع الـ risk
+        final glowColor = category.risk == _DebtRisk.overdue
+            ? palette.overdue
+            : identityColor;
+
+        final glowOpacity = inactive
+            ? 0.0
+            : (0.10 + intensity * 0.28) + pulse * 0.22;
 
         return Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: inactive ? null : widget.onTap,
             borderRadius: BorderRadius.circular(metrics.size(15)),
+            onTap: widget.onTap,
             child: Container(
               decoration: BoxDecoration(
                 gradient: background,
                 borderRadius: BorderRadius.circular(metrics.size(15)),
                 border: Border.all(
-                  color: inactive
-                      ? palette.inactive.withOpacity(0.30)
-                      : riskColor.withOpacity(0.82 + pulse * 0.18),
+                  color: borderColor,
                   width: borderWidth,
                 ),
                 boxShadow: inactive
                     ? null
                     : [
                         BoxShadow(
-                          color: riskGlow.withOpacity(0.20 + pulse * 0.32),
+                          color: glowColor.withOpacity(glowOpacity),
                           blurRadius: metrics.size(14 + pulse * 16),
                           spreadRadius: pulse * metrics.size(1.5),
                         ),
                       ],
               ),
-              padding: EdgeInsets.fromLTRB(
-                metrics.spacing(compact ? 8 : 9),
-                metrics.h(compact ? 6 : 7),
-                metrics.spacing(compact ? 7 : 8),
-                metrics.h(6),
-              ),
+             padding: EdgeInsets.fromLTRB(
+  metrics.spacing(compact ? 8 : 9),
+  metrics.h(compact ? 3.5 : 6),
+  metrics.spacing(compact ? 8 : 9),
+  metrics.h(compact ? 3.5 : 6),
+),
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final narrow = constraints.maxWidth < 180;
@@ -1187,12 +1270,14 @@ class _DebtCardState extends State<_DebtCard>
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ===== الصف العلوي: Icon + Title + Arrow =====
+                      // ============================================================
+                      // Top row: Icon + Title + subtitle + Chevron
+                      // ============================================================
                       Row(
                         children: [
                           _IconBubble(
                             icon: category.icon,
-                            color: riskColor,
+                            color: identityColor,
                             inactive: inactive,
                             surface: scheme.surface,
                             size: iconSize,
@@ -1200,29 +1285,56 @@ class _DebtCardState extends State<_DebtCard>
                           ),
                           SizedBox(width: metrics.spacing(7)),
                           Expanded(
-                            child: Text(
-                              category.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: inactive
-                                    ? scheme.onSurfaceVariant
-                                    : scheme.onSurface,
-                                fontSize: metrics.text(narrow ? 11 : 12),
-                                fontWeight: FontWeight.w700,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  category.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: inactive
+                                        ? scheme.onSurfaceVariant
+                                        : scheme.onSurface,
+                                    fontSize:
+                                        metrics.text(narrow ? 11.5 : 12.5),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                SizedBox(height: metrics.h(1)),
+                                Text(
+                                  inactive
+                                      ? 'Inactive'
+                                      : '${category.accounts.length} ${category.countLabel}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: inactive
+                                        ? palette.inactive.withOpacity(0.7)
+                                        : scheme.onSurfaceVariant
+                                            .withOpacity(0.85),
+                                    fontSize: metrics.text(narrow ? 8 : 8.5),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           Icon(
                             Icons.chevron_right_rounded,
-                            color: scheme.onSurface.withOpacity(0.7),
-                            size: metrics.size(18),
+                            color: inactive
+                                ? palette.inactive
+                                : scheme.onSurface.withOpacity(0.5),
+                            size: metrics.size(narrow ? 18 : 20),
                           ),
                         ],
                       ),
-                      SizedBox(height: metrics.h(4)),
 
-                      // ===== الصف السفلي =====
+                      SizedBox(height: metrics.h(6)),
+
+                      // ============================================================
+                      // Middle row: Total | This Month
+                      // ============================================================
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -1232,37 +1344,36 @@ class _DebtCardState extends State<_DebtCard>
                               mainAxisAlignment: MainAxisAlignment.center,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _Amount(
-                                  value: category.outstanding,
-                                  size: metrics.text(narrow ? 14 : 15.5),
-                                  color: scheme.onSurface,
+                                Text(
+                                  'Total',
+                                  style: TextStyle(
+                                    color: inactive
+                                        ? palette.inactive.withOpacity(0.7)
+                                        : scheme.onSurfaceVariant,
+                                    fontSize: metrics.text(narrow ? 8.5 : 9),
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                                 SizedBox(height: metrics.h(2)),
-                                Text(
-                                  inactive
-                                      ? 'Inactive'
-                                      : '${category.accounts.length} ${category.countLabel}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color:
-                                        scheme.onSurface.withOpacity(0.62),
-                                    fontSize: metrics.text(8.5),
-                                  ),
+                                _Amount(
+                                  value: category.outstanding,
+                                  size: metrics.text(narrow ? 15 : 17),
+                                  color: scheme.onSurface,
                                 ),
                               ],
                             ),
                           ),
                           Container(
                             width: 1,
-                            height: metrics.h(28),
-                            color: scheme.onSurface.withOpacity(0.15),
+                            height: metrics.h(30),
+                            color: scheme.onSurface.withOpacity(0.18),
                           ),
                           Expanded(
                             flex: 4,
                             child: Padding(
                               padding: EdgeInsets.only(
-                                  left: metrics.spacing(6)),
+                                left: metrics.spacing(6),
+                              ),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1272,9 +1383,11 @@ class _DebtCardState extends State<_DebtCard>
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      color:
-                                          scheme.onSurface.withOpacity(0.55),
-                                      fontSize: metrics.text(8),
+                                      color: inactive
+                                          ? palette.inactive.withOpacity(0.7)
+                                          : scheme.onSurfaceVariant,
+                                      fontSize: metrics.text(narrow ? 8.5 : 9),
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   SizedBox(height: metrics.h(2)),
@@ -1285,12 +1398,48 @@ class _DebtCardState extends State<_DebtCard>
                                     style: TextStyle(
                                       color: inactive
                                           ? palette.inactive
-                                          : riskColor,
-                                      fontSize: metrics.text(10),
+                                          : identityColor,
+                                      fontSize: metrics.text(narrow ? 13 : 15),
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                 ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: metrics.h(6)),
+
+                      // ============================================================
+                      // Bottom row: transactions + chevron
+                      // ============================================================
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.description_outlined,
+                            size: metrics.size(narrow ? 13 : 14),
+                            color: inactive
+                                ? palette.inactive.withOpacity(0.7)
+                                : scheme.onSurfaceVariant,
+                          ),
+                          SizedBox(width: metrics.spacing(5)),
+                          Expanded(
+                            child: Text(
+                              inactive
+                                  ? '0 transactions'
+                                  : '${category.operationCount} '
+                                      '${category.operationCount == 1 ? 'transaction' : 'transactions'}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: inactive
+                                    ? palette.inactive.withOpacity(0.7)
+                                    : scheme.onSurfaceVariant,
+                                fontSize: metrics.text(narrow ? 8.5 : 9),
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
@@ -1305,33 +1454,6 @@ class _DebtCardState extends State<_DebtCard>
         );
       },
     );
-  }
-
-  Color _riskColor(_DebtCategory category, DebtPalette palette) {
-    if (category.inactive) return palette.inactive;
-
-    switch (category.risk) {
-      case _DebtRisk.upcoming:
-        return category.color;
-      case _DebtRisk.dueSoon:
-        // blend قوي مع الأورنج عشان واضح
-        return Color.lerp(category.color, palette.dueSoon, 0.65)!;
-      case _DebtRisk.critical:
-        // blend قوي مع الأحمر
-        return Color.lerp(category.color, palette.critical, 0.78)!;
-      case _DebtRisk.overdue:
-        // أحمر قوي + glow + pulse
-        return palette.overdue;
-      case _DebtRisk.inactive:
-        return palette.inactive;
-    }
-  }
-
-  Color _riskGlow(_DebtCategory category, DebtPalette palette) {
-    if (category.risk == _DebtRisk.overdue) {
-      return palette.overdue;
-    }
-    return _riskColor(category, palette);
   }
 }
 
