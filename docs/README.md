@@ -1,182 +1,50 @@
-# Wafferly Documentation
+# Wafferly Architecture Freeze V1 — Documentation Pack
 
-Version: V4
+**Status:** Implementation Gate / Pre-Credit-Card Foundation
+**Audit Basis:** Current project snapshot in the latest uploaded ZIP and the accompanying terminal log identifying commit `76428f2` (`Debts screen Ux Done + Credit Card Screen 1st`).
 
----
+## Purpose
 
-# Start Here
+This folder is the working architectural reference for the next implementation phase.
+It consolidates the current architecture truth, explicitly records known implementation gaps, and defines the contracts that must be respected before real Credit Card financial logic is connected.
 
-If you are new to the project, read documents in this order:
+## Documents
 
-1. financial_architecture/v4_architecture.md
-2. financial_architecture/financial_layers.md
-3. financial-rules/
-4. domains/
-5. projections/
-6. implementation/
-7. roadmap/
+1. `01-FINANCIAL_FOUNDATION_FREEZE_V1.md`
+   - Current foundation truth
+   - Blocking defects
+   - Definition of Done before Credit Card execution
 
----
+2. `02-ARCHITECTURE_RECONCILIATION_V1.md`
+   - Reconciles existing V4 documentation with the current code
+   - Identifies stale claims that must not be used as implementation evidence
 
-# Documentation Structure
+3. `03-ADR-035-CREDIT-CARD-DOMAIN.md`
+   - Credit Card domain contract
+   - Account/Profile/Transaction ownership
+   - Credit exposure and purchase/payment semantics
 
-## Documentation Types
+4. `04-CREDIT-CARD-LIFECYCLE_V1.md`
+   - Card lifecycle and accounting behavior
+   - Statement, due date, payment, refund, and installment boundaries
 
-Architecture
+5. `05-SCHEDULED_MONEY_CONTRACT_V2.md`
+   - Occurrence lifecycle
+   - Missed occurrence policy
+   - Idempotency and transaction linkage
+   - Scheduled execution integrity
 
-Defines business architecture.
+6. `06-PRE-CREDIT-CARD-IMPLEMENTATION-CHECKLIST.md`
+   - Concrete gate checklist for implementation
 
-Financial Rules
+## Authority Rule
 
-Defines rules that must never be violated.
+These documents do not silently supersede an accepted ADR. Where this pack identifies a contradiction, the contradiction is called out explicitly and implementation must follow the latest approved decision after reconciliation.
 
-Domains
+The pack is intended to become the implementation reference once the foundation gate is closed.
 
-Defines business domains.
+## Decision Clarifications Added in V1.1
 
-Patterns
-
-Reserved for future cross-domain architectural patterns.
-
-Implementation
-
-Defines implementation guidance.
-
-Roadmap
-
-Defines future evolution.
-
-Financial operations are executed through the Financial Operation Engine.
-
-## Financial Architecture
-
-High-level architecture.
-
-Files:
-
-- financial_architecture/v4_architecture.md
-- financial_architecture/financial_layers.md
-
----
-
-## Financial Rules
-
-Architecture rules that must never be violated.
-
-Files:
-
-- financial_rules.md
-- accounts_own_money.md
-- transactions_move_money.md
-- allocations_represent_planning_intent.md
-- computation_independence_rule.md
-- members_are_actors.md
-- no_duplicated_financial_truth.md
-
----
-
-## Domains
-
-Business domains.
-
-Files:
-
-- allocations.md
-- goals.md
-- budgets.md
-- liabilities.md
-- commitments.md
-- recurring.md
-- forecasting.md
-- investments.md
-- shared_finance.md
-- ai_architecture.md
-
----
-
-## Projections
-
-Derived state.
-
-Files:
-
-- funding_sources.md
-- goal_progress.md
-- reserved_money.md
-- available_balance.md
-- budget_remaining.md
-
----
-
-## Implementation
-
-Implementation guidelines.
-
-Files:
-
-- service_architecture.md
-- ADR-003-financial-operation-engine.md
-- database_structure.md
-- folder_structure.md
-- migration_notes.md
-
----
-
-## Roadmap
-
-Project evolution.
-
-Files:
-
-- phase1.md
-- phase2.md
-- phase3.md
-- phase4.md
-
----
-
-# Core Principles
-
-Accounts own money.
-
-Transactions move money.
-
-Allocations represent planning intent.
-
-Goals represent purpose.
-
-Budgets monitor spending.
-
-Liabilities represent obligations.
-
-Liability Accounts
-
-Current obligations are represented as Liability Accounts.
-
-Examples:
-
-- Credit Cards
-- Loans
-- Borrowed Money
-- Installments
-- Temporary Debt
-
-These accounts may later gain debt-specific contracts,
-schedules, OCR imports, SMS parsing, and AI-assisted metadata,
-while remaining rooted in the Financial Network.
-
-Commitments represent expectations.
-
-Projections represent current state.
-
-Forecasting predicts the future.
-
-Analytics explains the past.
-
-AI assists decisions.
-
----
-
-Status:
-
-ACTIVE
+- `PaymentInstrument` is retained as a thin generic instrument identity/linkage layer; it is not a balance source of truth. `CreditCardProfile` is the Credit Card-specific profile attached to that instrument.
+- `Installment / Financing Contract` is the parent/source of truth for financing terms. A `Commitment` is the schedule-facing future payment expectation derived from the contract, not a competing source of financing truth.
+- Scheduling-logic duplication and runtime issues are tracked separately as non-blocking backlog items.
