@@ -245,6 +245,9 @@ FinancialExecutionPlan _planCommitmentPayment(
     isExceptional: intent.isExceptional,
     source: TransactionSource.scheduled,
     actorMemberId: intent.actorMemberId,
+    commitmentId: context.executionContext.commitmentId,
+    scheduleRuleId: context.executionContext.scheduleRuleId,
+    occurrenceId: context.executionContext.occurrenceId,
   );
 
   return FinancialExecutionPlan(

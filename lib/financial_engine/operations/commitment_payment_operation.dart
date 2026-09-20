@@ -45,7 +45,12 @@ final class CommitmentPaymentOperation extends FinancialOperation {
     return PlanningContext(
       intent: intent,
       metadata: metadata,
-      executionContext: context,
+      executionContext: ExecutionContext(
+        idempotencyKey: context.idempotencyKey,
+        commitmentId: commitmentId,
+        scheduleRuleId: context.scheduleRuleId,
+        occurrenceId: context.occurrenceId,
+      ),
       constraints: constraints,
     );
   }

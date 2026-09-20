@@ -60,6 +60,9 @@ class FinancialActionExecutor {
 
     final executionContext = ExecutionContext(
       idempotencyKey: 'scheduled-commitment:${action.occurrence.id}',
+      commitmentId: action.commitment.id,
+      scheduleRuleId: action.scheduleRule.id,
+      occurrenceId: action.occurrence.id,
     );
 
     final operation = CommitmentPaymentOperation(

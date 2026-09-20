@@ -2,6 +2,10 @@
 
 part of 'schedule_occurrence.dart';
 
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
+
 class ScheduleOccurrenceAdapter extends TypeAdapter<ScheduleOccurrence> {
   @override
   final int typeId = 98;
@@ -24,10 +28,14 @@ class ScheduleOccurrenceAdapter extends TypeAdapter<ScheduleOccurrence> {
   void write(BinaryWriter writer, ScheduleOccurrence obj) {
     writer
       ..writeByte(4)
-      ..writeByte(0)..write(obj.id)
-      ..writeByte(1)..write(obj.scheduleRuleId)
-      ..writeByte(2)..write(obj.dueDate)
-      ..writeByte(3)..write(obj.status);
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.scheduleRuleId)
+      ..writeByte(2)
+      ..write(obj.dueDate)
+      ..writeByte(3)
+      ..write(obj.status);
   }
 
   @override

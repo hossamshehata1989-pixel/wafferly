@@ -1,5 +1,4 @@
-// DEBT-01 COMPATIBILITY ADAPTER
-// Intentionally hand-maintained: Hive field 4 remains a persisted double while the domain uses Money.
+// GENERATED CODE - DO NOT MODIFY BY HAND
 
 part of 'commitment.dart';
 
@@ -22,7 +21,9 @@ class CommitmentAdapter extends TypeAdapter<Commitment> {
       title: fields[1] as String,
       type: fields[2] as CommitmentType,
       status: fields[3] as CommitmentStatus,
-      amount: Money.fromDouble(fields[4] as double),
+      amount: fields[4] is Money
+          ? fields[4] as Money
+          : Money.fromDouble((fields[4] as num).toDouble()),
       amountMode: fields[5] as CommitmentAmountMode,
       scheduleRuleId: fields[8] as String,
       sourceAccountId: fields[6] as String?,

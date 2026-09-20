@@ -72,6 +72,15 @@ final class FinancialTransactionRecord {
   /// Actor member.
   final String? actorMemberId;
 
+  /// Scheduled financial action linkage.
+  ///
+  /// These fields identify the scheduled source that produced this
+  /// transaction. They are optional because manual/non-scheduled
+  /// transactions do not have this linkage.
+  final String? commitmentId;
+  final String? scheduleRuleId;
+  final String? occurrenceId;
+
   const FinancialTransactionRecord({
     required this.transactionId,
     required this.type,
@@ -87,5 +96,8 @@ final class FinancialTransactionRecord {
     required this.isExceptional,
     required this.source,
     this.actorMemberId,
+    this.commitmentId,
+    this.scheduleRuleId,
+    this.occurrenceId,
   });
 }

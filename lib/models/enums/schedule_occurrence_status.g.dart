@@ -2,6 +2,10 @@
 
 part of 'schedule_occurrence_status.dart';
 
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
+
 class ScheduleOccurrenceStatusAdapter
     extends TypeAdapter<ScheduleOccurrenceStatus> {
   @override

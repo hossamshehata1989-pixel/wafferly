@@ -146,9 +146,12 @@ void main() {
         transactionBox: transactionBox,
       );
 
-      const executionContext = ExecutionContext(
-        idempotencyKey: 'commitment-payment-execution-test',
-      );
+     const executionContext = ExecutionContext(
+  idempotencyKey: 'commitment-payment-execution-test',
+  commitmentId: 'commitment-1',
+  scheduleRuleId: 'rule-1',
+  occurrenceId: 'rule-1|2026-01-10T00:00:00.000',
+);
 
       final operation = CommitmentPaymentOperation(
         sourceAccountId: 'wallet',
@@ -163,6 +166,13 @@ void main() {
         ),
         context: executionContext,
       );
+
+expect(operation.context.commitmentId, 'commitment-1');
+expect(operation.context.scheduleRuleId, 'rule-1');
+expect(
+  operation.context.occurrenceId,
+  'rule-1|2026-01-10T00:00:00.000',
+);
 
       final result1 = await context.engine.execute(
         operation,
@@ -188,6 +198,14 @@ void main() {
       expect(transaction.amount, 100);
       expect(transaction.source, TransactionSource.scheduled);
       expect(transaction.note, 'Scheduled loan payment');
+
+      // Scheduled-payment linkage must survive the full engine -> Hive path.
+      expect(transaction.commitmentId, 'commitment-1');
+      expect(transaction.scheduleRuleId, 'rule-1');
+      expect(
+        transaction.occurrenceId,
+        'rule-1|2026-01-10T00:00:00.000',
+      );
 
       expect(context.repository.entries.length, 1);
       final journalEntry = context.repository.entries.single;

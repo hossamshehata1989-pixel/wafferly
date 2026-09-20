@@ -55,6 +55,19 @@ class Transaction extends HiveObject {
   @HiveField(15)
   final String? actorMemberId; // ✅ behavioral attribution layer
 
+  /// Scheduled-financial linkage.
+  ///
+  /// These fields are nullable to preserve backward compatibility with
+  /// existing transactions and manual transactions.
+  @HiveField(16)
+  final String? commitmentId;
+
+  @HiveField(17)
+  final String? scheduleRuleId;
+
+  @HiveField(18)
+  final String? occurrenceId;
+
   Transaction({
     String? id,
     required this.amount,
@@ -72,6 +85,9 @@ class Transaction extends HiveObject {
     DateTime? createdAt,
     DateTime? updatedAt,
     this.actorMemberId,
+    this.commitmentId,
+    this.scheduleRuleId,
+    this.occurrenceId,
   }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
        currencyCode = currencyCode ?? 'EGP',
        source = source ?? TransactionSource.manual,
@@ -94,6 +110,9 @@ class Transaction extends HiveObject {
     String? source,
     DateTime? updatedAt,
     String? actorMemberId,
+    String? commitmentId,
+    String? scheduleRuleId,
+    String? occurrenceId,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -112,6 +131,9 @@ class Transaction extends HiveObject {
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
       actorMemberId: actorMemberId ?? this.actorMemberId,
+      commitmentId: commitmentId ?? this.commitmentId,
+      scheduleRuleId: scheduleRuleId ?? this.scheduleRuleId,
+      occurrenceId: occurrenceId ?? this.occurrenceId,
     );
   }
 

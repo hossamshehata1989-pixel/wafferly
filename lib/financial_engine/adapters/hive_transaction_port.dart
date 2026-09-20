@@ -33,6 +33,9 @@ final class HiveTransactionPort
       currencyCode: record.currencyCode,
       source: record.source,
       actorMemberId: record.actorMemberId,
+      commitmentId: record.commitmentId,
+      scheduleRuleId: record.scheduleRuleId,
+      occurrenceId: record.occurrenceId,
     );
 
     await _box.put(transaction.id, transaction);
@@ -65,6 +68,9 @@ final class HiveTransactionPort
       isExceptional: transaction.isExceptional,
       source: transaction.source,
       actorMemberId: transaction.actorMemberId,
+      commitmentId: transaction.commitmentId,
+      scheduleRuleId: transaction.scheduleRuleId,
+      occurrenceId: transaction.occurrenceId,
     );
   }
 
@@ -106,6 +112,9 @@ final class HiveTransactionPort
       currencyCode: after.currencyCode,
       source: after.source,
       actorMemberId: after.actorMemberId,
+      commitmentId: after.commitmentId,
+      scheduleRuleId: after.scheduleRuleId,
+      occurrenceId: after.occurrenceId,
     );
 
     debugPrint('writing key = ${updated.id}');
