@@ -11,6 +11,9 @@ class FinancialActionDisplay {
   final String? destinationAccountName;
   final DateTime dueDate;
   final ScheduledActionKind kind;
+  final bool isGrouped;
+  final int itemCount;
+  final String? groupingSummary;
 
   const FinancialActionDisplay({
     required this.title,
@@ -22,5 +25,8 @@ class FinancialActionDisplay {
     this.sourceAccountName,
     this.destinationAccountName,
     required this.kind,
+    this.isGrouped = false,
+    this.itemCount = 1,
+    this.groupingSummary,
   });
 }

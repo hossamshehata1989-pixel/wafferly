@@ -102,6 +102,8 @@ void initState() {
                 }
               }
             }
+
+            return success;
           },
           onSkip: widget.onSkip,
         );

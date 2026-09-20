@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/scheduled_action_execution_context.dart';
 
 import '../mappers/financial_action_display_mapper.dart';
+import '../models/financial_action_projection_group.dart';
 import '../widgets/financial_action_footer.dart';
 import '../widgets/financial_action_filters.dart';
 import '../widgets/action_day_section.dart';
@@ -15,13 +16,12 @@ class FinancialActionPanel extends StatelessWidget {
 
   final List<FinancialActionDayGroup> groups;
 
-  final void Function(ScheduledActionExecutionContext context) onExecute;
+  final Future<bool> Function(ScheduledActionExecutionContext context)
+  onExecute;
   final bool isLoading;
   final FinancialActionFilter selectedFilter;
 
   final ValueChanged<FinancialActionFilter> onFilterChanged;
-
-  // ⭐ المضافة
   final Map<FinancialActionFilter, int> filterCounts;
 
   const FinancialActionPanel({
@@ -32,7 +32,7 @@ class FinancialActionPanel extends StatelessWidget {
     required this.isLoading,
     required this.selectedFilter,
     required this.onFilterChanged,
-    required this.filterCounts, // ✅ إلزامي
+    required this.filterCounts,
   });
 
   @override
@@ -46,7 +46,6 @@ class FinancialActionPanel extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            // ========== HEADER ==========
             _FinancialActionHeader(
               pendingCount: groups.fold(
                 0,
@@ -55,16 +54,12 @@ class FinancialActionPanel extends StatelessWidget {
               estimatedDuration: const Duration(seconds: 40),
             ),
             const SizedBox(height: 8),
-
-            // ⭐ تمرير filterCounts إلى الـ Filters
             FinancialActionFilters(
               selectedFilter: selectedFilter,
               onFilterChanged: onFilterChanged,
-              counts: filterCounts, // ✅ تم التمرير
+              counts: filterCounts,
             ),
-
             const Divider(height: 0.5),
-            // ========== MAIN CONTENT ==========
             Expanded(
               child: Builder(
                 builder: (context) {
@@ -94,12 +89,15 @@ class FinancialActionPanel extends StatelessWidget {
                         title: group.group.name.toUpperCase(),
                         count: group.actions.length,
                         child: Column(
-                          children: group.actions.map((item) {
-                            final display = mapper.fromContext(item);
+                          children: group.actions.map((projection) {
+                            final display = mapper.fromProjectionGroup(projection);
 
                             return FinancialActionCardV2(
                               display: display,
-                              onExecute: () => onExecute(item),
+                              onExecute: () => _handleProjectionGroup(
+                                context,
+                                projection,
+                              ),
                             );
                           }).toList(),
                         ),
@@ -109,8 +107,6 @@ class FinancialActionPanel extends StatelessWidget {
                 },
               ),
             ),
-
-            // ========== FOOTER ==========
             const Divider(height: 0.5),
             FinancialActionFooter(onSkip: onSkip),
           ],
@@ -118,11 +114,106 @@ class FinancialActionPanel extends StatelessWidget {
       ),
     );
   }
-}
 
-// ============================================================
-// _FinancialActionHeader
-// ============================================================
+  Future<void> _handleProjectionGroup(
+    BuildContext context,
+    FinancialActionProjectionGroup group,
+  ) async {
+    if (!group.isGrouped) {
+      await onExecute(group.primaryContext);
+      return;
+    }
+
+    final selected = <String>{
+      for (final item in group.contexts) item.occurrence.id,
+    };
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final selectedContexts = group.contexts
+                .where((item) => selected.contains(item.occurrence.id))
+                .toList();
+            final total = selectedContexts.fold<double>(
+              0,
+              (sum, item) => sum + item.action.amount,
+            );
+
+            return AlertDialog(
+              title: Text(group.title),
+              content: SizedBox(
+                width: 420,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: group.contexts.length,
+                  itemBuilder: (context, index) {
+                    final item = group.contexts[index];
+                    final id = item.occurrence.id;
+                    final checked = selected.contains(id);
+
+                    return CheckboxListTile(
+                      dense: true,
+                      value: checked,
+                      title: Text(_formatDate(item.occurrence.dueDate)),
+                      subtitle: Text(
+                        'EGP ${item.action.amount.toStringAsFixed(0)}',
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          if (value == true) {
+                            selected.add(id);
+                          } else {
+                            selected.remove(id);
+                          }
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: selectedContexts.isEmpty
+                      ? null
+                      : () async {
+                          final ordered = [...selectedContexts]
+                            ..sort(
+                              (a, b) => a.occurrence.dueDate.compareTo(
+                                b.occurrence.dueDate,
+                              ),
+                            );
+
+                          Navigator.of(dialogContext).pop();
+
+                          for (final item in ordered) {
+                            final success = await onExecute(item);
+                            if (!success) break;
+                          }
+                        },
+                  child: Text(
+                    'Pay Selected · EGP ${total.toStringAsFixed(0)}',
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/'
+        '${date.month.toString().padLeft(2, '0')}/'
+        '${date.year}';
+  }
+}
 
 class _FinancialActionHeader extends StatelessWidget {
   final int pendingCount;

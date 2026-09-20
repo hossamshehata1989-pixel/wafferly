@@ -10,7 +10,7 @@ import 'package:wafferly/models/enums/scheduled_action_kind.dart';
 import 'package:wafferly/models/enums/schedule_occurrence_status.dart';
 import 'package:wafferly/models/schedule_occurrence.dart';
 import 'package:wafferly/models/schedule_rule.dart';
-import 'package:wafferly/services/commitment_action_provider.dart';
+import 'package:wafferly/services/providers/commitment_action_provider.dart';
 import 'package:wafferly/services/schedule_evaluator.dart';
 import 'package:wafferly/services/schedule_occurrence_service.dart';
 import 'package:wafferly/services/schedule_rule_service.dart';

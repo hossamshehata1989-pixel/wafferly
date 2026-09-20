@@ -1,10 +1,10 @@
-import '../../../models/scheduled_action_execution_context.dart';
 import 'financial_action_group.dart';
+import 'financial_action_projection_group.dart';
 
 class FinancialActionDayGroup {
   final FinancialActionGroup group;
 
-  final List<ScheduledActionExecutionContext> actions;
+  final List<FinancialActionProjectionGroup> actions;
 
   const FinancialActionDayGroup({required this.group, required this.actions});
 }

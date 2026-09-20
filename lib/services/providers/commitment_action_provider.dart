@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
 import '../../models/commitment.dart';
+import '../../models/enums/commitment_status.dart';
 import '../../models/enums/commitment_type.dart';
 import '../../models/enums/scheduled_action_kind.dart';
 import '../../models/schedule_rule.dart';
@@ -39,57 +40,69 @@ class CommitmentActionProvider implements FinancialActionProvider {
     for (final commitment in commitmentBox.values) {
       debugPrint('Checking: ${commitment.title}');
 
+      if (commitment.status != CommitmentStatus.active) {
+        debugPrint(
+          '${commitment.title} -> Inactive (${commitment.status.name})',
+        );
+        continue;
+      }
+
       if (commitment.isArchived) {
         debugPrint('${commitment.title} -> Archived');
         continue;
       }
 
       final rule = scheduleBox.get(commitment.scheduleRuleId);
-
       if (rule == null) {
         debugPrint('${commitment.title} -> Missing Schedule Rule');
         continue;
       }
 
-      final occurrence =
-          await occurrenceService.getOrCreateCurrentOccurrence(rule);
+      final occurrences = await occurrenceService
+          .getOrCreateOccurrencesThroughDate(
+        rule,
+        today,
+      );
 
-      if (occurrence == null) {
-        debugPrint(
-          '${commitment.title} -> No current occurrence',
+      for (final occurrence in occurrences) {
+        if (rule.frequency.name == 'oneTime' &&
+            occurrence.status.name == 'completed') {
+          debugPrint(
+            '${commitment.title} -> Occurrence ${occurrence.id} already completed',
+          );
+          continue;
+        }
+
+        final state = evaluator.evaluateDueDate(
+          dueDate: occurrence.dueDate,
+          today: today,
         );
-        continue;
+
+        final action = ScheduledAction(
+          id: occurrence.id,
+          kind: _mapKind(commitment.type),
+          state: state,
+          title: commitment.title,
+          subtitle: 'Scheduled Commitment',
+          amount: commitment.amount.toDouble(),
+          dueDate: occurrence.dueDate,
+          sourceAccountId: commitment.sourceAccountId,
+          destinationAccountId: commitment.destinationAccountId,
+          commitmentId: commitment.id,
+          liabilityAccountId: commitment.liabilityAccountId,
+        );
+
+        debugPrint('${commitment.title} -> Action Created');
+
+        actions.add(
+          ScheduledActionExecutionContext(
+            action: action,
+            commitment: commitment,
+            scheduleRule: rule,
+            occurrence: occurrence,
+          ),
+        );
       }
-
-      final state = evaluator.evaluate(
-        rule: rule,
-        today: today,
-      );
-
-      final action = ScheduledAction(
-        id: occurrence.id,
-        kind: _mapKind(commitment.type),
-        state: state,
-        title: commitment.title,
-        subtitle: 'Scheduled Commitment',
-        amount: commitment.amount.toDouble(),
-        dueDate: occurrence.dueDate,
-        sourceAccountId: commitment.sourceAccountId,
-        destinationAccountId: commitment.destinationAccountId,
-        commitmentId: commitment.id,
-        liabilityAccountId: commitment.liabilityAccountId,
-      );
-
-      debugPrint('${commitment.title} -> Action Created');
-
-      actions.add(
-        ScheduledActionExecutionContext(
-          action: action,
-          commitment: commitment,
-          scheduleRule: rule,
-          occurrence: occurrence,
-        ),
-      );
     }
 
     return actions;
@@ -99,13 +112,10 @@ class CommitmentActionProvider implements FinancialActionProvider {
     switch (type) {
       case CommitmentType.income:
         return ScheduledActionKind.income;
-
       case CommitmentType.expense:
         return ScheduledActionKind.expense;
-
       case CommitmentType.transfer:
         return ScheduledActionKind.transfer;
-
       case CommitmentType.liabilityPayment:
         return ScheduledActionKind.liabilityPayment;
     }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../models/scheduled_action_execution_context.dart';
 import '../../../models/enums/scheduled_action_kind.dart';
 import '../models/financial_action_display.dart';
+import '../models/financial_action_projection_group.dart';
 
 class FinancialActionDisplayMapper {
   const FinancialActionDisplayMapper();
@@ -16,11 +17,33 @@ class FinancialActionDisplayMapper {
       amountText: _formatAmount(action.amount),
       buttonText: _button(action.kind),
       icon: _icon(action.kind),
-      sourceAccountName:
-          action.sourceAccountId, // مؤقتاً، سيتم استبداله بالاسم الفعلي
+      sourceAccountName: action.sourceAccountId,
       destinationAccountName: action.destinationAccountId,
       dueDate: action.dueDate,
       kind: action.kind,
+    );
+  }
+
+  FinancialActionDisplay fromProjectionGroup(
+    FinancialActionProjectionGroup group,
+  ) {
+    final primary = group.primaryContext.action;
+
+    return FinancialActionDisplay(
+      title: group.title,
+      subtitle: group.isGrouped
+          ? '${group.count} scheduled payments'
+          : _subtitle(group.kind),
+      amountText: _formatAmount(group.totalAmount),
+      buttonText: group.isGrouped ? 'Review' : _button(group.kind),
+      icon: _icon(group.kind),
+      sourceAccountName: primary.sourceAccountId,
+      destinationAccountName: primary.destinationAccountId,
+      dueDate: group.earliestDueDate,
+      kind: group.kind,
+      isGrouped: group.isGrouped,
+      itemCount: group.count,
+      groupingSummary: group.isGrouped ? group.summary : null,
     );
   }
 

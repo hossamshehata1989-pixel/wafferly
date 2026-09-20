@@ -20,7 +20,7 @@ class FinancialActionCardV2 extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      constraints: const BoxConstraints(minHeight: 56, maxHeight: 80),
+      constraints: BoxConstraints(minHeight: 56, maxHeight: display.isGrouped ? 92 : 80),
       margin: const EdgeInsets.symmetric(
         horizontal: 12,
         vertical: 3,
@@ -123,53 +123,65 @@ class FinancialActionCardV2 extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.account_balance_outlined,
-                              size: 13,
+                        if (display.isGrouped && display.groupingSummary != null)
+                          Text(
+                            display.groupingSummary!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
                               color: Colors.grey.shade500,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                             ),
-                            const SizedBox(width: 2),
-                            Flexible(
-                              child: Text(
-                                display.sourceAccountName ?? '-',
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                  fontSize: 12,
-                                ),
-                                maxLines: 1,
-                              ),
-                            ),
-                            if (display.destinationAccountName != null) ...[
-                              const SizedBox(width: 3),
+                          )
+                        else
+                          Row(
+                            children: [
                               Icon(
-                                Icons.arrow_forward_ios,
-                                size: 8,
-                                color: Colors.grey.shade500,
-                              ),
-                              const SizedBox(width: 3),
-                              Icon(
-                                Icons.flag_outlined,
-                                size: 11,
+                                Icons.account_balance_outlined,
+                                size: 13,
                                 color: Colors.grey.shade500,
                               ),
                               const SizedBox(width: 2),
                               Flexible(
                                 child: Text(
-                                  display.destinationAccountName!,
+                                  display.sourceAccountName ?? '-',
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: Colors.grey.shade500,
-                                    fontSize: 9,
+                                    fontSize: 12,
                                   ),
                                   maxLines: 1,
                                 ),
                               ),
+                              if (display.destinationAccountName != null) ...[
+                                const SizedBox(width: 3),
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 8,
+                                  color: Colors.grey.shade500,
+                                ),
+                                const SizedBox(width: 3),
+                                Icon(
+                                  Icons.flag_outlined,
+                                  size: 11,
+                                  color: Colors.grey.shade500,
+                                ),
+                                const SizedBox(width: 2),
+                                Flexible(
+                                  child: Text(
+                                    display.destinationAccountName!,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade500,
+                                      fontSize: 9,
+                                    ),
+                                    maxLines: 1,
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
-                        ),
+                          ),
                       ],
                     ),
                   ),

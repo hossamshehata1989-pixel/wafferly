@@ -179,4 +179,36 @@ void main() {
     expect(Hive.box<ScheduleOccurrence>('schedule_occurrences').isEmpty, true);
     expect(rules.rules, isEmpty);
   });
+
+test('advancement catches up over already completed future occurrences', () async {
+  final rules = _TestScheduleRuleService();
+  final service = ScheduleOccurrenceService(ruleService: rules);
+  final current = rule(
+    frequency: Frequency.daily,
+    dueDate: DateTime(2026, 9, 12),
+  );
+
+  final currentOccurrence = await service.getOrCreateCurrentOccurrence(current);
+  final futureOccurrence = ScheduleOccurrence(
+    id: ScheduleOccurrence.idFor(
+      scheduleRuleId: current.id,
+      dueDate: DateTime(2026, 9, 13),
+    ),
+    scheduleRuleId: current.id,
+    dueDate: DateTime(2026, 9, 13),
+    status: ScheduleOccurrenceStatus.completed,
+  );
+  await Hive.box<ScheduleOccurrence>('schedule_occurrences').put(
+    futureOccurrence.id,
+    futureOccurrence,
+  );
+
+  final advanced = await service.advanceRuleAfterOccurrence(
+    current,
+    currentOccurrence!,
+  );
+
+  expect(advanced.nextDueDate, DateTime(2026, 9, 14));
+  expect(rules.rules['rule-1']!.nextDueDate, DateTime(2026, 9, 14));
+});
 }

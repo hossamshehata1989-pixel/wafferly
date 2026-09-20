@@ -95,10 +95,14 @@ class FinancialActionExecutor {
 
     await occurrenceService.completeOccurrence(action.occurrence);
 
-await occurrenceService.advanceRuleAfterOccurrence(
-  action.scheduleRule,
-  action.occurrence,
-);
+    final latestRule =
+        occurrenceService.ruleService.getRule(action.scheduleRule.id) ??
+        action.scheduleRule;
+
+    await occurrenceService.advanceRuleAfterOccurrence(
+      latestRule,
+      action.occurrence,
+    );
 
     debugPrint(
       'Commitment payment succeeded: ${action.commitment.id}',

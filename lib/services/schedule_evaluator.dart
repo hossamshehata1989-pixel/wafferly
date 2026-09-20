@@ -8,7 +8,17 @@ class ScheduleEvaluator {
     required ScheduleRule rule,
     required DateTime today,
   }) {
-    final due = _dateOnly(rule.nextDueDate);
+    return evaluateDueDate(
+      dueDate: rule.nextDueDate,
+      today: today,
+    );
+  }
+
+  ScheduledActionState evaluateDueDate({
+    required DateTime dueDate,
+    required DateTime today,
+  }) {
+    final due = _dateOnly(dueDate);
     final now = _dateOnly(today);
 
     if (now.isBefore(due)) {

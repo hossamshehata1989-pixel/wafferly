@@ -5,6 +5,7 @@ import '../../../services/financial_action_engine.dart';
 import '../models/financial_action_filter.dart';
 import '../../../models/enums/scheduled_action_kind.dart';
 import '../services/financial_action_grouping_service.dart';
+import '../services/financial_action_projection_service.dart';
 import '../models/financial_action_day_group.dart';
 
 class FinancialActionCenterController extends ChangeNotifier {
@@ -18,6 +19,8 @@ class FinancialActionCenterController extends ChangeNotifier {
   FinancialActionFilter get selectedFilter => _selectedFilter;
   final FinancialActionGroupingService _groupingService =
       const FinancialActionGroupingService();
+  final FinancialActionProjectionService _projectionService =
+      const FinancialActionProjectionService();
 
   List<FinancialActionDayGroup> get visibleGroups {
     final filtered = _actions.where((item) {
@@ -53,28 +56,29 @@ class FinancialActionCenterController extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   Map<FinancialActionFilter, int> get counts {
+    int countFor(FinancialActionFilter filter) {
+      final filtered = _actions.where((item) {
+        switch (filter) {
+          case FinancialActionFilter.all:
+            return true;
+          case FinancialActionFilter.expenses:
+            return item.action.kind == ScheduledActionKind.expense;
+          case FinancialActionFilter.income:
+            return item.action.kind == ScheduledActionKind.income;
+          case FinancialActionFilter.transfers:
+            return item.action.kind == ScheduledActionKind.transfer;
+          case FinancialActionFilter.goals:
+            return item.action.kind == ScheduledActionKind.goalContribution;
+          case FinancialActionFilter.investments:
+            return item.action.kind == ScheduledActionKind.investment;
+        }
+      }).toList();
+
+      return _projectionService.project(filtered).length;
+    }
+
     return {
-      FinancialActionFilter.all: _actions.length,
-
-      FinancialActionFilter.expenses: _actions
-          .where((a) => a.action.kind == ScheduledActionKind.expense)
-          .length,
-
-      FinancialActionFilter.income: _actions
-          .where((a) => a.action.kind == ScheduledActionKind.income)
-          .length,
-
-      FinancialActionFilter.transfers: _actions
-          .where((a) => a.action.kind == ScheduledActionKind.transfer)
-          .length,
-
-      FinancialActionFilter.goals: _actions
-          .where((a) => a.action.kind == ScheduledActionKind.goalContribution)
-          .length,
-
-      FinancialActionFilter.investments: _actions
-          .where((a) => a.action.kind == ScheduledActionKind.investment)
-          .length,
+      for (final filter in FinancialActionFilter.values) filter: countFor(filter),
     };
   }
 

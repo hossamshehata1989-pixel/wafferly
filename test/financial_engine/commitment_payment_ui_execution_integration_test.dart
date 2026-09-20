@@ -199,7 +199,7 @@ void main() {
     'Financial Action Center executes a liability payment through the real engine',
     (tester) async {
 
-      final dueDate = DateTime(2026, 9, 12);
+      final dueDate = DateTime(2026, 9, 20);
 
 
       final rule = ScheduleRule(
@@ -387,7 +387,7 @@ void main() {
 
       expect(
         storedRule.nextDueDate,
-        DateTime(2026, 9, 13),
+        DateTime(2026, 9, 21),
       );
 
 
