@@ -139,26 +139,25 @@ Hive.registerAdapter(LedgerEntryAdapter());
 
     // The bootstrap-owned allocation repository contains the executed
     // CreateAllocationMutation.
-    expect(
-      context.allocationRepository.allocations.length,
-      1,
-    );
+    final allocations =
+    await context.allocationRepository.findBySource('goal-1');
 
-    final allocation = context.allocationRepository.allocations.first;
+expect(allocations, hasLength(1));
 
+final allocation = allocations.single;
     expect(
       allocation.accountId,
       'cash',
     );
 
-    expect(
-      allocation.goalId,
-      'goal-1',
-    );
+   expect(
+  allocation.sourceId,
+  'goal-1',
+);
 
     expect(
-      allocation.amount,
-      500,
-    );
+  allocation.amount.toDouble(),
+  500,
+);
   });
 }

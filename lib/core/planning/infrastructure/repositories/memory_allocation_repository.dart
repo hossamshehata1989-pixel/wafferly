@@ -2,18 +2,6 @@ import '../../entities/allocation.dart';
 import '../../ports/allocation_repository.dart';
 import '../../value_objects/allocation_status.dart';
 
-/// ===============================================================
-/// MemoryAllocationRepository
-/// ===============================================================
-///
-/// In-memory implementation of AllocationRepository.
-///
-/// Intended for:
-/// - Unit tests
-/// - Early engine development
-/// - Debugging
-///
-/// ===============================================================
 final class MemoryAllocationRepository implements AllocationRepository {
   final Map<String, Allocation> _storage = {};
 
