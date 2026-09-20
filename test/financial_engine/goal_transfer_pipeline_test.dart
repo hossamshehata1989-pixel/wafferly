@@ -8,6 +8,7 @@ import 'package:wafferly/core/planning/bootstrap/planning_engine_bootstrap.dart'
 import 'package:wafferly/core/planning/infrastructure/repositories/memory_allocation_repository.dart';
 import 'package:wafferly/core/planning/operations/reserve_operation.dart';
 import 'package:wafferly/core/planning/value_objects/planning_source_type.dart';
+import 'package:wafferly/core/planning/value_objects/allocation_status.dart';
 import 'package:wafferly/core/planning/services/available_balance_projection_service.dart';
 import 'package:wafferly/financial_engine/commands/shared/transaction_metadata.dart';
 import 'package:wafferly/financial_engine/execution_context/execution_context.dart';
@@ -202,6 +203,15 @@ amount: Money.fromDouble(500),        ),
       );
 
       expect(result, isA<OperationSucceeded>());
+
+      final allocation =
+          await planningAllocationRepository.findActiveBySource('goal-1');
+      expect(allocation, isNull);
+
+      final allocations =
+          await planningAllocationRepository.findBySource('goal-1');
+      expect(allocations, hasLength(1));
+      expect(allocations.single.status, AllocationStatus.released);
 
       final transactions = transactionBox.values.toList();
       expect(

@@ -412,6 +412,7 @@ CommitmentActionProvider(
   final engineContext = FinancialEngineBootstrap.create(
     balanceService: balanceService,
     transactionBox: transactionBox,
+    allocationRepository: allocationRepository,
   );
 
   final engine = engineContext.engine;

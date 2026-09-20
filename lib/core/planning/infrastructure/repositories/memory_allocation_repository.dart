@@ -58,7 +58,9 @@ final class MemoryAllocationRepository implements AllocationRepository {
   Future<Allocation?> findActiveBySource(String sourceId) async {
     try {
       return _storage.values.firstWhere(
-        (allocation) => allocation.sourceId == sourceId,
+        (allocation) =>
+            allocation.sourceId == sourceId &&
+            allocation.status == AllocationStatus.active,
       );
     } catch (_) {
       return null;
