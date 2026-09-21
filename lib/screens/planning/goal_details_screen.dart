@@ -23,6 +23,11 @@ import '../../models/transaction.dart';
 import '../../constants/transaction_constants.dart';
 import '../../services/goal_details_projection_service.dart';
 import 'package:provider/provider.dart';
+import '../../financial_engine/engine/financial_operation_engine.dart';
+import '../../financial_engine/execution_context/execution_context.dart';
+import '../../financial_engine/operations/goal_transfer_operation.dart';
+import '../../financial_engine/commands/shared/transaction_metadata.dart';
+import '../../financial_engine/results/operation_result.dart';
 
 class GoalDetailsScreen extends StatefulWidget {
   final Goal goal;
@@ -112,64 +117,32 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     required double amount,
     required String goalId,
   }) async {
-    // Step 1: Reduce Allocation
-    await _goalAllocationService.reduceAllocation(
-      goalId: goalId,
-      accountId: sourceAccountId,
-      reductionAmount: amount,
+    final occurredAt = DateTime.now();
+    final executionContext = ExecutionContext(
+      idempotencyKey: 'goal-transfer-$goalId-${occurredAt.microsecondsSinceEpoch}',
     );
-
-    // Step 2: Create GoalActivity
-    GoalActivity activity;
-    try {
-      activity = GoalActivity.create(
-        goalId: goalId,
-        type: GoalActivityType.transferToSaving,
-        amount: amount,
+    final engine = context.read<FinancialOperationEngine>();
+    final result = await engine.execute(
+      GoalTransferOperation(
         sourceAccountId: sourceAccountId,
-        destinationAccountId: savingAccountId,
-        notes: 'Transfer to saving account',
-      );
-      await _activityService.addActivity(activity);
-    } catch (e) {
-      // Rollback Allocation
-      await _goalAllocationService.increaseAllocation(
+        savingsAccountId: savingAccountId,
         goalId: goalId,
-        accountId: sourceAccountId,
-        increaseAmount: amount,
-      );
-      rethrow;
-    }
-
-    // Step 3: Create Transaction
-    final transaction = Transaction.create(
-      amount: amount,
-      type: TransactionType.transfer,
-      fromAccountId: sourceAccountId,
-      toAccountId: savingAccountId,
-      categoryId: "",
-      date: DateTime.now(),
-      note: 'Transfer to saving from goal funding',
-      paymentMethod: 'transfer',
-      isExceptional: false,
-      currencyCode: 'EGP',
-      source: TransactionSource.manual,
+        amount: amount,
+        metadata: TransactionMetadata(
+          occurredAt: occurredAt,
+          note: 'Transfer to saving from goal funding',
+          paymentMethod: 'transfer',
+          currencyCode: 'EGP',
+        ),
+        context: executionContext,
+      ),
+      executionContext,
     );
 
-    try {
-      await TransactionService.instance.addTransaction(transaction);
-    } catch (e) {
-      // Rollback Allocation + Activity
-      await _goalAllocationService.increaseAllocation(
-        goalId: goalId,
-        accountId: sourceAccountId,
-        increaseAmount: amount,
-      );
-      await _activityService.deleteActivity(activity.id);
-      rethrow;
+    if (result is! OperationSucceeded) {
+      throw StateError('Goal transfer operation failed: $result');
     }
 
-    // Step 4: Reload projection
     await _loadData();
   }
 
