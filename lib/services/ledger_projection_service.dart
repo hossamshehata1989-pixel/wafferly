@@ -80,6 +80,10 @@ class LedgerProjectionService {
     await _persistEntries(entries);
   }
 
+  Future<void> deleteProjection(String transactionId) async {
+  await _ledgerPort.deleteEntriesByTransactionId(transactionId);
+}
+
   // ============================================================
   // Legacy Compatibility API
   // ============================================================

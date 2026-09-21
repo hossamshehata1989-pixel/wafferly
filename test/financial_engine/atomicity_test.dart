@@ -7,7 +7,7 @@ import 'package:wafferly/financial_engine/planning/financial_execution_plan.dart
 import 'package:wafferly/financial_engine/planning/financial_mutation.dart';
 import 'package:wafferly/financial_engine/execution/financial_mutation_handler.dart';
 import 'package:wafferly/financial_engine/results/operation_result.dart';
-
+import 'package:wafferly/financial_engine/execution/financial_transaction_context.dart';
 final class _PersistMutation extends DomainMutation {
   final String value;
 
@@ -22,12 +22,19 @@ final class _PersistHandler
     implements FinancialMutationHandler<_PersistMutation> {
   final List<String> storage;
 
-  const _PersistHandler(this.storage);
+  _PersistHandler(this.storage);
 
   @override
-  Future<void> execute(_PersistMutation mutation) async {
-    storage.add(mutation.value);
-  }
+Future<void> execute(
+  _PersistMutation mutation,
+  FinancialTransactionContext context,
+) async {
+  storage.add(mutation.value);
+
+  context.registerRollback(() async {
+    storage.remove(mutation.value);
+  });
+}
 }
 
 final class _FailHandler
@@ -35,11 +42,13 @@ final class _FailHandler
   const _FailHandler();
 
   @override
-  Future<void> execute(_FailMutation mutation) async {
+  Future<void> execute(
+    _FailMutation mutation,
+    FinancialTransactionContext context,
+  ) async {
     throw StateError('Simulated mutation failure');
   }
 }
-
 void main() {
   test(
     'failed execution rolls back mutations already persisted in the plan',

@@ -16,5 +16,20 @@ final class MemoryJournalEntryRepository
     return save(mutation);
   }
 
+  @override
+  Future<void> delete(String journalEntryId) async {
+    final index = _entries.indexWhere(
+      (entry) => entry.journalEntryId == journalEntryId,
+    );
+
+    if (index == -1) {
+      throw StateError(
+        'Journal entry not found: $journalEntryId',
+      );
+    }
+
+    _entries.removeAt(index);
+  }
+
   List<JournalEntryMutation> get entries => List.unmodifiable(_entries);
 }

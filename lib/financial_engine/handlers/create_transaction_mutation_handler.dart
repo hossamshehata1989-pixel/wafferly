@@ -2,8 +2,9 @@ import 'package:flutter/foundation.dart';
 
 import '../mutations/create_transaction_mutation.dart';
 import '../ports/transaction_port.dart';
-import '../execution/financial_mutation_handler.dart';
 import '../../services/ledger_projection_service.dart';
+import '../execution/financial_mutation_handler.dart';
+import '../execution/financial_transaction_context.dart';
 
 /// Executes CreateTransactionMutation.
 ///
@@ -23,12 +24,25 @@ final class CreateTransactionMutationHandler
   );
 
   @override
-  Future<void> execute(CreateTransactionMutation mutation) async {
+  Future<void> execute(
+    CreateTransactionMutation mutation,
+    FinancialTransactionContext context,
+  ) async {
+    final transactionId = mutation.record.transactionId;
+
     debugPrint(
-      'TX HANDLER: Saving transaction ${mutation.record.transactionId}',
+      'TX HANDLER: Saving transaction $transactionId',
     );
 
     await _transactionPort.save(mutation.record);
+
+    context.registerRollback(() {
+      return _transactionPort.delete(transactionId);
+    });
+
+    context.registerRollback(() {
+      return _ledgerProjectionService.deleteProjection(transactionId);
+    });
 
     await _ledgerProjectionService.projectRecord(
       mutation.record,

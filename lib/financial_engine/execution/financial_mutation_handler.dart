@@ -1,5 +1,8 @@
-import '../planning/financial_mutation.dart';
+import 'financial_transaction_context.dart';
 
-abstract interface class FinancialMutationHandler<T extends FinancialMutation> {
-  Future<void> execute(T mutation);
+abstract interface class FinancialMutationHandler<T> {
+  Future<void> execute(
+    T mutation,
+    FinancialTransactionContext context,
+  );
 }

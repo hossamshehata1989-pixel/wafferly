@@ -1,16 +1,21 @@
 import '../mutations/update_transaction_mutation.dart';
 import '../ports/transaction_update_port.dart';
 import 'financial_mutation_handler.dart';
+import 'financial_transaction_context.dart';
 
 final class UpdateTransactionMutationHandler
     implements FinancialMutationHandler<UpdateTransactionMutation> {
   final TransactionUpdatePort _port;
 
-  const UpdateTransactionMutationHandler({required TransactionUpdatePort port})
-    : _port = port;
+  const UpdateTransactionMutationHandler({
+    required TransactionUpdatePort port,
+  }) : _port = port;
 
   @override
-  Future<void> execute(UpdateTransactionMutation mutation) {
+  Future<void> execute(
+    UpdateTransactionMutation mutation,
+    FinancialTransactionContext context,
+  ) {
     return _port.update(mutation.before, mutation.after);
   }
 }

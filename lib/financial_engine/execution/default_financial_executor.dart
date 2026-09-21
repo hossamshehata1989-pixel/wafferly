@@ -2,6 +2,8 @@ import '../planning/financial_execution_plan.dart';
 import '../results/operation_result.dart';
 import 'financial_execution_summary.dart';
 import 'financial_executor.dart';
+import 'financial_mutation_handler.dart';
+import 'financial_transaction_context.dart';
 import 'financial_unit_of_work.dart';
 import 'mutation_handler_registry.dart';
 
@@ -16,15 +18,24 @@ final class DefaultFinancialExecutor implements FinancialExecutor {
        _unitOfWork = unitOfWork;
 
   @override
-  Future<OperationResult> execute(FinancialExecutionPlan plan) async {
+  Future<OperationResult> execute(
+    FinancialExecutionPlan plan,
+  ) async {
     try {
-      await _unitOfWork.execute(() async {
-        for (final mutation in plan.mutations) {
-          final handler = _registry.handlerFor(mutation.runtimeType);
+      await _unitOfWork.execute(
+        (context) async {
+          for (final mutation in plan.mutations) {
+            final handler = _registry.handlerFor(
+              mutation.runtimeType,
+            );
 
-          await handler.execute(mutation);
-        }
-      });
+            await handler.execute(
+              mutation,
+              context,
+            );
+          }
+        },
+      );
 
       return const OperationSucceeded(
         summary: FinancialExecutionSummary(
