@@ -102,8 +102,9 @@ final class FinancialEngineBootstrap {
     );
 
     final allocationPort = AllocationAdapter(
-      planningEngine: planningEngine,
-    );
+  planningEngine: planningEngine,
+  allocationRepository: sharedAllocationRepository,
+);
 
     final releaseAllocationHandler = ReleaseAllocationMutationHandler(
       port: allocationPort,

@@ -16,6 +16,6 @@ final class GoalActivityMutationHandler
     GoalActivityMutation mutation,
     FinancialTransactionContext context,
   ) {
-    return _port.recordActivity(mutation);
+    return _port.recordActivity(mutation, context);
   }
 }

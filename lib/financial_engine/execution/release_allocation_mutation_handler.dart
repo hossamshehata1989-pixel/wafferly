@@ -16,6 +16,6 @@ final class ReleaseAllocationMutationHandler
     ReleaseAllocationMutation mutation,
     FinancialTransactionContext context,
   ) {
-    return _port.releaseAllocation(mutation);
+    return _port.releaseAllocation(mutation, context);
   }
 }
