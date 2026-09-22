@@ -1,0 +1,414 @@
+﻿===== SAVE TRANSACTION CALLERS =====
+
+Path                                                          LineNumber Line            
+----                                                          ---------- ----            
+D:\wafferly\lib\controllers\transaction_entry_controller.dart        709     final suc...
+D:\wafferly\lib\controllers\transaction_entry_controller.dart        758   Future<bool...
+===== TRANSACTION TYPE STATE =====
+    _selectBestAccount();
+    // _refreshBalance(); // Ù…Ø³ØªÙ‚Ø¨Ù„Ø§Ù‹
+    // _refreshWarnings(); // Ù…Ø³ØªÙ‚Ø¨Ù„Ø§Ù‹
+    notifyListeners();
+  }
+
+  // âœ… Ø§Ø®ØªÙŠØ§Ø± Ø£ÙØ¶Ù„ Ø­Ø³Ø§Ø¨ (Ù‚Ø§Ø¨Ù„Ø© Ù„Ù„ØªÙˆØ³Ø¹)
+  void _selectBestAccount() {
+    final accounts = availableAccounts;
+    if (accounts.isEmpty) return;
+
+    final exists = accounts.any((a) => a.id == _selectedAccountId);
+    if (exists) return;
+
+    final account = accounts.first;
+    _selectedAccountId = account.id;
+    _selectedAccountName = account.name;
+  }
+
+  String _amount = "0";
+  String _expression = "";
+  DateTime _selectedDate = DateTime.now();
+  String _note = "";
+  String _paymentMethod = "cash";
+  String _selectedAccountId = "";
+  String _selectedAccountName = "Ø§Ø®ØªØ± Ø­Ø³Ø§Ø¨";
+  String _selectedCategoryId = "";
+  String _selectedTransactionType = TransactionType.expense;
+  SaveStatus _saveStatus = SaveStatus.idle;
+  Transaction? _editingTransaction;
+
+  String? _selectedMemberId;
+  bool _isExceptional = false;
+String? _lastErrorMessage;
+
+  bool get isEditing => _editingTransaction != null;
+  // Transfer specific fields
+  String _selectedFromAccountId = "";
+  String _selectedFromAccountName = "Ø§Ø®ØªØ± Ø­Ø³Ø§Ø¨ Ø§Ù„Ù…ØµØ¯Ø±";
+  String _selectedToAccountId = "";
+  String _selectedToAccountName = "Ø§Ø®ØªØ± Ø­Ø³Ø§Ø¨ Ø§Ù„ÙˆØ¬Ù‡Ø©";
+  String? get lastErrorMessage => _lastErrorMessage;
+
+  // ===========================================
+
+  void _syncCalculatorState() {
+    _calculatorState = CalculatorState(
+      expression: _amount,
+      justCalculated: false,
+    );
+  }
+
+  // ==============================
+  // Getters
+  // ==============================
+
+  String get amount => _amount;
+  String get expression => _expression;
+  DateTime get selectedDate => _selectedDate;
+  String get note => _note;
+  String get paymentMethod => _paymentMethod;
+  String get selectedAccountId => _selectedAccountId;
+  String get selectedAccountName => _selectedAccountName;
+  String get selectedCategoryId => _selectedCategoryId;
+  String? get selectedMemberId => _selectedMemberId;
+  String get selectedTransactionType => _selectedTransactionType;
+  SaveStatus get saveStatus => _saveStatus;
+
+  String get selectedFromAccountId => _selectedFromAccountId;
+  String get selectedFromAccountName => _selectedFromAccountName;
+  String get selectedToAccountId => _selectedToAccountId;
+  String get selectedToAccountName => _selectedToAccountName;
+
+  bool get isIncome => _selectedTransactionType == TransactionType.income;
+  bool get isExpense => _selectedTransactionType == TransactionType.expense;
+  bool get isExceptional => _isExceptional;
+
+  CategoryType get categoryType =>
+      isIncome ? CategoryType.income : CategoryType.expense;
+
+  List<CategoryConfig> get currentCategories => getCategories(categoryType);
+
+  String get currentCurrency {
+    if (_selectedAccountId.isEmpty) return "EGP";
+    final box = Hive.box<Account>('accounts');
+    final acc = box.get(_selectedAccountId);
+    return acc?.currency ?? "EGP";
+  }
+
+  String get transferCurrency {
+    if (_selectedFromAccountId.isEmpty) return "EGP";
+    final box = Hive.box<Account>('accounts');
+    final acc = box.get(_selectedFromAccountId);
+    return acc?.currency ?? "EGP";
+  }
+
+  String get transactionDateLabel {
+    final now = DateTime.now();
+
+    if (_selectedDate.year == now.year &&
+===== TRANSACTION TYPE CHANGES =====
+  EntryValidationResult get validationResult {
+    if (!hasDraftData) {
+      return EntryValidationResult.empty;
+    }
+
+    if (!hasValidExpression) {
+      return EntryValidationResult.invalidExpression;
+    }
+
+    if (!hasAmount) {
+      return EntryValidationResult.invalidAmount;
+    }
+
+    if (!hasCategory) {
+      return EntryValidationResult.noCategory;
+    }
+
+    if (!hasAccount) {
+      return EntryValidationResult.noAccount;
+    }
+
+    return EntryValidationResult.ready;
+  }
+
+  // =======================================================
+  void setTransactionType(String type) {
+    _selectedTransactionType = type;
+    _selectedCategoryId = "";
+    if (type == TransactionType.expense || type == TransactionType.income) {
+      try {
+        final owner = Hive.box<MemberModel>(
+          'members',
+        ).values.firstWhere((m) => m.isOwner && !m.isArchived);
+        _selectedMemberId = owner.id;
+      } catch (_) {
+        _selectedMemberId = null;
+      }
+    } else {
+      _selectedMemberId = null;
+    }
+    notifyListeners();
+  }
+
+  void loadTransaction(Transaction tx) {
+    _editingTransaction = tx;
+    _amount = tx.amount.toString();
+    _syncCalculatorState();
+    _selectedDate = tx.date;
+    _note = tx.note ?? '';
+    _paymentMethod = tx.paymentMethod;
+    _selectedTransactionType = tx.type;
+    _selectedMemberId = tx.actorMemberId;
+
+    final categoryId = (tx.subCategoryId?.isNotEmpty == true)
+        ? tx.subCategoryId!
+        : (tx.categoryId ?? '');
+
+    _selectedCategoryId = categoryId;
+
+    if (tx.type == TransactionType.income) {
+      _selectedAccountId = tx.toAccountId ?? '';
+    } else {
+      _selectedAccountId = tx.fromAccountId ?? '';
+    }
+    final box = Hive.box<Account>('accounts');
+    final account = box.get(_selectedAccountId);
+    _selectedAccountName = account?.name ?? "Ø§Ø®ØªØ± Ø­Ø³Ø§Ø¨";
+    notifyListeners();
+  }
+
+  void onCalculatorTap(String value) {
+    final newState = _calculatorEngine.press(_calculatorState, value);
+
+    _calculatorState = newState;
+    _amount = newState.expression;
+
+    notifyListeners();
+  }
+
+  // ==============================
+===== SAVE / SUBMIT FLOW =====
+    final amountValue = double.parse(_amount);
+
+    if (isExpense) {
+      late final OperationResult result;
+
+      if (_editingTransaction != null) {
+        final updated = _editingTransaction!.copyWith(
+          amount: amountValue,
+          fromAccountId: _selectedAccountId,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          subCategoryId: _isSubCategory(_selectedCategoryId)
+              ? _selectedCategoryId
+              : null,
+          date: _selectedDate,
+          note: _note.isEmpty ? null : _note,
+          paymentMethod: _paymentMethod,
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+
+        result = await _transactionService.updateExpense(updated);
+      } else {
+        result = await _transactionService.addExpense(
+          sourceAccountId: _selectedAccountId,
+          amount: amountValue,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          occurredAt: _selectedDate,
+          note: _note.isEmpty ? null : _note,
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+      }
+
+      if (result is OperationSucceeded) {
+        _onSuccessfulSave();
+
+        return const SaveResult(
+          success: true,
+          action: SaveAction.showNormalSuccess,
+        );
+      }
+
+      return _handleOperationFailure(result);
+    }
+
+    if (isIncome) {
+      late final OperationResult result;
+
+      if (_editingTransaction != null) {
+        final updated = _editingTransaction!.copyWith(
+          amount: amountValue,
+          toAccountId: _selectedAccountId,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          subCategoryId: _isSubCategory(_selectedCategoryId)
+              ? _selectedCategoryId
+              : null,
+          date: _selectedDate,
+          note: _note.isEmpty ? null : _note,
+          paymentMethod: _paymentMethod,
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+
+        result = await _transactionService.updateIncome(updated);
+      } else {
+        result = await _transactionService.addIncome(
+          sourceAccountId: _selectedAccountId,
+          amount: amountValue,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          occurredAt: _selectedDate,
+          note: _note.isEmpty ? null : _note,
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+      }
+
+      if (result is OperationSucceeded) {
+        _onSuccessfulSave();
+
+        return const SaveResult(
+          success: true,
+          action: SaveAction.showNormalSuccess,
+        );
+      }
+
+      return _handleOperationFailure(result);
+    }
+
+    final success = await _saveTransactionLegacy(amountValue, isExceptional);
+
+    if (success) {
+      _saveStatus = SaveStatus.idle;
+
+      final wasEditing = _editingTransaction != null;
+      _editingTransaction = null;
+
+      if (!wasEditing) {
+        _resetExpenseForm();
+      }
+
+      return const SaveResult(
+        success: true,
+        action: SaveAction.showNormalSuccess,
+      );
+    }
+
+    _saveStatus = SaveStatus.idle;
+    notifyListeners();
+
+    return const SaveResult(success: false);
+  }
+
+  // ==============================
+  // Category Helpers
+  // ==============================
+
+  String _getMainCategoryId(String selectedId) {
+    if (CategoryRegistry.isMainCategory(selectedId)) {
+      return selectedId;
+    }
+    if (CategoryRegistry.isSubCategory(selectedId)) {
+      final parentId = CategoryRegistry.getParentMainId(selectedId);
+      if (parentId != null) {
+        return parentId;
+      }
+    }
+    return selectedId;
+  }
+
+  bool _isSubCategory(String selectedId) {
+    return CategoryRegistry.isSubCategory(selectedId);
+  }
+
+  // ==============================
+  // Legacy Save Transaction
+  // ==============================
+
+  Future<bool> _saveTransactionLegacy(double amount, bool isExceptional) async {
+    final mainCategoryId = _getMainCategoryId(_selectedCategoryId);
+    final subCategoryId = _isSubCategory(_selectedCategoryId)
+        ? _selectedCategoryId
+        : null;
+
+    final tx = Transaction.create(
+      amount: amount,
+      type: _selectedTransactionType,
+      fromAccountId: isIncome ? null : _selectedAccountId,
+      toAccountId: isIncome ? _selectedAccountId : null,
+      categoryId: mainCategoryId,
+      subCategoryId: subCategoryId,
+      date: _selectedDate,
+      note: _note.isEmpty ? null : _note,
+      paymentMethod: _paymentMethod,
+      isExceptional: isExceptional,
+      currencyCode: currentCurrency,
+      source: TransactionSource.manual,
+      actorMemberId: _selectedMemberId,
+    );
+
+    debugPrint('EDIT DEBUG: editingTransaction = ${_editingTransaction?.id}');
+
+    if (_editingTransaction != null) {
+      final updated = _editingTransaction!.copyWith(
+        amount: amount,
+        type: _selectedTransactionType,
+        fromAccountId: isIncome ? null : _selectedAccountId,
+        toAccountId: isIncome ? _selectedAccountId : null,
+        categoryId: mainCategoryId,
+        subCategoryId: subCategoryId,
+        date: _selectedDate,
+        note: _note.isEmpty ? null : _note,
+        paymentMethod: _paymentMethod,
+        isExceptional: isExceptional,
+        actorMemberId: _selectedMemberId,
+      );
+      if (updated.type == TransactionType.expense) {
+        await _transactionService.updateExpense(updated);
+      } else if (updated.type == TransactionType.income) {
+        await _transactionService.updateIncome(updated);
+      } else if (updated.type == TransactionType.transfer) {
+===== TRANSACTION TYPE UI =====
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Alignment _alignment(int index) {
+    switch (index) {
+      case 0:
+        return const Alignment(-1, 0);
+      case 1:
+        return const Alignment(0, 0);
+      case 2:
+        return const Alignment(1, 0);
+      default:
+        return const Alignment(-1, 0);
+    }
+  }
+
+  int _selectedIndex(dynamic controller) {
+    // ÙŠØ¹ØªÙ…Ø¯ Ø¹Ù„Ù‰ TransactionType ÙÙŠ Ø§Ù„Ù€ controller
+    final type = controller.selectedTransactionType as String;
+    if (type == 'income') return 1;
+    if (type == 'transfer') return 2;
+    return 0;
+  }
+
+  void _onTap(dynamic controller, int index) {
+    switch (index) {
+      case 0:
+        controller.setTransactionType('expense');
+        break;
+      case 1:
+        controller.setTransactionType('income');
+        break;
+      case 2:
+        controller.setTransactionType('transfer');
+        break;
+    }
+  }
+}
+
+

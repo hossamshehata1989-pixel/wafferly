@@ -1,0 +1,193 @@
+﻿===== TRANSACTION CONSTANTS =====
+// lib/constants/transaction_constants.dart
+
+/// Ù…ØµØ¯Ø± Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø© - Ù„ØªØªØ¨Ø¹ Ø£ØµÙ„ ÙƒÙ„ Ù…Ø¹Ø§Ù…Ù„Ø©
+class TransactionSource {
+  static const String manual = 'manual';
+  static const String fromExpense = 'from_expense';
+  static const String accountCreation = 'account_creation';
+  static const String balanceAdjustment = 'balance_adjustment';
+  static const String tempDebt = 'temp_debt';
+  static const String importedCsv = 'imported_csv';
+  static const String bankSync = 'bank_sync';
+  static const String autoDetected = 'auto_detected';
+  static const String scheduled = 'scheduled';
+
+  /// Ù‚Ø§Ø¦Ù…Ø© Ø¨ÙƒÙ„ Ø§Ù„Ù…ØµØ§Ø¯Ø± (Ù„Ù„Ù‚ÙˆØ§Ø¦Ù… ÙˆØ§Ù„ÙÙ„ØªØ±Ø©)
+  static const List<String> all = [
+    manual,
+    fromExpense,
+    accountCreation,
+    balanceAdjustment,
+    tempDebt,
+    importedCsv,
+    bankSync,
+    autoDetected,
+    scheduled
+  ];
+
+  /// Ù‡Ù„ Ø§Ù„Ù…ØµØ¯Ø± ØªÙ„Ù‚Ø§Ø¦ÙŠ Ø£Ù… ÙŠØ¯ÙˆÙŠØŸ
+  static bool isManual(String source) =>
+      source == manual || source == fromExpense;
+  static bool isAuto(String source) => !isManual(source);
+}
+
+/// Ù†ÙˆØ¹ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø©
+class TransactionType {
+  static const String income = 'income';
+  static const String expense = 'expense';
+  static const String transfer = 'transfer';
+  static const String debt = 'debt';
+  static const String initialBalance = 'initial_balance';
+  static const String balanceAdjustment = 'balance_adjustment';
+
+  static const List<String> all = [
+    income,
+    expense,
+    transfer,
+    debt,
+    initialBalance,
+    balanceAdjustment,
+  ];
+}
+===== SELECTED TRANSACTION TYPE REFERENCES =====
+
+Path                                                                               LineNu
+                                                                                     mber
+----                                                                               ------
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         118
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         156
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         164
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         165
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         467
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         469
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         491
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         500
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         766
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         785
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         796
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         798
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         800
+D:\wafferly\lib\features\analysis\helpers\analysis_helpers.dart                        48
+D:\wafferly\lib\features\analysis\helpers\analysis_helpers.dart                        53
+D:\wafferly\lib\features\analysis\helpers\analysis_helpers.dart                        59
+D:\wafferly\lib\screens\accounts\account_deatails\account_details_logic.dart          160
+D:\wafferly\lib\screens\accounts\account_deatails\account_details_logic.dart          164
+D:\wafferly\lib\screens\accounts\account_deatails\account_details_logic.dart          168
+D:\wafferly\lib\screens\accounts\account_deatails\account_details_logic.dart          181
+D:\wafferly\lib\screens\accounts\account_deatails\account_details_logic.dart          185
+D:\wafferly\lib\screens\accounts\account_deatails\account_details_logic.dart          197
+D:\wafferly\lib\screens\accounts\account_deatails\account_details_logic.dart          201
+D:\wafferly\lib\screens\accounts\account_deatails\account_details_logic.dart          217
+D:\wafferly\lib\screens\accounts\account_deatails\account_details_logic.dart          219
+D:\wafferly\lib\screens\accounts\account_deatails\account_details_logic.dart          221
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                     31
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                     33
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                     35
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                     44
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                     47
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                     50
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                     60
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                     63
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                     85
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                    109
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                    113
+D:\wafferly\lib\screens\transactions\widgets\transaction_card.dart                    142
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                         111
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                         113
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                         126
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                         131
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                         136
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                         196
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                         341
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                         370
+D:\wafferly\lib\screens\expenses_screen.dart                                           26
+D:\wafferly\lib\screens\expenses_screen.dart                                           59
+D:\wafferly\lib\screens\expenses_screen.dart                                           61
+D:\wafferly\lib\screens\expenses_screen.dart                                           75
+D:\wafferly\lib\screens\main_navigation.dart                                          493
+D:\wafferly\lib\screens\main_navigation.dart                                          499
+D:\wafferly\lib\screens\main_navigation.dart                                          505
+D:\wafferly\lib\services\balance_service.dart                                          32
+D:\wafferly\lib\services\balance_service.dart                                          44
+D:\wafferly\lib\services\balance_service.dart                                          52
+D:\wafferly\lib\services\balance_service.dart                                          86
+D:\wafferly\lib\services\balance_service.dart                                          98
+D:\wafferly\lib\services\balance_service.dart                                         106
+D:\wafferly\lib\services\budget_service.dart                                           69
+D:\wafferly\lib\services\ledger_projection_service.dart                               213
+D:\wafferly\lib\services\ledger_projection_service.dart                               216
+D:\wafferly\lib\services\ledger_projection_service.dart                               219
+D:\wafferly\lib\services\ledger_projection_service.dart                               235
+D:\wafferly\lib\services\ledger_projection_service.dart                               238
+D:\wafferly\lib\services\ledger_projection_service.dart                               241
+D:\wafferly\lib\services\ledger_stress_test_service.dart                               89
+D:\wafferly\lib\services\ledger_stress_test_service.dart                              103
+D:\wafferly\lib\services\ledger_stress_test_service.dart                              126
+D:\wafferly\lib\services\transaction_service.dart                                     125
+D:\wafferly\lib\services\transaction_service.dart                                     130
+D:\wafferly\lib\services\transaction_service.dart                                     182
+D:\wafferly\lib\services\transaction_service.dart                                     187
+D:\wafferly\lib\services\transaction_service.dart                                     194
+D:\wafferly\lib\services\transaction_service.dart                                     202
+D:\wafferly\lib\services\transaction_service.dart                                     216
+D:\wafferly\lib\services\transaction_service.dart                                     232
+D:\wafferly\lib\widgets\expense_entry\expense_entry_tabs.dart                          93
+===== EXCEPTIONAL REFERENCES =====
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         123
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         166
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         399
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         432
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         569
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         572
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         637
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         649
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         680
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         692
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         709
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         758
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         774
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         793
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         918
+D:\wafferly\lib\features\analysis\helpers\analysis_helpers.dart                        53
+D:\wafferly\lib\features\analysis\helpers\analysis_helpers.dart                        59
+D:\wafferly\lib\financial_engine\adapters\hive_transaction_port.dart                   31
+D:\wafferly\lib\financial_engine\adapters\hive_transaction_port.dart                   68
+D:\wafferly\lib\financial_engine\adapters\hive_transaction_port.dart                  111
+D:\wafferly\lib\financial_engine\adapters\transaction_record_mapper.dart               21
+D:\wafferly\lib\financial_engine\commands\expense\expense_intent.dart                  29
+D:\wafferly\lib\financial_engine\commands\expense\expense_intent.dart                  37
+D:\wafferly\lib\financial_engine\commands\income\income_intent.dart                    29
+D:\wafferly\lib\financial_engine\commands\income\income_intent.dart                    37
+D:\wafferly\lib\financial_engine\domain\financial_transaction_record.dart              62
+D:\wafferly\lib\financial_engine\domain\financial_transaction_record.dart              96
+D:\wafferly\lib\financial_engine\interpretation\default_financial_interpreter.dart     32
+D:\wafferly\lib\financial_engine\interpretation\default_financial_interpreter.dart     53
+D:\wafferly\lib\financial_engine\interpretation\default_financial_interpreter.dart    119
+D:\wafferly\lib\financial_engine\interpretation\default_financial_interpreter.dart    132
+D:\wafferly\lib\financial_engine\interpretation\normalized_intent.dart                 18
+D:\wafferly\lib\financial_engine\interpretation\normalized_intent.dart                 37
+D:\wafferly\lib\financial_engine\planning\default_financial_planner.dart               90
+D:\wafferly\lib\financial_engine\planning\default_financial_planner.dart              135
+D:\wafferly\lib\financial_engine\planning\default_financial_planner.dart              178
+D:\wafferly\lib\financial_engine\planning\default_financial_planner.dart              220
+D:\wafferly\lib\financial_engine\planning\default_financial_planner.dart              267
+D:\wafferly\lib\financial_engine\planning\default_financial_planner.dart              330
+D:\wafferly\lib\financial_engine\planning\default_financial_planner.dart              399
+D:\wafferly\lib\models\transaction.dart                                                38
+D:\wafferly\lib\models\transaction.dart                                                81
+D:\wafferly\lib\models\transaction.dart                                               107
+D:\wafferly\lib\models\transaction.dart                                               127
+D:\wafferly\lib\models\transaction.dart                                               150
+D:\wafferly\lib\models\transaction.dart                                               167
+D:\wafferly\lib\models\transaction.g.dart                                              29
+D:\wafferly\lib\models\transaction.g.dart                                              65
+D:\wafferly\lib\services\transaction_application_service.dart                          53
+D:\wafferly\lib\services\transaction_application_service.dart                          68
+D:\wafferly\lib\services\transaction_application_service.dart                          92
+D:\wafferly\lib\services\transaction_application_service.dart                         107
+D:\wafferly\lib\services\transaction_service.dart                                     194
+D:\wafferly\lib\services\transaction_service.dart                                     202
+D:\wafferly\lib\widgets\expense_entry\entry_bottom_actions.dart                       100
+
+

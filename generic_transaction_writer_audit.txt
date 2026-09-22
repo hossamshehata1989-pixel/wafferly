@@ -1,0 +1,22 @@
+
+Path                                                                          LineNumber Line                                                                            
+----                                                                          ---------- ----                                                                            
+D:\wafferly\lib\services\transaction_application_service.dart                         36 class TransactionApplicationService {                                           
+D:\wafferly\lib\services\transaction_application_service.dart                         40   TransactionApplicationService({                                               
+D:\wafferly\lib\services\transaction_application_service.dart                        161   Future<void> addTransaction(Transaction transaction) async {                  
+D:\wafferly\lib\services\transaction_application_service.dart                        164     await _legacyTransactionService.addTransaction(transaction);                
+D:\wafferly\lib\services\transaction_service.dart                                     46   Future<void> addTransaction(Transaction transaction) async {                  
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         58   final TransactionApplicationService _transactionService;                      
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         64     required TransactionApplicationService transactionService,                  
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                        804       await _transactionService.addTransaction(tx);                             
+D:\wafferly\lib\screens\accounts\account_deatails\account_details_screen.dart       2972   final applicationService = context.read<TransactionApplicationService>();     
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                         35   late final TransactionApplicationService _transactionApplicationService;      
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                         55     _transactionApplicationService = context                                    
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                         56         .read<TransactionApplicationService>();                                 
+D:\wafferly\lib\screens\transactions\transactions_screen.dart                        398       final result = await _transactionApplicationService.delete(transactionId);
+D:\wafferly\lib\screens\expenses_screen.dart                                          33     final transactionService = context.read<TransactionApplicationService>();   
+D:\wafferly\test\architecture\goal_details_single_writer_boundary_test.dart           23         isNot(contains('TransactionService.instance.addTransaction')),          
+D:\wafferly\test\architecture\goal_details_single_writer_boundary_test.dart           30         isNot(contains('TransactionService.instance.addTransaction')),          
+
+
+

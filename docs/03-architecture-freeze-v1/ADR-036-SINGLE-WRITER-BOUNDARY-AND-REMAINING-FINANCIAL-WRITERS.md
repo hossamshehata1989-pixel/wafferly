@@ -45,6 +45,8 @@ Therefore the Tier 1 Migration Gate can be closed.
 
 The remaining Tier 2 paths still require their own domain decisions. They must not be migrated merely to make a checklist green.
 
+The Generic Transaction Writer audit identified one active production caller: the fallback branch in `TransactionEntryController.validateAndSave`, which delegated to `TransactionService.addTransaction`. That fallback has now been removed. The generic transaction API remains as a compatibility surface for now; its supported subtype semantics still require explicit mapping/classification before the Tier 2 item can be closed.
+
 ---
 
 ## Decision

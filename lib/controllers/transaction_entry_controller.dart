@@ -121,7 +121,7 @@ class TransactionEntryController extends ChangeNotifier {
 
   String? _selectedMemberId;
   bool _isExceptional = false;
-String? _lastErrorMessage;
+  String? _lastErrorMessage;
 
   bool get isEditing => _editingTransaction != null;
   // Transfer specific fields
@@ -259,11 +259,11 @@ String? _lastErrorMessage;
   }
 
   double getTotalReservedBalance() {
-  return ReservedMoneyService().getAll().fold<double>(
-    0,
-    (sum, item) => sum + item.amount,
-  );
-}
+    return ReservedMoneyService().getAll().fold<double>(
+      0,
+      (sum, item) => sum + item.amount,
+    );
+  }
 
   List<ExpenseResolutionOption> getLiquidityOptions() {
     final options = <ExpenseResolutionOption>[];
@@ -706,28 +706,12 @@ String? _lastErrorMessage;
       return _handleOperationFailure(result);
     }
 
-    final success = await _saveTransactionLegacy(amountValue, isExceptional);
-
-    if (success) {
-      _saveStatus = SaveStatus.idle;
-
-      final wasEditing = _editingTransaction != null;
-      _editingTransaction = null;
-
-      if (!wasEditing) {
-        _resetExpenseForm();
-      }
-
-      return const SaveResult(
-        success: true,
-        action: SaveAction.showNormalSuccess,
-      );
-    }
-
     _saveStatus = SaveStatus.idle;
+    _lastErrorMessage =
+        'Unsupported transaction type: $_selectedTransactionType';
     notifyListeners();
 
-    return const SaveResult(success: false);
+    return SaveResult(success: false, errorMessage: _lastErrorMessage);
   }
 
   // ==============================
@@ -752,156 +736,101 @@ String? _lastErrorMessage;
   }
 
   // ==============================
-  // Legacy Save Transaction
-  // ==============================
-
-  Future<bool> _saveTransactionLegacy(double amount, bool isExceptional) async {
-    final mainCategoryId = _getMainCategoryId(_selectedCategoryId);
-    final subCategoryId = _isSubCategory(_selectedCategoryId)
-        ? _selectedCategoryId
-        : null;
-
-    final tx = Transaction.create(
-      amount: amount,
-      type: _selectedTransactionType,
-      fromAccountId: isIncome ? null : _selectedAccountId,
-      toAccountId: isIncome ? _selectedAccountId : null,
-      categoryId: mainCategoryId,
-      subCategoryId: subCategoryId,
-      date: _selectedDate,
-      note: _note.isEmpty ? null : _note,
-      paymentMethod: _paymentMethod,
-      isExceptional: isExceptional,
-      currencyCode: currentCurrency,
-      source: TransactionSource.manual,
-      actorMemberId: _selectedMemberId,
-    );
-
-    debugPrint('EDIT DEBUG: editingTransaction = ${_editingTransaction?.id}');
-
-    if (_editingTransaction != null) {
-      final updated = _editingTransaction!.copyWith(
-        amount: amount,
-        type: _selectedTransactionType,
-        fromAccountId: isIncome ? null : _selectedAccountId,
-        toAccountId: isIncome ? _selectedAccountId : null,
-        categoryId: mainCategoryId,
-        subCategoryId: subCategoryId,
-        date: _selectedDate,
-        note: _note.isEmpty ? null : _note,
-        paymentMethod: _paymentMethod,
-        isExceptional: isExceptional,
-        actorMemberId: _selectedMemberId,
-      );
-      if (updated.type == TransactionType.expense) {
-        await _transactionService.updateExpense(updated);
-      } else if (updated.type == TransactionType.income) {
-        await _transactionService.updateIncome(updated);
-      } else if (updated.type == TransactionType.transfer) {
-        await _transactionService.updateTransfer(updated);
-      }
-    } else {
-      await _transactionService.addTransaction(tx);
-    }
-
-    return true;
-  }
-
-  // ==============================
   // Transfer Support
   // ==============================
 
- Future<bool> saveTransfer() async {
-  if (_saveStatus == SaveStatus.saving) return false;
+  Future<bool> saveTransfer() async {
+    if (_saveStatus == SaveStatus.saving) return false;
 
-  _saveStatus = SaveStatus.saving;
-  _lastErrorMessage = null;
-  notifyListeners();
-
-  final amountValue = double.tryParse(_amount) ?? 0;
-
-  try {
-    // ==============================
-    // Local validation
-    // ==============================
-
-    if (amountValue <= 0) {
-      _lastErrorMessage = 'Please enter a valid transfer amount.';
-      return false;
-    }
-
-    if (_selectedFromAccountId.isEmpty) {
-      _lastErrorMessage = 'Please select the source account.';
-      return false;
-    }
-
-    if (_selectedToAccountId.isEmpty) {
-      _lastErrorMessage = 'Please select the destination account.';
-      return false;
-    }
-
-    if (_selectedFromAccountId == _selectedToAccountId) {
-      _lastErrorMessage = 'Source and destination accounts must be different.';
-      return false;
-    }
-
-    // ==============================
-    // Financial Engine
-    // ==============================
-
-    final result = await _transactionService.addTransfer(
-      fromAccountId: _selectedFromAccountId,
-      toAccountId: _selectedToAccountId,
-      amount: amountValue,
-      occurredAt: _selectedDate,
-      note: _note.isEmpty ? null : _note,
-    );
-
-    if (result is OperationSucceeded) {
-      _lastErrorMessage = null;
-      _resetTransferForm();
-      return true;
-    }
-
-    if (result is InsufficientBalance) {
-      _lastErrorMessage =
-          'Insufficient balance. Available: ${result.available}, '
-          'required: ${result.required}.';
-      return false;
-    }
-
-    if (result is DomainViolationResult) {
-      _lastErrorMessage = result.reason;
-      return false;
-    }
-
-    if (result is OperationRejected) {
-      _lastErrorMessage = result.reason;
-      return false;
-    }
-
-    if (result is OperationFailed) {
-      _lastErrorMessage = result.error.toString();
-      return false;
-    }
-
-    if (result is ConfirmationRequired) {
-      _lastErrorMessage =
-          'This transfer requires confirmation before it can be completed.';
-      return false;
-    }
-
-    _lastErrorMessage = 'Transfer could not be completed.';
-    return false;
-  } catch (e) {
-    debugPrint('❌ Transfer save failed: $e');
-    _lastErrorMessage = e.toString();
-    return false;
-  } finally {
-    _saveStatus = SaveStatus.idle;
+    _saveStatus = SaveStatus.saving;
+    _lastErrorMessage = null;
     notifyListeners();
+
+    final amountValue = double.tryParse(_amount) ?? 0;
+
+    try {
+      // ==============================
+      // Local validation
+      // ==============================
+
+      if (amountValue <= 0) {
+        _lastErrorMessage = 'Please enter a valid transfer amount.';
+        return false;
+      }
+
+      if (_selectedFromAccountId.isEmpty) {
+        _lastErrorMessage = 'Please select the source account.';
+        return false;
+      }
+
+      if (_selectedToAccountId.isEmpty) {
+        _lastErrorMessage = 'Please select the destination account.';
+        return false;
+      }
+
+      if (_selectedFromAccountId == _selectedToAccountId) {
+        _lastErrorMessage =
+            'Source and destination accounts must be different.';
+        return false;
+      }
+
+      // ==============================
+      // Financial Engine
+      // ==============================
+
+      final result = await _transactionService.addTransfer(
+        fromAccountId: _selectedFromAccountId,
+        toAccountId: _selectedToAccountId,
+        amount: amountValue,
+        occurredAt: _selectedDate,
+        note: _note.isEmpty ? null : _note,
+      );
+
+      if (result is OperationSucceeded) {
+        _lastErrorMessage = null;
+        _resetTransferForm();
+        return true;
+      }
+
+      if (result is InsufficientBalance) {
+        _lastErrorMessage =
+            'Insufficient balance. Available: ${result.available}, '
+            'required: ${result.required}.';
+        return false;
+      }
+
+      if (result is DomainViolationResult) {
+        _lastErrorMessage = result.reason;
+        return false;
+      }
+
+      if (result is OperationRejected) {
+        _lastErrorMessage = result.reason;
+        return false;
+      }
+
+      if (result is OperationFailed) {
+        _lastErrorMessage = result.error.toString();
+        return false;
+      }
+
+      if (result is ConfirmationRequired) {
+        _lastErrorMessage =
+            'This transfer requires confirmation before it can be completed.';
+        return false;
+      }
+
+      _lastErrorMessage = 'Transfer could not be completed.';
+      return false;
+    } catch (e) {
+      debugPrint('❌ Transfer save failed: $e');
+      _lastErrorMessage = e.toString();
+      return false;
+    } finally {
+      _saveStatus = SaveStatus.idle;
+      notifyListeners();
+    }
   }
-}
 
   // ==============================
   // Reset Forms

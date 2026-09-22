@@ -1,0 +1,285 @@
+﻿===== SAVE TRANSFER FULL METHOD =====
+          actorMemberId: _selectedMemberId,
+        );
+
+        result = await _transactionService.updateIncome(updated);
+      } else {
+        result = await _transactionService.addIncome(
+          sourceAccountId: _selectedAccountId,
+          amount: amountValue,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          occurredAt: _selectedDate,
+          note: _note.isEmpty ? null : _note,
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+      }
+
+      if (result is OperationSucceeded) {
+        _onSuccessfulSave();
+
+        return const SaveResult(
+          success: true,
+          action: SaveAction.showNormalSuccess,
+        );
+      }
+
+      return _handleOperationFailure(result);
+    }
+
+    final success = await _saveTransactionLegacy(amountValue, isExceptional);
+
+    if (success) {
+      _saveStatus = SaveStatus.idle;
+
+      final wasEditing = _editingTransaction != null;
+      _editingTransaction = null;
+
+      if (!wasEditing) {
+        _resetExpenseForm();
+      }
+
+      return const SaveResult(
+        success: true,
+        action: SaveAction.showNormalSuccess,
+      );
+    }
+
+    _saveStatus = SaveStatus.idle;
+    notifyListeners();
+
+    return const SaveResult(success: false);
+  }
+
+  // ==============================
+  // Category Helpers
+  // ==============================
+
+  String _getMainCategoryId(String selectedId) {
+    if (CategoryRegistry.isMainCategory(selectedId)) {
+      return selectedId;
+    }
+    if (CategoryRegistry.isSubCategory(selectedId)) {
+      final parentId = CategoryRegistry.getParentMainId(selectedId);
+      if (parentId != null) {
+        return parentId;
+      }
+    }
+    return selectedId;
+  }
+
+  bool _isSubCategory(String selectedId) {
+    return CategoryRegistry.isSubCategory(selectedId);
+  }
+
+  // ==============================
+  // Legacy Save Transaction
+  // ==============================
+
+  Future<bool> _saveTransactionLegacy(double amount, bool isExceptional) async {
+    final mainCategoryId = _getMainCategoryId(_selectedCategoryId);
+    final subCategoryId = _isSubCategory(_selectedCategoryId)
+        ? _selectedCategoryId
+        : null;
+
+    final tx = Transaction.create(
+      amount: amount,
+      type: _selectedTransactionType,
+      fromAccountId: isIncome ? null : _selectedAccountId,
+      toAccountId: isIncome ? _selectedAccountId : null,
+      categoryId: mainCategoryId,
+      subCategoryId: subCategoryId,
+      date: _selectedDate,
+      note: _note.isEmpty ? null : _note,
+      paymentMethod: _paymentMethod,
+      isExceptional: isExceptional,
+      currencyCode: currentCurrency,
+      source: TransactionSource.manual,
+      actorMemberId: _selectedMemberId,
+    );
+
+    debugPrint('EDIT DEBUG: editingTransaction = ${_editingTransaction?.id}');
+
+    if (_editingTransaction != null) {
+      final updated = _editingTransaction!.copyWith(
+        amount: amount,
+        type: _selectedTransactionType,
+        fromAccountId: isIncome ? null : _selectedAccountId,
+        toAccountId: isIncome ? _selectedAccountId : null,
+        categoryId: mainCategoryId,
+        subCategoryId: subCategoryId,
+        date: _selectedDate,
+        note: _note.isEmpty ? null : _note,
+        paymentMethod: _paymentMethod,
+        isExceptional: isExceptional,
+        actorMemberId: _selectedMemberId,
+      );
+      if (updated.type == TransactionType.expense) {
+        await _transactionService.updateExpense(updated);
+      } else if (updated.type == TransactionType.income) {
+        await _transactionService.updateIncome(updated);
+      } else if (updated.type == TransactionType.transfer) {
+        await _transactionService.updateTransfer(updated);
+      }
+    } else {
+      await _transactionService.addTransaction(tx);
+    }
+
+    return true;
+  }
+
+  // ==============================
+  // Transfer Support
+  // ==============================
+
+ Future<bool> saveTransfer() async {
+  if (_saveStatus == SaveStatus.saving) return false;
+
+  _saveStatus = SaveStatus.saving;
+  _lastErrorMessage = null;
+  notifyListeners();
+
+  final amountValue = double.tryParse(_amount) ?? 0;
+
+  try {
+    // ==============================
+    // Local validation
+===== SAVE METHOD CALLERS =====
+
+Path                                                                               LineNu
+                                                                                     mber
+----                                                                               ------
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         551
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         569
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         572
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         655
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         698
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                         814
+D:\wafferly\lib\financial_engine\accounting\journal_entry_repository.dart               4
+D:\wafferly\lib\financial_engine\adapters\hive_transaction_port.dart                   18
+D:\wafferly\lib\financial_engine\adapters\hive_transaction_port.dart                   19
+D:\wafferly\lib\financial_engine\handlers\create_transaction_mutation_handler.dart     37
+D:\wafferly\lib\financial_engine\idempotency\idempotency_guard.dart                    15
+D:\wafferly\lib\financial_engine\idempotency\idempotency_store.dart                     6
+D:\wafferly\lib\financial_engine\memory\memory_idempotency_store.dart                  13
+D:\wafferly\lib\financial_engine\ports\transaction_port.dart                           19
+D:\wafferly\lib\infrastructure\adapters\memory_journal_entry_adapter.dart              12
+D:\wafferly\lib\infrastructure\memory\memory_journal_entry_repository.dart             10
+D:\wafferly\lib\infrastructure\memory\memory_journal_entry_repository.dart             16
+D:\wafferly\lib\widgets\expense_entry\transfer_form.dart                              387
+D:\wafferly\lib\widgets\expense_entry\transfer_form.dart                              417
+D:\wafferly\lib\widgets\expense_entry\transfer_form.dart                              442
+D:\wafferly\lib\widgets\expense_entry\transfer_form.dart                              458
+===== LEGACY METHOD CALLERS WITH CONTEXT =====
+          actorMemberId: _selectedMemberId,
+        );
+
+        result = await _transactionService.updateIncome(updated);
+      } else {
+        result = await _transactionService.addIncome(
+          sourceAccountId: _selectedAccountId,
+          amount: amountValue,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          occurredAt: _selectedDate,
+          note: _note.isEmpty ? null : _note,
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+      }
+
+      if (result is OperationSucceeded) {
+        _onSuccessfulSave();
+
+        return const SaveResult(
+          success: true,
+          action: SaveAction.showNormalSuccess,
+        );
+      }
+
+      return _handleOperationFailure(result);
+    }
+
+    final success = await _saveTransactionLegacy(amountValue, isExceptional);
+
+    if (success) {
+      _saveStatus = SaveStatus.idle;
+
+      final wasEditing = _editingTransaction != null;
+      _editingTransaction = null;
+
+      if (!wasEditing) {
+        _resetExpenseForm();
+      }
+
+      return const SaveResult(
+        success: true,
+        action: SaveAction.showNormalSuccess,
+      );
+    }
+
+    _saveStatus = SaveStatus.idle;
+    notifyListeners();
+
+    return const SaveResult(success: false);
+  }
+
+  // ==============================
+  // Category Helpers
+  // ==============================
+
+  String _getMainCategoryId(String selectedId) {
+    if (CategoryRegistry.isMainCategory(selectedId)) {
+      return selectedId;
+    }
+    if (CategoryRegistry.isSubCategory(selectedId)) {
+      final parentId = CategoryRegistry.getParentMainId(selectedId);
+      if (parentId != null) {
+        return parentId;
+      }
+    }
+    return selectedId;
+  }
+
+  bool _isSubCategory(String selectedId) {
+    return CategoryRegistry.isSubCategory(selectedId);
+  }
+
+  // ==============================
+  // Legacy Save Transaction
+  // ==============================
+
+  Future<bool> _saveTransactionLegacy(double amount, bool isExceptional) async {
+    final mainCategoryId = _getMainCategoryId(_selectedCategoryId);
+    final subCategoryId = _isSubCategory(_selectedCategoryId)
+        ? _selectedCategoryId
+        : null;
+
+    final tx = Transaction.create(
+      amount: amount,
+      type: _selectedTransactionType,
+      fromAccountId: isIncome ? null : _selectedAccountId,
+      toAccountId: isIncome ? _selectedAccountId : null,
+      categoryId: mainCategoryId,
+      subCategoryId: subCategoryId,
+      date: _selectedDate,
+      note: _note.isEmpty ? null : _note,
+      paymentMethod: _paymentMethod,
+      isExceptional: isExceptional,
+      currencyCode: currentCurrency,
+      source: TransactionSource.manual,
+      actorMemberId: _selectedMemberId,
+    );
+
+    debugPrint('EDIT DEBUG: editingTransaction = ${_editingTransaction?.id}');
+
+    if (_editingTransaction != null) {
+      final updated = _editingTransaction!.copyWith(
+        amount: amount,
+        type: _selectedTransactionType,
+        fromAccountId: isIncome ? null : _selectedAccountId,
+        toAccountId: isIncome ? _selectedAccountId : null,
+        categoryId: mainCategoryId,
+        subCategoryId: subCategoryId,
+        date: _selectedDate,
+
+

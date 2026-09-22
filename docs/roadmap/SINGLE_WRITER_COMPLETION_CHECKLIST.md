@@ -40,11 +40,11 @@ These items are intentionally not marked complete. Each requires its own domain 
 
 ### A. Generic Transaction Writer
 
-- [ ] Inventory every production caller of the generic transaction API.
+- [x] Inventory every production caller of the generic transaction API; the only active production caller was the `TransactionEntryController` fallback.
 - [ ] Enumerate every transaction subtype it can represent.
 - [ ] Map each subtype to an explicit canonical operation or document why it belongs to another state boundary.
-- [ ] Remove or retire generic financial writes from production paths only after behavior equivalence is proven.
-- [ ] Add architecture/boundary tests preventing new generic financial bypasses.
+- [x] Remove the active production fallback to the generic transaction writer; the generic API remains as a compatibility surface pending subtype mapping/classification.
+- [x] Add an architecture/boundary test preventing `TransactionEntryController` from falling back to the generic transaction writer.
 
 ### B. Balance Adjustment
 

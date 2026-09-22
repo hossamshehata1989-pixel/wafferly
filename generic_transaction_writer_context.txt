@@ -1,0 +1,353 @@
+===== TRANSACTION APPLICATION SERVICE =====
+        occurredAt: occurredAt,
+        note: note,
+        paymentMethod: 'default',
+        currencyCode: currencyCode,
+      ),
+      context: context,
+    );
+
+    final operation = _transferCommandMapper.map(command);
+
+    return await _engine.execute(operation, context);
+  }
+
+  // ==================== Legacy operations (delegated to TransactionService) ====================
+
+  Future<void> addTransaction(Transaction transaction) async {
+    // For now, we delegate to legacy service.
+    // In future, we will migrate all operations to Engine.
+    await _legacyTransactionService.addTransaction(transaction);
+  }
+
+  Future<void> updateTransaction(Transaction transaction) async {
+    await _legacyTransactionService.updateTransaction(transaction);
+  }
+
+  Future<void> deleteTransaction(String id) async {
+    await _legacyTransactionService.deleteTransaction(id);
+  }
+
+  Future<void> deleteAllTransactions() async {
+    await _legacyTransactionService.deleteAllTransactions();
+  }
+
+  // ==================== Update (Engine-based) ====================
+
+===== TRANSACTION SERVICE =====
+    return transactions;
+  }
+
+  /// الحصول على معاملة بواسطة ID
+  Transaction? getById(String id) {
+    return _box.get(id);
+  }
+
+  /// إضافة معاملة جديدة
+  /// 📌 تستخدم put() لضمان استخدام الـ id كـ key
+  Future<void> addTransaction(Transaction transaction) async {
+    await _box.put(transaction.id, transaction);
+
+    // ========== Passive Ledger Integration (Sprint 3A) ==========
+    // لا يؤثر فشل الـ Ledger على نجاح المعاملة الأساسية.
+    try {
+      await _ledgerProjectionService.project(transaction);
+    } catch (e, stack) {
+      // فقط طباعة تحذير في console – لا نعطل التطبيق
+      print(
+        "⚠️ Passive Ledger integration failed for transaction ${transaction.id}: $e",
+      );
+      print(stack);
+    }
+    // ============================================================
+  }
+
+  /// إنشاء وحفظ LedgerEntries بناءً على نوع المعاملة (passive side‑effect)
+
+  /// تحديث معاملة موجودة
+===== TRANSACTION ENTRY CONTROLLER =====
+    if (CategoryRegistry.isSubCategory(selectedId)) {
+      final parentId = CategoryRegistry.getParentMainId(selectedId);
+      if (parentId != null) {
+        return parentId;
+      }
+    }
+    return selectedId;
+  }
+
+  bool _isSubCategory(String selectedId) {
+    return CategoryRegistry.isSubCategory(selectedId);
+  }
+
+  // ==============================
+  // Legacy Save Transaction
+  // ==============================
+
+  Future<bool> _saveTransactionLegacy(double amount, bool isExceptional) async {
+    final mainCategoryId = _getMainCategoryId(_selectedCategoryId);
+    final subCategoryId = _isSubCategory(_selectedCategoryId)
+        ? _selectedCategoryId
+        : null;
+
+    final tx = Transaction.create(
+      amount: amount,
+      type: _selectedTransactionType,
+      fromAccountId: isIncome ? null : _selectedAccountId,
+      toAccountId: isIncome ? _selectedAccountId : null,
+      categoryId: mainCategoryId,
+      subCategoryId: subCategoryId,
+      date: _selectedDate,
+      note: _note.isEmpty ? null : _note,
+      paymentMethod: _paymentMethod,
+      isExceptional: isExceptional,
+      currencyCode: currentCurrency,
+      source: TransactionSource.manual,
+      actorMemberId: _selectedMemberId,
+    );
+
+    debugPrint('EDIT DEBUG: editingTransaction = ${_editingTransaction?.id}');
+
+    if (_editingTransaction != null) {
+      final updated = _editingTransaction!.copyWith(
+        amount: amount,
+        type: _selectedTransactionType,
+        fromAccountId: isIncome ? null : _selectedAccountId,
+        toAccountId: isIncome ? _selectedAccountId : null,
+        categoryId: mainCategoryId,
+        subCategoryId: subCategoryId,
+        date: _selectedDate,
+        note: _note.isEmpty ? null : _note,
+        paymentMethod: _paymentMethod,
+        isExceptional: isExceptional,
+        actorMemberId: _selectedMemberId,
+      );
+      if (updated.type == TransactionType.expense) {
+        await _transactionService.updateExpense(updated);
+      } else if (updated.type == TransactionType.income) {
+        await _transactionService.updateIncome(updated);
+      } else if (updated.type == TransactionType.transfer) {
+        await _transactionService.updateTransfer(updated);
+      }
+    } else {
+      await _transactionService.addTransaction(tx);
+    }
+
+    return true;
+  }
+
+  // ==============================
+  // Transfer Support
+  // ==============================
+
+ Future<bool> saveTransfer() async {
+  if (_saveStatus == SaveStatus.saving) return false;
+
+  _saveStatus = SaveStatus.saving;
+  _lastErrorMessage = null;
+  notifyListeners();
+
+  final amountValue = double.tryParse(_amount) ?? 0;
+
+  try {
+    // ==============================
+    // Local validation
+===== TRANSACTION MODEL =====
+// lib/models/transaction.dart
+
+import 'package:hive/hive.dart';
+import '../constants/transaction_constants.dart';
+
+part 'transaction.g.dart';
+
+@HiveType(typeId: 10)
+class Transaction extends HiveObject {
+  @HiveField(0)
+  final String id;
+
+  @HiveField(1)
+  final double amount;
+
+  @HiveField(2)
+  final String type; // income / expense / transfer / debt
+
+  @HiveField(3)
+  final String? fromAccountId;
+
+  @HiveField(4)
+  final String? toAccountId;
+
+  @HiveField(5)
+  final String? categoryId;
+
+  @HiveField(6)
+  final DateTime date;
+
+  @HiveField(7)
+  final String? note;
+
+  @HiveField(8)
+  final String paymentMethod;
+
+  @HiveField(9)
+  final bool isExceptional;
+
+  @HiveField(10)
+  final String? subCategoryId;
+
+  @HiveField(11)
+  final String currencyCode;
+
+  @HiveField(12)
+  final String source;
+
+  @HiveField(13)
+  final DateTime createdAt;
+
+  @HiveField(14)
+  final DateTime updatedAt;
+
+  @HiveField(15)
+  final String? actorMemberId; // ✅ behavioral attribution layer
+
+  /// Scheduled-financial linkage.
+  ///
+  /// These fields are nullable to preserve backward compatibility with
+  /// existing transactions and manual transactions.
+  @HiveField(16)
+  final String? commitmentId;
+
+  @HiveField(17)
+  final String? scheduleRuleId;
+
+  @HiveField(18)
+  final String? occurrenceId;
+
+  Transaction({
+    String? id,
+    required this.amount,
+    required this.type,
+    this.fromAccountId,
+    this.toAccountId,
+    this.categoryId,
+    required this.date,
+    this.note,
+    this.paymentMethod = 'cash',
+    this.isExceptional = false,
+    this.subCategoryId,
+    String? currencyCode,
+    String? source,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    this.actorMemberId,
+    this.commitmentId,
+    this.scheduleRuleId,
+    this.occurrenceId,
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+       currencyCode = currencyCode ?? 'EGP',
+       source = source ?? TransactionSource.manual,
+       createdAt = createdAt ?? date,
+       updatedAt = updatedAt ?? date;
+
+  Transaction copyWith({
+    String? id,
+    double? amount,
+    String? type,
+    String? fromAccountId,
+    String? toAccountId,
+    String? categoryId,
+    DateTime? date,
+    String? note,
+    String? paymentMethod,
+    bool? isExceptional,
+    String? subCategoryId,
+    String? currencyCode,
+    String? source,
+    DateTime? updatedAt,
+    String? actorMemberId,
+    String? commitmentId,
+    String? scheduleRuleId,
+    String? occurrenceId,
+  }) {
+    return Transaction(
+      id: id ?? this.id,
+      amount: amount ?? this.amount,
+      type: type ?? this.type,
+      fromAccountId: fromAccountId ?? this.fromAccountId,
+      toAccountId: toAccountId ?? this.toAccountId,
+      categoryId: categoryId ?? this.categoryId,
+      date: date ?? this.date,
+      note: note ?? this.note,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      isExceptional: isExceptional ?? this.isExceptional,
+      subCategoryId: subCategoryId ?? this.subCategoryId,
+      currencyCode: currencyCode ?? this.currencyCode,
+      source: source ?? this.source,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? DateTime.now(),
+      actorMemberId: actorMemberId ?? this.actorMemberId,
+      commitmentId: commitmentId ?? this.commitmentId,
+      scheduleRuleId: scheduleRuleId ?? this.scheduleRuleId,
+      occurrenceId: occurrenceId ?? this.occurrenceId,
+    );
+  }
+
+  factory Transaction.create({
+    String? id,
+    required double amount,
+    required String type,
+    String? fromAccountId,
+    String? toAccountId,
+    String? categoryId,
+    required DateTime date,
+    String? note,
+    String paymentMethod = 'cash',
+    bool isExceptional = false,
+    String? subCategoryId,
+    String? currencyCode,
+    String? source,
+    String? actorMemberId,
+  }) {
+    final now = DateTime.now();
+    return Transaction(
+      id: id ?? now.millisecondsSinceEpoch.toString(),
+      amount: amount,
+      type: type,
+      fromAccountId: fromAccountId,
+      toAccountId: toAccountId,
+      categoryId: categoryId,
+      date: date,
+      note: note,
+      paymentMethod: paymentMethod,
+      isExceptional: isExceptional,
+      subCategoryId: subCategoryId,
+      currencyCode: currencyCode,
+      source: source,
+      actorMemberId: actorMemberId,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  Transaction touch() => copyWith(updatedAt: DateTime.now());
+
+  Transaction withSource(String newSource) =>
+      copyWith(source: newSource, updatedAt: DateTime.now());
+
+  bool get isLegacy =>
+      source == TransactionSource.manual &&
+      createdAt == date &&
+      updatedAt == date;
+}
+===== FINANCIAL ACTION TYPES =====
+enum FinancialActionType {
+  expense,
+  income,
+  transfer,
+  commitmentPayment,
+  goalTransfer,
+  goalSavingTransfer,
+  createGoalAllocation,
+  openingBalance,
+  correction,
+  deletion,
+}
