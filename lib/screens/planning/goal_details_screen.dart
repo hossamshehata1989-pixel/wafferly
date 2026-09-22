@@ -18,14 +18,12 @@ import '../../models/enums/goal_status.dart';
 import 'dialogs/complete_goal_dialog.dart';
 import 'dialogs/transfer_to_saving_dialog.dart';
 import 'dialogs/reserved_sources_transfer_dialog.dart';
-import '../../services/transaction_service.dart';
-import '../../models/transaction.dart';
-import '../../constants/transaction_constants.dart';
 import '../../services/goal_details_projection_service.dart';
 import 'package:provider/provider.dart';
 import '../../financial_engine/engine/financial_operation_engine.dart';
 import '../../financial_engine/execution_context/execution_context.dart';
 import '../../financial_engine/operations/goal_transfer_operation.dart';
+import '../../financial_engine/operations/goal_saving_transfer_operation.dart';
 import '../../financial_engine/commands/shared/transaction_metadata.dart';
 import '../../financial_engine/results/operation_result.dart';
 
@@ -119,7 +117,8 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   }) async {
     final occurredAt = DateTime.now();
     final executionContext = ExecutionContext(
-      idempotencyKey: 'goal-transfer-$goalId-${occurredAt.microsecondsSinceEpoch}',
+      idempotencyKey:
+          'goal-transfer-$goalId-${occurredAt.microsecondsSinceEpoch}',
     );
     final engine = context.read<FinancialOperationEngine>();
     final result = await engine.execute(
@@ -234,32 +233,32 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       return;
     }
 
-    final transaction = Transaction.create(
-      amount: result.amount,
-      type: TransactionType.transfer,
-      fromAccountId: result.sourceAccountId!,
-      toAccountId: result.savingAccountId,
-      categoryId: '',
-      date: DateTime.now(),
-      note: 'Saving Goal Contribution',
-      paymentMethod: 'transfer',
-      isExceptional: false,
-      currencyCode: 'EGP',
-      source: TransactionSource.manual,
+    final occurredAt = DateTime.now();
+    final executionContext = ExecutionContext(
+      idempotencyKey:
+          'goal-saving-transfer-${widget.goal.id}-${occurredAt.microsecondsSinceEpoch}',
     );
-
-    await TransactionService.instance.addTransaction(transaction);
-
-    await _activityService.addActivity(
-      GoalActivity.create(
+    final engine = context.read<FinancialOperationEngine>();
+    final engineResult = await engine.execute(
+      GoalSavingTransferOperation(
+        sourceAccountId: result.sourceAccountId!,
+        savingsAccountId: result.savingAccountId,
         goalId: widget.goal.id,
-        type: GoalActivityType.transferToSaving,
         amount: result.amount,
-        sourceAccountId: result.sourceAccountId,
-        destinationAccountId: result.savingAccountId,
-        notes: 'Saving Goal Contribution',
+        metadata: TransactionMetadata(
+          occurredAt: occurredAt,
+          note: 'Saving Goal Contribution',
+          paymentMethod: 'transfer',
+          currencyCode: 'EGP',
+        ),
+        context: executionContext,
       ),
+      executionContext,
     );
+
+    if (engineResult is! OperationSucceeded) {
+      throw StateError('Goal saving transfer operation failed: $engineResult');
+    }
 
     await _loadData();
 
@@ -403,9 +402,9 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       await _markGoalCompleted();
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Goal moved to archive')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Goal moved to archive')));
       return;
     }
 
@@ -505,9 +504,9 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     if (!mounted) return;
 
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _completeGoal() async {
@@ -634,9 +633,9 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       // require an explicit warning before archiving.
       final warning = _savedSources.isNotEmpty
           ? 'Money has already been transferred to a saving account. '
-              'The goal will be moved to the archive.'
+                'The goal will be moved to the archive.'
           : 'This goal has no reserved or saved money. '
-              'Are you sure you want to archive it?';
+                'Are you sure you want to archive it?';
 
       final confirm = await showCancelGoalDialog(
         context,
@@ -652,9 +651,9 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     if (!mounted) return;
 
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Goal moved to archive')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Goal moved to archive')));
   }
 
   @override
@@ -809,78 +808,77 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
             const SizedBox(height: 32),
 
             // RESERVED SOURCES
-            if (projection.showFundingSources &&
-                !hasReleasedCompletion) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Funding Sources',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+            if (projection.showFundingSources && !hasReleasedCompletion) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Funding Sources',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  if (_fundingSources.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_fundingSources.length} source${_fundingSources.length == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
-                    if (_fundingSources.isNotEmpty)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white12,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${_fundingSources.length} source${_fundingSources.length == 1 ? '' : 's'}',
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                  ],
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white12, width: 0.5),
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white10,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white12, width: 0.5),
-                  ),
-                  child: _fundingSources.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Center(
-                            child: Text(
-                              'No funding yet',
-                              style: TextStyle(color: Colors.white38),
-                            ),
+                child: _fundingSources.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Center(
+                          child: Text(
+                            'No funding yet',
+                            style: TextStyle(color: Colors.white38),
                           ),
-                        )
-                      : Column(
-                          children: [
-                            for (int i = 0; i < _fundingSources.length; i++)
-                              Column(
-                                children: [
-                                  _buildFundingSourceTile(
-                                    _fundingSources[i],
-                                    isSaving: false,
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          for (int i = 0; i < _fundingSources.length; i++)
+                            Column(
+                              children: [
+                                _buildFundingSourceTile(
+                                  _fundingSources[i],
+                                  isSaving: false,
+                                ),
+                                if (i < _fundingSources.length - 1)
+                                  const Divider(
+                                    height: 0,
+                                    thickness: 0.5,
+                                    color: Colors.white12,
                                   ),
-                                  if (i < _fundingSources.length - 1)
-                                    const Divider(
-                                      height: 0,
-                                      thickness: 0.5,
-                                      color: Colors.white12,
-                                    ),
-                                ],
-                              ),
-                          ],
-                        ),
-                ),
-                const SizedBox(height: 32),
-              ],
+                              ],
+                            ),
+                        ],
+                      ),
+              ),
+              const SizedBox(height: 32),
+            ],
 
             // SAVED SOURCES
             if (_savedSources.isNotEmpty) ...[

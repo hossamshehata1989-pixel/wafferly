@@ -4,6 +4,7 @@ enum FinancialActionType {
   transfer,
   commitmentPayment,
   goalTransfer,
+  goalSavingTransfer,
   createGoalAllocation,
   openingBalance,
   correction,

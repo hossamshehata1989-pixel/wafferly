@@ -23,6 +23,8 @@ import '../financial_engine/planning/account_mapping.dart';
 import '../financial_engine/planning/chart_of_accounts.dart';
 import '../financial_engine/planning/default_financial_planner.dart';
 import '../financial_engine/domain_guard/balance_domain_guard.dart';
+import '../financial_engine/domain_guard/goal_saving_transfer_domain_guard.dart';
+import '../services/account_service.dart';
 import '../financial_engine/domain_guard/domain_guard_pipeline.dart';
 import '../infrastructure/hive/hive_balance_port.dart';
 import '../infrastructure/memory/memory_journal_entry_repository.dart';
@@ -45,18 +47,13 @@ import '../services/goal_activity_service.dart';
 ///
 /// The Financial Engine mutation still carries a double for compatibility.
 /// The Planning domain stores Money, so the conversion happens here.
-final class CreateAllocationPortAdapter
-    implements CreateAllocationPort {
+final class CreateAllocationPortAdapter implements CreateAllocationPort {
   final AllocationRepository repository;
 
-  const CreateAllocationPortAdapter({
-    required this.repository,
-  });
+  const CreateAllocationPortAdapter({required this.repository});
 
   @override
-  Future<void> createAllocation(
-    CreateAllocationMutation mutation,
-  ) async {
+  Future<void> createAllocation(CreateAllocationMutation mutation) async {
     final allocation = Allocation(
       id: 'allocation-${mutation.goalId}-${DateTime.now().microsecondsSinceEpoch}',
       sourceId: mutation.goalId,
@@ -102,9 +99,9 @@ final class FinancialEngineBootstrap {
     );
 
     final allocationPort = AllocationAdapter(
-  planningEngine: planningEngine,
-  allocationRepository: sharedAllocationRepository,
-);
+      planningEngine: planningEngine,
+      allocationRepository: sharedAllocationRepository,
+    );
 
     final releaseAllocationHandler = ReleaseAllocationMutationHandler(
       port: allocationPort,
@@ -129,6 +126,9 @@ final class FinancialEngineBootstrap {
 
     final balancePort = HiveBalancePort(balanceService: balanceService);
     final balanceGuard = BalanceDomainGuard(balancePort: balancePort);
+    final goalSavingTransferGuard = GoalSavingTransferDomainGuard(
+      accountService: AccountService(),
+    );
 
     final registry = MutationHandlerRegistry(
       handlers: {
@@ -148,14 +148,8 @@ final class FinancialEngineBootstrap {
     final planner = DefaultFinancialPlanner(
       chartOfAccounts: const ChartOfAccounts(
         mappings: [
-          AccountMapping(
-            categoryId: 'transport',
-            accountId: 'expense_account',
-          ),
-          AccountMapping(
-            categoryId: 'salary',
-            accountId: 'income_account',
-          ),
+          AccountMapping(categoryId: 'transport', accountId: 'expense_account'),
+          AccountMapping(categoryId: 'salary', accountId: 'income_account'),
         ],
       ),
       transactionLookupPort: transactionPort,
@@ -164,7 +158,7 @@ final class FinancialEngineBootstrap {
     final engine = FinancialOperationEngine(
       interpreter: const DefaultFinancialInterpreter(),
       domainGuardPipeline: DomainGuardPipeline(
-        guards: [balanceGuard],
+        guards: [goalSavingTransferGuard, balanceGuard],
       ),
       planner: planner,
       integrityChecker: const DefaultFinancialIntegrityChecker(),
@@ -215,9 +209,7 @@ final class _FallbackAllocationRepository implements AllocationRepository {
 
   @override
   Future<List<Allocation>> findActive() async {
-    return _storage.values
-        .where((a) => a.status.index == 1)
-        .toList();
+    return _storage.values.where((a) => a.status.index == 1).toList();
   }
 
   @override
@@ -230,8 +222,7 @@ final class _FallbackAllocationRepository implements AllocationRepository {
     try {
       return _storage.values.firstWhere(
         (allocation) =>
-            allocation.sourceId == sourceId &&
-            allocation.status.index == 1,
+            allocation.sourceId == sourceId && allocation.status.index == 1,
       );
     } catch (_) {
       return null;

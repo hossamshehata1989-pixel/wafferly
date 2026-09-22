@@ -39,7 +39,8 @@ final class BalanceDomainGuard implements DomainGuard {
     debugPrint("============================");
 
     if (available < intent.amount) {
-      if (intent.action == FinancialActionType.transfer) {
+      if (intent.action == FinancialActionType.transfer ||
+          intent.action == FinancialActionType.goalSavingTransfer) {
         return DomainViolation(
           reason:
               'Insufficient balance. Available: $available, required: ${intent.amount}.',

@@ -4,6 +4,7 @@ import '../operations/financial_operation.dart';
 import '../operations/income_operation.dart';
 import '../operations/transfer_operation.dart';
 import '../operations/goal_transfer_operation.dart';
+import '../operations/goal_saving_transfer_operation.dart';
 import '../operations/opening_balance_operation.dart';
 
 import 'financial_action_type.dart';
@@ -65,6 +66,16 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
       case GoalTransferOperation operation:
         return NormalizedIntent(
           action: FinancialActionType.goalTransfer,
+          sourceAccountId: operation.sourceAccountId,
+          destinationAccountId: operation.savingsAccountId,
+          goalId: operation.goalId,
+          amount: operation.amount,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case GoalSavingTransferOperation operation:
+        return NormalizedIntent(
+          action: FinancialActionType.goalSavingTransfer,
           sourceAccountId: operation.sourceAccountId,
           destinationAccountId: operation.savingsAccountId,
           goalId: operation.goalId,

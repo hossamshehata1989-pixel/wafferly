@@ -11,4 +11,9 @@ final class MemoryJournalEntryAdapter implements JournalEntryPort {
   Future<void> persist(JournalEntryMutation mutation) {
     return repository.save(mutation);
   }
+
+  @override
+  Future<void> delete(String journalEntryId) {
+    return repository.delete(journalEntryId);
+  }
 }
