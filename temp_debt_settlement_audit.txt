@@ -1,0 +1,14 @@
+﻿
+Path                                                                        LineNumber Li
+                                                                                       ne
+----                                                                        ---------- --
+D:\wafferly\lib\constants\temp_debt_constants.dart                                   1 co
+D:\wafferly\lib\controllers\transaction_entry_controller.dart                      219   
+D:\wafferly\lib\financial_engine\policies\balance_policy.dart                       28   
+D:\wafferly\lib\financial_engine\policies\balance_policy.dart                       34   
+D:\wafferly\lib\financial_engine\resolution\resolution_label_extension.dart          9   
+D:\wafferly\lib\services\account_service.dart                                      116   
+D:\wafferly\lib\services\debt_query_service.dart                                    20 //
+D:\wafferly\test\financial_engine\insufficient_balance_policy_test.dart            164   
+
+

@@ -5,20 +5,24 @@ import '../core/planning/entities/allocation.dart';
 import '../core/planning/ports/allocation_repository.dart';
 import '../core/planning/value_objects/planning_source_type.dart';
 import '../financial_engine/adapters/hive_transaction_port.dart';
+import '../financial_engine/adapters/hive_correction_port.dart';
 import '../financial_engine/engine/financial_operation_engine.dart';
 import '../financial_engine/execution/default_financial_executor.dart';
 import '../financial_engine/execution/journal_entry_mutation_handler.dart';
 import '../financial_engine/execution/memory_financial_unit_of_work.dart';
 import '../financial_engine/execution/mutation_handler_registry.dart';
 import '../financial_engine/handlers/create_transaction_mutation_handler.dart';
+import '../financial_engine/handlers/create_correction_mutation_handler.dart';
 import '../financial_engine/idempotency/idempotency_guard.dart';
 import '../financial_engine/integrity/default_financial_integrity_checker.dart';
 import '../financial_engine/interpretation/default_financial_interpreter.dart';
 import '../financial_engine/memory/memory_idempotency_store.dart';
 import '../financial_engine/mutations/create_transaction_mutation.dart';
+import '../financial_engine/mutations/create_correction_mutation.dart';
 import '../financial_engine/mutations/journal_entry_mutation.dart';
 import '../financial_engine/operations/create_allocation_mutation.dart';
 import '../financial_engine/ports/create_allocation_port.dart';
+import '../financial_engine/memory/memory_correction_port.dart';
 import '../financial_engine/planning/account_mapping.dart';
 import '../financial_engine/planning/chart_of_accounts.dart';
 import '../financial_engine/planning/default_financial_planner.dart';
@@ -73,6 +77,7 @@ final class FinancialEngineBootstrap {
   static FinancialEngineContext create({
     required BalanceService balanceService,
     required Box<Transaction> transactionBox,
+    Box<Map>? correctionBox,
     AllocationRepository? allocationRepository,
   }) {
     final sharedAllocationRepository =
@@ -117,11 +122,20 @@ final class FinancialEngineBootstrap {
     );
 
     final transactionPort = HiveTransactionPort(transactionBox);
+    final correctionPort = correctionBox != null
+        ? HiveCorrectionPort(correctionBox)
+        : MemoryCorrectionPort();
     final ledgerProjectionService = LedgerProjectionService();
 
     final createTransactionHandler = CreateTransactionMutationHandler(
       transactionPort,
       ledgerProjectionService,
+    );
+
+    final createCorrectionHandler = CreateCorrectionMutationHandler(
+      correctionPort: correctionPort,
+      transactionPort: transactionPort,
+      ledgerProjectionService: ledgerProjectionService,
     );
 
     final balancePort = HiveBalancePort(balanceService: balanceService);
@@ -135,6 +149,7 @@ final class FinancialEngineBootstrap {
         JournalEntryMutation: journalHandler,
         CreateAllocationMutation: createAllocationHandler,
         CreateTransactionMutation: createTransactionHandler,
+        CreateCorrectionMutation: createCorrectionHandler,
         ReleaseAllocationMutation: releaseAllocationHandler,
         GoalActivityMutation: goalActivityHandler,
       },
@@ -148,7 +163,7 @@ final class FinancialEngineBootstrap {
     final planner = DefaultFinancialPlanner(
       chartOfAccounts: const ChartOfAccounts(
         mappings: [
-          AccountMapping(categoryId: 'transport', accountId: 'expense_account'),
+          AccountMapping(categoryId: 'dailyTransport', accountId: 'expense_account'),
           AccountMapping(categoryId: 'salary', accountId: 'income_account'),
         ],
       ),

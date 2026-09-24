@@ -195,10 +195,20 @@ class TransactionApplicationService {
       idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
     );
 
-    final record = _transactionRecordMapper.fromTransaction(transaction);
+    final beforeTransaction = _legacyTransactionService.getById(transaction.id);
+    if (beforeTransaction == null) {
+      throw StateError('Transaction not found: ${transaction.id}');
+    }
+
+    final before = _transactionRecordMapper.fromTransaction(beforeTransaction);
+    final after = _transactionRecordMapper.fromTransaction(transaction);
 
     final command = CorrectionCommand(
-      intent: CorrectionIntent(transactionId: transaction.id, after: record),
+      intent: CorrectionIntent(
+        transactionId: transaction.id,
+        before: before,
+        after: after,
+      ),
       metadata: TransactionMetadata(
         occurredAt: transaction.date,
         note: transaction.note,

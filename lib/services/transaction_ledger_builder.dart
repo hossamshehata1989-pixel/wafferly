@@ -111,4 +111,79 @@ class TransactionLedgerBuilder {
       ),
     ];
   }
+  /// Builds the ledger effect that neutralizes a previously accepted
+  /// transaction. A correction effect is not a synthetic Transaction; it is
+  /// projected under the correction's own write-model id and marked as an
+  /// adjustment.
+  List<LedgerEntry> buildCorrectionReversalEntries({
+    required String correctionId,
+    required String originalTransactionId,
+    required String type,
+    required String? expenseLedgerAccountId,
+    required String? incomeLedgerAccountId,
+    required String? fromAccountId,
+    required String? toAccountId,
+    required double amount,
+    required DateTime date,
+  }) {
+    List<LedgerEntry> original;
+
+    switch (type) {
+      case 'expense':
+        if (fromAccountId == null || expenseLedgerAccountId == null) {
+          throw StateError('Expense correction reversal is missing accounts');
+        }
+        original = buildExpenseEntries(
+          transactionId: originalTransactionId,
+          expenseLedgerAccountId: expenseLedgerAccountId,
+          sourceAccountId: fromAccountId,
+          amount: amount,
+          date: date,
+        );
+        break;
+      case 'income':
+        if (toAccountId == null || incomeLedgerAccountId == null) {
+          throw StateError('Income correction reversal is missing accounts');
+        }
+        original = buildIncomeEntries(
+          transactionId: originalTransactionId,
+          destinationAccountId: toAccountId,
+          incomeLedgerAccountId: incomeLedgerAccountId,
+          amount: amount,
+          date: date,
+        );
+        break;
+      case 'transfer':
+        if (fromAccountId == null || toAccountId == null) {
+          throw StateError('Transfer correction reversal is missing accounts');
+        }
+        original = buildTransferEntries(
+          transactionId: originalTransactionId,
+          fromAccountId: fromAccountId,
+          toAccountId: toAccountId,
+          amount: amount,
+          date: date,
+        );
+        break;
+      default:
+        throw StateError('Unsupported correction type: $type');
+    }
+
+    return original
+        .map(
+          (entry) => LedgerEntry(
+            id: _uuid.v4(),
+            transactionId: correctionId,
+            accountId: entry.accountId,
+            entryType: entry.entryType == EntryType.debit
+                ? EntryType.credit
+                : EntryType.debit,
+            amount: entry.amount,
+            date: entry.date,
+            purpose: LedgerPurpose.adjustment,
+          ),
+        )
+        .toList();
+  }
+
 }

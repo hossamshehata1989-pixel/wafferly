@@ -1,0 +1,17 @@
+﻿
+Path                                                                        LineNumber Li
+                                                                                       ne
+----                                                                        ---------- --
+D:\wafferly\lib\application\accounts\use_cases\update_account_use_case.dart          5 cl
+D:\wafferly\lib\application\accounts\use_cases\update_account_use_case.dart          9   
+D:\wafferly\lib\application\accounts\use_cases\update_account_use_case.dart         18   
+D:\wafferly\lib\application\accounts\use_cases\update_account_use_case.dart         20   
+D:\wafferly\lib\application\accounts\use_cases\update_account_use_case.dart         21   
+D:\wafferly\lib\application\accounts\account_application_service.dart               11   
+D:\wafferly\lib\application\accounts\account_application_service.dart               20   
+D:\wafferly\lib\application\accounts\account_application_service.dart               30   
+D:\wafferly\lib\application\accounts\account_transaction_service.dart               51   
+D:\wafferly\lib\screens\accounts\add_account\add_account_screen.dart               447   
+D:\wafferly\lib\screens\accounts\add_account\add_account_screen.dart               448   
+
+

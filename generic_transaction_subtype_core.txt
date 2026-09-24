@@ -1,0 +1,2731 @@
+﻿================ FILE: D:\wafferly\lib\constants\transaction_constants.dart ================
+// lib/constants/transaction_constants.dart
+
+/// Ù…ØµØ¯Ø± Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø© - Ù„ØªØªØ¨Ø¹ Ø£ØµÙ„ ÙƒÙ„ Ù…Ø¹Ø§Ù…Ù„Ø©
+class TransactionSource {
+  static const String manual = 'manual';
+  static const String fromExpense = 'from_expense';
+  static const String accountCreation = 'account_creation';
+  static const String balanceAdjustment = 'balance_adjustment';
+  static const String tempDebt = 'temp_debt';
+  static const String importedCsv = 'imported_csv';
+  static const String bankSync = 'bank_sync';
+  static const String autoDetected = 'auto_detected';
+  static const String scheduled = 'scheduled';
+
+  /// Ù‚Ø§Ø¦Ù…Ø© Ø¨ÙƒÙ„ Ø§Ù„Ù…ØµØ§Ø¯Ø± (Ù„Ù„Ù‚ÙˆØ§Ø¦Ù… ÙˆØ§Ù„ÙÙ„ØªØ±Ø©)
+  static const List<String> all = [
+    manual,
+    fromExpense,
+    accountCreation,
+    balanceAdjustment,
+    tempDebt,
+    importedCsv,
+    bankSync,
+    autoDetected,
+    scheduled
+  ];
+
+  /// Ù‡Ù„ Ø§Ù„Ù…ØµØ¯Ø± ØªÙ„Ù‚Ø§Ø¦ÙŠ Ø£Ù… ÙŠØ¯ÙˆÙŠØŸ
+  static bool isManual(String source) =>
+      source == manual || source == fromExpense;
+  static bool isAuto(String source) => !isManual(source);
+}
+
+/// Ù†ÙˆØ¹ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø©
+class TransactionType {
+  static const String income = 'income';
+  static const String expense = 'expense';
+  static const String transfer = 'transfer';
+  static const String debt = 'debt';
+  static const String initialBalance = 'initial_balance';
+  static const String balanceAdjustment = 'balance_adjustment';
+
+  static const List<String> all = [
+    income,
+    expense,
+    transfer,
+    debt,
+    initialBalance,
+    balanceAdjustment,
+  ];
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\correction\correction_command.dart ================
+import '../shared/transaction_metadata.dart';
+import '../../execution_context/execution_context.dart';
+import 'correction_intent.dart';
+
+class CorrectionCommand {
+  final CorrectionIntent intent;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
+
+  const CorrectionCommand({
+    required this.intent,
+    required this.metadata,
+    required this.context,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\correction\correction_command_mapper.dart ================
+import '../../operations/correction_financial_operation.dart';
+import 'correction_command.dart';
+
+class CorrectionCommandMapper {
+  const CorrectionCommandMapper();
+
+  CorrectionOperation map(CorrectionCommand command) {
+    return CorrectionOperation(
+      intent: command.intent,
+      metadata: command.metadata,
+      context: command.context,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\correction\correction_intent.dart ================
+import '../../domain/financial_transaction_record.dart';
+
+class CorrectionIntent {
+  final String transactionId;
+  final FinancialTransactionRecord after;
+
+  const CorrectionIntent({required this.transactionId, required this.after});
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\correction\delete_transaction_command.dart ================
+import 'deletion_transaction_intent.dart';
+import '../shared/transaction_metadata.dart';
+import '../../execution_context/execution_context.dart';
+
+final class DeleteTransactionCommand {
+  final DeleteTransactionIntent intent;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
+
+  const DeleteTransactionCommand({
+    required this.intent,
+    required this.metadata,
+    required this.context,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\correction\delete_transaction_command_mapper.dart ================
+import 'delete_transaction_command.dart';
+import '../../operations/deletion_operation.dart';
+
+final class DeleteTransactionCommandMapper {
+  const DeleteTransactionCommandMapper();
+
+  DeleteOperation map(DeleteTransactionCommand command) {
+    return DeleteOperation(
+      intent: command.intent,
+      metadata: command.metadata,
+      context: command.context,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\correction\deletion_transaction_intent.dart ================
+import '../../../models/transaction.dart';
+
+final class DeleteTransactionIntent {
+  final Transaction transaction;
+
+  const DeleteTransactionIntent({required this.transaction});
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\expense\expense_command.dart ================
+import '../shared/transaction_metadata.dart';
+import '../../execution_context/execution_context.dart';
+import 'expense_intent.dart';
+
+/// Command entering the Financial Engine.
+///
+/// Groups together:
+/// - Financial Intent
+/// - Transaction Metadata
+/// - Execution Context
+///
+/// ADR-0011.
+final class ExpenseCommand {
+  final ExpenseIntent intent;
+
+  final TransactionMetadata metadata;
+
+  final ExecutionContext context;
+
+  const ExpenseCommand({
+    required this.intent,
+    required this.metadata,
+    required this.context,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\expense\expense_command_mapper.dart ================
+import '../../operations/expense_operation.dart';
+import 'expense_command.dart';
+
+final class ExpenseCommandMapper {
+  const ExpenseCommandMapper();
+
+  ExpenseOperation map(ExpenseCommand command) {
+    return ExpenseOperation(
+      intent: command.intent,
+      metadata: command.metadata,
+      context: command.context,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\expense\expense_intent.dart ================
+/// Represents the financial intent behind an expense.
+///
+/// This object contains only data that can affect
+/// financial decisions, balances, journals,
+/// or execution planning.
+///
+/// ADR-0011:
+/// - Financial Truth starts here.
+/// - No UI concerns.
+/// - No execution concerns.
+/// - No persistence concerns.
+final class ExpenseIntent {
+  /// Source account that will be debited.
+  final String sourceAccountId;
+
+  /// Expense amount.
+  final double amount;
+
+  /// Financial category.
+  ///
+  /// This is the category used by the Financial Engine
+  /// (currently Main Category according to ADR-0010).
+  final String categoryId;
+
+  /// Whether this expense is exceptional.
+  ///
+  /// This affects Policy and Planning,
+  /// therefore it belongs to the Intent.
+  final bool isExceptional;
+
+  final String? actorMemberId;
+
+  const ExpenseIntent({
+    required this.sourceAccountId,
+    required this.amount,
+    required this.categoryId,
+    required this.isExceptional,
+    this.actorMemberId,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\income\income_command.dart ================
+import '../shared/transaction_metadata.dart';
+import '../../execution_context/execution_context.dart';
+import 'income_intent.dart';
+
+/// Command entering the Financial Engine.
+///
+/// Groups together:
+/// - Financial Intent
+/// - Transaction Metadata
+/// - Execution Context
+///
+/// ADR-0011.
+final class IncomeCommand {
+  final IncomeIntent intent;
+
+  final TransactionMetadata metadata;
+
+  final ExecutionContext context;
+
+  const IncomeCommand({
+    required this.intent,
+    required this.metadata,
+    required this.context,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\income\income_command_mapper.dart ================
+import '../../operations/income_operation.dart';
+import 'income_command.dart';
+
+final class IncomeCommandMapper {
+  const IncomeCommandMapper();
+
+  IncomeOperation map(IncomeCommand command) {
+    return IncomeOperation(
+      intent: command.intent,
+      metadata: command.metadata,
+      context: command.context,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\income\income_intent.dart ================
+/// Represents the financial intent behind an income.
+///
+/// This object contains only data that can affect
+/// financial decisions, balances, journals,
+/// or execution planning.
+///
+/// ADR-0011:
+/// - Financial Truth starts here.
+/// - No UI concerns.
+/// - No execution concerns.
+/// - No persistence concerns.
+final class IncomeIntent {
+  /// Source account that will be debited.
+  final String sourceAccountId;
+
+  /// Income amount.
+  final double amount;
+
+  /// Financial category.
+  ///
+  /// This is the category used by the Financial Engine
+  /// (currently Main Category according to ADR-0010).
+  final String categoryId;
+
+  /// Whether this income is exceptional.
+  ///
+  /// This affects Policy and Planning,
+  /// therefore it belongs to the Intent.
+  final bool isExceptional;
+
+  final String? actorMemberId;
+
+  const IncomeIntent({
+    required this.sourceAccountId,
+    required this.amount,
+    required this.categoryId,
+    required this.isExceptional,
+    this.actorMemberId,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\opening_balance\opening_balance_intent.dart ================
+/// Represents the financial genesis of an account inside the ledger.
+///
+/// The amount may be zero. A zero opening balance is still a financial
+/// event because it establishes the account's first ledger checkpoint.
+final class OpeningBalanceIntent {
+  final String accountId;
+  final double amount;
+  final bool isLiability;
+
+  const OpeningBalanceIntent({
+    required this.accountId,
+    required this.amount,
+    required this.isLiability,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\shared\transaction_metadata.dart ================
+/// Describes a financial event without affecting Financial Truth.
+///
+/// This object contains user-facing information that enriches the
+/// persisted Transaction but must never change balances,
+/// journal entries, or domain decisions.
+///
+/// ADR-0011:
+/// - Shared across all Financial Commands.
+/// - Must never contain operation-specific fields.
+final class TransactionMetadata {
+  /// When the financial event occurred.
+  final DateTime occurredAt;
+
+  /// Optional user note.
+  final String? note;
+
+  /// Payment method selected by the user.
+  final String paymentMethod;
+
+  /// Currency in which the transaction was entered.
+  final String currencyCode;
+
+  const TransactionMetadata({
+    required this.occurredAt,
+    this.note,
+    required this.paymentMethod,
+    required this.currencyCode,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\transfer\transfer_command.dart ================
+import '../shared/transaction_metadata.dart';
+import '../../execution_context/execution_context.dart';
+import 'transfer_intent.dart';
+
+/// Command entering the Financial Engine.
+///
+/// Groups together:
+/// - Financial Intent
+/// - Transaction Metadata
+/// - Execution Context
+///
+/// ADR-0011.
+final class TransferCommand {
+  final TransferIntent intent;
+
+  final TransactionMetadata metadata;
+
+  final ExecutionContext context;
+
+  const TransferCommand({
+    required this.intent,
+    required this.metadata,
+    required this.context,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\transfer\transfer_command_mapper.dart ================
+import '../../operations/transfer_operation.dart';
+import 'transfer_command.dart';
+
+final class TransferCommandMapper {
+  const TransferCommandMapper();
+
+  TransferOperation map(TransferCommand command) {
+    return TransferOperation(
+      intent: command.intent,
+      metadata: command.metadata,
+      context: command.context,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\commands\transfer\transfer_intent.dart ================
+/// Represents the financial intent behind a money transfer.
+///
+/// This object contains only domain data that affects financial
+/// decisions, balance validation, journal generation,
+/// and execution planning.
+///
+/// ADR-00xx:
+/// - Financial Truth starts here.
+/// - No UI concerns.
+/// - No execution concerns.
+/// - No persistence concerns.
+final class TransferIntent {
+  /// Account that will be debited.
+  ///
+  /// Money leaves this account.
+  final String fromAccountId;
+
+  /// Account that will be credited.
+  ///
+  /// Money is transferred into this account.
+  final String toAccountId;
+
+  /// Amount of money to transfer.
+  ///
+  /// Must be greater than zero.
+  final double amount;
+
+  const TransferIntent({
+    required this.fromAccountId,
+    required this.toAccountId,
+    required this.amount,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\domain_guard\balance_domain_guard.dart ================
+import '../interpretation/normalized_intent.dart';
+import '../ports/balance_port.dart';
+import 'domain_guard.dart';
+import 'domain_guard_result.dart';
+import 'financial_constraint.dart';
+import 'package:flutter/foundation.dart';
+import '../interpretation/financial_action_type.dart';
+
+final class BalanceDomainGuard implements DomainGuard {
+  final BalancePort _balancePort;
+
+  const BalanceDomainGuard({required BalancePort balancePort})
+    : _balancePort = balancePort;
+
+  @override
+  Future<DomainGuardResult> validate(NormalizedIntent intent) async {
+    if (intent.action == FinancialActionType.openingBalance) {
+      if (intent.amount < 0) {
+        return const DomainViolation(
+          reason: 'Opening balance amount must not be negative.',
+        );
+      }
+
+      return const DomainGuardPassed();
+    }
+
+    if (intent.action == FinancialActionType.income) {
+      return const DomainGuardPassed();
+    }
+
+    final available = await _balancePort.availableBalance(
+      intent.sourceAccountId,
+    );
+
+    debugPrint("========== BALANCE ==========");
+    debugPrint("Account   = ${intent.sourceAccountId}");
+    debugPrint("Available = $available");
+    debugPrint("Requested = ${intent.amount}");
+    debugPrint("============================");
+
+    if (available < intent.amount) {
+      if (intent.action == FinancialActionType.transfer ||
+          intent.action == FinancialActionType.goalSavingTransfer) {
+        return DomainViolation(
+          reason:
+              'Insufficient balance. Available: $available, required: ${intent.amount}.',
+        );
+      }
+
+      return DomainConstraint(
+        constraint: InsufficientBalanceConstraint(
+          available: available,
+          required: intent.amount,
+        ),
+      );
+    }
+
+    return const DomainGuardPassed();
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\domain_guard\balance_provider.dart ================
+abstract interface class BalanceProvider {
+  Future<double> getBalance(String accountId);
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\domain_guard\domain_guard.dart ================
+import '../interpretation/normalized_intent.dart';
+import 'domain_guard_result.dart';
+
+/// Validates immutable domain facts.
+///
+/// Examples:
+/// - Account exists.
+/// - Currency is supported.
+/// - Goal exists.
+/// - Commitment exists.
+///
+/// This stage MUST NOT evaluate business policies.
+abstract interface class DomainGuard {
+  Future<DomainGuardResult> validate(NormalizedIntent intent);
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\domain_guard\domain_guard_pipeline.dart ================
+import '../interpretation/normalized_intent.dart';
+import 'domain_guard.dart';
+import 'domain_guard_pipeline_result.dart';
+import 'domain_guard_result.dart';
+import 'financial_constraint.dart';
+
+final class DomainGuardPipeline {
+  final List<DomainGuard> _guards;
+
+  const DomainGuardPipeline({List<DomainGuard> guards = const []})
+    : _guards = guards;
+
+  Future<DomainGuardPipelineResult> validate(NormalizedIntent intent) async {
+    final constraints = <FinancialConstraint>[];
+
+    for (final guard in _guards) {
+      final result = await guard.validate(intent);
+
+      switch (result) {
+        case DomainGuardPassed():
+          break;
+
+        case DomainConstraint():
+          constraints.add(result.constraint);
+          break;
+
+        case DomainViolation():
+          return DomainGuardPipelineResult(
+            violation: result,
+            constraints: constraints,
+          );
+      }
+    }
+
+    return DomainGuardPipelineResult(constraints: constraints);
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\domain_guard\domain_guard_pipeline_result.dart ================
+import 'domain_guard_result.dart';
+import 'financial_constraint.dart';
+
+final class DomainGuardPipelineResult {
+  final DomainViolation? violation;
+  final List<FinancialConstraint> constraints;
+
+  const DomainGuardPipelineResult({
+    this.violation,
+    this.constraints = const [],
+  });
+
+  bool get hasViolation => violation != null;
+
+  bool get hasConstraints => constraints.isNotEmpty;
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\domain_guard\domain_guard_result.dart ================
+import 'financial_constraint.dart';
+
+sealed class DomainGuardResult {
+  const DomainGuardResult();
+}
+
+final class DomainGuardPassed extends DomainGuardResult {
+  const DomainGuardPassed();
+}
+
+final class DomainViolation extends DomainGuardResult {
+  final String reason;
+
+  const DomainViolation({required this.reason});
+}
+
+final class DomainConstraint extends DomainGuardResult {
+  final FinancialConstraint constraint;
+
+  const DomainConstraint({required this.constraint});
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\domain_guard\financial_constraint.dart ================
+sealed class FinancialConstraint {
+  const FinancialConstraint();
+}
+
+final class InsufficientBalanceConstraint extends FinancialConstraint {
+  final double available;
+  final double required;
+
+  const InsufficientBalanceConstraint({
+    required this.available,
+    required this.required,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\domain_guard\goal_saving_transfer_domain_guard.dart ================
+import '../../services/account_service.dart';
+import '../interpretation/financial_action_type.dart';
+import '../interpretation/normalized_intent.dart';
+import 'domain_guard.dart';
+import 'domain_guard_result.dart';
+
+/// Domain invariants specific to transfers made from a non-reserved Goal
+/// directly into a savings account.
+///
+/// This is intentionally separate from [TransferDomainGuard] so the
+/// Single-Writer migration does not change validation behavior for the
+/// existing generic transfer action.
+final class GoalSavingTransferDomainGuard implements DomainGuard {
+  final AccountService _accountService;
+
+  const GoalSavingTransferDomainGuard({required AccountService accountService})
+    : _accountService = accountService;
+
+  @override
+  Future<DomainGuardResult> validate(NormalizedIntent intent) async {
+    if (intent.action != FinancialActionType.goalSavingTransfer) {
+      return const DomainGuardPassed();
+    }
+
+    if (intent.sourceAccountId.trim().isEmpty) {
+      return const DomainViolation(reason: 'Source account is required.');
+    }
+
+    final destinationId = intent.destinationAccountId;
+
+    if (destinationId == null || destinationId.trim().isEmpty) {
+      return const DomainViolation(reason: 'Destination account is required.');
+    }
+
+    if (intent.goalId == null || intent.goalId!.trim().isEmpty) {
+      return const DomainViolation(reason: 'Goal id is required.');
+    }
+
+    if (intent.sourceAccountId == destinationId) {
+      return const DomainViolation(
+        reason: 'You cannot transfer money to the same account.',
+      );
+    }
+
+    if (!intent.amount.isFinite || intent.amount <= 0) {
+      return const DomainViolation(
+        reason: 'Transfer amount must be greater than zero.',
+      );
+    }
+
+    final source = _accountService.getById(intent.sourceAccountId);
+    final destination = _accountService.getById(destinationId);
+
+    if (source == null) {
+      return const DomainViolation(reason: 'Source account was not found.');
+    }
+
+    if (destination == null) {
+      return const DomainViolation(
+        reason: 'Destination account was not found.',
+      );
+    }
+
+    if (source.isArchived) {
+      return const DomainViolation(
+        reason: 'The source account is archived and cannot be used.',
+      );
+    }
+
+    if (destination.isArchived) {
+      return const DomainViolation(
+        reason: 'The destination account is archived and cannot be used.',
+      );
+    }
+
+    if (source.bookId != destination.bookId) {
+      return const DomainViolation(
+        reason: 'You cannot transfer between different books.',
+      );
+    }
+
+    // FX is not implemented yet. Until it exists, both accounts must use
+    // the same currency.
+    if (source.currency != destination.currency) {
+      return const DomainViolation(
+        reason: 'Transfers between different currencies are not supported yet.',
+      );
+    }
+
+    return const DomainGuardPassed();
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\domain_guard\transfer_domain_guard.dart ================
+import '../../services/account_service.dart';
+import '../interpretation/financial_action_type.dart';
+import '../interpretation/normalized_intent.dart';
+import 'domain_guard.dart';
+import 'domain_guard_result.dart';
+
+/// Domain invariants specific to normal account-to-account transfers.
+final class TransferDomainGuard implements DomainGuard {
+  final AccountService _accountService;
+
+  const TransferDomainGuard({required AccountService accountService})
+    : _accountService = accountService;
+
+  @override
+  Future<DomainGuardResult> validate(NormalizedIntent intent) async {
+    if (intent.action != FinancialActionType.transfer) {
+      return const DomainGuardPassed();
+    }
+
+    if (intent.sourceAccountId.trim().isEmpty) {
+      return const DomainViolation(reason: 'Source account is required.');
+    }
+
+    final destinationId = intent.destinationAccountId;
+
+    if (destinationId == null || destinationId.trim().isEmpty) {
+      return const DomainViolation(
+        reason: 'Destination account is required.',
+      );
+    }
+
+    if (intent.sourceAccountId == destinationId) {
+      return const DomainViolation(
+        reason: 'You cannot transfer money to the same account.',
+      );
+    }
+
+    if (!intent.amount.isFinite || intent.amount <= 0) {
+      return const DomainViolation(
+        reason: 'Transfer amount must be greater than zero.',
+      );
+    }
+
+    final source = _accountService.getById(intent.sourceAccountId);
+    final destination = _accountService.getById(destinationId);
+
+    if (source == null) {
+      return const DomainViolation(reason: 'Source account was not found.');
+    }
+
+    if (destination == null) {
+      return const DomainViolation(
+        reason: 'Destination account was not found.',
+      );
+    }
+
+    if (source.isArchived) {
+      return const DomainViolation(
+        reason: 'The source account is archived and cannot be used.',
+      );
+    }
+
+    if (destination.isArchived) {
+      return const DomainViolation(
+        reason: 'The destination account is archived and cannot be used.',
+      );
+    }
+
+    if (source.bookId != destination.bookId) {
+      return const DomainViolation(
+        reason: 'You cannot transfer between different books.',
+      );
+    }
+
+    // FX is not implemented yet. Until it exists, both accounts must use
+    // the same currency.
+    if (source.currency != destination.currency) {
+      return const DomainViolation(
+        reason:
+            'Transfers between different currencies are not supported yet.',
+      );
+    }
+
+    return const DomainGuardPassed();
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\interpretation\default_financial_interpreter.dart ================
+import '../operations/expense_operation.dart';
+import '../operations/commitment_payment_operation.dart';
+import '../operations/financial_operation.dart';
+import '../operations/income_operation.dart';
+import '../operations/transfer_operation.dart';
+import '../operations/goal_transfer_operation.dart';
+import '../operations/goal_saving_transfer_operation.dart';
+import '../operations/opening_balance_operation.dart';
+
+import 'financial_action_type.dart';
+import 'financial_interpreter.dart';
+import 'normalized_intent.dart';
+import '../resolution/resolution.dart';
+import '../operations/create_goal_allocation_operation.dart';
+import '../operations/correction_financial_operation.dart';
+import '../operations/deletion_operation.dart';
+
+final class DefaultFinancialInterpreter implements FinancialInterpreter {
+  const DefaultFinancialInterpreter();
+
+  @override
+  NormalizedIntent interpret(FinancialOperation operation) {
+    switch (operation) {
+      case ExpenseOperation():
+        return NormalizedIntent(
+          action: FinancialActionType.expense,
+          sourceAccountId: operation.intent.sourceAccountId,
+          amount: operation.intent.amount,
+          categoryId: operation.intent.categoryId,
+
+          actorMemberId: operation.intent.actorMemberId,
+          isExceptional: operation.intent.isExceptional,
+
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case CommitmentPaymentOperation operation:
+        return NormalizedIntent(
+          action: FinancialActionType.commitmentPayment,
+          sourceAccountId: operation.sourceAccountId,
+          destinationAccountId: operation.liabilityAccountId,
+          amount: operation.amount,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case IncomeOperation():
+        return NormalizedIntent(
+          action: FinancialActionType.income,
+          sourceAccountId: operation.intent.sourceAccountId,
+          amount: operation.intent.amount,
+          categoryId: operation.intent.categoryId,
+          actorMemberId: operation.intent.actorMemberId,
+          isExceptional: operation.intent.isExceptional,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case TransferOperation operation:
+        return NormalizedIntent(
+          action: FinancialActionType.transfer,
+          sourceAccountId: operation.intent.fromAccountId,
+          destinationAccountId: operation.intent.toAccountId,
+          amount: operation.intent.amount,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case GoalTransferOperation operation:
+        return NormalizedIntent(
+          action: FinancialActionType.goalTransfer,
+          sourceAccountId: operation.sourceAccountId,
+          destinationAccountId: operation.savingsAccountId,
+          goalId: operation.goalId,
+          amount: operation.amount,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case GoalSavingTransferOperation operation:
+        return NormalizedIntent(
+          action: FinancialActionType.goalSavingTransfer,
+          sourceAccountId: operation.sourceAccountId,
+          destinationAccountId: operation.savingsAccountId,
+          goalId: operation.goalId,
+          amount: operation.amount,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case CreateGoalAllocationOperation():
+        return NormalizedIntent(
+          action: FinancialActionType.createGoalAllocation,
+          amount: operation.amount,
+          sourceAccountId: operation.accountId,
+          goalId: operation.goalId,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case OpeningBalanceOperation():
+        return NormalizedIntent(
+          action: FinancialActionType.openingBalance,
+          sourceAccountId: operation.intent.accountId,
+          amount: operation.intent.amount,
+          categoryId: 'initial_balance',
+          isLiability: operation.intent.isLiability,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case CorrectionOperation():
+        final after = operation.intent.after;
+
+        final sourceAccountId =
+            after.fromAccountId ??
+            after.toAccountId ??
+            (throw StateError('Correction transaction has no source account'));
+
+        return NormalizedIntent(
+          action: FinancialActionType.correction,
+          sourceAccountId: sourceAccountId,
+          amount: after.amount.toDouble(),
+          categoryId: after.categoryId,
+          actorMemberId: after.actorMemberId,
+          isExceptional: after.isExceptional,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      case DeleteOperation():
+        final tx = operation.intent.transaction;
+
+        return NormalizedIntent(
+          action: FinancialActionType.deletion,
+          amount: tx.amount,
+          sourceAccountId: tx.fromAccountId ?? '',
+          categoryId: tx.categoryId,
+          actorMemberId: tx.actorMemberId,
+          isExceptional: tx.isExceptional,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
+      default:
+        throw UnimplementedError(
+          'Interpreter not implemented for ${operation.runtimeType}',
+        );
+    }
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\interpretation\financial_action_type.dart ================
+enum FinancialActionType {
+  expense,
+  income,
+  transfer,
+  commitmentPayment,
+  goalTransfer,
+  goalSavingTransfer,
+  createGoalAllocation,
+  openingBalance,
+  correction,
+  deletion,
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\commitment_payment_operation.dart ================
+import '../commands/shared/transaction_metadata.dart';
+import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
+
+final class CommitmentPaymentOperation extends FinancialOperation {
+  final String sourceAccountId;
+  final String liabilityAccountId;
+  final String commitmentId;
+  final double amount;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
+
+  const CommitmentPaymentOperation({
+    required this.sourceAccountId,
+    required this.liabilityAccountId,
+    required this.commitmentId,
+    required this.amount,
+    required this.metadata,
+    required this.context,
+    super.resolution,
+  });
+
+  @override
+  CommitmentPaymentOperation resolve(Resolution resolution) {
+    return CommitmentPaymentOperation(
+      sourceAccountId: sourceAccountId,
+      liabilityAccountId: liabilityAccountId,
+      commitmentId: commitmentId,
+      amount: amount,
+      metadata: metadata,
+      context: context,
+      resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: ExecutionContext(
+        idempotencyKey: context.idempotencyKey,
+        commitmentId: commitmentId,
+        scheduleRuleId: context.scheduleRuleId,
+        occurrenceId: context.occurrenceId,
+      ),
+      constraints: constraints,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\correction_financial_operation.dart ================
+import '../commands/correction/correction_intent.dart';
+import '../commands/shared/transaction_metadata.dart';
+import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/correction_context.dart';
+import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
+
+final class CorrectionOperation extends FinancialOperation {
+  final CorrectionIntent intent;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
+
+  const CorrectionOperation({
+    required this.intent,
+    required this.metadata,
+    required this.context,
+    super.resolution,
+  });
+
+  @override
+  CorrectionOperation resolve(Resolution resolution) {
+    return CorrectionOperation(
+      intent: intent,
+      metadata: metadata,
+      context: context,
+      resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
+      correction: CorrectionContext(
+        transactionId: this.intent.transactionId,
+        after: this.intent.after,
+      ),
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\create_allocation_mutation.dart ================
+import '../planning/financial_mutation.dart';
+
+final class CreateAllocationMutation extends DomainMutation {
+  final String accountId;
+  final String goalId;
+  final double amount;
+
+  const CreateAllocationMutation({
+    required this.accountId,
+    required this.goalId,
+    required this.amount,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\create_goal_allocation_operation.dart ================
+import '../commands/shared/transaction_metadata.dart';
+import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
+
+final class CreateGoalAllocationOperation extends FinancialOperation {
+  final String accountId;
+  final String goalId;
+  final double amount;
+  final DateTime occurredAt;
+
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
+
+  const CreateGoalAllocationOperation({
+    required this.accountId,
+    required this.goalId,
+    required this.amount,
+    required this.occurredAt,
+    required this.metadata,
+    required this.context,
+    super.resolution,
+  });
+
+  @override
+  CreateGoalAllocationOperation resolve(Resolution resolution) {
+    return CreateGoalAllocationOperation(
+      accountId: accountId,
+      goalId: goalId,
+      amount: amount,
+      occurredAt: occurredAt,
+      metadata: metadata,
+      context: context,
+      resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\deletion_operation.dart ================
+import '../commands/correction/deletion_transaction_intent.dart';
+import '../commands/shared/transaction_metadata.dart';
+import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/deletion_context.dart';
+import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
+
+final class DeleteOperation extends FinancialOperation {
+  final DeleteTransactionIntent intent;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
+
+  const DeleteOperation({
+    required this.intent,
+    required this.metadata,
+    required this.context,
+    super.resolution,
+  });
+
+  @override
+  DeleteOperation resolve(Resolution resolution) {
+    return DeleteOperation(
+      intent: intent,
+      metadata: metadata,
+      context: context,
+      resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
+      deletion: DeletionContext(transactionId: this.intent.transaction.id),
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\expense_operation.dart ================
+import '../commands/expense/expense_intent.dart';
+import '../commands/shared/transaction_metadata.dart';
+import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
+
+/// Rich Expense Operation.
+///
+/// Carries the complete business operation through the Financial Engine.
+///
+/// ADR-0011
+/// ADR-0013
+final class ExpenseOperation extends FinancialOperation {
+  /// Financial intent.
+  final ExpenseIntent intent;
+
+  /// Transaction metadata.
+  final TransactionMetadata metadata;
+
+  /// Execution context.
+  final ExecutionContext context;
+
+  const ExpenseOperation({
+    required this.intent,
+    required this.metadata,
+    required this.context,
+    super.resolution,
+  });
+
+  @override
+  ExpenseOperation resolve(Resolution resolution) {
+    return ExpenseOperation(
+      intent: intent,
+      metadata: metadata,
+      context: context,
+      resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\financial_operation.dart ================
+import '../domain_guard/financial_constraint.dart';
+import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import '../interpretation/normalized_intent.dart';
+
+abstract class FinancialOperation {
+  final Resolution? resolution;
+
+  const FinancialOperation({this.resolution});
+
+  bool get hasResolution => resolution != null;
+
+  FinancialOperation resolve(Resolution resolution);
+
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  });
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\goal_saving_transfer_operation.dart ================
+import '../domain_guard/financial_constraint.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/planning_context.dart';
+import '../commands/shared/transaction_metadata.dart';
+import '../execution_context/execution_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
+
+/// Moves real money from a source account to a savings account for a Goal
+/// when there is no existing Goal allocation that must be released.
+///
+/// Unlike GoalTransferOperation, this operation does not mutate planning
+/// allocations. It records the financial transfer and the Goal activity.
+final class GoalSavingTransferOperation extends FinancialOperation {
+  final String sourceAccountId;
+  final String savingsAccountId;
+  final String goalId;
+  final double amount;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
+
+  const GoalSavingTransferOperation({
+    required this.sourceAccountId,
+    required this.savingsAccountId,
+    required this.goalId,
+    required this.amount,
+    required this.metadata,
+    required this.context,
+    super.resolution,
+  });
+
+  @override
+  GoalSavingTransferOperation resolve(Resolution resolution) {
+    return GoalSavingTransferOperation(
+      sourceAccountId: sourceAccountId,
+      savingsAccountId: savingsAccountId,
+      goalId: goalId,
+      amount: amount,
+      metadata: metadata,
+      context: context,
+      resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\goal_transfer_operation.dart ================
+import '../domain_guard/financial_constraint.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/planning_context.dart';
+import '../commands/shared/transaction_metadata.dart';
+import '../execution_context/execution_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
+
+/// Financial operation for moving real money from an account into
+/// a savings account in the context of a Goal.
+///
+/// The operation itself carries the command metadata/context needed by the
+/// Financial Command Model. Planning and execution decisions remain outside
+/// this value object.
+final class GoalTransferOperation extends FinancialOperation {
+  final String sourceAccountId;
+  final String savingsAccountId;
+  final String goalId;
+  final double amount;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
+
+  const GoalTransferOperation({
+    required this.sourceAccountId,
+    required this.savingsAccountId,
+    required this.goalId,
+    required this.amount,
+    required this.metadata,
+    required this.context,
+    super.resolution,
+  });
+
+  @override
+  GoalTransferOperation resolve(Resolution resolution) {
+    return GoalTransferOperation(
+      sourceAccountId: sourceAccountId,
+      savingsAccountId: savingsAccountId,
+      goalId: goalId,
+      amount: amount,
+      metadata: metadata,
+      context: context,
+      resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\income_operation.dart ================
+import '../commands/income/income_intent.dart';
+import '../commands/shared/transaction_metadata.dart';
+import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
+
+/// Rich Income Operation.
+///
+/// Carries the complete business operation through the Financial Engine.
+///
+/// ADR-0011
+/// ADR-0013
+final class IncomeOperation extends FinancialOperation {
+  /// Financial intent.
+  final IncomeIntent intent;
+
+  /// Transaction metadata.
+  final TransactionMetadata metadata;
+
+  /// Execution context.
+  final ExecutionContext context;
+
+  const IncomeOperation({
+    required this.intent,
+    required this.metadata,
+    required this.context,
+    super.resolution,
+  });
+
+  @override
+  IncomeOperation resolve(Resolution resolution) {
+    return IncomeOperation(
+      intent: intent,
+      metadata: metadata,
+      context: context,
+      resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\opening_balance_operation.dart ================
+import '../commands/opening_balance/opening_balance_intent.dart';
+import '../commands/shared/transaction_metadata.dart';
+import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
+
+final class OpeningBalanceOperation extends FinancialOperation {
+  final OpeningBalanceIntent intent;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
+
+  const OpeningBalanceOperation({
+    required this.intent,
+    required this.metadata,
+    required this.context,
+    super.resolution,
+  });
+
+  @override
+  OpeningBalanceOperation resolve(Resolution resolution) {
+    return OpeningBalanceOperation(
+      intent: intent,
+      metadata: metadata,
+      context: context,
+      resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\operations\transfer_operation.dart ================
+import '../commands/shared/transaction_metadata.dart';
+import '../commands/transfer/transfer_intent.dart';
+import '../domain_guard/financial_constraint.dart';
+import '../execution_context/execution_context.dart';
+import '../interpretation/normalized_intent.dart';
+import '../planning/planning_context.dart';
+import '../resolution/resolution.dart';
+import 'financial_operation.dart';
+
+final class TransferOperation extends FinancialOperation {
+  final TransferIntent intent;
+  final TransactionMetadata metadata;
+  final ExecutionContext context;
+
+  const TransferOperation({
+    required this.intent,
+    required this.metadata,
+    required this.context,
+    super.resolution,
+  });
+
+  @override
+  TransferOperation resolve(Resolution resolution) {
+    return TransferOperation(
+      intent: intent,
+      metadata: metadata,
+      context: context,
+      resolution: resolution,
+    );
+  }
+
+  @override
+  PlanningContext createPlanningContext({
+    required NormalizedIntent intent,
+    required List<FinancialConstraint> constraints,
+  }) {
+    return PlanningContext(
+      intent: intent,
+      metadata: metadata,
+      executionContext: context,
+      constraints: constraints,
+    );
+  }
+}
+
+================ FILE: D:\wafferly\lib\financial_engine\planning\default_financial_planner.dart ================
+import '../../core/money/money.dart';
+import '../domain/financial_transaction_record.dart';
+import '../interpretation/financial_action_type.dart';
+import '../interpretation/normalized_intent.dart';
+import '../mutations/create_transaction_mutation.dart';
+import '../operations/create_allocation_mutation.dart';
+import 'chart_of_accounts.dart';
+import 'entry_line.dart';
+import 'financial_execution_plan.dart';
+import 'financial_planner.dart';
+import '../mutations/goal_activity_mutation.dart';
+import '../mutations/journal_entry_mutation.dart';
+import 'planning_context.dart';
+import '../mutations/release_allocation_mutation.dart';
+import '../../models/goal_activity.dart';
+import '../../constants/transaction_constants.dart';
+
+final class DefaultFinancialPlanner implements FinancialPlanner {
+  final ChartOfAccounts _chartOfAccounts;
+
+  const DefaultFinancialPlanner({
+    required ChartOfAccounts chartOfAccounts,
+    dynamic transactionLookupPort,
+  }) : _chartOfAccounts = chartOfAccounts;
+
+  @override
+  Future<FinancialExecutionPlan> build(PlanningContext context) async {
+    final intent = context.intent;
+
+    switch (intent.action) {
+      case FinancialActionType.expense:
+        return _planExpense(context);
+
+      case FinancialActionType.income:
+        return _planIncome(context);
+
+      case FinancialActionType.transfer:
+        return _planTransfer(context);
+
+      case FinancialActionType.commitmentPayment:
+        return _planCommitmentPayment(context);
+
+      case FinancialActionType.goalTransfer:
+        return _planGoalTransfer(context);
+
+      case FinancialActionType.goalSavingTransfer:
+        return _planGoalSavingTransfer(context);
+
+      case FinancialActionType.createGoalAllocation:
+        return _planGoalAllocation(intent);
+
+      case FinancialActionType.openingBalance:
+        return _planOpeningBalance(context);
+
+      case FinancialActionType.correction:
+        return _planCorrection(context);
+
+      case FinancialActionType.deletion:
+        return _planDeletion(context);
+
+      default:
+        throw UnimplementedError(
+          'Planner not implemented for ${intent.action}',
+        );
+    }
+  }
+
+  FinancialExecutionPlan _planExpense(PlanningContext context) {
+    final intent = context.intent;
+
+    final categoryId =
+        intent.categoryId ?? (throw StateError('Category is required'));
+
+    final expenseAccountId =
+        _chartOfAccounts.accountForCategory(categoryId) ??
+        (throw StateError('No account mapping found for category $categoryId'));
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'expense',
+      fromAccountId: intent.sourceAccountId,
+      toAccountId: null,
+      categoryId: categoryId,
+      subCategoryId: null,
+      amount: Money.fromDouble(intent.amount),
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: intent.isExceptional,
+      source: 'manual',
+      actorMemberId: intent.actorMemberId,
+    );
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [
+        JournalEntryMutation(
+          journalEntryId: 'journal-1',
+          description: 'Expense',
+          lines: [
+            EntryLine(accountId: expenseAccountId, debit: intent.amount),
+            EntryLine(accountId: intent.sourceAccountId, credit: intent.amount),
+          ],
+        ),
+        CreateTransactionMutation(record: transactionRecord),
+      ],
+    );
+  }
+
+  FinancialExecutionPlan _planIncome(PlanningContext context) {
+    final intent = context.intent;
+
+    final categoryId =
+        intent.categoryId ?? (throw StateError('Category is required'));
+
+    final incomeAccountId =
+        _chartOfAccounts.accountForCategory(categoryId) ??
+        (throw StateError('No account mapping found for category $categoryId'));
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'income',
+      fromAccountId: null,
+      toAccountId: intent.sourceAccountId,
+      categoryId: categoryId,
+      subCategoryId: null,
+      amount: Money.fromDouble(intent.amount),
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: intent.isExceptional,
+      source: 'manual',
+      actorMemberId: intent.actorMemberId,
+    );
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [
+        JournalEntryMutation(
+          journalEntryId: 'journal-1',
+          description: 'Income',
+          lines: [
+            EntryLine(accountId: intent.sourceAccountId, debit: intent.amount),
+            EntryLine(accountId: incomeAccountId, credit: intent.amount),
+          ],
+        ),
+        CreateTransactionMutation(record: transactionRecord),
+      ],
+    );
+  }
+
+  FinancialExecutionPlan _planTransfer(PlanningContext context) {
+    final intent = context.intent;
+
+    final destinationAccountId =
+        intent.destinationAccountId ??
+        (throw StateError('Destination account is required'));
+
+    final FinancialTransactionRecord transactionRecord =
+        FinancialTransactionRecord(
+          transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+          type: 'transfer',
+          fromAccountId: intent.sourceAccountId,
+          toAccountId: destinationAccountId,
+          categoryId: null,
+          subCategoryId: null,
+          amount: Money.fromDouble(intent.amount),
+          currencyCode: context.metadata.currencyCode,
+          paymentMethod: context.metadata.paymentMethod,
+          occurredAt: context.metadata.occurredAt,
+          note: context.metadata.note,
+          isExceptional: intent.isExceptional,
+          source: 'manual',
+          actorMemberId: intent.actorMemberId,
+        );
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [
+        CreateTransactionMutation(record: transactionRecord),
+        JournalEntryMutation(
+          journalEntryId: 'journal-1',
+          description: 'Transfer',
+          lines: [
+            EntryLine(accountId: destinationAccountId, debit: intent.amount),
+            EntryLine(accountId: intent.sourceAccountId, credit: intent.amount),
+          ],
+        ),
+      ],
+    );
+  }
+
+  FinancialExecutionPlan _planCommitmentPayment(PlanningContext context) {
+    final intent = context.intent;
+
+    final liabilityAccountId =
+        intent.destinationAccountId ??
+        (throw StateError('Liability account is required'));
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'transfer',
+      fromAccountId: intent.sourceAccountId,
+      toAccountId: liabilityAccountId,
+      categoryId: null,
+      subCategoryId: null,
+      amount: Money.fromDouble(intent.amount),
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: intent.isExceptional,
+      source: TransactionSource.scheduled,
+      actorMemberId: intent.actorMemberId,
+      commitmentId: context.executionContext.commitmentId,
+      scheduleRuleId: context.executionContext.scheduleRuleId,
+      occurrenceId: context.executionContext.occurrenceId,
+    );
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: context.executionContext.idempotencyKey,
+      mutations: [
+        CreateTransactionMutation(record: transactionRecord),
+        JournalEntryMutation(
+          journalEntryId: 'journal-1',
+          description: 'Commitment Payment',
+          lines: [
+            EntryLine(accountId: liabilityAccountId, debit: intent.amount),
+            EntryLine(accountId: intent.sourceAccountId, credit: intent.amount),
+          ],
+        ),
+      ],
+    );
+  }
+
+  FinancialExecutionPlan _planGoalTransfer(PlanningContext context) {
+    final intent = context.intent;
+
+    final destinationAccountId =
+        intent.destinationAccountId ??
+        (throw StateError('Savings account is required'));
+
+    final goalId = intent.goalId ?? (throw StateError('Goal id is required'));
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'transfer',
+      fromAccountId: intent.sourceAccountId,
+      toAccountId: destinationAccountId,
+      categoryId: null,
+      subCategoryId: null,
+      amount: Money.fromDouble(intent.amount),
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: intent.isExceptional,
+      source: 'manual',
+      actorMemberId: intent.actorMemberId,
+    );
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [
+        // 1. Transaction / financial truth
+        CreateTransactionMutation(record: transactionRecord),
+
+        // 2. Accounting
+        JournalEntryMutation(
+          journalEntryId: 'journal-1',
+          description: 'Goal Transfer',
+          lines: [
+            EntryLine(accountId: destinationAccountId, debit: intent.amount),
+            EntryLine(accountId: intent.sourceAccountId, credit: intent.amount),
+          ],
+        ),
+
+        // 3. Release the reservation through the Planning Engine
+        ReleaseAllocationMutation(
+          goalId: goalId,
+          accountId: intent.sourceAccountId,
+          amount: intent.amount,
+        ),
+
+        // 4. Immutable goal history
+        GoalActivityMutation(
+          goalId: goalId,
+          sourceAccountId: intent.sourceAccountId,
+          destinationAccountId: destinationAccountId,
+          amount: intent.amount,
+          activityType: GoalActivityType.transferToSaving,
+        ),
+      ],
+    );
+  }
+
+  FinancialExecutionPlan _planGoalSavingTransfer(PlanningContext context) {
+    final intent = context.intent;
+
+    final destinationAccountId =
+        intent.destinationAccountId ??
+        (throw StateError('Savings account is required'));
+
+    final goalId = intent.goalId ?? (throw StateError('Goal id is required'));
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'transfer',
+      fromAccountId: intent.sourceAccountId,
+      toAccountId: destinationAccountId,
+      categoryId: null,
+      subCategoryId: null,
+      amount: Money.fromDouble(intent.amount),
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: intent.isExceptional,
+      source: 'manual',
+      actorMemberId: intent.actorMemberId,
+    );
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: context.executionContext.idempotencyKey,
+      mutations: [
+        CreateTransactionMutation(record: transactionRecord),
+        JournalEntryMutation(
+          journalEntryId: 'journal-1',
+          description: 'Goal Saving Transfer',
+          lines: [
+            EntryLine(accountId: destinationAccountId, debit: intent.amount),
+            EntryLine(accountId: intent.sourceAccountId, credit: intent.amount),
+          ],
+        ),
+        GoalActivityMutation(
+          goalId: goalId,
+          sourceAccountId: intent.sourceAccountId,
+          destinationAccountId: destinationAccountId,
+          amount: intent.amount,
+          activityType: GoalActivityType.transferToSaving,
+        ),
+      ],
+    );
+  }
+
+  FinancialExecutionPlan _planGoalAllocation(NormalizedIntent intent) {
+    final goalId = intent.goalId ?? (throw StateError('Goal id is required'));
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [
+        CreateAllocationMutation(
+          accountId: intent.sourceAccountId,
+          goalId: goalId,
+          amount: intent.amount,
+        ),
+      ],
+    );
+  }
+
+  FinancialExecutionPlan _planOpeningBalance(PlanningContext context) {
+    final intent = context.intent;
+
+    const openingEquityAccountId =
+        ChartOfAccounts.openingBalanceEquityAccountId;
+
+    final accountId = intent.sourceAccountId;
+    final amount = intent.amount;
+    final accountReceivesDebit = !intent.isLiability;
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: 'initial_balance',
+      fromAccountId: accountReceivesDebit ? null : accountId,
+      toAccountId: accountReceivesDebit ? accountId : null,
+      categoryId: 'initial_balance',
+      subCategoryId: null,
+      amount: Money.fromDouble(amount),
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: false,
+      source: 'account_creation',
+      actorMemberId: null,
+    );
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: 'temporary',
+      mutations: [
+        JournalEntryMutation(
+          journalEntryId: 'journal-1',
+          description: 'Opening Balance',
+          lines: accountReceivesDebit
+              ? [
+                  EntryLine(accountId: accountId, debit: amount),
+                  EntryLine(accountId: openingEquityAccountId, credit: amount),
+                ]
+              : [
+                  EntryLine(accountId: openingEquityAccountId, debit: amount),
+                  EntryLine(accountId: accountId, credit: amount),
+                ],
+        ),
+        CreateTransactionMutation(record: transactionRecord),
+      ],
+    );
+  }
+
+  FinancialExecutionPlan _planCorrection(PlanningContext context) {
+    throw UnimplementedError('Correction planning is not implemented yet');
+  }
+
+  FinancialExecutionPlan _planDeletion(PlanningContext context) {
+    throw UnimplementedError('Deletion planning is not implemented yet');
+  }
+}
+
+================ FILE: D:\wafferly\lib\models\transaction.dart ================
+// lib/models/transaction.dart
+
+import 'package:hive/hive.dart';
+import '../constants/transaction_constants.dart';
+
+part 'transaction.g.dart';
+
+@HiveType(typeId: 10)
+class Transaction extends HiveObject {
+  @HiveField(0)
+  final String id;
+
+  @HiveField(1)
+  final double amount;
+
+  @HiveField(2)
+  final String type; // income / expense / transfer / debt
+
+  @HiveField(3)
+  final String? fromAccountId;
+
+  @HiveField(4)
+  final String? toAccountId;
+
+  @HiveField(5)
+  final String? categoryId;
+
+  @HiveField(6)
+  final DateTime date;
+
+  @HiveField(7)
+  final String? note;
+
+  @HiveField(8)
+  final String paymentMethod;
+
+  @HiveField(9)
+  final bool isExceptional;
+
+  @HiveField(10)
+  final String? subCategoryId;
+
+  @HiveField(11)
+  final String currencyCode;
+
+  @HiveField(12)
+  final String source;
+
+  @HiveField(13)
+  final DateTime createdAt;
+
+  @HiveField(14)
+  final DateTime updatedAt;
+
+  @HiveField(15)
+  final String? actorMemberId; // âœ… behavioral attribution layer
+
+  /// Scheduled-financial linkage.
+  ///
+  /// These fields are nullable to preserve backward compatibility with
+  /// existing transactions and manual transactions.
+  @HiveField(16)
+  final String? commitmentId;
+
+  @HiveField(17)
+  final String? scheduleRuleId;
+
+  @HiveField(18)
+  final String? occurrenceId;
+
+  Transaction({
+    String? id,
+    required this.amount,
+    required this.type,
+    this.fromAccountId,
+    this.toAccountId,
+    this.categoryId,
+    required this.date,
+    this.note,
+    this.paymentMethod = 'cash',
+    this.isExceptional = false,
+    this.subCategoryId,
+    String? currencyCode,
+    String? source,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    this.actorMemberId,
+    this.commitmentId,
+    this.scheduleRuleId,
+    this.occurrenceId,
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+       currencyCode = currencyCode ?? 'EGP',
+       source = source ?? TransactionSource.manual,
+       createdAt = createdAt ?? date,
+       updatedAt = updatedAt ?? date;
+
+  Transaction copyWith({
+    String? id,
+    double? amount,
+    String? type,
+    String? fromAccountId,
+    String? toAccountId,
+    String? categoryId,
+    DateTime? date,
+    String? note,
+    String? paymentMethod,
+    bool? isExceptional,
+    String? subCategoryId,
+    String? currencyCode,
+    String? source,
+    DateTime? updatedAt,
+    String? actorMemberId,
+    String? commitmentId,
+    String? scheduleRuleId,
+    String? occurrenceId,
+  }) {
+    return Transaction(
+      id: id ?? this.id,
+      amount: amount ?? this.amount,
+      type: type ?? this.type,
+      fromAccountId: fromAccountId ?? this.fromAccountId,
+      toAccountId: toAccountId ?? this.toAccountId,
+      categoryId: categoryId ?? this.categoryId,
+      date: date ?? this.date,
+      note: note ?? this.note,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      isExceptional: isExceptional ?? this.isExceptional,
+      subCategoryId: subCategoryId ?? this.subCategoryId,
+      currencyCode: currencyCode ?? this.currencyCode,
+      source: source ?? this.source,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? DateTime.now(),
+      actorMemberId: actorMemberId ?? this.actorMemberId,
+      commitmentId: commitmentId ?? this.commitmentId,
+      scheduleRuleId: scheduleRuleId ?? this.scheduleRuleId,
+      occurrenceId: occurrenceId ?? this.occurrenceId,
+    );
+  }
+
+  factory Transaction.create({
+    String? id,
+    required double amount,
+    required String type,
+    String? fromAccountId,
+    String? toAccountId,
+    String? categoryId,
+    required DateTime date,
+    String? note,
+    String paymentMethod = 'cash',
+    bool isExceptional = false,
+    String? subCategoryId,
+    String? currencyCode,
+    String? source,
+    String? actorMemberId,
+  }) {
+    final now = DateTime.now();
+    return Transaction(
+      id: id ?? now.millisecondsSinceEpoch.toString(),
+      amount: amount,
+      type: type,
+      fromAccountId: fromAccountId,
+      toAccountId: toAccountId,
+      categoryId: categoryId,
+      date: date,
+      note: note,
+      paymentMethod: paymentMethod,
+      isExceptional: isExceptional,
+      subCategoryId: subCategoryId,
+      currencyCode: currencyCode,
+      source: source,
+      actorMemberId: actorMemberId,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
+  Transaction touch() => copyWith(updatedAt: DateTime.now());
+
+  Transaction withSource(String newSource) =>
+      copyWith(source: newSource, updatedAt: DateTime.now());
+
+  bool get isLegacy =>
+      source == TransactionSource.manual &&
+      createdAt == date &&
+      updatedAt == date;
+}
+
+================ FILE: D:\wafferly\lib\services\transaction_application_service.dart ================
+// lib/services/transaction_application_service.dart
+
+import '../models/transaction.dart';
+import 'account_service.dart';
+import 'transaction_service.dart';
+import '../financial_engine/engine/financial_operation_engine.dart';
+import '../financial_engine/execution_context/execution_context.dart';
+import '../financial_engine/results/operation_result.dart';
+
+import '../financial_engine/commands/expense/expense_command.dart';
+import '../financial_engine/commands/expense/expense_intent.dart';
+import '../financial_engine/commands/shared/transaction_metadata.dart';
+import '../financial_engine/commands/expense/expense_command_mapper.dart';
+
+import '../financial_engine/commands/income/income_command.dart';
+import '../financial_engine/commands/income/income_intent.dart';
+import '../financial_engine/commands/income/income_command_mapper.dart';
+
+import '../financial_engine/commands/transfer/transfer_command.dart';
+import '../financial_engine/commands/transfer/transfer_intent.dart';
+import '../financial_engine/commands/transfer/transfer_command_mapper.dart';
+
+import '../financial_engine/commands/correction/correction_command.dart';
+import '../financial_engine/commands/correction/correction_intent.dart';
+import '../financial_engine/commands/correction/correction_command_mapper.dart';
+
+import '../financial_engine/adapters/transaction_record_mapper.dart';
+
+import '../financial_engine/commands/correction/delete_transaction_command.dart';
+import '../financial_engine/commands/correction/delete_transaction_command_mapper.dart';
+import '../financial_engine/commands/correction/deletion_transaction_intent.dart';
+
+/// Application Orchestrator for transaction-related operations.
+/// This is the single entry point for the UI and other clients.
+/// It delegates to the appropriate underlying service (Engine or Legacy).
+class TransactionApplicationService {
+  final FinancialOperationEngine _engine;
+  final TransactionService _legacyTransactionService;
+
+  TransactionApplicationService({
+    required FinancialOperationEngine engine,
+    required TransactionService legacyTransactionService,
+  }) : _engine = engine,
+       _legacyTransactionService = legacyTransactionService;
+
+  // ==================== Expense (via Engine) ====================
+
+  Future<OperationResult> addExpense({
+    required String sourceAccountId,
+    required double amount,
+    required String categoryId,
+    required DateTime occurredAt,
+    required bool isExceptional,
+    String? actorMemberId,
+    String? note,
+  }) async {
+    // TODO(V4):
+    // Replace with durable operation id generated by the Application Layer.
+    final context = ExecutionContext(
+      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
+    final command = ExpenseCommand(
+      intent: ExpenseIntent(
+        sourceAccountId: sourceAccountId,
+        amount: amount,
+        categoryId: categoryId,
+        isExceptional: isExceptional,
+        actorMemberId: actorMemberId,
+      ),
+      metadata: TransactionMetadata(
+        occurredAt: occurredAt,
+        note: note,
+        paymentMethod: 'default',
+        currencyCode: 'EGP',
+      ),
+      context: context,
+    );
+
+    final operation = _expenseCommandMapper.map(command);
+
+    return await _engine.execute(operation, context);
+  }
+
+  // ==================== Income (via Engine) ====================
+
+  Future<OperationResult> addIncome({
+    required String sourceAccountId,
+    required double amount,
+    required String categoryId,
+    required DateTime occurredAt,
+    required bool isExceptional,
+    String? actorMemberId,
+    String? note,
+  }) async {
+    // TODO(V4):
+    // Replace with durable operation id generated by the Application Layer.
+    final context = ExecutionContext(
+      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
+    final command = IncomeCommand(
+      intent: IncomeIntent(
+        sourceAccountId: sourceAccountId,
+        amount: amount,
+        categoryId: categoryId,
+        isExceptional: isExceptional,
+        actorMemberId: actorMemberId,
+      ),
+      metadata: TransactionMetadata(
+        occurredAt: occurredAt,
+        note: note,
+        paymentMethod: 'default',
+        currencyCode: 'EGP',
+      ),
+      context: context,
+    );
+
+    final operation = _incomeCommandMapper.map(command);
+
+    return await _engine.execute(operation, context);
+  }
+  // ====================== Transfer  (via Engine) ====================
+
+  Future<OperationResult> addTransfer({
+    required String fromAccountId,
+    required String toAccountId,
+    required double amount,
+    required DateTime occurredAt,
+    String? note,
+  }) async {
+    final context = ExecutionContext(
+      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
+    final sourceAccount = AccountService().getById(fromAccountId);
+    final currencyCode = sourceAccount?.currency ?? 'EGP';
+
+    final command = TransferCommand(
+      intent: TransferIntent(
+        fromAccountId: fromAccountId,
+        toAccountId: toAccountId,
+        amount: amount,
+      ),
+      metadata: TransactionMetadata(
+        occurredAt: occurredAt,
+        note: note,
+        paymentMethod: 'default',
+        currencyCode: currencyCode,
+      ),
+      context: context,
+    );
+
+    final operation = _transferCommandMapper.map(command);
+
+    return await _engine.execute(operation, context);
+  }
+
+  // ==================== Legacy operations (delegated to TransactionService) ====================
+
+  Future<void> addTransaction(Transaction transaction) async {
+    // For now, we delegate to legacy service.
+    // In future, we will migrate all operations to Engine.
+    await _legacyTransactionService.addTransaction(transaction);
+  }
+
+  Future<void> updateTransaction(Transaction transaction) async {
+    await _legacyTransactionService.updateTransaction(transaction);
+  }
+
+  Future<void> deleteTransaction(String id) async {
+    await _legacyTransactionService.deleteTransaction(id);
+  }
+
+  Future<void> deleteAllTransactions() async {
+    await _legacyTransactionService.deleteAllTransactions();
+  }
+
+  // ==================== Update (Engine-based) ====================
+
+  Future<OperationResult> updateExpense(Transaction transaction) async {
+    return await _updateViaEngine(transaction);
+  }
+
+  Future<OperationResult> updateIncome(Transaction transaction) async {
+    return await _updateViaEngine(transaction);
+  }
+
+  Future<OperationResult> updateTransfer(Transaction transaction) async {
+    return await _updateViaEngine(transaction);
+  }
+
+  Future<OperationResult> _updateViaEngine(Transaction transaction) async {
+    final context = ExecutionContext(
+      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
+    final record = _transactionRecordMapper.fromTransaction(transaction);
+
+    final command = CorrectionCommand(
+      intent: CorrectionIntent(transactionId: transaction.id, after: record),
+      metadata: TransactionMetadata(
+        occurredAt: transaction.date,
+        note: transaction.note,
+        paymentMethod: transaction.paymentMethod,
+        currencyCode: transaction.currencyCode,
+      ),
+      context: context,
+    );
+
+    final operation = _correctionCommandMapper.map(command);
+
+    return await _engine.execute(operation, context);
+  }
+
+  // ==================== Delete (Temporary Legacy Delegation) ====================
+
+  Future<OperationResult> delete(String transactionId) async {
+    final context = ExecutionContext(
+      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+
+    final transaction = _legacyTransactionService.getById(transactionId);
+
+    if (transaction == null) {
+      throw Exception('Transaction not found: $transactionId');
+    }
+
+    final command = DeleteTransactionCommand(
+      intent: DeleteTransactionIntent(transaction: transaction),
+      metadata: TransactionMetadata(
+        occurredAt: transaction.date,
+        note: transaction.note,
+        paymentMethod: transaction.paymentMethod,
+        currencyCode: transaction.currencyCode,
+      ),
+      context: context,
+    );
+
+    final operation = _deleteTransactionCommandMapper.map(command);
+
+    return await _engine.execute(operation, context);
+  }
+  // =======================================================
+
+  // ==================== Query methods (delegated to legacy) ====================
+
+  List<Transaction> getAllTransactions() =>
+      _legacyTransactionService.getAllTransactions();
+
+  Transaction? getById(String id) => _legacyTransactionService.getById(id);
+
+  List<Transaction> getByType(String type) =>
+      _legacyTransactionService.getByType(type);
+
+  List<Transaction> getIncomeTransactions() =>
+      _legacyTransactionService.getIncomeTransactions();
+
+  List<Transaction> getExpenseTransactions() =>
+      _legacyTransactionService.getExpenseTransactions();
+
+  List<Transaction> getByCategory(String categoryId) =>
+      _legacyTransactionService.getByCategory(categoryId);
+
+  List<Transaction> getByDateRange(DateTime start, DateTime end) =>
+      _legacyTransactionService.getByDateRange(start, end);
+
+  List<Transaction> getForAccount(String accountId) =>
+      _legacyTransactionService.getForAccount(accountId);
+
+  bool hasTransactionsForAccount(String accountId) =>
+      _legacyTransactionService.hasTransactionsForAccount(accountId);
+
+  double getTotalByType(String type, DateTime start, DateTime end) =>
+      _legacyTransactionService.getTotalByType(type, start, end);
+
+  double getTotalExpenses(DateTime start, DateTime end) =>
+      _legacyTransactionService.getTotalExpenses(start, end);
+
+  double getTotalIncome(DateTime start, DateTime end) =>
+      _legacyTransactionService.getTotalIncome(start, end);
+
+  double getNormalExpenses(DateTime start, DateTime end) =>
+      _legacyTransactionService.getNormalExpenses(start, end);
+
+  double getExceptionalExpenses(DateTime start, DateTime end) =>
+      _legacyTransactionService.getExceptionalExpenses(start, end);
+
+  Map<String, double> getExpensesByCategory(DateTime start, DateTime end) =>
+      _legacyTransactionService.getExpensesByCategory(start, end);
+
+  Map<String, double> getExpensesBySource(DateTime start, DateTime end) =>
+      _legacyTransactionService.getExpensesBySource(start, end);
+
+  List<Transaction> getLegacyTransactions() =>
+      _legacyTransactionService.getLegacyTransactions();
+
+  int get count => _legacyTransactionService.count;
+  bool get isEmpty => _legacyTransactionService.isEmpty;
+  bool get isNotEmpty => _legacyTransactionService.isNotEmpty;
+
+  final ExpenseCommandMapper _expenseCommandMapper =
+      const ExpenseCommandMapper();
+
+  final IncomeCommandMapper _incomeCommandMapper = const IncomeCommandMapper();
+  final TransferCommandMapper _transferCommandMapper =
+      const TransferCommandMapper();
+
+  final CorrectionCommandMapper _correctionCommandMapper =
+      const CorrectionCommandMapper();
+
+  final TransactionRecordMapper _transactionRecordMapper =
+      const TransactionRecordMapper();
+
+  final DeleteTransactionCommandMapper _deleteTransactionCommandMapper =
+      const DeleteTransactionCommandMapper();
+}
+
+================ FILE: D:\wafferly\lib\services\transaction_service.dart ================
+// lib/services/transaction_service.dart
+import 'package:hive_flutter/hive_flutter.dart';
+import '../constants/transaction_constants.dart';
+import '../models/transaction.dart';
+import 'ledger_service.dart';
+import 'ledger_projection_service.dart';
+
+/// Ø®Ø¯Ù…Ø© Ù…ÙˆØ­Ø¯Ø© Ù„Ù„ØªØ¹Ø§Ù…Ù„ Ù…Ø¹ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª Ø§Ù„Ù…Ø§Ù„ÙŠØ©
+/// Ø¬Ù…ÙŠØ¹ Ø¹Ù…Ù„ÙŠØ§Øª CRUD ØªÙ…Ø± Ù…Ù† Ù‡Ù†Ø§
+class TransactionService {
+  static const String _boxName = 'transactions';
+
+  // Private constructor for singleton
+  TransactionService._privateConstructor();
+
+  static final TransactionService _instance =
+      TransactionService._privateConstructor();
+
+  /// Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ Ù†Ø³Ø®Ø© ÙˆØ§Ø­Ø¯Ø© Ù…Ù† Ø§Ù„Ø®Ø¯Ù…Ø© (Singleton)
+  static TransactionService get instance => _instance;
+
+  /// Ø§Ù„ÙˆØµÙˆÙ„ Ø¥Ù„Ù‰ Box (Ù„Ù„Ù‚Ø±Ø§Ø¡Ø© Ø§Ù„Ù…Ø¨Ø§Ø´Ø±Ø© ÙÙ‚Ø· Ø¹Ù†Ø¯ Ø§Ù„Ø­Ø§Ø¬Ø©)
+  Box<Transaction> get _box => Hive.box<Transaction>(_boxName);
+
+  // ========== Sprint 3C: Category â†’ LedgerAccount Mapping ==========
+  final LedgerProjectionService _ledgerProjectionService =
+      LedgerProjectionService();
+  // ==========================================
+  // ðŸ“¥ Basic CRUD Operations
+  // ==========================================
+
+  /// Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ Ø¬Ù…ÙŠØ¹ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª Ù…Ø±ØªØ¨Ø© Ù…Ù† Ø§Ù„Ø£Ø­Ø¯Ø« Ø¥Ù„Ù‰ Ø§Ù„Ø£Ù‚Ø¯Ù…
+  List<Transaction> getAllTransactions() {
+    final transactions = _box.values.toList();
+    transactions.sort((a, b) => b.date.compareTo(a.date));
+    return transactions;
+  }
+
+  /// Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ Ù…Ø¹Ø§Ù…Ù„Ø© Ø¨ÙˆØ§Ø³Ø·Ø© ID
+  Transaction? getById(String id) {
+    return _box.get(id);
+  }
+
+  /// Ø¥Ø¶Ø§ÙØ© Ù…Ø¹Ø§Ù…Ù„Ø© Ø¬Ø¯ÙŠØ¯Ø©
+  /// ðŸ“Œ ØªØ³ØªØ®Ø¯Ù… put() Ù„Ø¶Ù…Ø§Ù† Ø§Ø³ØªØ®Ø¯Ø§Ù… Ø§Ù„Ù€ id ÙƒÙ€ key
+  Future<void> addTransaction(Transaction transaction) async {
+    await _box.put(transaction.id, transaction);
+
+    // ========== Passive Ledger Integration (Sprint 3A) ==========
+    // Ù„Ø§ ÙŠØ¤Ø«Ø± ÙØ´Ù„ Ø§Ù„Ù€ Ledger Ø¹Ù„Ù‰ Ù†Ø¬Ø§Ø­ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø© Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©.
+    try {
+      await _ledgerProjectionService.project(transaction);
+    } catch (e, stack) {
+      // ÙÙ‚Ø· Ø·Ø¨Ø§Ø¹Ø© ØªØ­Ø°ÙŠØ± ÙÙŠ console â€“ Ù„Ø§ Ù†Ø¹Ø·Ù„ Ø§Ù„ØªØ·Ø¨ÙŠÙ‚
+      print(
+        "âš ï¸ Passive Ledger integration failed for transaction ${transaction.id}: $e",
+      );
+      print(stack);
+    }
+    // ============================================================
+  }
+
+  /// Ø¥Ù†Ø´Ø§Ø¡ ÙˆØ­ÙØ¸ LedgerEntries Ø¨Ù†Ø§Ø¡Ù‹ Ø¹Ù„Ù‰ Ù†ÙˆØ¹ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø© (passive sideâ€‘effect)
+
+  /// ØªØ­Ø¯ÙŠØ« Ù…Ø¹Ø§Ù…Ù„Ø© Ù…ÙˆØ¬ÙˆØ¯Ø©
+  /// ðŸ“Œ Sprint 4D: ÙŠØ­Ø°Ù LedgerEntries Ø§Ù„Ù‚Ø¯ÙŠÙ…Ø© ÙˆÙŠØ¹ÙŠØ¯ Ø¥Ù†Ø´Ø§Ø¦Ù‡Ø§
+  Future<void> updateTransaction(Transaction transaction) async {
+    try {
+      final updated = transaction.touch();
+
+      final ledgerService = LedgerService();
+
+      await ledgerService.deleteEntriesByTransactionId(updated.id);
+
+      await _box.put(updated.id, updated);
+
+      await _ledgerProjectionService.project(updated);
+
+      print("âœ… Transaction updated with Ledger sync");
+    } catch (e) {
+      print("âŒ Update transaction failed: $e");
+      rethrow;
+    }
+  }
+
+  /// Ø­Ø°Ù Ù…Ø¹Ø§Ù…Ù„Ø©
+  /// ðŸ“Œ Sprint 4D: ÙŠØ­Ø°Ù LedgerEntries Ø§Ù„Ù…Ø±ØªØ¨Ø·Ø© Ø£ÙˆÙ„Ø§Ù‹
+  Future<void> deleteTransaction(String id) async {
+    try {
+      final transaction = _box.get(id);
+
+      if (transaction == null) return;
+
+      final ledgerService = LedgerService();
+
+      await ledgerService.deleteEntriesByTransactionId(id);
+
+      await _box.delete(id);
+
+      print("âœ… Transaction deleted with Ledger sync");
+    } catch (e) {
+      print("âŒ Delete transaction failed: $e");
+      rethrow;
+    }
+  }
+
+  /// Ø­Ø°Ù Ø¬Ù…ÙŠØ¹ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª (Ù„Ù„Ø§Ø®ØªØ¨Ø§Ø± Ø£Ùˆ Ø¥Ø¹Ø§Ø¯Ø© ØªØ¹ÙŠÙŠÙ† Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª)
+  Future<void> deleteAllTransactions() async {
+    await _box.clear();
+  }
+
+  // ==========================================
+  // ðŸ” Query Operations
+  // ==========================================
+
+  /// Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª Ø­Ø³Ø¨ Ø§Ù„Ù†ÙˆØ¹ (income, expense, transfer, etc.)
+  List<Transaction> getByType(String type) {
+    final transactions = _box.values.where((tx) => tx.type == type).toList();
+    transactions.sort((a, b) => b.date.compareTo(a.date));
+    return transactions;
+  }
+
+  /// Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ Ù…ØµØ§Ø¯Ø± Ø§Ù„Ø¯Ø®Ù„ (income transactions only)
+  List<Transaction> getIncomeTransactions() {
+    return getByType(TransactionType.income);
+  }
+
+  /// Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ Ø§Ù„Ù…ØµØ±ÙˆÙØ§Øª (expense transactions only)
+  List<Transaction> getExpenseTransactions() {
+    return getByType(TransactionType.expense);
+  }
+
+  /// Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª Ø­Ø³Ø¨ Ø§Ù„ÙØ¦Ø© (categoryId)
+  List<Transaction> getByCategory(String categoryId) {
+    final transactions = _box.values
+        .where((tx) => tx.categoryId == categoryId)
+        .toList();
+    transactions.sort((a, b) => b.date.compareTo(a.date));
+    return transactions;
+  }
+
+  /// Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª ÙÙŠ Ù†Ø·Ø§Ù‚ Ø²Ù…Ù†ÙŠ Ù…Ø­Ø¯Ø¯
+  List<Transaction> getByDateRange(DateTime start, DateTime end) {
+    final transactions = _box.values.where((tx) {
+      return tx.date.isAfter(start.subtract(const Duration(days: 1))) &&
+          tx.date.isBefore(end.add(const Duration(days: 1)));
+    }).toList();
+    transactions.sort((a, b) => b.date.compareTo(a.date));
+    return transactions;
+  }
+
+  /// Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ Ù…Ø¹Ø§Ù…Ù„Ø§Øª Ø­Ø³Ø§Ø¨ Ù…Ø¹ÙŠÙ† (Ù…Ù† Ø£Ùˆ Ø¥Ù„Ù‰)
+  List<Transaction> getForAccount(String accountId) {
+    final transactions = _box.values.where((tx) {
+      return tx.fromAccountId == accountId || tx.toAccountId == accountId;
+    }).toList();
+    transactions.sort((a, b) => b.date.compareTo(a.date));
+    return transactions;
+  }
+
+  /// Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù…Ø§ Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„Ø­Ø³Ø§Ø¨ Ù„Ø¯ÙŠÙ‡ Ù…Ø¹Ø§Ù…Ù„Ø§Øª
+  bool hasTransactionsForAccount(String accountId) {
+    return _box.values.any((tx) {
+      return tx.fromAccountId == accountId || tx.toAccountId == accountId;
+    });
+  }
+
+  // ==========================================
+  // ðŸ“Š Summary Operations
+  // ==========================================
+
+  /// Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª Ø­Ø³Ø¨ Ø§Ù„Ù†ÙˆØ¹ ÙÙŠ Ù†Ø·Ø§Ù‚ Ø²Ù…Ù†ÙŠ
+  double getTotalByType(String type, DateTime start, DateTime end) {
+    final transactions = getByDateRange(start, end);
+    return transactions
+        .where((tx) => tx.type == type)
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+  }
+
+  /// Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…ØµØ±ÙˆÙØ§Øª ÙÙŠ Ù†Ø·Ø§Ù‚ Ø²Ù…Ù†ÙŠ
+  double getTotalExpenses(DateTime start, DateTime end) {
+    return getTotalByType(TransactionType.expense, start, end);
+  }
+
+  /// Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ø¯Ø®Ù„ ÙÙŠ Ù†Ø·Ø§Ù‚ Ø²Ù…Ù†ÙŠ
+  double getTotalIncome(DateTime start, DateTime end) {
+    return getTotalByType(TransactionType.income, start, end);
+  }
+
+  /// Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…ØµØ±ÙˆÙØ§Øª Ø§Ù„Ø¹Ø§Ø¯ÙŠØ© (ØºÙŠØ± Ø§Ù„Ø§Ø³ØªØ«Ù†Ø§Ø¦ÙŠØ©)
+  double getNormalExpenses(DateTime start, DateTime end) {
+    final transactions = getByDateRange(start, end);
+    return transactions
+        .where((tx) => tx.type == TransactionType.expense && !tx.isExceptional)
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+  }
+
+  /// Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…ØµØ±ÙˆÙØ§Øª Ø§Ù„Ø§Ø³ØªØ«Ù†Ø§Ø¦ÙŠØ©
+  double getExceptionalExpenses(DateTime start, DateTime end) {
+    final transactions = getByDateRange(start, end);
+    return transactions
+        .where((tx) => tx.type == TransactionType.expense && tx.isExceptional)
+        .fold(0.0, (sum, tx) => sum + tx.amount);
+  }
+
+  // ==========================================
+  // ðŸ“ˆ Analytics Operations
+  // ==========================================
+
+  /// ØªØ¬Ù…ÙŠØ¹ Ø§Ù„Ù…ØµØ±ÙˆÙØ§Øª Ø­Ø³Ø¨ Ø§Ù„ÙØ¦Ø© (Ù„Ù„Ù…Ø®Ø·Ø·Ø§Øª)
+  Map<String, double> getExpensesByCategory(DateTime start, DateTime end) {
+    final transactions = getByDateRange(start, end);
+    final Map<String, double> result = {};
+
+    for (final tx in transactions) {
+      if (tx.type == TransactionType.expense) {
+        if (tx.categoryId != null) {
+          result[tx.categoryId!] = (result[tx.categoryId!] ?? 0) + tx.amount;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  /// ØªØ¬Ù…ÙŠØ¹ Ø§Ù„Ù…ØµØ±ÙˆÙØ§Øª Ø­Ø³Ø¨ Ø§Ù„Ù…ØµØ¯Ø±
+  Map<String, double> getExpensesBySource(DateTime start, DateTime end) {
+    final transactions = getByDateRange(start, end);
+    final Map<String, double> result = {};
+
+    for (final tx in transactions) {
+      if (tx.type == TransactionType.expense) {
+        result[tx.source] = (result[tx.source] ?? 0) + tx.amount;
+      }
+    }
+
+    return result;
+  }
+
+  // ==========================================
+  // ðŸ§¹ Cleanup & Migration
+  // ==========================================
+
+  /// Ø§Ù„Ø­ØµÙˆÙ„ Ø¹Ù„Ù‰ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª Ø§Ù„Ù‚Ø¯ÙŠÙ…Ø© (Ø§Ù„ØªÙŠ Ù„Ù… ÙŠØªÙ… ØªØ­Ø¯ÙŠØ«Ù‡Ø§ Ø¨Ø¹Ø¯)
+  List<Transaction> getLegacyTransactions() {
+    final transactions = _box.values.where((tx) => tx.isLegacy).toList();
+    transactions.sort((a, b) => b.date.compareTo(a.date));
+    return transactions;
+  }
+
+  /// Ø¹Ø¯Ø¯ Ø§Ù„Ù…Ø¹Ø§Ù…Ù„Ø§Øª Ø§Ù„ÙƒÙ„ÙŠ
+  int get count => _box.length;
+
+  /// Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† ÙˆØ¬ÙˆØ¯ Ù…Ø¹Ø§Ù…Ù„Ø§Øª
+  bool get isEmpty => _box.isEmpty;
+
+  /// Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† ÙˆØ¬ÙˆØ¯ Ù…Ø¹Ø§Ù…Ù„Ø§Øª
+  bool get isNotEmpty => _box.isNotEmpty;
+}
+

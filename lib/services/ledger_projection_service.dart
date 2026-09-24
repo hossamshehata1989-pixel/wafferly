@@ -2,6 +2,7 @@ import '../constants/transaction_constants.dart';
 import '../models/ledger_entry.dart';
 import '../models/transaction.dart';
 import '../financial_engine/domain/financial_transaction_record.dart';
+import '../financial_engine/domain/financial_correction_record.dart';
 import 'category_ledger_mapper.dart';
 import '../ports/ledger_port.dart';
 import '../infrastructure/ports/hive_ledger_port.dart';
@@ -80,9 +81,38 @@ class LedgerProjectionService {
     await _persistEntries(entries);
   }
 
+  /// Projects an immutable financial correction as two effects under the
+  /// correction write-model id:
+  /// 1. neutralize the original truth;
+  /// 2. establish the corrected truth.
+  Future<void> projectCorrection(
+    FinancialCorrectionRecord correction,
+  ) async {
+    if (await _alreadyProjected(correction.correctionId)) {
+      return;
+    }
+
+    final reversalEntries = _buildCorrectionReversalEntries(correction);
+    final correctedEntries = _buildEntriesFromRecord(
+      correction.after,
+      projectionId: correction.correctionId,
+    );
+
+    if (reversalEntries.isEmpty || correctedEntries.isEmpty) {
+      throw StateError(
+        'Correction projection cannot be empty for ${correction.correctionId}',
+      );
+    }
+
+    await _persistEntries([
+      ...reversalEntries,
+      ...correctedEntries,
+    ]);
+  }
+
   Future<void> deleteProjection(String transactionId) async {
-  await _ledgerPort.deleteEntriesByTransactionId(transactionId);
-}
+    await _ledgerPort.deleteEntriesByTransactionId(transactionId);
+  }
 
   // ============================================================
   // Legacy Compatibility API
@@ -229,17 +259,27 @@ class LedgerProjectionService {
   // ============================================================
 
   List<LedgerEntry> _buildEntriesFromRecord(
-    FinancialTransactionRecord record,
-  ) {
+    FinancialTransactionRecord record, {
+    String? projectionId,
+  }) {
     switch (record.type) {
       case TransactionType.expense:
-        return _buildExpenseEntriesFromRecord(record);
+        return _buildExpenseEntriesFromRecord(
+        record,
+        projectionId: projectionId,
+      );
 
       case TransactionType.income:
-        return _buildIncomeEntriesFromRecord(record);
+        return _buildIncomeEntriesFromRecord(
+        record,
+        projectionId: projectionId,
+      );
 
       case TransactionType.transfer:
-        return _buildTransferEntriesFromRecord(record);
+        return _buildTransferEntriesFromRecord(
+        record,
+        projectionId: projectionId,
+      );
 
       default:
         // FinancialTransactionRecord may contain transaction
@@ -252,8 +292,9 @@ class LedgerProjectionService {
   }
 
   List<LedgerEntry> _buildTransferEntriesFromRecord(
-    FinancialTransactionRecord record,
-  ) {
+    FinancialTransactionRecord record, {
+    String? projectionId,
+  }) {
     if (record.fromAccountId == null ||
         record.toAccountId == null) {
       throw Exception(
@@ -262,7 +303,7 @@ class LedgerProjectionService {
     }
 
     return _builder.buildTransferEntries(
-      transactionId: record.transactionId,
+      transactionId: projectionId ?? record.transactionId,
       fromAccountId: record.fromAccountId!,
       toAccountId: record.toAccountId!,
       amount: record.amount.toDouble(),
@@ -271,8 +312,9 @@ class LedgerProjectionService {
   }
 
   List<LedgerEntry> _buildExpenseEntriesFromRecord(
-    FinancialTransactionRecord record,
-  ) {
+    FinancialTransactionRecord record, {
+    String? projectionId,
+  }) {
     if (record.fromAccountId == null) {
       throw Exception(
         'Expense transaction missing fromAccountId',
@@ -299,16 +341,18 @@ class LedgerProjectionService {
     }
 
     return _builder.buildExpenseEntries(
-      transactionId: record.transactionId,
+      transactionId: projectionId ?? record.transactionId,
       expenseLedgerAccountId: expenseLedgerId,
       sourceAccountId: record.fromAccountId!,
-amount: record.amount.toDouble(),      date: record.occurredAt,
+      amount: record.amount.toDouble(),
+      date: record.occurredAt,
     );
   }
 
   List<LedgerEntry> _buildIncomeEntriesFromRecord(
-    FinancialTransactionRecord record,
-  ) {
+    FinancialTransactionRecord record, {
+    String? projectionId,
+  }) {
     if (record.toAccountId == null) {
       throw Exception(
         'Income transaction missing toAccountId',
@@ -335,10 +379,43 @@ amount: record.amount.toDouble(),      date: record.occurredAt,
     }
 
     return _builder.buildIncomeEntries(
-      transactionId: record.transactionId,
+      transactionId: projectionId ?? record.transactionId,
       destinationAccountId: record.toAccountId!,
       incomeLedgerAccountId: incomeLedgerId,
-amount: record.amount.toDouble(),      date: record.occurredAt,
+      amount: record.amount.toDouble(),
+      date: record.occurredAt,
+    );
+  }
+
+  List<LedgerEntry> _buildCorrectionReversalEntries(
+    FinancialCorrectionRecord correction,
+  ) {
+    final before = correction.before;
+
+    String? expenseLedgerId;
+    String? incomeLedgerId;
+
+    if (before.categoryId != null) {
+      final mapped = _categoryMapper.getLedgerAccountIdForCategory(
+        before.categoryId!,
+      );
+      if (before.type == TransactionType.expense) {
+        expenseLedgerId = mapped;
+      } else if (before.type == TransactionType.income) {
+        incomeLedgerId = mapped;
+      }
+    }
+
+    return _builder.buildCorrectionReversalEntries(
+      correctionId: correction.correctionId,
+      originalTransactionId: correction.originalTransactionId,
+      type: before.type,
+      expenseLedgerAccountId: expenseLedgerId,
+      incomeLedgerAccountId: incomeLedgerId,
+      fromAccountId: before.fromAccountId,
+      toAccountId: before.toAccountId,
+      amount: before.amount.toDouble(),
+      date: before.occurredAt,
     );
   }
 

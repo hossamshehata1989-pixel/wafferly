@@ -42,6 +42,7 @@ final class CorrectionOperation extends FinancialOperation {
       constraints: constraints,
       correction: CorrectionContext(
         transactionId: this.intent.transactionId,
+        before: this.intent.before,
         after: this.intent.after,
       ),
     );

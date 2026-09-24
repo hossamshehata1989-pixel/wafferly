@@ -21,6 +21,9 @@ final class TransactionRecordMapper {
       isExceptional: transaction.isExceptional,
       source: transaction.source,
       actorMemberId: transaction.actorMemberId,
+      commitmentId: transaction.commitmentId,
+      scheduleRuleId: transaction.scheduleRuleId,
+      occurrenceId: transaction.occurrenceId,
     );
   }
 }

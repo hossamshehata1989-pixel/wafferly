@@ -271,6 +271,7 @@ void main() async {
 
   await Hive.openBox<Account>('accounts');
   await Hive.openBox<Transaction>('transactions');
+  await Hive.openBox<Map>('financial_corrections');
   await Hive.openBox<LedgerEntry>('ledger_entries');
   await Hive.openBox<LedgerAccount>('ledger_accounts');
   await LedgerAccountSeeder().seedIfNeeded();
@@ -410,10 +411,11 @@ CommitmentActionProvider(
   );
 
   final engineContext = FinancialEngineBootstrap.create(
-  balanceService: balanceService,
-  transactionBox: transactionBox,
-  allocationRepository: allocationRepository,
-);
+    balanceService: balanceService,
+    transactionBox: transactionBox,
+    correctionBox: Hive.box<Map>('financial_corrections'),
+    allocationRepository: allocationRepository,
+  );
 
   final engine = engineContext.engine;
   runApp(
