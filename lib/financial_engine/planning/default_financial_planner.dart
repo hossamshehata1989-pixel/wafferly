@@ -5,6 +5,8 @@ import '../interpretation/financial_action_type.dart';
 import '../interpretation/normalized_intent.dart';
 import '../mutations/create_transaction_mutation.dart';
 import '../mutations/create_correction_mutation.dart';
+import '../mutations/invalidate_transaction_mutation.dart';
+import '../domain/financial_invalidation_record.dart';
 import '../operations/create_allocation_mutation.dart';
 import 'chart_of_accounts.dart';
 import 'entry_line.dart';
@@ -500,6 +502,25 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
   }
 
   FinancialExecutionPlan _planDeletion(PlanningContext context) {
-    throw UnimplementedError('Deletion planning is not implemented yet');
+    final deletion = context.deletion ??
+        (throw StateError('Deletion context is required'));
+
+    final invalidationId =
+        'invalidation-${context.executionContext.idempotencyKey}';
+
+    final record = FinancialInvalidationRecord(
+      invalidationId: invalidationId,
+      originalTransactionId: deletion.transactionId,
+      before: deletion.before,
+    );
+
+    return FinancialExecutionPlan(
+      planId: 'plan-$invalidationId',
+      operationId: invalidationId,
+      idempotencyKey: context.executionContext.idempotencyKey,
+      mutations: [
+        InvalidateTransactionMutation(record: record),
+      ],
+    );
   }
 }

@@ -1,4 +1,5 @@
 import '../commands/correction/deletion_transaction_intent.dart';
+import '../adapters/transaction_record_mapper.dart';
 import '../commands/shared/transaction_metadata.dart';
 import '../domain_guard/financial_constraint.dart';
 import '../execution_context/execution_context.dart';
@@ -40,7 +41,12 @@ final class DeleteOperation extends FinancialOperation {
       metadata: metadata,
       executionContext: context,
       constraints: constraints,
-      deletion: DeletionContext(transactionId: this.intent.transaction.id),
+      deletion: DeletionContext(
+        transactionId: this.intent.transaction.id,
+        before: const TransactionRecordMapper().fromTransaction(
+          this.intent.transaction,
+        ),
+      ),
     );
   }
 }

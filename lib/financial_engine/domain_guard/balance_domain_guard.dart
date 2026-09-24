@@ -24,7 +24,8 @@ final class BalanceDomainGuard implements DomainGuard {
       return const DomainGuardPassed();
     }
 
-    if (intent.action == FinancialActionType.income) {
+    if (intent.action == FinancialActionType.income ||
+        intent.action == FinancialActionType.deletion) {
       return const DomainGuardPassed();
     }
 

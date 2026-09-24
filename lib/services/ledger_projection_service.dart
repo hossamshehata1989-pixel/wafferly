@@ -3,6 +3,7 @@ import '../models/ledger_entry.dart';
 import '../models/transaction.dart';
 import '../financial_engine/domain/financial_transaction_record.dart';
 import '../financial_engine/domain/financial_correction_record.dart';
+import '../financial_engine/domain/financial_invalidation_record.dart';
 import 'category_ledger_mapper.dart';
 import '../ports/ledger_port.dart';
 import '../infrastructure/ports/hive_ledger_port.dart';
@@ -108,6 +109,27 @@ class LedgerProjectionService {
       ...reversalEntries,
       ...correctedEntries,
     ]);
+  }
+
+  /// Projects an immutable financial invalidation as a reversal of the
+  /// original truth only. The original Transaction remains preserved.
+  Future<void> projectInvalidation(
+    FinancialInvalidationRecord invalidation,
+  ) async {
+    if (await _alreadyProjected(invalidation.invalidationId)) {
+      return;
+    }
+
+    final reversalEntries = _buildInvalidationReversalEntries(invalidation);
+
+    if (reversalEntries.isEmpty) {
+      throw StateError(
+        'Invalidation projection cannot be empty for '
+        '${invalidation.invalidationId}',
+      );
+    }
+
+    await _persistEntries(reversalEntries);
   }
 
   Future<void> deleteProjection(String transactionId) async {
@@ -384,6 +406,38 @@ class LedgerProjectionService {
       incomeLedgerAccountId: incomeLedgerId,
       amount: record.amount.toDouble(),
       date: record.occurredAt,
+    );
+  }
+
+  List<LedgerEntry> _buildInvalidationReversalEntries(
+    FinancialInvalidationRecord invalidation,
+  ) {
+    final before = invalidation.before;
+
+    String? expenseLedgerId;
+    String? incomeLedgerId;
+
+    if (before.categoryId != null) {
+      final mapped = _categoryMapper.getLedgerAccountIdForCategory(
+        before.categoryId!,
+      );
+      if (before.type == TransactionType.expense) {
+        expenseLedgerId = mapped;
+      } else if (before.type == TransactionType.income) {
+        incomeLedgerId = mapped;
+      }
+    }
+
+    return _builder.buildInvalidationReversalEntries(
+      invalidationId: invalidation.invalidationId,
+      originalTransactionId: invalidation.originalTransactionId,
+      type: before.type,
+      expenseLedgerAccountId: expenseLedgerId,
+      incomeLedgerAccountId: incomeLedgerId,
+      fromAccountId: before.fromAccountId,
+      toAccountId: before.toAccountId,
+      amount: before.amount.toDouble(),
+      date: before.occurredAt,
     );
   }
 

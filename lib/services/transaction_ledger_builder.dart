@@ -115,6 +115,34 @@ class TransactionLedgerBuilder {
   /// transaction. A correction effect is not a synthetic Transaction; it is
   /// projected under the correction's own write-model id and marked as an
   /// adjustment.
+  /// Builds the ledger effect that neutralizes a transaction being
+  /// invalidated. No synthetic financial Transaction is created.
+  List<LedgerEntry> buildInvalidationReversalEntries({
+    required String invalidationId,
+    required String originalTransactionId,
+    required String type,
+    required String? expenseLedgerAccountId,
+    required String? incomeLedgerAccountId,
+    required String? fromAccountId,
+    required String? toAccountId,
+    required double amount,
+    required DateTime date,
+  }) {
+    final original = buildCorrectionReversalEntries(
+      correctionId: invalidationId,
+      originalTransactionId: originalTransactionId,
+      type: type,
+      expenseLedgerAccountId: expenseLedgerAccountId,
+      incomeLedgerAccountId: incomeLedgerAccountId,
+      fromAccountId: fromAccountId,
+      toAccountId: toAccountId,
+      amount: amount,
+      date: date,
+    );
+
+    return original;
+  }
+
   List<LedgerEntry> buildCorrectionReversalEntries({
     required String correctionId,
     required String originalTransactionId,

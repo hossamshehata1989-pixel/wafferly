@@ -3,20 +3,26 @@ import 'package:hive/hive.dart';
 import '../models/transaction.dart';
 import '../constants/transaction_constants.dart';
 import '../core/planning/services/available_balance_projection_service.dart';
+import 'financial_invalidation_query.dart';
 
 class BalanceService {
   final Box<Transaction> txBox = Hive.box<Transaction>('transactions');
 
   final AvailableBalanceProjectionService? _availableBalanceProjectionService;
+  final FinancialInvalidationQuery _invalidationQuery;
 
   BalanceService({
     AvailableBalanceProjectionService? availableBalanceProjectionService,
-  }) : _availableBalanceProjectionService = availableBalanceProjectionService;
+    FinancialInvalidationQuery invalidationQuery = const FinancialInvalidationQuery(),
+  }) : _availableBalanceProjectionService = availableBalanceProjectionService,
+       _invalidationQuery = invalidationQuery;
 
   double getBalance(String accountId) {
     double balance = 0;
 
     for (final tx in txBox.values) {
+      if (_invalidationQuery.isInvalidated(tx.id)) continue;
+
       if (tx.type == TransactionType.initialBalance) {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
@@ -67,6 +73,8 @@ class BalanceService {
     final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
 
     for (final tx in txBox.values) {
+      if (_invalidationQuery.isInvalidated(tx.id)) continue;
+
       if (tx.date.isAfter(endOfDay)) {
         continue;
       }

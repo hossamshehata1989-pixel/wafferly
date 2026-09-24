@@ -4,6 +4,7 @@ import '../constants/transaction_constants.dart';
 import '../models/transaction.dart';
 import 'ledger_service.dart';
 import 'ledger_projection_service.dart';
+import 'financial_invalidation_query.dart';
 
 /// خدمة موحدة للتعامل مع المعاملات المالية
 /// جميع عمليات CRUD تمر من هنا
@@ -25,20 +26,28 @@ class TransactionService {
   // ========== Sprint 3C: Category → LedgerAccount Mapping ==========
   final LedgerProjectionService _ledgerProjectionService =
       LedgerProjectionService();
+  final FinancialInvalidationQuery _invalidationQuery =
+      const FinancialInvalidationQuery();
   // ==========================================
   // 📥 Basic CRUD Operations
   // ==========================================
 
   /// الحصول على جميع المعاملات مرتبة من الأحدث إلى الأقدم
   List<Transaction> getAllTransactions() {
-    final transactions = _box.values.toList();
+    final transactions = _box.values
+        .where((tx) => !_invalidationQuery.isInvalidated(tx.id))
+        .toList();
     transactions.sort((a, b) => b.date.compareTo(a.date));
     return transactions;
   }
 
   /// الحصول على معاملة بواسطة ID
   Transaction? getById(String id) {
-    return _box.get(id);
+    final transaction = _box.get(id);
+    if (transaction == null || _invalidationQuery.isInvalidated(id)) {
+      return null;
+    }
+    return transaction;
   }
 
   /// إضافة معاملة جديدة
@@ -115,7 +124,9 @@ class TransactionService {
 
   /// الحصول على المعاملات حسب النوع (income, expense, transfer, etc.)
   List<Transaction> getByType(String type) {
-    final transactions = _box.values.where((tx) => tx.type == type).toList();
+    final transactions = _box.values
+        .where((tx) => tx.type == type && !_invalidationQuery.isInvalidated(tx.id))
+        .toList();
     transactions.sort((a, b) => b.date.compareTo(a.date));
     return transactions;
   }
@@ -133,7 +144,7 @@ class TransactionService {
   /// الحصول على المعاملات حسب الفئة (categoryId)
   List<Transaction> getByCategory(String categoryId) {
     final transactions = _box.values
-        .where((tx) => tx.categoryId == categoryId)
+        .where((tx) => tx.categoryId == categoryId && !_invalidationQuery.isInvalidated(tx.id))
         .toList();
     transactions.sort((a, b) => b.date.compareTo(a.date));
     return transactions;
@@ -142,7 +153,8 @@ class TransactionService {
   /// الحصول على المعاملات في نطاق زمني محدد
   List<Transaction> getByDateRange(DateTime start, DateTime end) {
     final transactions = _box.values.where((tx) {
-      return tx.date.isAfter(start.subtract(const Duration(days: 1))) &&
+      return !_invalidationQuery.isInvalidated(tx.id) &&
+          tx.date.isAfter(start.subtract(const Duration(days: 1))) &&
           tx.date.isBefore(end.add(const Duration(days: 1)));
     }).toList();
     transactions.sort((a, b) => b.date.compareTo(a.date));
@@ -152,7 +164,8 @@ class TransactionService {
   /// الحصول على معاملات حساب معين (من أو إلى)
   List<Transaction> getForAccount(String accountId) {
     final transactions = _box.values.where((tx) {
-      return tx.fromAccountId == accountId || tx.toAccountId == accountId;
+      return !_invalidationQuery.isInvalidated(tx.id) &&
+          (tx.fromAccountId == accountId || tx.toAccountId == accountId);
     }).toList();
     transactions.sort((a, b) => b.date.compareTo(a.date));
     return transactions;
@@ -161,7 +174,8 @@ class TransactionService {
   /// التحقق مما إذا كان الحساب لديه معاملات
   bool hasTransactionsForAccount(String accountId) {
     return _box.values.any((tx) {
-      return tx.fromAccountId == accountId || tx.toAccountId == accountId;
+      return !_invalidationQuery.isInvalidated(tx.id) &&
+          (tx.fromAccountId == accountId || tx.toAccountId == accountId);
     });
   }
 
