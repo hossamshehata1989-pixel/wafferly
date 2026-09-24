@@ -147,7 +147,7 @@ The current `MemoryFinancialUnitOfWork` is not a transaction/rollback mechanism;
 
 Idempotency keys must survive process restart for operations whose effects may be retried automatically or through scheduled execution.
 
-The current bootstrap uses `MemoryIdempotencyStore`, which loses history after process restart.
+The production bootstrap uses a Hive-backed durable idempotency store. Memory storage remains available for isolated tests and non-persistent contexts.
 
 Required end state:
 

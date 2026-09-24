@@ -5,13 +5,13 @@
 
 ## A. Financial Engine Foundation
 
-- [ ] Correction operation has a real planner and execution path.
-- [ ] Invalidation/deletion semantics have a real planner and execution path.
-- [ ] Account balance adjustment has a real Financial Engine operation.
+- [x] Correction operation has a real planner and execution path.
+- [x] Invalidation/deletion semantics have a real planner and execution path.
+- [x] Account balance adjustment / Balance Reconciliation has a real Financial Engine operation.
 - [ ] Financial Engine remains the only active financial writer.
 - [ ] Legacy transaction writers are removed from active feature flows.
 - [ ] Financial Unit of Work provides real all-or-nothing behavior.
-- [ ] Idempotency storage is durable where retries can cross process boundaries.
+- [x] Idempotency storage is durable where retries can cross process boundaries.
 - [ ] `Money` is used internally by financial-domain amounts and arithmetic.
 - [ ] Persistence/legacy `double` conversions stay at explicit boundaries.
 

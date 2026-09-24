@@ -1,6 +1,8 @@
 import 'package:hive/hive.dart';
 
 import '../models/transaction.dart';
+import '../models/account.dart';
+import '../models/enums/account_enums.dart';
 import '../constants/transaction_constants.dart';
 import '../core/planning/services/available_balance_projection_service.dart';
 import 'financial_invalidation_query.dart';
@@ -16,6 +18,12 @@ class BalanceService {
     FinancialInvalidationQuery invalidationQuery = const FinancialInvalidationQuery(),
   }) : _availableBalanceProjectionService = availableBalanceProjectionService,
        _invalidationQuery = invalidationQuery;
+
+  bool _isLiability(String accountId) {
+    if (!Hive.isBoxOpen('accounts')) return false;
+    final account = Hive.box<Account>('accounts').get(accountId);
+    return account?.nature == AccountNature.liability;
+  }
 
   double getBalance(String accountId) {
     double balance = 0;
@@ -58,6 +66,25 @@ class BalanceService {
       if (tx.type == TransactionType.income) {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
+        }
+
+        continue;
+      }
+
+      if (tx.type == TransactionType.balanceReconciliation) {
+        final isLiability = _isLiability(accountId);
+
+        // BalanceReconciliation follows the same double-entry convention
+        // as the ledger projection: `toAccountId` is the debit side and
+        // `fromAccountId` is the credit side. Assets have a normal debit
+        // balance; liabilities are represented as signed negative balances,
+        // so the effect is reversed for liability accounts.
+        if (tx.toAccountId == accountId) {
+          balance += isLiability ? tx.amount : tx.amount;
+        }
+
+        if (tx.fromAccountId == accountId) {
+          balance += isLiability ? -tx.amount : -tx.amount;
         }
 
         continue;
@@ -114,6 +141,25 @@ class BalanceService {
       if (tx.type == TransactionType.income) {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
+        }
+
+        continue;
+      }
+
+      if (tx.type == TransactionType.balanceReconciliation) {
+        final isLiability = _isLiability(accountId);
+
+        // BalanceReconciliation follows the same double-entry convention
+        // as the ledger projection: `toAccountId` is the debit side and
+        // `fromAccountId` is the credit side. Assets have a normal debit
+        // balance; liabilities are represented as signed negative balances,
+        // so the effect is reversed for liability accounts.
+        if (tx.toAccountId == accountId) {
+          balance += isLiability ? tx.amount : tx.amount;
+        }
+
+        if (tx.fromAccountId == accountId) {
+          balance += isLiability ? -tx.amount : -tx.amount;
         }
 
         continue;

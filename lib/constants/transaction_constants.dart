@@ -6,6 +6,7 @@ class TransactionSource {
   static const String fromExpense = 'from_expense';
   static const String accountCreation = 'account_creation';
   static const String balanceAdjustment = 'balance_adjustment';
+  static const String balanceReconciliation = 'balance_reconciliation';
   static const String tempDebt = 'temp_debt';
   static const String importedCsv = 'imported_csv';
   static const String bankSync = 'bank_sync';
@@ -18,6 +19,7 @@ class TransactionSource {
     fromExpense,
     accountCreation,
     balanceAdjustment,
+    balanceReconciliation,
     tempDebt,
     importedCsv,
     bankSync,
@@ -39,6 +41,7 @@ class TransactionType {
   static const String debt = 'debt';
   static const String initialBalance = 'initial_balance';
   static const String balanceAdjustment = 'balance_adjustment';
+  static const String balanceReconciliation = 'balance_reconciliation';
 
   static const List<String> all = [
     income,
@@ -47,5 +50,6 @@ class TransactionType {
     debt,
     initialBalance,
     balanceAdjustment,
+    balanceReconciliation,
   ];
 }

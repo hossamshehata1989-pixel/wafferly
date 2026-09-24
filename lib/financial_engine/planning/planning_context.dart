@@ -4,6 +4,7 @@ import '../execution_context/execution_context.dart';
 import '../interpretation/normalized_intent.dart';
 import 'correction_context.dart';
 import 'deletion_context.dart';
+import 'balance_reconciliation_context.dart';
 
 final class PlanningContext {
   final NormalizedIntent intent;
@@ -18,6 +19,8 @@ final class PlanningContext {
 
   final DeletionContext? deletion;
 
+  final BalanceReconciliationContext? balanceReconciliation;
+
   const PlanningContext({
     required this.intent,
     required this.metadata,
@@ -25,6 +28,7 @@ final class PlanningContext {
     this.constraints = const [],
     this.correction,
     this.deletion,
+    this.balanceReconciliation,
   });
 
   T? constraint<T extends FinancialConstraint>() {

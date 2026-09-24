@@ -20,7 +20,7 @@ final class NormalizedIntent {
   /// Used only by goal operations.
   final String? goalId;
 
-  /// Used by opening-balance genesis operations.
+  /// Used by opening-balance genesis and balance-reconciliation operations.
   final bool isLiability;
 
   final double amount;

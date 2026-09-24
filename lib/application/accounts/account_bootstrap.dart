@@ -19,6 +19,8 @@ class AccountBootstrap {
       accountService: AccountService(),
       transactionService: AccountTransactionService(
         engine: engineContext.engine,
+        balancePort: engineContext.balancePort,
+        accountService: AccountService(),
       ),
     );
   }

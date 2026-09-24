@@ -11,4 +11,9 @@ final class HiveBalancePort implements BalancePort {
   Future<double> availableBalance(String accountId) async {
     return _balanceService.getAvailableBalanceFromPlanning(accountId);
   }
+
+  @override
+  Future<double> currentBalance(String accountId) async {
+    return _balanceService.getBalance(accountId);
+  }
 }

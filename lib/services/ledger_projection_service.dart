@@ -303,6 +303,12 @@ class LedgerProjectionService {
         projectionId: projectionId,
       );
 
+      case TransactionType.balanceReconciliation:
+        return _buildBalanceReconciliationEntriesFromRecord(
+        record,
+        projectionId: projectionId,
+      );
+
       default:
         // FinancialTransactionRecord may contain transaction
         // types that are not currently represented by the
@@ -311,6 +317,25 @@ class LedgerProjectionService {
         // Do not invent Ledger rules here.
         return [];
     }
+  }
+
+  List<LedgerEntry> _buildBalanceReconciliationEntriesFromRecord(
+    FinancialTransactionRecord record, {
+    String? projectionId,
+  }) {
+    if (record.fromAccountId == null || record.toAccountId == null) {
+      throw Exception(
+        'Balance reconciliation transaction must define credit/debit accounts',
+      );
+    }
+
+    return _builder.buildBalanceReconciliationEntries(
+      transactionId: projectionId ?? record.transactionId,
+      debitAccountId: record.toAccountId!,
+      creditAccountId: record.fromAccountId!,
+      amount: record.amount.toDouble(),
+      date: record.occurredAt,
+    );
   }
 
   List<LedgerEntry> _buildTransferEntriesFromRecord(

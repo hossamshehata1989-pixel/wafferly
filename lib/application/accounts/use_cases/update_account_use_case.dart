@@ -13,14 +13,8 @@ class UpdateAccountUseCase {
        _transactionService = transactionService;
 
   Future<void> execute(UpdateAccountRequest request) async {
+    // Account edit is metadata/configuration only. Financial balance changes
+    // must use the dedicated Balance Reconciliation operation.
     await _accountService.updateAccount(request.account);
-
-    await _transactionService.createBalanceAdjustment(
-      accountId: request.accountId,
-      oldBalance: request.oldBalance,
-      newBalance: request.newBalance,
-      paymentMethod: request.paymentMethod,
-      currency: request.currency,
-    );
   }
 }

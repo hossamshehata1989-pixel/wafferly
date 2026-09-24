@@ -21,6 +21,11 @@ final class _NoopBalancePort implements BalancePort {
   Future<double> availableBalance(String accountId) async {
     return 0;
   }
+
+  @override
+  Future<double> currentBalance(String accountId) async {
+    return 0;
+  }
 }
 
 final class _NoopTransactionLookupPort implements TransactionLookupPort {

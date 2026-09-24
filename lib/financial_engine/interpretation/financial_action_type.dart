@@ -7,6 +7,7 @@ enum FinancialActionType {
   goalSavingTransfer,
   createGoalAllocation,
   openingBalance,
+  balanceReconciliation,
   correction,
   deletion,
 }

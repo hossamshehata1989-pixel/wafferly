@@ -84,6 +84,36 @@ class TransactionLedgerBuilder {
     ];
   }
 
+  /// Builds the double-entry projection for Balance Reconciliation.
+  /// For this dedicated transaction type, `fromAccountId` is the credit side
+  /// and `toAccountId` is the debit side.
+  List<LedgerEntry> buildBalanceReconciliationEntries({
+    required String transactionId,
+    required String debitAccountId,
+    required String creditAccountId,
+    required double amount,
+    required DateTime date,
+  }) {
+    return [
+      _createEntry(
+        transactionId: transactionId,
+        accountId: debitAccountId,
+        entryType: EntryType.debit,
+        amount: amount,
+        date: date,
+        purpose: LedgerPurpose.adjustment,
+      ),
+      _createEntry(
+        transactionId: transactionId,
+        accountId: creditAccountId,
+        entryType: EntryType.credit,
+        amount: amount,
+        date: date,
+        purpose: LedgerPurpose.adjustment,
+      ),
+    ];
+  }
+
   // ✅ Transfer remains unchanged (uses real accounts)
   List<LedgerEntry> buildTransferEntries({
     required String transactionId,
@@ -189,6 +219,20 @@ class TransactionLedgerBuilder {
           transactionId: originalTransactionId,
           fromAccountId: fromAccountId,
           toAccountId: toAccountId,
+          amount: amount,
+          date: date,
+        );
+        break;
+      case 'balance_reconciliation':
+        if (fromAccountId == null || toAccountId == null) {
+          throw StateError(
+            'Balance reconciliation reversal is missing accounts',
+          );
+        }
+        original = buildBalanceReconciliationEntries(
+          transactionId: originalTransactionId,
+          debitAccountId: toAccountId,
+          creditAccountId: fromAccountId,
           amount: amount,
           date: date,
         );

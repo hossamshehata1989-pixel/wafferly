@@ -9,4 +9,9 @@ final class MemoryBalancePort implements BalancePort {
   Future<double> availableBalance(String accountId) async {
     return balances[accountId] ?? 0;
   }
+
+  @override
+  Future<double> currentBalance(String accountId) async {
+    return balances[accountId] ?? 0;
+  }
 }

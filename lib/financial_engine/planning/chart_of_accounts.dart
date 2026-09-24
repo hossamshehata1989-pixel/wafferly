@@ -3,6 +3,8 @@ import 'account_mapping.dart';
 
 final class ChartOfAccounts {
   static const openingBalanceEquityAccountId = 'opening_balance_equity';
+  static const balanceReconciliationEquityAccountId =
+      'balance_reconciliation_equity';
 
   final List<AccountMapping> mappings;
 

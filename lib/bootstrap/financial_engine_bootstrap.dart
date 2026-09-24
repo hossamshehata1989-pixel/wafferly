@@ -19,6 +19,7 @@ import '../financial_engine/idempotency/idempotency_guard.dart';
 import '../financial_engine/integrity/default_financial_integrity_checker.dart';
 import '../financial_engine/interpretation/default_financial_interpreter.dart';
 import '../financial_engine/memory/memory_idempotency_store.dart';
+import '../financial_engine/idempotency/hive_idempotency_store.dart';
 import '../financial_engine/mutations/create_transaction_mutation.dart';
 import '../financial_engine/mutations/create_correction_mutation.dart';
 import '../financial_engine/mutations/invalidate_transaction_mutation.dart';
@@ -83,13 +84,16 @@ final class FinancialEngineBootstrap {
     required Box<Transaction> transactionBox,
     Box<Map>? correctionBox,
     Box<Map>? invalidationBox,
+    Box<Map>? idempotencyBox,
     AllocationRepository? allocationRepository,
   }) {
     final sharedAllocationRepository =
         allocationRepository ?? _FallbackAllocationRepository();
 
     final repository = MemoryJournalEntryRepository();
-    final idempotencyStore = MemoryIdempotencyStore();
+    final idempotencyStore = idempotencyBox != null
+        ? HiveIdempotencyStore(idempotencyBox)
+        : MemoryIdempotencyStore();
     final idempotencyGuard = IdempotencyGuard(store: idempotencyStore);
 
     final journalHandler = JournalEntryMutationHandler(port: repository);

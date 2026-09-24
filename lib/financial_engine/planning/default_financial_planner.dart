@@ -56,6 +56,9 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       case FinancialActionType.openingBalance:
         return _planOpeningBalance(context);
 
+      case FinancialActionType.balanceReconciliation:
+        return _planBalanceReconciliation(context);
+
       case FinancialActionType.correction:
         return _planCorrection(context);
 
@@ -428,6 +431,79 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     );
   }
 
+
+  FinancialExecutionPlan _planBalanceReconciliation(PlanningContext context) {
+    final reconciliation = context.balanceReconciliation ??
+        (throw StateError('Balance reconciliation context is required'));
+
+    final difference = reconciliation.difference;
+    if (difference == 0) {
+      throw StateError('Balance reconciliation difference cannot be zero');
+    }
+
+    const equityAccountId =
+        ChartOfAccounts.balanceReconciliationEquityAccountId;
+    final amount = difference.abs();
+
+    // `fromAccountId` is the credit side and `toAccountId` is the debit side
+    // for this dedicated transaction type. This keeps the write model able to
+    // describe the double-entry effect without pretending reconciliation is a
+    // cash transfer.
+    // `difference` is observed - system in the account's signed balance
+    // representation. For liabilities, a negative difference means the
+    // liability increased (e.g. -1000 -> -1300): the liability is credited
+    // and reconciliation equity is debited. A positive difference means the
+    // liability decreased: the liability is debited and equity is credited.
+    final debitAccountId = reconciliation.isLiability
+        ? (difference > 0 ? reconciliation.accountId : equityAccountId)
+        : (difference > 0 ? reconciliation.accountId : equityAccountId);
+    final creditAccountId = reconciliation.isLiability
+        ? (difference > 0 ? equityAccountId : reconciliation.accountId)
+        : (difference > 0 ? equityAccountId : reconciliation.accountId);
+
+    final transactionId =
+        'reconciliation-${context.executionContext.idempotencyKey}';
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: transactionId,
+      type: TransactionType.balanceReconciliation,
+      fromAccountId: creditAccountId,
+      toAccountId: debitAccountId,
+      categoryId: TransactionType.balanceReconciliation,
+      subCategoryId: null,
+      amount: Money.fromDouble(amount),
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: [
+        'Balance reconciliation: ${reconciliation.reason.name}',
+        if (context.metadata.note != null &&
+            context.metadata.note!.trim().isNotEmpty)
+          context.metadata.note!,
+      ].join(' — '),
+      isExceptional: false,
+      source: TransactionSource.balanceReconciliation,
+      actorMemberId: null,
+    );
+
+    return FinancialExecutionPlan(
+      planId: 'plan-$transactionId',
+      operationId: transactionId,
+      idempotencyKey: context.executionContext.idempotencyKey,
+      mutations: [
+        JournalEntryMutation(
+          journalEntryId: 'journal-$transactionId',
+          description: 'Balance Reconciliation',
+          lines: [
+            EntryLine(accountId: debitAccountId, debit: amount),
+            EntryLine(accountId: creditAccountId, credit: amount),
+          ],
+        ),
+        CreateTransactionMutation(record: transactionRecord),
+      ],
+    );
+  }
+
   FinancialExecutionPlan _planCorrection(PlanningContext context) {
     final correction = context.correction ??
         (throw StateError('Correction context is required'));
@@ -451,6 +527,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       case 'expense':
       case 'income':
       case 'transfer':
+      case TransactionType.balanceReconciliation:
         break;
       default:
         throw StateError(

@@ -40,11 +40,12 @@ class AccountDetailsSection extends StatelessWidget {
 
         WafferlyTextField(
           controller: balanceController,
-          label: isEditMode ? 'Current Balance' : 'Initial Balance',
+          label: isEditMode ? 'Current Balance (Read-only)' : 'Initial Balance',
 
           prefixText: '$selectedCurrency ',
 
           keyboardType: TextInputType.number,
+          readOnly: isEditMode,
 
           validator: (v) {
             if (v != null && v.isNotEmpty && double.tryParse(v) == null) {

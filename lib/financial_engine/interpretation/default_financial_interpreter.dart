@@ -6,6 +6,7 @@ import '../operations/transfer_operation.dart';
 import '../operations/goal_transfer_operation.dart';
 import '../operations/goal_saving_transfer_operation.dart';
 import '../operations/opening_balance_operation.dart';
+import '../operations/balance_reconciliation_operation.dart';
 
 import 'financial_action_type.dart';
 import 'financial_interpreter.dart';
@@ -102,13 +103,29 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
           resolution: operation.resolution ?? Resolution.execute,
         );
 
+      case BalanceReconciliationOperation():
+        return NormalizedIntent(
+          action: FinancialActionType.balanceReconciliation,
+          sourceAccountId: operation.intent.accountId,
+          amount: operation.intent.difference.abs(),
+          categoryId: 'balance_reconciliation',
+          isLiability: operation.intent.isLiability,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
       case CorrectionOperation():
         final after = operation.intent.after;
 
-        final sourceAccountId =
-            after.fromAccountId ??
-            after.toAccountId ??
-            (throw StateError('Correction transaction has no source account'));
+        final sourceAccountId = after.type == 'balance_reconciliation'
+            ? (after.fromAccountId ==
+                    'balance_reconciliation_equity'
+                ? after.toAccountId
+                : after.fromAccountId)
+            : (after.fromAccountId ?? after.toAccountId);
+
+        if (sourceAccountId == null || sourceAccountId.isEmpty) {
+          throw StateError('Correction transaction has no source account');
+        }
 
         return NormalizedIntent(
           action: FinancialActionType.correction,
