@@ -274,6 +274,7 @@ void main() async {
   await Hive.openBox<Map>('financial_corrections');
   await Hive.openBox<Map>('financial_invalidations');
   await Hive.openBox<Map>('financial_idempotency');
+  await Hive.openBox<Map>('financial_traceability');
   await Hive.openBox<LedgerEntry>('ledger_entries');
   await Hive.openBox<LedgerAccount>('ledger_accounts');
   await LedgerAccountSeeder().seedIfNeeded();
@@ -418,6 +419,7 @@ CommitmentActionProvider(
     correctionBox: Hive.box<Map>('financial_corrections'),
     invalidationBox: Hive.box<Map>('financial_invalidations'),
     idempotencyBox: Hive.box<Map>('financial_idempotency'),
+    traceabilityBox: Hive.box<Map>('financial_traceability'),
     allocationRepository: allocationRepository,
   );
 

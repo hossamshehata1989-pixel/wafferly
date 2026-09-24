@@ -4,6 +4,13 @@ import '../domain_guard/domain_guard_pipeline.dart';
 import '../execution/financial_executor.dart';
 import '../execution_context/execution_context.dart';
 import '../idempotency/idempotency_guard.dart';
+import '../mutations/create_correction_mutation.dart';
+import '../mutations/create_transaction_mutation.dart';
+import '../mutations/invalidate_transaction_mutation.dart';
+import '../mutations/journal_entry_mutation.dart';
+import '../planning/financial_mutation.dart';
+import '../ports/traceability_port.dart';
+import '../traceability/traceability_record.dart';
 import '../integrity/financial_integrity_checker.dart';
 import '../interpretation/financial_interpreter.dart';
 import '../operations/financial_operation.dart';
@@ -20,6 +27,7 @@ final class FinancialOperationEngine {
   final FinancialIntegrityChecker _integrityChecker;
   final FinancialExecutor _executor;
   final IdempotencyGuard _idempotencyGuard;
+  final TraceabilityPort _traceabilityPort;
 
   const FinancialOperationEngine({
     required FinancialInterpreter interpreter,
@@ -28,6 +36,7 @@ final class FinancialOperationEngine {
     required FinancialIntegrityChecker integrityChecker,
     required FinancialExecutor executor,
     required IdempotencyGuard idempotencyGuard,
+    required TraceabilityPort traceabilityPort,
     PolicyPipeline policyPipeline = const PolicyPipeline(),
   }) : _interpreter = interpreter,
        _domainGuardPipeline = domainGuardPipeline,
@@ -35,7 +44,8 @@ final class FinancialOperationEngine {
        _planner = planner,
        _integrityChecker = integrityChecker,
        _executor = executor,
-       _idempotencyGuard = idempotencyGuard;
+       _idempotencyGuard = idempotencyGuard,
+       _traceabilityPort = traceabilityPort;
 
   Future<OperationResult> execute(
     FinancialOperation operation,
@@ -52,6 +62,8 @@ final class FinancialOperationEngine {
       return cached;
     }
 
+    final startedAt = DateTime.now();
+
     // ====================================================
     // Step 1 — Interpretation
     // ====================================================
@@ -67,7 +79,15 @@ final class FinancialOperationEngine {
     final domainResult = await _domainGuardPipeline.validate(intent);
 
     if (domainResult.hasViolation) {
-      return DomainViolationResult(reason: domainResult.violation!.reason);
+      final result = DomainViolationResult(reason: domainResult.violation!.reason);
+      await _recordTrace(
+        operation: operation,
+        context: context,
+        startedAt: startedAt,
+        status: 'domain_violation',
+        error: result.reason,
+      );
+      return result;
     }
 
     debugPrint('ENGINE: DomainGuard ✓');
@@ -89,11 +109,26 @@ final class FinancialOperationEngine {
       debugPrint('ENGINE: Policy result = ${policyResult.runtimeType}');
 
       if (policyResult is PolicyRejected) {
-        return OperationRejected(reason: policyResult.reason);
+        final result = OperationRejected(reason: policyResult.reason);
+        await _recordTrace(
+          operation: operation,
+          context: context,
+          startedAt: startedAt,
+          status: 'rejected',
+          error: result.reason,
+        );
+        return result;
       }
 
       if (policyResult is PolicyRequiresConfirmation) {
-        return ConfirmationRequired(options: policyResult.options);
+        final result = ConfirmationRequired(options: policyResult.options);
+        await _recordTrace(
+          operation: operation,
+          context: context,
+          startedAt: startedAt,
+          status: 'confirmation_required',
+        );
+        return result;
       }
 
       debugPrint('ENGINE: Policy ✓');
@@ -137,13 +172,100 @@ final class FinancialOperationEngine {
         await _idempotencyGuard.remember(context, result);
       }
 
+      await _recordTrace(
+        operation: operation,
+        context: context,
+        startedAt: startedAt,
+        status: result is OperationSucceeded ? 'succeeded' : 'failed',
+        operationId: plan.operationId,
+        transactionIds: _transactionIds(plan.mutations),
+        mutationIds: _mutationIds(plan.mutations),
+        error: result is OperationFailed ? result.error.toString() : null,
+      );
+
       return result;
     } catch (e, s) {
       debugPrint('POLICY EXCEPTION:');
       debugPrint(e.toString());
       debugPrint(s.toString());
 
-      return OperationFailed(error: e.toString());
+      final result = OperationFailed(error: e.toString());
+      await _recordTrace(
+        operation: operation,
+        context: context,
+        startedAt: startedAt,
+        status: 'failed',
+        error: e.toString(),
+      );
+      return result;
     }
+  }
+
+  Future<void> _recordTrace({
+    required FinancialOperation operation,
+    required ExecutionContext context,
+    required DateTime startedAt,
+    required String status,
+    String? operationId,
+    List<String> transactionIds = const <String>[],
+    List<String> mutationIds = const <String>[],
+    String? error,
+  }) async {
+    try {
+      await _traceabilityPort.save(
+        TraceabilityRecord(
+          traceId: 'trace-${context.idempotencyKey}-${startedAt.microsecondsSinceEpoch}',
+          operationType: context.commandType ?? operation.runtimeType.toString(),
+          operationId: operationId,
+          idempotencyKey: context.idempotencyKey,
+          status: status,
+          actorMemberId: context.actorMemberId,
+          source: context.source,
+          commitmentId: context.commitmentId,
+          scheduleRuleId: context.scheduleRuleId,
+          occurrenceId: context.occurrenceId,
+          transactionIds: transactionIds,
+          mutationIds: mutationIds,
+          error: error,
+          startedAt: startedAt,
+          completedAt: DateTime.now(),
+        ),
+      );
+    } catch (traceError) {
+      // Traceability must never turn an already-applied Financial Reality
+      // mutation into a reported financial failure. The audit adapter is a
+      // separate state boundary; its persistence failure is observable but
+      // does not change the financial result.
+      debugPrint('TRACEABILITY ERROR: $traceError');
+    }
+  }
+
+  List<String> _transactionIds(List<FinancialMutation> mutations) {
+    final ids = <String>[];
+    for (final mutation in mutations) {
+      if (mutation is CreateTransactionMutation) {
+        ids.add(mutation.record.transactionId);
+      } else if (mutation is CreateCorrectionMutation) {
+        ids.add(mutation.record.originalTransactionId);
+        ids.add(mutation.record.after.transactionId);
+      } else if (mutation is InvalidateTransactionMutation) {
+        ids.add(mutation.record.originalTransactionId);
+      }
+    }
+    return ids.toSet().toList(growable: false);
+  }
+
+  List<String> _mutationIds(List<FinancialMutation> mutations) {
+    final ids = <String>[];
+    for (final mutation in mutations) {
+      if (mutation is CreateCorrectionMutation) {
+        ids.add(mutation.record.correctionId);
+      } else if (mutation is InvalidateTransactionMutation) {
+        ids.add(mutation.record.invalidationId);
+      } else if (mutation is JournalEntryMutation) {
+        ids.add(mutation.journalEntryId);
+      }
+    }
+    return ids.toSet().toList(growable: false);
   }
 }

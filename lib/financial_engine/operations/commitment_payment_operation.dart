@@ -50,6 +50,9 @@ final class CommitmentPaymentOperation extends FinancialOperation {
         commitmentId: commitmentId,
         scheduleRuleId: context.scheduleRuleId,
         occurrenceId: context.occurrenceId,
+        actorMemberId: context.actorMemberId,
+        source: context.source,
+        commandType: context.commandType,
       ),
       constraints: constraints,
     );

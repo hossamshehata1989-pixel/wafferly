@@ -11,7 +11,8 @@
 - [ ] Financial Engine remains the only active financial writer.
 - [ ] Legacy transaction writers are removed from active feature flows.
 - [ ] Financial Unit of Work provides real all-or-nothing behavior.
-- [ ] Idempotency storage is durable where retries can cross process boundaries.
+- [x] Idempotency storage is durable where retries can cross process boundaries.
+- [x] Financial Operation Traceability records execution identity, outcome, attribution/linkage, and produced financial IDs without becoming Financial Reality.
 - [ ] `Money` is used internally by financial-domain amounts and arithmetic.
 - [ ] Persistence/legacy `double` conversions stay at explicit boundaries.
 

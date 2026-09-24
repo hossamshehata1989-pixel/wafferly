@@ -63,6 +63,8 @@ class FinancialActionExecutor {
       commitmentId: action.commitment.id,
       scheduleRuleId: action.scheduleRule.id,
       occurrenceId: action.occurrence.id,
+      source: 'scheduled',
+      commandType: 'CommitmentPaymentOperation',
     );
 
     final operation = CommitmentPaymentOperation(

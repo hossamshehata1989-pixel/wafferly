@@ -351,6 +351,94 @@ void main() {
     },
   );
 
+
+  test(
+    'projects the debt dashboard as the single aggregated read model',
+    () async {
+      final loan = liability('loan-dashboard');
+      final card = Account(
+        id: 'card-dashboard',
+        bookId: 'book-1',
+        memberId: 'member-1',
+        name: 'card-dashboard',
+        type: 'creditCard',
+        currency: 'EGP',
+        createdAt: DateTime(2026, 1, 1),
+        group: AccountGroup.liabilities,
+        nature: AccountNature.liability,
+        isArchived: false,
+      );
+
+      final overdueRule =
+          rule('dashboard-overdue', DateTime(2026, 9, 10), Frequency.monthly);
+      final dueSoonRule =
+          rule('dashboard-due-soon', DateTime(2026, 9, 15), Frequency.monthly);
+
+      await accountBox.put(loan.id, loan);
+      await accountBox.put(card.id, card);
+
+      await txBox.put(
+        'dashboard-loan-opening',
+        Transaction(
+          id: 'dashboard-loan-opening',
+          amount: 1000,
+          type: TransactionType.initialBalance,
+          toAccountId: loan.id,
+          date: DateTime(2026, 1, 1),
+        ),
+      );
+      await txBox.put(
+        'dashboard-card-opening',
+        Transaction(
+          id: 'dashboard-card-opening',
+          amount: 500,
+          type: TransactionType.initialBalance,
+          toAccountId: card.id,
+          date: DateTime(2026, 1, 1),
+        ),
+      );
+
+      await scheduleRuleBox.put(overdueRule.id, overdueRule);
+      await scheduleRuleBox.put(dueSoonRule.id, dueSoonRule);
+
+      await commitmentBox.put(
+        'dashboard-overdue-payment',
+        payment('dashboard-overdue-payment', loan.id, overdueRule.id),
+      );
+      await commitmentBox.put(
+        'dashboard-due-soon-payment',
+        payment('dashboard-due-soon-payment', card.id, dueSoonRule.id),
+      );
+
+      final dashboard = service.getDebtDashboardSummary(
+        today: DateTime(2026, 9, 13),
+      );
+
+      expect(dashboard.totalOutstanding, Money.parse('1500'));
+      expect(dashboard.totalThisMonth, Money.parse('200'));
+      expect(dashboard.overdue.count, 1);
+      expect(dashboard.overdue.amount, Money.parse('100'));
+      expect(dashboard.dueSoon.count, 1);
+      expect(dashboard.dueSoon.amount, Money.parse('100'));
+      expect(dashboard.upcoming.count, 0);
+
+      final cardCategory = dashboard.categories.firstWhere(
+        (category) => category.type == 'creditCard',
+      );
+      final loanCategory = dashboard.categories.firstWhere(
+        (category) => category.type == 'loan',
+      );
+
+      expect(cardCategory.outstanding, Money.parse('500'));
+      expect(cardCategory.thisMonth, Money.parse('100'));
+      expect(cardCategory.accounts.single.id, card.id);
+
+      expect(loanCategory.outstanding, Money.parse('1000'));
+      expect(loanCategory.thisMonth, Money.parse('100'));
+      expect(loanCategory.accounts.single.id, loan.id);
+    },
+  );
+
   test(
     'excludes archived liability accounts',
     () async {

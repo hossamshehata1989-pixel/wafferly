@@ -4,15 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-import '../../core/money/money.dart';
 import '../../models/account.dart';
-import '../../models/commitment.dart';
-import '../../models/debt/debt_summary.dart';
-import '../../models/enums/commitment_status.dart';
-import '../../models/enums/commitment_type.dart';
-import '../../models/enums/schedule_occurrence_status.dart';
-import '../../models/schedule_occurrence.dart';
-import '../../models/schedule_rule.dart';
+import '../../models/debt/debt_dashboard_summary.dart';
 import '../../models/transaction.dart';
 import 'credit_cards_screen.dart';
 
@@ -122,11 +115,6 @@ class _DebtsScreenState extends State<DebtsScreen> {
               builder: (context, constraints) {
                 return _DashboardCanvas(
                   queryService: _queryService,
-                  accountBox: _accountBox,
-                  commitmentBox: _commitmentBox,
-                  scheduleRuleBox: _scheduleRuleBox,
-                  occurrenceBox: _occurrenceBox,
-                  transactionBox: _transactionBox,
                   availableWidth: constraints.maxWidth,
                   availableHeight: constraints.maxHeight,
                   onOpenAccount: (account) {
@@ -151,22 +139,12 @@ class _DebtsScreenState extends State<DebtsScreen> {
 
 class _DashboardCanvas extends StatelessWidget {
   final DebtQueryService queryService;
-  final Box<Account> accountBox;
-  final Box<Commitment> commitmentBox;
-  final Box<ScheduleRule> scheduleRuleBox;
-  final Box<ScheduleOccurrence> occurrenceBox;
-  final Box<Transaction> transactionBox;
   final double availableWidth;
   final double availableHeight;
   final ValueChanged<Account> onOpenAccount;
 
   const _DashboardCanvas({
     required this.queryService,
-    required this.accountBox,
-    required this.commitmentBox,
-    required this.scheduleRuleBox,
-    required this.occurrenceBox,
-    required this.transactionBox,
     required this.availableWidth,
     required this.availableHeight,
     required this.onOpenAccount,
@@ -174,21 +152,11 @@ class _DashboardCanvas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final palette = context.debtPalette;
-    final summaries = queryService.getDebtSummaries(today: today);
-    final categories = _categories(summaries, today, palette);
-
-    final totalOutstanding = summaries.fold<double>(
-      0,
-      (sum, item) => sum + item.outstanding.toDouble(),
+    final dashboard = queryService.getDebtDashboardSummary(
+      today: DateTime.now(),
     );
 
-    final totalThisMonth = _thisMonthTotal(summaries, today);
-    final overdue = _stateTotals(summaries, today, _DebtState.overdue);
-    final dueSoon = _stateTotals(summaries, today, _DebtState.dueSoon);
-    final upcoming = _stateTotals(summaries, today, _DebtState.upcoming);
-
+    final categories = _categories(context, dashboard);
     final metrics = ResponsiveMetrics.of(context);
     final compact = availableWidth < 500 || availableHeight < 680;
 
@@ -204,12 +172,12 @@ class _DashboardCanvas extends StatelessWidget {
           Expanded(
             flex: 30,
             child: _SummaryCard(
-              totalOutstanding: totalOutstanding,
-              thisMonth: totalThisMonth,
+              totalOutstanding: dashboard.totalOutstanding.toDouble(),
+              thisMonth: dashboard.totalThisMonth.toDouble(),
               categories: categories,
-              overdue: overdue,
-              dueSoon: dueSoon,
-              upcoming: upcoming,
+              overdue: _stateTotals(dashboard.overdue),
+              dueSoon: _stateTotals(dashboard.dueSoon),
+              upcoming: _stateTotals(dashboard.upcoming),
               compact: compact,
             ),
           ),
@@ -220,6 +188,10 @@ class _DashboardCanvas extends StatelessWidget {
               categories: categories,
               onTap: onOpenAccount,
               compact: compact,
+              cardHeight: math.max(
+                0.0,
+                (availableHeight - metrics.h(190) - metrics.h(60) - metrics.h(16)) / 3.0,
+              ),
             ),
           ),
           SizedBox(height: metrics.h(8)),
@@ -233,262 +205,73 @@ class _DashboardCanvas extends StatelessWidget {
   }
 
   List<_DebtCategory> _categories(
-    List<DebtSummary> summaries,
-    DateTime today,
-    DebtPalette palette,
+    BuildContext context,
+    DebtDashboardSummary dashboard,
   ) {
     return [
-      _category(
-        title: 'Credit Cards',
-        icon: Icons.credit_card_rounded,
-        color: palette.creditCards,
-        type: 'creditCard',
-        countLabel: 'cards',
-        summaries: summaries,
-        today: today,
-                inactiveWhenEmpty: false,
-
-      ),
-      _category(
-        title: 'Loans',
-        icon: Icons.account_balance_rounded,
-        color: palette.loans,
-        type: 'loan',
-        countLabel: 'loans',
-        summaries: summaries,
-        today: today,
-                inactiveWhenEmpty: false,
-
-      ),
-      
-      _category(
-        title: 'Installment Companies',
-        icon: Icons.shopping_bag_rounded,
-        color: palette.installments,
-        type: 'installment',
-        countLabel: 'accounts',
-        summaries: summaries,
-        today: today,
-        inactiveWhenEmpty: false,
-
-      ),
-      _category(
-        title: 'Borrowed Money',
-        icon: Icons.person_rounded,
-        color: palette.borrowed,
-        type: 'debt',
-        countLabel: 'people',
-        summaries: summaries,
-        today: today,
-        inactiveWhenEmpty: false,
-
-      ),
-      _inactiveCategory(
-        title: 'Temporary Debt',
-        icon: Icons.access_time_rounded,
-        color: palette.temporary,
-        countLabel: 'items',
-      ),
-      _inactiveCategory(
-        title: 'Rotating Savings (Collection)',
-        icon: Icons.groups_rounded,
-        color: palette.rotating,
-        countLabel: 'collections',
-      ),
+      for (final item in dashboard.categories)
+        _DebtCategory(
+          title: item.title,
+          icon: _iconForType(item.type),
+          color: _colorForType(context, item.type),
+          risk: _mapRisk(item.risk),
+          accounts: item.accounts,
+          outstanding: item.outstanding.toDouble(),
+          thisMonth: item.thisMonth.toDouble(),
+          countLabel: _countLabelForType(item.type),
+          inactive: item.inactive,
+        ),
     ];
   }
 
- _DebtCategory _category({
-  required String title,
-  required IconData icon,
-  required Color color,
-  required String type,
-  required String countLabel,
-  required List<DebtSummary> summaries,
-  required DateTime today,
-  bool inactiveWhenEmpty = true,
-}) {
-  final matches = summaries
-      .where((summary) => summary.liabilityAccount.type == type)
-      .toList();
-
-  final outstanding = matches.fold<double>(
-    0,
-    (sum, item) => sum + item.outstanding.toDouble(),
-  );
-
-  final thisMonth = matches.fold<double>(
-    0,
-    (sum, item) => sum + _thisMonthForAccount(
-      item.liabilityAccount.id,
-      today,
-    ),
-  );
-
-  return _DebtCategory(
-    title: title,
-    icon: icon,
-    color: color,
-    risk: _riskForSummaries(matches, today),
-    accounts: matches.map((item) => item.liabilityAccount).toList(),
-    outstanding: outstanding,
-    thisMonth: thisMonth,
-    countLabel: countLabel,
-    inactive: inactiveWhenEmpty && matches.isEmpty,
-  );
-}
-
-  _DebtRisk _riskForSummaries(
-    List<DebtSummary> summaries,
-    DateTime today,
-  ) {
-    var risk = _DebtRisk.upcoming;
-    final current = DateTime(today.year, today.month, today.day);
-
-    for (final summary in summaries) {
-      final rule = summary.scheduleRule;
-      if (summary.nextPayment == null || rule == null) continue;
-
-      final due = DateTime(
-        rule.nextDueDate.year,
-        rule.nextDueDate.month,
-        rule.nextDueDate.day,
-      );
-      final days = due.difference(current).inDays;
-
-      final candidate = days < 0
-          ? _DebtRisk.overdue
-          : days == 0
-              ? _DebtRisk.critical
-              : days <= 7
-                  ? _DebtRisk.dueSoon
-                  : _DebtRisk.upcoming;
-
-      if (candidate.index < risk.index) {
-        risk = candidate;
-      }
-    }
-
-    return risk;
+  _DebtRisk _mapRisk(DebtRisk risk) {
+    return switch (risk) {
+      DebtRisk.overdue => _DebtRisk.overdue,
+      DebtRisk.critical => _DebtRisk.critical,
+      DebtRisk.dueSoon => _DebtRisk.dueSoon,
+      DebtRisk.upcoming => _DebtRisk.upcoming,
+      DebtRisk.inactive => _DebtRisk.inactive,
+    };
   }
 
-  _DebtCategory _inactiveCategory({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required String countLabel,
-  }) {
-    return _DebtCategory(
-      title: title,
-      icon: icon,
-      color: color,
-      risk: _DebtRisk.inactive,
-      accounts: const [],
-      outstanding: 0,
-      thisMonth: 0,
-      countLabel: countLabel,
-      inactive: true,
-    );
+  IconData _iconForType(String type) {
+    return switch (type) {
+      'creditCard' => Icons.credit_card_rounded,
+      'loan' => Icons.account_balance_rounded,
+      'installment' => Icons.shopping_bag_rounded,
+      'debt' => Icons.person_rounded,
+      'temporaryDebt' => Icons.access_time_rounded,
+      _ => Icons.groups_rounded,
+    };
   }
 
-
-  double _thisMonthTotal(
-    List<DebtSummary> summaries,
-    DateTime today,
-  ) {
-    final seen = <String>{};
-    double total = 0;
-
-    for (final summary in summaries) {
-      final id = summary.liabilityAccount.id;
-      if (seen.add(id)) {
-        total += _thisMonthForAccount(id, today);
-      }
-    }
-
-    return total;
+  Color _colorForType(BuildContext context, String type) {
+    final palette = context.debtPalette;
+    return switch (type) {
+      'creditCard' => palette.creditCards,
+      'loan' => palette.loans,
+      'installment' => palette.installments,
+      'debt' => palette.borrowed,
+      'temporaryDebt' => palette.temporary,
+      _ => palette.rotating,
+    };
   }
 
-  double _thisMonthForAccount(
-    String accountId,
-    DateTime today,
-  ) {
-    double total = 0;
-
-    for (final commitment in commitmentBox.values) {
-      if (commitment.isArchived ||
-          commitment.status != CommitmentStatus.active ||
-          commitment.type != CommitmentType.liabilityPayment ||
-          commitment.liabilityAccountId != accountId) {
-        continue;
-      }
-
-      final rule = scheduleRuleBox.get(commitment.scheduleRuleId);
-      if (rule == null) continue;
-
-      final dueDate = rule.nextDueDate;
-
-      if (dueDate.year != today.year ||
-          dueDate.month != today.month) {
-        continue;
-      }
-
-      final occurrence = occurrenceBox.get(
-        ScheduleOccurrence.idFor(
-          scheduleRuleId: rule.id,
-          dueDate: dueDate,
-        ),
-      );
-
-      if (occurrence?.status == ScheduleOccurrenceStatus.completed) {
-        continue;
-      }
-
-      total += commitment.amount.toDouble();
-    }
-
-    return total;
+  String _countLabelForType(String type) {
+    return switch (type) {
+      'creditCard' => 'cards',
+      'loan' => 'loans',
+      'installment' => 'accounts',
+      'debt' => 'people',
+      'temporaryDebt' => 'items',
+      _ => 'collections',
+    };
   }
 
-  _DebtStateTotals _stateTotals(
-    List<DebtSummary> summaries,
-    DateTime today,
-    _DebtState state,
-  ) {
-    final current = DateTime(today.year, today.month, today.day);
-
-    int count = 0;
-    double amount = 0;
-
-    for (final summary in summaries) {
-      final payment = summary.nextPayment;
-      final rule = summary.scheduleRule;
-
-      if (payment == null || rule == null) continue;
-
-      final due = DateTime(
-        rule.nextDueDate.year,
-        rule.nextDueDate.month,
-        rule.nextDueDate.day,
-      );
-
-      final days = due.difference(current).inDays;
-
-      final matches = switch (state) {
-        _DebtState.overdue => days < 0,
-        _DebtState.dueSoon => days >= 0 && days <= 7,
-        _DebtState.upcoming => days > 7,
-      };
-
-      if (!matches) continue;
-
-      count++;
-      amount += payment.amount.toDouble();
-    }
-
+  _DebtStateTotals _stateTotals(DebtStateTotal total) {
     return _DebtStateTotals(
-      count: count,
-      amount: amount,
+      count: total.count,
+      amount: total.amount.toDouble(),
     );
   }
 }
@@ -600,7 +383,10 @@ class _SummaryCard extends StatelessWidget {
       // ===== اليمين: Donut + Legend =====
       Expanded(
         flex: 5,
-        child: _DonutWithLegend(categories: active),
+        child: _DonutWithLegend(
+                      categories: active,
+                      total: totalOutstanding,
+                    ),
       ),
     ],
   ),
@@ -744,18 +530,17 @@ class _SummaryNumbers extends StatelessWidget {
 }
 class _DonutWithLegend extends StatelessWidget {
   final List<_DebtCategory> categories;
+  final double total;
 
-  const _DonutWithLegend({required this.categories});
+  const _DonutWithLegend({
+    required this.categories,
+    required this.total,
+  });
 
   @override
   Widget build(BuildContext context) {
     final metrics = ResponsiveMetrics.of(context);
     final scheme = Theme.of(context).colorScheme;
-
-    final total = categories.fold<double>(
-      0,
-      (sum, item) => sum + item.outstanding,
-    );
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,

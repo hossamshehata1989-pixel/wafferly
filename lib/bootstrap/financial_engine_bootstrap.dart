@@ -28,9 +28,12 @@ import '../financial_engine/operations/create_allocation_mutation.dart';
 import '../financial_engine/ports/create_allocation_port.dart';
 import '../financial_engine/memory/memory_correction_port.dart';
 import '../financial_engine/memory/memory_invalidation_port.dart';
+import '../financial_engine/memory/memory_traceability_port.dart';
+import '../financial_engine/adapters/hive_traceability_port.dart';
 import '../financial_engine/planning/account_mapping.dart';
 import '../financial_engine/planning/chart_of_accounts.dart';
 import '../financial_engine/planning/default_financial_planner.dart';
+import '../financial_engine/ports/traceability_port.dart';
 import '../financial_engine/domain_guard/balance_domain_guard.dart';
 import '../financial_engine/domain_guard/goal_saving_transfer_domain_guard.dart';
 import '../services/account_service.dart';
@@ -85,6 +88,7 @@ final class FinancialEngineBootstrap {
     Box<Map>? correctionBox,
     Box<Map>? invalidationBox,
     Box<Map>? idempotencyBox,
+    Box<Map>? traceabilityBox,
     AllocationRepository? allocationRepository,
   }) {
     final sharedAllocationRepository =
@@ -95,6 +99,9 @@ final class FinancialEngineBootstrap {
         ? HiveIdempotencyStore(idempotencyBox)
         : MemoryIdempotencyStore();
     final idempotencyGuard = IdempotencyGuard(store: idempotencyStore);
+    final TraceabilityPort traceabilityPort = traceabilityBox != null
+        ? HiveTraceabilityPort(traceabilityBox)
+        : MemoryTraceabilityPort();
 
     final journalHandler = JournalEntryMutationHandler(port: repository);
 
@@ -198,6 +205,7 @@ final class FinancialEngineBootstrap {
       integrityChecker: const DefaultFinancialIntegrityChecker(),
       executor: executor,
       idempotencyGuard: idempotencyGuard,
+      traceabilityPort: traceabilityPort,
     );
 
     return FinancialEngineContext(
@@ -205,6 +213,7 @@ final class FinancialEngineBootstrap {
       repository: repository,
       allocationRepository: sharedAllocationRepository,
       balancePort: balancePort,
+      traceabilityPort: traceabilityPort,
     );
   }
 }

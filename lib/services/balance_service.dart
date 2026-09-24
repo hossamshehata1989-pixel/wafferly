@@ -5,19 +5,18 @@ import '../models/account.dart';
 import '../models/enums/account_enums.dart';
 import '../constants/transaction_constants.dart';
 import '../core/planning/services/available_balance_projection_service.dart';
-import 'financial_invalidation_query.dart';
+import 'financial_effective_transaction_query.dart';
 
 class BalanceService {
   final Box<Transaction> txBox = Hive.box<Transaction>('transactions');
 
   final AvailableBalanceProjectionService? _availableBalanceProjectionService;
-  final FinancialInvalidationQuery _invalidationQuery;
+  final FinancialEffectiveTransactionQuery _effectiveQuery;
 
   BalanceService({
     AvailableBalanceProjectionService? availableBalanceProjectionService,
-    FinancialInvalidationQuery invalidationQuery = const FinancialInvalidationQuery(),
   }) : _availableBalanceProjectionService = availableBalanceProjectionService,
-       _invalidationQuery = invalidationQuery;
+       _effectiveQuery = const FinancialEffectiveTransactionQuery();
 
   bool _isLiability(String accountId) {
     if (!Hive.isBoxOpen('accounts')) return false;
@@ -28,8 +27,7 @@ class BalanceService {
   double getBalance(String accountId) {
     double balance = 0;
 
-    for (final tx in txBox.values) {
-      if (_invalidationQuery.isInvalidated(tx.id)) continue;
+    for (final tx in _effectiveQuery.getEffectiveTransactions()) {
 
       if (tx.type == TransactionType.initialBalance) {
         if (tx.toAccountId == accountId) {
@@ -99,8 +97,7 @@ class BalanceService {
 
     final endOfDay = DateTime(date.year, date.month, date.day, 23, 59, 59, 999);
 
-    for (final tx in txBox.values) {
-      if (_invalidationQuery.isInvalidated(tx.id)) continue;
+    for (final tx in _effectiveQuery.getEffectiveTransactions()) {
 
       if (tx.date.isAfter(endOfDay)) {
         continue;
