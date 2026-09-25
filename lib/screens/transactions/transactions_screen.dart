@@ -1,7 +1,7 @@
 // lib/screens/transactions/transactions_screen.dart
 
 import 'package:flutter/material.dart';
-import '../../services/transaction_service.dart';
+import '../../services/transaction_query_service.dart';
 import '../../services/account_service.dart';
 import '../../models/transaction.dart';
 import '../../constants/transaction_constants.dart';
@@ -30,7 +30,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   List<Transaction> _filteredTransactions = [];
   List<_DateGroup> _dateGroups = [];
 
-  final TransactionService _transactionService = TransactionService.instance;
+  late final TransactionQueryService _transactionQueryService;
   final AccountService _accountService = AccountService();
   late final TransactionApplicationService _transactionApplicationService;
 
@@ -52,6 +52,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   void initState() {
     super.initState();
 
+    _transactionQueryService = context.read<TransactionQueryService>();
     _transactionApplicationService = context
         .read<TransactionApplicationService>();
 
@@ -60,7 +61,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   void _loadTransactions() {
     setState(() {
-      _allTransactions = _transactionService.getAllTransactions();
+      _allTransactions = _transactionQueryService.getAllTransactions();
       _applyFiltersAndSearch();
     });
   }

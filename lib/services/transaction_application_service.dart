@@ -3,7 +3,7 @@ import '../core/money/money.dart';
 
 import '../models/transaction.dart';
 import 'account_service.dart';
-import 'transaction_service.dart';
+import 'transaction_query_service.dart';
 import '../financial_engine/engine/financial_operation_engine.dart';
 import '../financial_engine/execution_context/execution_context.dart';
 import '../financial_engine/results/operation_result.dart';
@@ -33,16 +33,16 @@ import '../financial_engine/commands/correction/deletion_transaction_intent.dart
 
 /// Application Orchestrator for transaction-related operations.
 /// This is the single entry point for the UI and other clients.
-/// It delegates to the appropriate underlying service (Engine or Legacy).
+/// All financial transaction mutations are executed through the FinancialOperationEngine.
 class TransactionApplicationService {
   final FinancialOperationEngine _engine;
-  final TransactionService _legacyTransactionService;
+  final TransactionQueryService _transactionQueryService;
 
   TransactionApplicationService({
     required FinancialOperationEngine engine,
-    required TransactionService legacyTransactionService,
+    required TransactionQueryService transactionQueryService,
   }) : _engine = engine,
-       _legacyTransactionService = legacyTransactionService;
+       _transactionQueryService = transactionQueryService;
 
   // ==================== Expense (via Engine) ====================
 
@@ -165,26 +165,6 @@ class TransactionApplicationService {
     return await _engine.execute(operation, context);
   }
 
-  // ==================== Legacy operations (delegated to TransactionService) ====================
-
-  Future<void> addTransaction(Transaction transaction) async {
-    // For now, we delegate to legacy service.
-    // In future, we will migrate all operations to Engine.
-    await _legacyTransactionService.addTransaction(transaction);
-  }
-
-  Future<void> updateTransaction(Transaction transaction) async {
-    await _legacyTransactionService.updateTransaction(transaction);
-  }
-
-  Future<void> deleteTransaction(String id) async {
-    await _legacyTransactionService.deleteTransaction(id);
-  }
-
-  Future<void> deleteAllTransactions() async {
-    await _legacyTransactionService.deleteAllTransactions();
-  }
-
   // ==================== Update (Engine-based) ====================
 
   Future<OperationResult> updateExpense(Transaction transaction) async {
@@ -206,7 +186,7 @@ class TransactionApplicationService {
       commandType: 'CorrectionCommand',
     );
 
-    final beforeTransaction = _legacyTransactionService.getById(transaction.id);
+    final beforeTransaction = _transactionQueryService.getById(transaction.id);
     if (beforeTransaction == null) {
       throw StateError('Transaction not found: ${transaction.id}');
     }
@@ -243,7 +223,7 @@ class TransactionApplicationService {
       commandType: 'DeleteTransactionCommand',
     );
 
-    final transaction = _legacyTransactionService.getById(transactionId);
+    final transaction = _transactionQueryService.getById(transactionId);
 
     if (transaction == null) {
       throw Exception('Transaction not found: $transactionId');
@@ -266,61 +246,61 @@ class TransactionApplicationService {
   }
   // =======================================================
 
-  // ==================== Query methods (delegated to legacy) ====================
+  // ==================== Query methods ====================
 
   List<Transaction> getAllTransactions() =>
-      _legacyTransactionService.getAllTransactions();
+      _transactionQueryService.getAllTransactions();
 
-  Transaction? getById(String id) => _legacyTransactionService.getById(id);
+  Transaction? getById(String id) => _transactionQueryService.getById(id);
 
   List<Transaction> getByType(String type) =>
-      _legacyTransactionService.getByType(type);
+      _transactionQueryService.getByType(type);
 
   List<Transaction> getIncomeTransactions() =>
-      _legacyTransactionService.getIncomeTransactions();
+      _transactionQueryService.getIncomeTransactions();
 
   List<Transaction> getExpenseTransactions() =>
-      _legacyTransactionService.getExpenseTransactions();
+      _transactionQueryService.getExpenseTransactions();
 
   List<Transaction> getByCategory(String categoryId) =>
-      _legacyTransactionService.getByCategory(categoryId);
+      _transactionQueryService.getByCategory(categoryId);
 
   List<Transaction> getByDateRange(DateTime start, DateTime end) =>
-      _legacyTransactionService.getByDateRange(start, end);
+      _transactionQueryService.getByDateRange(start, end);
 
   List<Transaction> getForAccount(String accountId) =>
-      _legacyTransactionService.getForAccount(accountId);
+      _transactionQueryService.getForAccount(accountId);
 
   bool hasTransactionsForAccount(String accountId) =>
-      _legacyTransactionService.hasTransactionsForAccount(accountId);
+      _transactionQueryService.hasTransactionsForAccount(accountId);
 
   double getTotalByType(String type, DateTime start, DateTime end) =>
-      _legacyTransactionService.getTotalByType(type, start, end);
+      _transactionQueryService.getTotalByType(type, start, end);
 
   double getTotalExpenses(DateTime start, DateTime end) =>
-      _legacyTransactionService.getTotalExpenses(start, end);
+      _transactionQueryService.getTotalExpenses(start, end);
 
   double getTotalIncome(DateTime start, DateTime end) =>
-      _legacyTransactionService.getTotalIncome(start, end);
+      _transactionQueryService.getTotalIncome(start, end);
 
   double getNormalExpenses(DateTime start, DateTime end) =>
-      _legacyTransactionService.getNormalExpenses(start, end);
+      _transactionQueryService.getNormalExpenses(start, end);
 
   double getExceptionalExpenses(DateTime start, DateTime end) =>
-      _legacyTransactionService.getExceptionalExpenses(start, end);
+      _transactionQueryService.getExceptionalExpenses(start, end);
 
   Map<String, double> getExpensesByCategory(DateTime start, DateTime end) =>
-      _legacyTransactionService.getExpensesByCategory(start, end);
+      _transactionQueryService.getExpensesByCategory(start, end);
 
   Map<String, double> getExpensesBySource(DateTime start, DateTime end) =>
-      _legacyTransactionService.getExpensesBySource(start, end);
+      _transactionQueryService.getExpensesBySource(start, end);
 
   List<Transaction> getLegacyTransactions() =>
-      _legacyTransactionService.getLegacyTransactions();
+      _transactionQueryService.getLegacyTransactions();
 
-  int get count => _legacyTransactionService.count;
-  bool get isEmpty => _legacyTransactionService.isEmpty;
-  bool get isNotEmpty => _legacyTransactionService.isNotEmpty;
+  int get count => _transactionQueryService.count;
+  bool get isEmpty => _transactionQueryService.isEmpty;
+  bool get isNotEmpty => _transactionQueryService.isNotEmpty;
 
   final ExpenseCommandMapper _expenseCommandMapper =
       const ExpenseCommandMapper();

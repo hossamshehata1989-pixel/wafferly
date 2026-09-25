@@ -34,6 +34,8 @@ import 'package:wafferly/constants/transaction_constants.dart';
 void main() {
   late Directory testDirectory;
   late Box<Transaction> transactionBox;
+  late Box<Map> correctionBox;
+  late Box<Map> invalidationBox;
   late Box<Account> accountsBox;
   late Box<LedgerEntry> ledgerBox;
   late Box<LedgerAccount> ledgerAccountsBox;
@@ -117,6 +119,8 @@ void main() {
     }
 
     transactionBox = await Hive.openBox<Transaction>('transactions');
+    correctionBox = await Hive.openBox<Map>('financial_corrections');
+    invalidationBox = await Hive.openBox<Map>('financial_invalidations');
     accountsBox = await Hive.openBox<Account>('accounts');
     ledgerBox = await Hive.openBox<LedgerEntry>('ledger_entries');
     ledgerAccountsBox = await Hive.openBox<LedgerAccount>('ledger_accounts');
@@ -138,6 +142,8 @@ void main() {
 
   setUp(() async {
     await transactionBox.clear();
+    await correctionBox.clear();
+    await invalidationBox.clear();
     await accountsBox.clear();
     await ledgerBox.clear();
     await ledgerAccountsBox.clear();

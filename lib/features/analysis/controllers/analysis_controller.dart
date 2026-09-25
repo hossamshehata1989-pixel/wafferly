@@ -2,14 +2,14 @@
 
 import 'package:flutter/material.dart';
 import '../../../models/transaction.dart';
-import '../../../services/transaction_service.dart';
+import '../../../services/transaction_query_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../helpers/analysis_helpers.dart';
 import '../registry/category_registry.dart';
 import '../widgets/custom_donut_chart.dart';
 
 class AnalysisController {
-  final TransactionService _transactionService = TransactionService.instance;
+  final TransactionQueryService _transactionQueryService;
 
   // State
   bool isLoading = true;
@@ -39,7 +39,8 @@ class AnalysisController {
   // Simple callback for UI updates
   final VoidCallback onUpdate;
 
-  AnalysisController({required this.onUpdate});
+  AnalysisController({required this.onUpdate, required TransactionQueryService transactionQueryService})
+      : _transactionQueryService = transactionQueryService;
 
   Future<void> loadData({
     required DateTime startDate,
@@ -52,7 +53,7 @@ class AnalysisController {
     onUpdate();
 
     try {
-      final transactions = _transactionService.getByDateRange(
+      final transactions = _transactionQueryService.getByDateRange(
         startDate,
         endDate,
       );
@@ -76,7 +77,7 @@ class AnalysisController {
       exceptionalDonutData = _buildDonutData(exceptionalByCategory, t);
 
       // Calculate changes
-      final prevTransactions = _transactionService.getByDateRange(
+      final prevTransactions = _transactionQueryService.getByDateRange(
         previousStartDate,
         previousEndDate,
       );

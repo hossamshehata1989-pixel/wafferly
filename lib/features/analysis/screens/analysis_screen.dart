@@ -1,10 +1,12 @@
 // lib/features/analysis/screens/analysis_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/transaction.dart';
 import '../models/time_period.dart';
 import '../controllers/analysis_controller.dart';
+import '../../../services/transaction_query_service.dart';
 import '../widgets/analysis_summary_card.dart';
 import '../widgets/category_section.dart';
 import '../widgets/date_range_selector.dart';
@@ -35,6 +37,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _controller = AnalysisController(
+      transactionQueryService: context.read<TransactionQueryService>(),
       onUpdate: () {
         if (mounted) setState(() {});
       },

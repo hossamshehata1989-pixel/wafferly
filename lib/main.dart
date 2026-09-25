@@ -11,11 +11,13 @@ import 'models/account.dart';
 import 'models/budget.dart';
 import 'models/reserved_money.dart';
 import 'models/goal.dart';
+import 'models/allocation.dart';
 
 import 'models/enums/account_enums.dart';
 import 'models/enums/budget_period.dart';
 import 'models/enums/reserved_money_type.dart';
 import 'models/enums/goal_status.dart';
+import 'models/enums/allocation_type.dart';
 
 import 'models/transaction.dart';
 import 'models/ledger_entry.dart';
@@ -30,12 +32,9 @@ import 'screens/main_navigation.dart';
 import 'l10n/app_localizations.dart';
 import 'theme/app_theme.dart';
 
-import 'services/ledger_stress_test_service.dart';
 import 'features/settings/controller/settings_controller.dart';
 import 'features/analysis/registry/category_registry.dart';
 
-import 'models/allocation.dart';
-import 'models/enums/allocation_type.dart';
 
 import 'models/enums/goal_type.dart';
 
@@ -56,12 +55,12 @@ import 'services/providers/commitment_action_provider.dart';
 import 'services/schedule_occurrence_service.dart';
 import 'services/schedule_evaluator.dart';
 
-import 'services/transaction_service.dart';
 
 // NEW imports for Engine and Application Service
 import 'bootstrap/financial_engine_bootstrap.dart';
 import 'financial_engine/engine/financial_operation_engine.dart';
 import 'services/transaction_application_service.dart';
+import 'services/transaction_query_service.dart';
 import 'core/money/money.dart';
 import 'core/planning/bootstrap/planning_engine_bootstrap.dart';
 import 'core/planning/engine/planning_engine.dart';
@@ -91,8 +90,6 @@ void main() async {
 
   const bool resetDb =
       false; // Set to true to clear all data on app start (for testing)
-  const bool runStressTest = false;
-  const bool runActorTest = false;
   const bool runFinancialActionEngineTest = false;
 
   // ====================================================
@@ -105,7 +102,6 @@ void main() async {
     await Hive.deleteBoxFromDisk('ledger_entries');
     await Hive.deleteBoxFromDisk('ledger_accounts');
     await Hive.deleteBoxFromDisk('budgets');
-    await Hive.deleteBoxFromDisk('reserved_money');
     await Hive.deleteBoxFromDisk('goals');
     await Hive.deleteBoxFromDisk('members');
   }
@@ -293,52 +289,6 @@ void main() async {
   await Hive.openBox<ScheduleOccurrence>('schedule_occurrences');
 
   // ====================================================
-  // Ledger Stress Test
-  // ====================================================
-
-  if (runStressTest) {
-    try {
-      await LedgerStressTestService().runStressTest(
-        transactionCount: 300,
-        verbose: false,
-      );
-
-      debugPrint("✅ Ledger stress test completed");
-    } catch (e) {
-      debugPrint("⚠️ Stress test failed: $e");
-    }
-  }
-
-  // ====================================================
-  // ActorMemberId Test
-  // ====================================================
-
-  if (runActorTest) {
-    try {
-      final txBox = Hive.box<Transaction>('transactions');
-
-      final testTransaction = Transaction.create(
-        amount: 250,
-        type: 'expense',
-        categoryId: 'food',
-        date: DateTime.now(),
-        actorMemberId: 'member_test_1',
-      );
-
-      final key = await txBox.add(testTransaction);
-
-      final savedTransaction = txBox.get(key);
-
-      debugPrint(
-        "✅ Actor test saved successfully: "
-        "${savedTransaction?.actorMemberId}",
-      );
-    } catch (e) {
-      debugPrint("⚠️ ActorMemberId test failed: $e");
-    }
-  }
-
-  // ====================================================
   // Financial Action Engine Test
   // ====================================================
 
@@ -466,10 +416,14 @@ CommitmentActionProvider(
               ManualReserveApplicationService(engine: planningEngine),
         ),
 
+        Provider<TransactionQueryService>(
+          create: (_) => const TransactionQueryService(),
+        ),
+
         Provider<TransactionApplicationService>(
-          create: (_) => TransactionApplicationService(
+          create: (context) => TransactionApplicationService(
             engine: engine,
-            legacyTransactionService: TransactionService.instance,
+            transactionQueryService: context.read<TransactionQueryService>(),
           ),
         ),
       ],
