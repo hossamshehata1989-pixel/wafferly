@@ -1,3 +1,4 @@
+import 'package:wafferly/core/money/money.dart';
 import 'package:wafferly/financial_engine/commands/opening_balance/opening_balance_intent.dart';
 import 'package:wafferly/financial_engine/commands/balance_reconciliation/balance_reconciliation_intent.dart';
 import 'package:wafferly/financial_engine/commands/balance_reconciliation/reconciliation_reason.dart';
@@ -42,7 +43,7 @@ class AccountTransactionService {
       OpeningBalanceOperation(
         intent: OpeningBalanceIntent(
           accountId: account.id,
-          amount: balance,
+          amount: Money.fromDouble(balance),
           isLiability: isLiability,
         ),
         metadata: TransactionMetadata(
@@ -78,10 +79,10 @@ class AccountTransactionService {
       throw StateError('Account not found: $accountId');
     }
 
-    final systemBalance =
-        await _balancePort.currentBalance(accountId);
+    final systemBalance = await _balancePort.currentBalance(accountId);
+    final observedMoney = Money.fromDouble(observedBalance);
 
-    if (systemBalance == observedBalance) return;
+    if (systemBalance == observedMoney) return;
 
     final context = ExecutionContext(
       idempotencyKey: idempotencyKey ??
@@ -93,7 +94,7 @@ class AccountTransactionService {
         intent: BalanceReconciliationIntent(
           accountId: accountId,
           systemBalance: systemBalance,
-          observedBalance: observedBalance,
+          observedBalance: observedMoney,
           isLiability: account.nature == AccountNature.liability,
           reason: reason,
         ),

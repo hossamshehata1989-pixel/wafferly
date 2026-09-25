@@ -1,3 +1,4 @@
+import 'package:wafferly/core/money/money.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -137,10 +138,10 @@ void main() {
     );
 
     final operation = ExpenseOperation(
-      intent: const ExpenseIntent(
+      intent: ExpenseIntent(
         sourceAccountId: 'wallet',
 categoryId: 'dailyTransport',
-        amount: 100,
+        amount: Money.fromDouble(100),
         isExceptional: false,
       ),
       metadata: TransactionMetadata(

@@ -46,7 +46,7 @@ void main() {
       final mutation = ReleaseAllocationMutation(
         goalId: 'goal-rollback-001',
         accountId: 'cash',
-        amount: 200,
+        amount: Money.fromDouble(200),
       );
 
       await expectLater(

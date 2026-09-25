@@ -1,3 +1,5 @@
+import '../../core/money/money.dart';
+
 abstract interface class BalanceProvider {
-  Future<double> getBalance(String accountId);
+  Future<Money> getBalance(String accountId);
 }

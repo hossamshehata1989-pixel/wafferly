@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 import '../../financial_engine/ports/balance_port.dart';
 import '../../services/balance_service.dart';
 
@@ -8,12 +9,14 @@ final class HiveBalancePort implements BalancePort {
     : _balanceService = balanceService;
 
   @override
-  Future<double> availableBalance(String accountId) async {
-    return _balanceService.getAvailableBalanceFromPlanning(accountId);
+  Future<Money> availableBalance(String accountId) async {
+    final available =
+        await _balanceService.getAvailableBalanceFromPlanning(accountId);
+    return Money.fromDouble(available);
   }
 
   @override
-  Future<double> currentBalance(String accountId) async {
-    return _balanceService.getBalance(accountId);
+  Future<Money> currentBalance(String accountId) async {
+    return Money.fromDouble(_balanceService.getBalance(accountId));
   }
 }

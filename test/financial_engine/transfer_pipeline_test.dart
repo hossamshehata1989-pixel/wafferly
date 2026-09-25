@@ -1,3 +1,4 @@
+import 'package:wafferly/core/money/money.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -166,10 +167,10 @@ void main() {
       );
 
       final operation = TransferOperation(
-        intent: const TransferIntent(
+        intent: TransferIntent(
           fromAccountId: 'wallet',
           toAccountId: 'bank',
-          amount: 100,
+          amount: Money.fromDouble(100),
         ),
         metadata: TransactionMetadata(
           occurredAt: DateTime(2026, 1, 1),
@@ -197,10 +198,10 @@ void main() {
       final credit = journalEntry.lines.last;
 
       expect(debit.accountId, 'bank');
-      expect(debit.debit, 100);
+      expect(debit.debit, Money.fromDouble(100));
 
       expect(credit.accountId, 'wallet');
-      expect(credit.credit, 100);
+      expect(credit.credit, Money.fromDouble(100));
 
       // Persisted transaction created by the canonical Transaction write path.
       final transaction = transactionBox.values.singleWhere(

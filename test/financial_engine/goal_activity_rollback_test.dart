@@ -1,3 +1,4 @@
+import 'package:wafferly/core/money/money.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -51,11 +52,11 @@ void main() {
         service: activityService,
       );
 
-      const mutation = GoalActivityMutation(
+      final mutation = GoalActivityMutation(
         goalId: 'goal-activity-rollback-001',
         sourceAccountId: 'cash',
         destinationAccountId: 'saving',
-        amount: 500,
+        amount: Money.fromDouble(500),
         activityType: goal_model.GoalActivityType.transferToSaving,
       );
 

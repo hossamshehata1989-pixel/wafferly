@@ -40,7 +40,7 @@ final class AvailableBalanceProjectionService {
   /// Account/Balance side.
   Future<AvailableBalanceProjection> project({
     required String accountId,
-    required double balance,
+    required Money balance,
   }) async {
     final allocations =
         await _allocationRepository.findByAccount(accountId);
@@ -52,13 +52,12 @@ final class AvailableBalanceProjectionService {
           (total, allocation) => total + allocation.amount,
         );
 
-    final moneyBalance = Money.fromDouble(balance);
 
     return AvailableBalanceProjection(
       accountId: accountId,
-      balance: moneyBalance,
+      balance: balance,
       reserved: reserved,
-      available: moneyBalance - reserved,
+      available: balance - reserved,
     );
   }
 }

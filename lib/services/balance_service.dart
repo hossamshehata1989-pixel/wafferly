@@ -4,6 +4,7 @@ import '../models/transaction.dart';
 import '../models/account.dart';
 import '../models/enums/account_enums.dart';
 import '../constants/transaction_constants.dart';
+import '../core/money/money.dart';
 import '../core/planning/services/available_balance_projection_service.dart';
 import 'financial_effective_transaction_query.dart';
 
@@ -195,7 +196,7 @@ class BalanceService {
 
     final projection = await projectionService.project(
       accountId: accountId,
-      balance: balance,
+      balance: Money.fromDouble(balance),
     );
 
     return projection.available.toDouble();

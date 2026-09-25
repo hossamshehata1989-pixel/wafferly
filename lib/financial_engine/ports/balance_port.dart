@@ -1,7 +1,9 @@
+import '../../core/money/money.dart';
+
 abstract interface class BalancePort {
   /// Available balance used by spendability guards.
-  Future<double> availableBalance(String accountId);
+  Future<Money> availableBalance(String accountId);
 
   /// Derived financial balance before planning reservations.
-  Future<double> currentBalance(String accountId);
+  Future<Money> currentBalance(String accountId);
 }

@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 import '../../financial_engine/execution/financial_transaction_context.dart';
 import '../../financial_engine/mutations/goal_activity_mutation.dart';
 import '../../financial_engine/ports/goal_activity_port.dart';
@@ -19,7 +20,7 @@ final class GoalActivityAdapter implements GoalActivityPort {
     final activity = GoalActivity.create(
       goalId: mutation.goalId,
       type: mutation.activityType,
-      amount: mutation.amount,
+      amount: mutation.amount.toDouble(),
       sourceAccountId: mutation.sourceAccountId,
       destinationAccountId: mutation.destinationAccountId,
     );

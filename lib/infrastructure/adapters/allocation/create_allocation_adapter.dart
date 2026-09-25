@@ -1,3 +1,4 @@
+import '../../../core/money/money.dart';
 import '../../../financial_engine/operations/create_allocation_mutation.dart';
 import '../../../financial_engine/ports/create_allocation_port.dart';
 import '../../../models/allocation.dart';
@@ -15,7 +16,7 @@ final class CreateAllocationAdapter implements CreateAllocationPort {
     return _service.add(
       Allocation.create(
         accountId: mutation.accountId,
-        amount: mutation.amount,
+        amount: mutation.amount.toDouble(),
         type: AllocationType.goal,
         referenceId: mutation.goalId,
       ),

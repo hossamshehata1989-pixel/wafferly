@@ -1,3 +1,4 @@
+import 'package:wafferly/core/money/money.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -157,7 +158,7 @@ void main() {
         sourceAccountId: 'wallet',
         liabilityAccountId: 'loan',
         commitmentId: 'commitment-1',
-        amount: 100,
+        amount: Money.fromDouble(100),
         metadata: TransactionMetadata(
           occurredAt: DateTime(2026, 1, 10),
           paymentMethod: 'cash',
@@ -215,9 +216,9 @@ expect(
       final credit = journalEntry.lines.last;
 
       expect(debit.accountId, 'loan');
-      expect(debit.debit, 100);
+      expect(debit.debit, Money.fromDouble(100));
       expect(credit.accountId, 'wallet');
-      expect(credit.credit, 100);
+      expect(credit.credit, Money.fromDouble(100));
 
       final ledgerEntries = ledgerBox.values
           .where((item) => item.transactionId == transaction.id)

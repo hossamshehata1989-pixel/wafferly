@@ -1,3 +1,4 @@
+import 'package:wafferly/core/money/money.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -166,7 +167,7 @@ void main() {
         sourceAccountId: 'cash',
         savingsAccountId: 'saving',
         goalId: 'goal-1',
-        amount: 500,
+        amount: Money.fromDouble(500),
         metadata: TransactionMetadata(
           occurredAt: occurredAt,
           paymentMethod: 'cash',
@@ -207,8 +208,8 @@ void main() {
       expect(context.repository.entries.length, 1);
       final journal = context.repository.entries.single;
       expect(journal.lines.length, 2);
-      expect(journal.lines.first.debit, 500);
-      expect(journal.lines.last.credit, 500);
+      expect(journal.lines.first.debit, Money.fromDouble(500));
+      expect(journal.lines.last.credit, Money.fromDouble(500));
 
       expect(goalActivitiesBox.values.length, 1);
       final activity = goalActivitiesBox.values.single;
@@ -249,7 +250,7 @@ void main() {
           sourceAccountId: 'cash',
           savingsAccountId: 'missing-saving',
           goalId: 'goal-1',
-          amount: 100,
+          amount: Money.fromDouble(100),
           metadata: TransactionMetadata(
             occurredAt: DateTime(2026, 1, 2),
             paymentMethod: 'cash',
@@ -305,7 +306,7 @@ void main() {
           sourceAccountId: 'cash',
           savingsAccountId: 'saving',
           goalId: 'goal-1',
-          amount: 1500,
+          amount: Money.fromDouble(1500),
           metadata: TransactionMetadata(
             occurredAt: DateTime(2026, 1, 2),
             paymentMethod: 'cash',

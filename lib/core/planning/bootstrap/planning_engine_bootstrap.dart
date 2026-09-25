@@ -1,5 +1,7 @@
 import 'package:hive/hive.dart';
 
+import '../../money/money.dart';
+
 import '../engine/executor/default_planning_executor.dart';
 import '../engine/guards/cannot_release_more_than_reserved_guard.dart';
 import '../engine/guards/cannot_reserve_more_than_available_guard.dart';
@@ -39,7 +41,7 @@ final class PlanningEngineBootstrap {
   static PlanningEngine create({
     AllocationRepository? allocationRepository,
     AvailableBalanceProjectionService? availableBalanceProjectionService,
-    double Function(String accountId)? accountBalanceProvider,
+    Money Function(String accountId)? accountBalanceProvider,
   }) {
     final AllocationRepository repository =
         allocationRepository ?? MemoryAllocationRepository();

@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 import '../execution/financial_execution_summary.dart';
 import '../resolution/resolution.dart';
 
@@ -24,8 +25,8 @@ final class DomainViolationResult extends OperationResult {
 }
 
 final class InsufficientBalance extends OperationResult {
-  final double required;
-  final double available;
+  final Money required;
+  final Money available;
   final List<Resolution> options;
 
   const InsufficientBalance({

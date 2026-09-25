@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 import '../interpretation/normalized_intent.dart';
 import '../ports/balance_port.dart';
 import 'domain_guard.dart';
@@ -15,7 +16,7 @@ final class BalanceDomainGuard implements DomainGuard {
   @override
   Future<DomainGuardResult> validate(NormalizedIntent intent) async {
     if (intent.action == FinancialActionType.openingBalance) {
-      if (intent.amount < 0) {
+      if (intent.amount < Money.zero) {
         return const DomainViolation(
           reason: 'Opening balance amount must not be negative.',
         );
@@ -25,7 +26,7 @@ final class BalanceDomainGuard implements DomainGuard {
     }
 
     if (intent.action == FinancialActionType.balanceReconciliation) {
-      if (intent.amount <= 0) {
+      if (intent.amount <= Money.zero) {
         return const DomainViolation(
           reason: 'Balance reconciliation requires a non-zero difference.',
         );

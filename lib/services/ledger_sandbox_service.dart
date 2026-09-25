@@ -1,5 +1,6 @@
 // lib/services/ledger_sandbox_service.dart
 import 'ledger_service.dart';
+import '../core/money/money.dart';
 import 'transaction_ledger_builder.dart';
 import '../models/enums/entry_type.dart';
 /// Sandbox Service لاختبار Ledger pipeline بشكل معزول.
@@ -30,7 +31,7 @@ class LedgerSandboxService {
         transactionId: mockTransactionId,
         expenseLedgerAccountId: expenseAccountId,
         sourceAccountId: sourceAccountId,
-        amount: amount,
+        amount: Money.fromDouble(amount),
         date: date,
       );
 

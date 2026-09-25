@@ -1,3 +1,4 @@
+import 'package:wafferly/core/money/money.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -145,10 +146,10 @@ void main() {
     );
 
     final operation = ExpenseOperation(
-      intent: const ExpenseIntent(
+      intent: ExpenseIntent(
         sourceAccountId: 'wallet',
         categoryId: 'dailyTransport',
-        amount: 50,
+        amount: Money.fromDouble(50),
         isExceptional: false,
       ),
       metadata: TransactionMetadata(
@@ -175,8 +176,8 @@ void main() {
     final debit = entry.lines.first;
     final credit = entry.lines.last;
 
-    expect(debit.debit, 50);
-    expect(credit.credit, 50);
+    expect(debit.debit, Money.fromDouble(50));
+    expect(credit.credit, Money.fromDouble(50));
 
     final transaction = transactionBox.values.singleWhere(
       (item) => item.type == TransactionType.expense,

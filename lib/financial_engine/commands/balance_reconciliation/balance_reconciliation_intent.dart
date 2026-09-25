@@ -1,3 +1,4 @@
+import '../../../core/money/money.dart';
 import 'reconciliation_reason.dart';
 
 /// Financial intent for reconciling an observed account balance with the
@@ -7,8 +8,8 @@ import 'reconciliation_reason.dart';
 /// financial operation against the dedicated reconciliation equity account.
 final class BalanceReconciliationIntent {
   final String accountId;
-  final double systemBalance;
-  final double observedBalance;
+  final Money systemBalance;
+  final Money observedBalance;
   final bool isLiability;
   final ReconciliationReason reason;
 
@@ -20,5 +21,5 @@ final class BalanceReconciliationIntent {
     required this.reason,
   });
 
-  double get difference => observedBalance - systemBalance;
+  Money get difference => observedBalance - systemBalance;
 }

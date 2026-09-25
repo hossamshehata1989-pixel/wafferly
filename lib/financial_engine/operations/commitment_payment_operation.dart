@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 import '../commands/shared/transaction_metadata.dart';
 import '../domain_guard/financial_constraint.dart';
 import '../execution_context/execution_context.dart';
@@ -10,7 +11,7 @@ final class CommitmentPaymentOperation extends FinancialOperation {
   final String sourceAccountId;
   final String liabilityAccountId;
   final String commitmentId;
-  final double amount;
+  final Money amount;
   final TransactionMetadata metadata;
   final ExecutionContext context;
 

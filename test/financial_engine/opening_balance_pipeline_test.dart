@@ -18,13 +18,13 @@ import 'package:wafferly/financial_engine/ports/transaction_lookup_port.dart';
 import 'package:wafferly/core/money/money.dart';
 final class _NoopBalancePort implements BalancePort {
   @override
-  Future<double> availableBalance(String accountId) async {
-    return 0;
+  Future<Money> availableBalance(String accountId) async {
+    return Money.zero;
   }
 
   @override
-  Future<double> currentBalance(String accountId) async {
-    return 0;
+  Future<Money> currentBalance(String accountId) async {
+    return Money.zero;
   }
 }
 
@@ -44,9 +44,9 @@ void main() {
         idempotencyKey: 'opening-balance-account-1',
       );
       final operation = OpeningBalanceOperation(
-        intent: const OpeningBalanceIntent(
+        intent: OpeningBalanceIntent(
           accountId: 'account-1',
-          amount: 0,
+          amount: Money.fromDouble(0),
           isLiability: false,
         ),
         metadata: TransactionMetadata(
@@ -61,7 +61,7 @@ void main() {
       final intent = const DefaultFinancialInterpreter().interpret(operation);
 
       expect(intent.action, FinancialActionType.openingBalance);
-      expect(intent.amount, 0);
+      expect(intent.amount, Money.zero);
 
       final planner = DefaultFinancialPlanner(
         chartOfAccounts: const ChartOfAccounts(),
@@ -80,12 +80,12 @@ void main() {
       expect(journal.description, 'Opening Balance');
       expect(journal.lines.length, 2);
       expect(journal.lines.first.accountId, 'account-1');
-      expect(journal.lines.first.debit, 0);
+      expect(journal.lines.first.debit, Money.zero);
       expect(
         journal.lines.last.accountId,
         ChartOfAccounts.openingBalanceEquityAccountId,
       );
-      expect(journal.lines.last.credit, 0);
+      expect(journal.lines.last.credit, Money.zero);
 
       expect(transaction.type, TransactionType.initialBalance);
       expect(transaction.amount, Money.zero);
@@ -103,9 +103,9 @@ void main() {
         idempotencyKey: 'opening-balance-negative-account',
       );
       final operation = OpeningBalanceOperation(
-        intent: const OpeningBalanceIntent(
+        intent: OpeningBalanceIntent(
           accountId: 'account-1',
-          amount: -10,
+          amount: Money.fromDouble(-10),
           isLiability: false,
         ),
         metadata: TransactionMetadata(
@@ -121,7 +121,7 @@ void main() {
         balancePort: _NoopBalancePort(),
       ).validate(intent);
 
-      expect(intent.amount, -10);
+      expect(intent.amount, Money.fromDouble(-10));
       expect(result, isA<DomainViolation>());
     },
   );

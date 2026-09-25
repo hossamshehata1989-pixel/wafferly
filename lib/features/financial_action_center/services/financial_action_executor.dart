@@ -1,3 +1,4 @@
+import '../../../core/money/money.dart';
 import 'package:flutter/material.dart';
 
 import '../../../models/enums/scheduled_action_kind.dart';
@@ -71,7 +72,7 @@ class FinancialActionExecutor {
       sourceAccountId: sourceAccountId,
       liabilityAccountId: liabilityAccountId,
       commitmentId: action.commitment.id,
-      amount: action.commitment.amount.toDouble(),
+      amount: Money.fromDouble(action.commitment.amount.toDouble()),
       metadata: TransactionMetadata(
         occurredAt: DateTime.now(),
         note: action.commitment.notes,

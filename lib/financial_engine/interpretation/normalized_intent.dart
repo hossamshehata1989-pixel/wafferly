@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 import 'financial_action_type.dart';
 import '../resolution/resolution.dart';
 
@@ -23,7 +24,7 @@ final class NormalizedIntent {
   /// Used by opening-balance genesis and balance-reconciliation operations.
   final bool isLiability;
 
-  final double amount;
+  final Money amount;
   final Resolution resolution;
 
   const NormalizedIntent({

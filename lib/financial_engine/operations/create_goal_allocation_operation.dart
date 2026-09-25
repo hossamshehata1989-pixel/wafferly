@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 import '../commands/shared/transaction_metadata.dart';
 import '../domain_guard/financial_constraint.dart';
 import '../execution_context/execution_context.dart';
@@ -9,7 +10,7 @@ import 'financial_operation.dart';
 final class CreateGoalAllocationOperation extends FinancialOperation {
   final String accountId;
   final String goalId;
-  final double amount;
+  final Money amount;
   final DateTime occurredAt;
 
   final TransactionMetadata metadata;

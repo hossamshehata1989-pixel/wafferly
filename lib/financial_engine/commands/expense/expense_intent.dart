@@ -1,3 +1,4 @@
+import '../../../core/money/money.dart';
 /// Represents the financial intent behind an expense.
 ///
 /// This object contains only data that can affect
@@ -14,7 +15,7 @@ final class ExpenseIntent {
   final String sourceAccountId;
 
   /// Expense amount.
-  final double amount;
+  final Money amount;
 
   /// Financial category.
   ///

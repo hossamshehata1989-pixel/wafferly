@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 import '../../services/account_service.dart';
 import '../interpretation/financial_action_type.dart';
 import '../interpretation/normalized_intent.dart';
@@ -35,7 +36,7 @@ final class TransferDomainGuard implements DomainGuard {
       );
     }
 
-    if (!intent.amount.isFinite || intent.amount <= 0) {
+    if (intent.amount <= Money.zero) {
       return const DomainViolation(
         reason: 'Transfer amount must be greater than zero.',
       );

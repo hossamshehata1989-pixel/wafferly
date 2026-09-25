@@ -1,3 +1,5 @@
+import '../../core/money/money.dart';
+
 abstract interface class HasAmount {
-  double get amount;
+  Money get amount;
 }

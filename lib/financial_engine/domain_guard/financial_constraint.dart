@@ -1,10 +1,11 @@
+import '../../core/money/money.dart';
 sealed class FinancialConstraint {
   const FinancialConstraint();
 }
 
 final class InsufficientBalanceConstraint extends FinancialConstraint {
-  final double available;
-  final double required;
+  final Money available;
+  final Money required;
 
   const InsufficientBalanceConstraint({
     required this.available,

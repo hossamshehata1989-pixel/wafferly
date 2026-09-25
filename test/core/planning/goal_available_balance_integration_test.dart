@@ -30,7 +30,7 @@ void main() {
         const accountId = 'account-1';
         const goalId = 'goal-1';
 
-        const accountBalance = 1000.0;
+        final accountBalance = Money.parse('1000');
 
         // ============================================================
         // STEP 3 — Reserve 300 for the Goal

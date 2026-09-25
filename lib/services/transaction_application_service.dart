@@ -1,3 +1,4 @@
+import '../core/money/money.dart';
 // lib/services/transaction_application_service.dart
 
 import '../models/transaction.dart';
@@ -66,7 +67,7 @@ class TransactionApplicationService {
     final command = ExpenseCommand(
       intent: ExpenseIntent(
         sourceAccountId: sourceAccountId,
-        amount: amount,
+        amount: Money.fromDouble(amount),
         categoryId: categoryId,
         isExceptional: isExceptional,
         actorMemberId: actorMemberId,
@@ -108,7 +109,7 @@ class TransactionApplicationService {
     final command = IncomeCommand(
       intent: IncomeIntent(
         sourceAccountId: sourceAccountId,
-        amount: amount,
+        amount: Money.fromDouble(amount),
         categoryId: categoryId,
         isExceptional: isExceptional,
         actorMemberId: actorMemberId,
@@ -148,7 +149,7 @@ class TransactionApplicationService {
       intent: TransferIntent(
         fromAccountId: fromAccountId,
         toAccountId: toAccountId,
-        amount: amount,
+        amount: Money.fromDouble(amount),
       ),
       metadata: TransactionMetadata(
         occurredAt: occurredAt,

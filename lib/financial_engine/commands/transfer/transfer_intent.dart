@@ -1,3 +1,4 @@
+import '../../../core/money/money.dart';
 /// Represents the financial intent behind a money transfer.
 ///
 /// This object contains only domain data that affects financial
@@ -23,7 +24,7 @@ final class TransferIntent {
   /// Amount of money to transfer.
   ///
   /// Must be greater than zero.
-  final double amount;
+  final Money amount;
 
   const TransferIntent({
     required this.fromAccountId,

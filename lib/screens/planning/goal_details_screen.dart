@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 // lib/screens/planning/goal_details_screen.dart
 
 import 'package:flutter/material.dart';
@@ -126,7 +127,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         sourceAccountId: sourceAccountId,
         savingsAccountId: savingAccountId,
         goalId: goalId,
-        amount: amount,
+        amount: Money.fromDouble(amount),
         metadata: TransactionMetadata(
           occurredAt: occurredAt,
           note: 'Transfer to saving from goal funding',
@@ -244,7 +245,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         sourceAccountId: result.sourceAccountId!,
         savingsAccountId: result.savingAccountId,
         goalId: widget.goal.id,
-        amount: result.amount,
+        amount: Money.fromDouble(result.amount),
         metadata: TransactionMetadata(
           occurredAt: occurredAt,
           note: 'Saving Goal Contribution',
@@ -299,7 +300,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       await _executeTransfer(
         sourceAccountId: source.accountId,
         savingAccountId: result.savingAccountId,
-        amount: result.amount,
+        amount: Money.fromDouble(result.amount),
         goalId: widget.goal.id,
       );
       await _loadData();

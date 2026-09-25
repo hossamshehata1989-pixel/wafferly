@@ -186,7 +186,7 @@ amount: Money.fromDouble(500),        ),
         sourceAccountId: 'cash',
         savingsAccountId: 'saving',
         goalId: 'goal-1',
-        amount: 500,
+        amount: Money.fromDouble(500),
         metadata: TransactionMetadata(
           occurredAt: occurredAt,
           paymentMethod: 'cash',
@@ -230,8 +230,8 @@ amount: Money.fromDouble(500),        ),
       expect(context.repository.entries.length, 1);
       final journal = context.repository.entries.single;
       expect(journal.lines.length, 2);
-      expect(journal.lines.first.debit, 500);
-      expect(journal.lines.last.credit, 500);
+      expect(journal.lines.first.debit, Money.fromDouble(500));
+      expect(journal.lines.last.credit, Money.fromDouble(500));
 
       expect(goalActivitiesBox.values.length, 1);
       final activity = goalActivitiesBox.values.single;

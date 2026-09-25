@@ -62,6 +62,7 @@ import 'services/transaction_service.dart';
 import 'bootstrap/financial_engine_bootstrap.dart';
 import 'financial_engine/engine/financial_operation_engine.dart';
 import 'services/transaction_application_service.dart';
+import 'core/money/money.dart';
 import 'core/planning/bootstrap/planning_engine_bootstrap.dart';
 import 'core/planning/engine/planning_engine.dart';
 import 'core/planning/infrastructure/persistence/hive_allocation_record.dart';
@@ -410,7 +411,8 @@ CommitmentActionProvider(
   final planningEngine = PlanningEngineBootstrap.create(
     allocationRepository: allocationRepository,
     availableBalanceProjectionService: availableBalanceProjectionService,
-    accountBalanceProvider: balanceService.getBalance,
+    accountBalanceProvider: (accountId) =>
+        Money.fromDouble(balanceService.getBalance(accountId)),
   );
 
   final engineContext = FinancialEngineBootstrap.create(

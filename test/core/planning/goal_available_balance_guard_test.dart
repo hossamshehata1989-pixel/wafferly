@@ -29,14 +29,14 @@ void main() {
 
         const accountId = 'account-1';
 
-        const accountBalance = 4000.0;
+        final accountBalance = Money.parse('4000');
 
-        double getAccountBalance(String id) {
+        Money getAccountBalance(String id) {
           if (id == accountId) {
             return accountBalance;
           }
 
-          return 0;
+          return Money.zero;
         }
 
         // ============================================================

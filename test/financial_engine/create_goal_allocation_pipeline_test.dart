@@ -1,3 +1,4 @@
+import 'package:wafferly/core/money/money.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -79,9 +80,9 @@ Hive.registerAdapter(LedgerEntryAdapter());
     );
 
     final openingBalanceOperation = OpeningBalanceOperation(
-      intent: const OpeningBalanceIntent(
+      intent: OpeningBalanceIntent(
         accountId: 'cash',
-        amount: 1000,
+        amount: Money.fromDouble(1000),
         isLiability: false,
       ),
       metadata: TransactionMetadata(
@@ -116,7 +117,7 @@ Hive.registerAdapter(LedgerEntryAdapter());
     final operation = CreateGoalAllocationOperation(
       accountId: 'cash',
       goalId: 'goal-1',
-      amount: 500,
+      amount: Money.fromDouble(500),
       occurredAt: occurredAt,
       metadata: TransactionMetadata(
         occurredAt: occurredAt,

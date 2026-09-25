@@ -23,7 +23,7 @@ void main() {
       sourceAccountId: 'cash-account',
       liabilityAccountId: 'loan-account',
       commitmentId: 'commitment-1',
-      amount: 250.50,
+      amount: Money.fromDouble(250.50),
       metadata: TransactionMetadata(
         occurredAt: occurredAt,
         note: 'September installment',
@@ -38,7 +38,7 @@ void main() {
     expect(intent.action, FinancialActionType.commitmentPayment);
     expect(intent.sourceAccountId, 'cash-account');
     expect(intent.destinationAccountId, 'loan-account');
-    expect(intent.amount, 250.50);
+    expect(intent.amount, Money.fromDouble(250.50));
 
     final planner = DefaultFinancialPlanner(
       chartOfAccounts: const ChartOfAccounts(),
@@ -74,11 +74,11 @@ void main() {
     expect(journal.description, 'Commitment Payment');
     expect(journal.lines.length, 2);
     expect(journal.lines[0].accountId, 'loan-account');
-    expect(journal.lines[0].debit, 250.50);
-    expect(journal.lines[0].credit, 0);
+    expect(journal.lines[0].debit, Money.fromDouble(250.50));
+    expect(journal.lines[0].credit, Money.fromDouble(0));
     expect(journal.lines[1].accountId, 'cash-account');
-    expect(journal.lines[1].debit, 0);
-    expect(journal.lines[1].credit, 250.50);
+    expect(journal.lines[1].debit, Money.fromDouble(0));
+    expect(journal.lines[1].credit, Money.fromDouble(250.50));
   });
 
   test('commitment payment resolution preserves all operation data', () {
@@ -87,7 +87,7 @@ void main() {
       sourceAccountId: 'cash-account',
       liabilityAccountId: 'loan-account',
       commitmentId: 'commitment-2',
-      amount: 100,
+      amount: Money.fromDouble(100),
       metadata: TransactionMetadata(
         occurredAt: DateTime(2026, 9, 12),
         paymentMethod: 'bank',

@@ -1,9 +1,10 @@
+import '../../core/money/money.dart';
 import '../commands/balance_reconciliation/reconciliation_reason.dart';
 
 final class BalanceReconciliationContext {
   final String accountId;
-  final double systemBalance;
-  final double observedBalance;
+  final Money systemBalance;
+  final Money observedBalance;
   final bool isLiability;
   final ReconciliationReason reason;
 
@@ -15,5 +16,5 @@ final class BalanceReconciliationContext {
     required this.reason,
   });
 
-  double get difference => observedBalance - systemBalance;
+  Money get difference => observedBalance - systemBalance;
 }

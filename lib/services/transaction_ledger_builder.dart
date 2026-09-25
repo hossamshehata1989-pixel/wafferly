@@ -2,6 +2,7 @@
 // Updated to accept real ledgerAccountId instead of categoryId placeholder
 
 import 'package:uuid/uuid.dart';
+import '../core/money/money.dart';
 import '../models/ledger_entry.dart';
 import '../models/enums/entry_type.dart';
 import '../models/enums/ledger_purpose.dart';
@@ -13,7 +14,7 @@ class TransactionLedgerBuilder {
     required String transactionId,
     required String accountId,
     required EntryType entryType,
-    required double amount,
+    required Money amount,
     required DateTime date,
     required LedgerPurpose purpose,
   }) {
@@ -22,7 +23,10 @@ class TransactionLedgerBuilder {
       transactionId: transactionId,
       accountId: accountId,
       entryType: entryType,
-      amount: amount,
+      // LedgerEntry is the legacy double-backed projection/persistence model.
+      // Keep the financial API Money-native and cross the compatibility boundary
+      // only here, at the construction of the legacy projection record.
+      amount: amount.toDouble(),
       date: date,
       purpose: purpose,
     );
@@ -33,7 +37,7 @@ class TransactionLedgerBuilder {
     required String transactionId,
     required String expenseLedgerAccountId, // real LedgerAccount.id
     required String sourceAccountId, // real Account.id (cash/bank)
-    required double amount,
+    required Money amount,
     required DateTime date,
   }) {
     return [
@@ -61,7 +65,7 @@ class TransactionLedgerBuilder {
     required String transactionId,
     required String destinationAccountId, // real Account.id (cash/bank)
     required String incomeLedgerAccountId, // real LedgerAccount.id
-    required double amount,
+    required Money amount,
     required DateTime date,
   }) {
     return [
@@ -91,7 +95,7 @@ class TransactionLedgerBuilder {
     required String transactionId,
     required String debitAccountId,
     required String creditAccountId,
-    required double amount,
+    required Money amount,
     required DateTime date,
   }) {
     return [
@@ -119,7 +123,7 @@ class TransactionLedgerBuilder {
     required String transactionId,
     required String fromAccountId,
     required String toAccountId,
-    required double amount,
+    required Money amount,
     required DateTime date,
   }) {
     return [
@@ -155,7 +159,7 @@ class TransactionLedgerBuilder {
     required String? incomeLedgerAccountId,
     required String? fromAccountId,
     required String? toAccountId,
-    required double amount,
+    required Money amount,
     required DateTime date,
   }) {
     final original = buildCorrectionReversalEntries(
@@ -181,7 +185,7 @@ class TransactionLedgerBuilder {
     required String? incomeLedgerAccountId,
     required String? fromAccountId,
     required String? toAccountId,
-    required double amount,
+    required Money amount,
     required DateTime date,
   }) {
     List<LedgerEntry> original;

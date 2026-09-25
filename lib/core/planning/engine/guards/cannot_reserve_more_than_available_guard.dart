@@ -1,3 +1,4 @@
+import '../../../money/money.dart';
 import '../planning_execution_context.dart';
 import '../interpreter/planning_interpreter.dart';
 import '../../operations/reserve_operation.dart';
@@ -30,7 +31,7 @@ final class CannotReserveMoreThanAvailableGuard implements PlanningGuard {
   final AvailableBalanceProjectionService availableBalanceProjectionService;
 
   /// Returns the actual financial account balance.
-  final double Function(String accountId) accountBalanceProvider;
+  final Money Function(String accountId) accountBalanceProvider;
 
   @override
   Future<void> validate(PlanningExecutionContext context) async {

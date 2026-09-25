@@ -88,7 +88,7 @@ void main() {
 
       final projection = await service.project(
         accountId: 'account-1',
-        balance: 5000,
+        balance: Money.parse('5000'),
       );
 
       expect(projection.accountId, 'account-1');
@@ -130,7 +130,7 @@ void main() {
 
       final projection = await service.project(
         accountId: 'account-2',
-        balance: 5000,
+        balance: Money.parse('5000'),
       );
 
       expect(projection.reserved, Money.parse('1000'));

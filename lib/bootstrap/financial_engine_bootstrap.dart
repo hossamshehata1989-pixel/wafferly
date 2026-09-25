@@ -1,6 +1,5 @@
 import 'package:hive/hive.dart';
 
-import '../core/money/money.dart';
 import '../core/planning/entities/allocation.dart';
 import '../core/planning/ports/allocation_repository.dart';
 import '../core/planning/value_objects/planning_source_type.dart';
@@ -54,11 +53,11 @@ import '../financial_engine/mutations/goal_activity_mutation.dart';
 import '../core/planning/bootstrap/planning_engine_bootstrap.dart';
 import '../services/goal_activity_service.dart';
 
-/// Bridges the legacy Financial Engine allocation mutation to the
-/// Planning Engine's canonical AllocationRepository.
+/// Bridges the Financial Engine allocation mutation to the Planning Engine's
+/// canonical AllocationRepository.
 ///
-/// The Financial Engine mutation still carries a double for compatibility.
-/// The Planning domain stores Money, so the conversion happens here.
+/// The Financial Engine mutation is Money-native. The Planning domain is also
+/// Money-native, so no monetary conversion is performed at this boundary.
 final class CreateAllocationPortAdapter implements CreateAllocationPort {
   final AllocationRepository repository;
 
@@ -71,7 +70,7 @@ final class CreateAllocationPortAdapter implements CreateAllocationPort {
       sourceId: mutation.goalId,
       sourceType: PlanningSourceType.goal,
       accountId: mutation.accountId,
-      amount: Money.fromDouble(mutation.amount),
+      amount: mutation.amount,
       createdAt: DateTime.now(),
     );
 

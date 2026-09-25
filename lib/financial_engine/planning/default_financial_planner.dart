@@ -89,7 +89,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: null,
       categoryId: categoryId,
       subCategoryId: null,
-      amount: Money.fromDouble(intent.amount),
+      amount: intent.amount,
       currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
@@ -134,7 +134,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: intent.sourceAccountId,
       categoryId: categoryId,
       subCategoryId: null,
-      amount: Money.fromDouble(intent.amount),
+      amount: intent.amount,
       currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
@@ -177,7 +177,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
           toAccountId: destinationAccountId,
           categoryId: null,
           subCategoryId: null,
-          amount: Money.fromDouble(intent.amount),
+          amount: intent.amount,
           currencyCode: context.metadata.currencyCode,
           paymentMethod: context.metadata.paymentMethod,
           occurredAt: context.metadata.occurredAt,
@@ -219,7 +219,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: liabilityAccountId,
       categoryId: null,
       subCategoryId: null,
-      amount: Money.fromDouble(intent.amount),
+      amount: intent.amount,
       currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
@@ -266,7 +266,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: destinationAccountId,
       categoryId: null,
       subCategoryId: null,
-      amount: Money.fromDouble(intent.amount),
+      amount: intent.amount,
       currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
@@ -329,7 +329,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: destinationAccountId,
       categoryId: null,
       subCategoryId: null,
-      amount: Money.fromDouble(intent.amount),
+      amount: intent.amount,
       currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
@@ -398,7 +398,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: accountReceivesDebit ? accountId : null,
       categoryId: 'initial_balance',
       subCategoryId: null,
-      amount: Money.fromDouble(amount),
+      amount: amount,
       currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,
@@ -437,7 +437,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
         (throw StateError('Balance reconciliation context is required'));
 
     final difference = reconciliation.difference;
-    if (difference == 0) {
+    if (difference == Money.zero) {
       throw StateError('Balance reconciliation difference cannot be zero');
     }
 
@@ -455,11 +455,11 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     // and reconciliation equity is debited. A positive difference means the
     // liability decreased: the liability is debited and equity is credited.
     final debitAccountId = reconciliation.isLiability
-        ? (difference > 0 ? reconciliation.accountId : equityAccountId)
-        : (difference > 0 ? reconciliation.accountId : equityAccountId);
+        ? (difference > Money.zero ? reconciliation.accountId : equityAccountId)
+        : (difference > Money.zero ? reconciliation.accountId : equityAccountId);
     final creditAccountId = reconciliation.isLiability
-        ? (difference > 0 ? equityAccountId : reconciliation.accountId)
-        : (difference > 0 ? equityAccountId : reconciliation.accountId);
+        ? (difference > Money.zero ? equityAccountId : reconciliation.accountId)
+        : (difference > Money.zero ? equityAccountId : reconciliation.accountId);
 
     final transactionId =
         'reconciliation-${context.executionContext.idempotencyKey}';
@@ -471,7 +471,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       toAccountId: debitAccountId,
       categoryId: TransactionType.balanceReconciliation,
       subCategoryId: null,
-      amount: Money.fromDouble(amount),
+      amount: amount,
       currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
       occurredAt: context.metadata.occurredAt,

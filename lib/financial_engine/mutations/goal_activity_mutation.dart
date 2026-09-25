@@ -1,10 +1,11 @@
+import '../../core/money/money.dart';
 import '../planning/financial_mutation.dart';
 
 final class GoalActivityMutation extends FinancialMutation {
   final String goalId;
   final String sourceAccountId;
   final String destinationAccountId;
-  final double amount;
+  final Money amount;
   final String activityType;
 
   const GoalActivityMutation({

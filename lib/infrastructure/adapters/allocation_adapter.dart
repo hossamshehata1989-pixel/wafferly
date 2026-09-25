@@ -58,7 +58,7 @@ final class AllocationAdapter implements AllocationPort {
       sourceId: mutation.goalId,
       sourceType: PlanningSourceType.goal,
       accountId: mutation.accountId,
-      amount: Money.fromDouble(mutation.amount),
+      amount: mutation.amount,
     );
 
     await planningEngine.execute(operation);

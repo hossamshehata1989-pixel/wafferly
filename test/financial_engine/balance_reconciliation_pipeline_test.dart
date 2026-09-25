@@ -1,3 +1,4 @@
+import 'package:wafferly/core/money/money.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -135,8 +136,8 @@ void main() {
     return BalanceReconciliationOperation(
       intent: BalanceReconciliationIntent(
         accountId: accountId,
-        systemBalance: systemBalance,
-        observedBalance: observedBalance,
+        systemBalance: Money.fromDouble(systemBalance),
+        observedBalance: Money.fromDouble(observedBalance),
         isLiability: isLiability,
         reason: ReconciliationReason.cashCountDifference,
       ),

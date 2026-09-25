@@ -1,3 +1,4 @@
+import '../../core/money/money.dart';
 import '../operations/expense_operation.dart';
 import '../operations/commitment_payment_operation.dart';
 import '../operations/financial_operation.dart';
@@ -130,7 +131,7 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
         return NormalizedIntent(
           action: FinancialActionType.correction,
           sourceAccountId: sourceAccountId,
-          amount: after.amount.toDouble(),
+          amount: after.amount,
           categoryId: after.categoryId,
           actorMemberId: after.actorMemberId,
           isExceptional: after.isExceptional,
@@ -142,7 +143,7 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
 
         return NormalizedIntent(
           action: FinancialActionType.deletion,
-          amount: tx.amount,
+          amount: Money.fromDouble(tx.amount),
           sourceAccountId: tx.fromAccountId ?? '',
           categoryId: tx.categoryId,
           actorMemberId: tx.actorMemberId,

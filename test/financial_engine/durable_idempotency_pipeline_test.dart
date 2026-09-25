@@ -1,3 +1,4 @@
+import 'package:wafferly/core/money/money.dart';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -124,10 +125,10 @@ void main() {
 
   ExpenseOperation buildOperation(String key) {
     return ExpenseOperation(
-      intent: const ExpenseIntent(
+      intent: ExpenseIntent(
         sourceAccountId: 'wallet',
         categoryId: 'dailyTransport',
-        amount: 100,
+        amount: Money.fromDouble(100),
         isExceptional: false,
       ),
       metadata: TransactionMetadata(
@@ -191,13 +192,13 @@ void main() {
     const key = 'retry-after-failure-key';
 
     final failingOperation = ExpenseOperation(
-      intent: const ExpenseIntent(
+      intent: ExpenseIntent(
         sourceAccountId: 'wallet',
         categoryId: 'dailyTransport',
         // Negative amounts are rejected by the Expense domain guard.
         // This gives the test a deterministic OperationFailed result rather
         // than relying on a category mapping fallback or confirmation flow.
-        amount: -100,
+        amount: Money.fromDouble(-100),
         isExceptional: false,
       ),
       metadata: TransactionMetadata(
