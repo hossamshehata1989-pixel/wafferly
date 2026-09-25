@@ -49,9 +49,9 @@ void main() {
 
       final record = FinancialTransactionRecord(
         transactionId: 'rollback-tx-001',
-        type: 'expense',
+        type: 'transfer',
         fromAccountId: 'cash',
-        categoryId: 'food',
+        toAccountId: 'wallet',
         amount: Money.fromDouble(100),
         currencyCode: 'EGP',
         paymentMethod: 'cash',
@@ -73,6 +73,18 @@ void main() {
       final result = await executor.execute(plan);
 
       expect(result, isA<OperationFailed>());
+
+      expect(
+        ledgerPort.createEntriesCalled,
+        1,
+        reason: 'Ledger projection must be created before the later mutation fails.',
+      );
+
+      expect(
+        ledgerPort.entriesCreated,
+        2,
+        reason: 'Transfer projection must create both debit and credit entries.',
+      );
 
       expect(
         transactionPort.transactions,
@@ -124,9 +136,13 @@ final class _FakeTransactionPort implements TransactionPort {
 
 final class _FakeLedgerPort implements LedgerPort {
   final List<LedgerEntry> entries = [];
+  int createEntriesCalled = 0;
+  int entriesCreated = 0;
 
   @override
   Future<void> createEntries(List<LedgerEntry> newEntries) async {
+    createEntriesCalled++;
+    entriesCreated += newEntries.length;
     entries.addAll(newEntries);
   }
 
