@@ -80,6 +80,9 @@ final class DefaultPlanningIntegrityChecker
             index: index,
             deactivatedAllocationIds: deactivatedAllocationIds,
           );
+
+        case RestoreAllocationMutation():
+          _validateRestoreMutation(mutation, index: index);
       }
     }
   }
@@ -200,6 +203,36 @@ final class DefaultPlanningIntegrityChecker
       throw StateError(
         'Invalid planning execution plan at mutation $index: '
         'allocation "${mutation.allocationId}" is deactivated more than once.',
+      );
+    }
+  }
+
+  void _validateRestoreMutation(
+    RestoreAllocationMutation mutation, {
+    required int index,
+  }) {
+    _requireNonBlank(
+      mutation.allocation.id,
+      field: 'allocation.id',
+      mutationIndex: index,
+    );
+
+    _requireNonBlank(
+      mutation.allocation.sourceId,
+      field: 'allocation.sourceId',
+      mutationIndex: index,
+    );
+
+    _requireNonBlank(
+      mutation.allocation.accountId,
+      field: 'allocation.accountId',
+      mutationIndex: index,
+    );
+
+    if (mutation.allocation.amount < Money.zero) {
+      throw StateError(
+        'Invalid planning execution plan at mutation $index: '
+        'allocation.amount must not be negative.',
       );
     }
   }

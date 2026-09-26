@@ -12,7 +12,9 @@ import 'handlers/reserve_planner.dart';
 import 'handlers/split_planner.dart';
 import 'planning_execution_plan.dart';
 import 'handlers/reallocate_planner.dart';
+import 'handlers/restore_allocations_planner.dart';
 import '../../operations/reallocate_operation.dart';
+import '../../operations/restore_allocations_operation.dart';
 
 final class DefaultPlanningPlanner implements ExecutionPlanner {
   const DefaultPlanningPlanner({
@@ -21,6 +23,7 @@ final class DefaultPlanningPlanner implements ExecutionPlanner {
     required this.splitPlanner,
     required this.mergePlanner,
     required this.reallocatePlanner,
+    this.restoreAllocationsPlanner = const RestoreAllocationsPlanner(),
   });
 
   final ReservePlanner reservePlanner;
@@ -28,6 +31,7 @@ final class DefaultPlanningPlanner implements ExecutionPlanner {
   final SplitPlanner splitPlanner;
   final MergePlanner mergePlanner;
   final ReallocatePlanner reallocatePlanner;
+  final RestoreAllocationsPlanner restoreAllocationsPlanner;
 
   @override
   Future<PlanningExecutionPlan> plan(PlanningExecutionContext context) {
@@ -37,6 +41,7 @@ final class DefaultPlanningPlanner implements ExecutionPlanner {
       SplitOperation() => splitPlanner.plan(context),
       MergeOperation() => mergePlanner.plan(context),
       ReallocateOperation() => reallocatePlanner.plan(context),
+      RestoreAllocationsOperation() => restoreAllocationsPlanner.plan(context),
       _ => throw UnsupportedError(
         'Unsupported planning operation: '
         '${context.operation.runtimeType}',

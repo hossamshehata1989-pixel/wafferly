@@ -62,6 +62,9 @@ final class DefaultPlanningExecutor implements PlanningExecutor {
             ),
           );
 
+        case RestoreAllocationMutation():
+          await repository.update(mutation.allocation);
+
         case DeactivateAllocationMutation():
           final allocation = await repository.findById(mutation.allocationId);
 

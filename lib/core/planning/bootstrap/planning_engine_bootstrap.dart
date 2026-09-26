@@ -15,6 +15,7 @@ import '../engine/planner/handlers/reallocate_planner.dart';
 import '../engine/planner/handlers/release_planner.dart';
 import '../engine/planner/handlers/reserve_planner.dart';
 import '../engine/planner/handlers/split_planner.dart';
+import '../engine/planner/handlers/restore_allocations_planner.dart';
 import '../engine/planning_engine.dart';
 import '../engine/policies/planning_policy_pipeline.dart';
 import '../infrastructure/identity/memory_allocation_id_generator.dart';
@@ -82,6 +83,8 @@ final class PlanningEngineBootstrap {
         mergePlanner: MergePlanner(repository: repository),
 
         reallocatePlanner: ReallocatePlanner(repository: repository),
+
+        restoreAllocationsPlanner: const RestoreAllocationsPlanner(),
       ),
 
       integrity: const DefaultPlanningIntegrityChecker(),

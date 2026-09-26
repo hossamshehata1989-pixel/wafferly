@@ -6,6 +6,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../models/account.dart';
 import '../../models/debt/debt_dashboard_summary.dart';
+import '../../models/commitment.dart';
+import '../../models/schedule_rule.dart';
+import '../../models/schedule_occurrence.dart';
 import '../../models/transaction.dart';
 import 'credit_cards_screen.dart';
 
@@ -188,10 +191,6 @@ class _DashboardCanvas extends StatelessWidget {
               categories: categories,
               onTap: onOpenAccount,
               compact: compact,
-              cardHeight: math.max(
-                0.0,
-                (availableHeight - metrics.h(190) - metrics.h(60) - metrics.h(16)) / 3.0,
-              ),
             ),
           ),
           SizedBox(height: metrics.h(8)),

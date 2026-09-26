@@ -1,4 +1,5 @@
 import '../../value_objects/planning_source_type.dart';
+import '../../entities/allocation.dart';
 import '../../../../core/money/money.dart';
 sealed class PlanningMutation {
   const PlanningMutation();
@@ -59,4 +60,15 @@ final class DeactivateAllocationMutation extends PlanningMutation {
   const DeactivateAllocationMutation({required this.allocationId});
 
   final String allocationId;
+}
+
+
+/// Restores an exact Allocation snapshot as a compensation mutation.
+///
+/// This is intentionally executed only by DefaultPlanningExecutor so no
+/// caller outside the Planning Engine can mutate AllocationRepository.
+final class RestoreAllocationMutation extends PlanningMutation {
+  const RestoreAllocationMutation({required this.allocation});
+
+  final Allocation allocation;
 }

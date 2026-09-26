@@ -2,7 +2,9 @@ import '../../core/money/money.dart';
 import '../../core/planning/engine/planning_engine.dart';
 import '../../core/planning/entities/allocation.dart';
 import '../../core/planning/operations/release_operation.dart';
+import '../../core/planning/operations/restore_allocations_operation.dart';
 import '../../core/planning/ports/allocation_repository.dart';
+import '../../core/planning/value_objects/allocation_status.dart';
 import '../../core/planning/value_objects/planning_source_type.dart';
 import '../../financial_engine/execution/financial_transaction_context.dart';
 import '../../financial_engine/mutations/release_allocation_mutation.dart';
@@ -30,7 +32,7 @@ final class AllocationAdapter implements AllocationPort {
         .where(
           (allocation) =>
               allocation.accountId == mutation.accountId &&
-              allocation.status.index == 1 &&
+              allocation.status == AllocationStatus.active &&
               allocation.amount > Money.zero,
         )
         .toList();
@@ -47,9 +49,14 @@ final class AllocationAdapter implements AllocationPort {
     );
 
     context.registerRollback(() async {
-      for (final snapshot in snapshots) {
-        await allocationRepository.update(snapshot);
-      }
+      await planningEngine.execute(
+        RestoreAllocationsOperation(
+          id:
+              'restore-release-${mutation.goalId}-${mutation.accountId}-${mutation.amount}',
+          createdAt: DateTime.now(),
+          snapshots: snapshots,
+        ),
+      );
     });
 
     final operation = ReleaseOperation(

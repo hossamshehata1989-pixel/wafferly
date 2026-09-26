@@ -4,6 +4,7 @@ import '../../operations/release_operation.dart';
 import '../../operations/split_operation.dart';
 import '../../operations/merge_operation.dart';
 import '../../operations/reallocate_operation.dart';
+import '../../operations/restore_allocations_operation.dart';
 import 'planning_interpreter.dart';
 
 final class DefaultPlanningInterpreter implements PlanningInterpreter {
@@ -17,6 +18,7 @@ final class DefaultPlanningInterpreter implements PlanningInterpreter {
       SplitOperation() => PlanningIntent.split,
       MergeOperation() => PlanningIntent.merge,
       ReallocateOperation() => PlanningIntent.reallocate,
+      RestoreAllocationsOperation() => PlanningIntent.restore,
       _ => throw UnsupportedError(
         'Unsupported planning operation: ${operation.runtimeType}',
       ),
