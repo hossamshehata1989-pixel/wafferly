@@ -3,7 +3,6 @@ import '../../core/money/money.dart';
 
 import 'package:flutter/material.dart';
 import '../../models/goal.dart';
-import '../../services/goal_projection_service.dart';
 import 'widgets/goal_progress_card.dart';
 import 'dialogs/reserve_goal_dialog.dart';
 import '../../services/goal_activity_service.dart';
@@ -38,7 +37,6 @@ class GoalDetailsScreen extends StatefulWidget {
 }
 
 class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
-  late final GoalProjectionService _projectionService;
   late final GoalAllocationService _goalAllocationService;
   late final GoalActivityService _activityService;
   late final GoalFundingProjectionService _fundingProjectionService;
@@ -55,7 +53,6 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   void initState() {
     super.initState();
 
-    _projectionService = GoalProjectionService();
     _activityService = GoalActivityService();
 
     _goalAllocationService = context.read<GoalAllocationService>();
@@ -300,7 +297,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       await _executeTransfer(
         sourceAccountId: source.accountId,
         savingAccountId: result.savingAccountId,
-        amount: Money.fromDouble(result.amount),
+        amount: result.amount,
         goalId: widget.goal.id,
       );
       await _loadData();

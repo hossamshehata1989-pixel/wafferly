@@ -30,7 +30,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   List<Transaction> _filteredTransactions = [];
   List<_DateGroup> _dateGroups = [];
 
-  late final TransactionQueryService _transactionQueryService;
+  final TransactionQueryService _transactionQueryService = const TransactionQueryService();
   final AccountService _accountService = AccountService();
   late final TransactionApplicationService _transactionApplicationService;
 
@@ -52,7 +52,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   void initState() {
     super.initState();
 
-    _transactionQueryService = context.read<TransactionQueryService>();
     _transactionApplicationService = context
         .read<TransactionApplicationService>();
 

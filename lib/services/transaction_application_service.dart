@@ -33,7 +33,7 @@ import '../financial_engine/commands/correction/deletion_transaction_intent.dart
 
 /// Application Orchestrator for transaction-related operations.
 /// This is the single entry point for the UI and other clients.
-/// All financial transaction mutations are executed through the FinancialOperationEngine.
+/// It delegates to the appropriate underlying service (Engine or Legacy).
 class TransactionApplicationService {
   final FinancialOperationEngine _engine;
   final TransactionQueryService _transactionQueryService;
@@ -165,6 +165,9 @@ class TransactionApplicationService {
     return await _engine.execute(operation, context);
   }
 
+  // Legacy generic transaction mutation methods were intentionally removed.
+  // Financial writes must enter through FinancialOperationEngine.
+
   // ==================== Update (Engine-based) ====================
 
   Future<OperationResult> updateExpense(Transaction transaction) async {
@@ -246,7 +249,7 @@ class TransactionApplicationService {
   }
   // =======================================================
 
-  // ==================== Query methods ====================
+  // ==================== Query methods (delegated to legacy) ====================
 
   List<Transaction> getAllTransactions() =>
       _transactionQueryService.getAllTransactions();

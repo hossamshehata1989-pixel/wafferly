@@ -1,3 +1,4 @@
+import '../../../../core/money/money.dart';
 // lib/screens/accounts/accounts_group/accounts_group_details_screen/accounts_group_details_logic.dart
 
 import 'package:flutter/material.dart';
@@ -207,7 +208,7 @@ class AccountsGroupDetailsLogic {
 
     final projection = await projectionService.project(
       accountId: account.id,
-      balance: balance,
+      balance: Money.fromDouble(balance),
     );
 
     final reserved = projection.reserved.toDouble();
@@ -518,12 +519,12 @@ class GroupFinancialData {
 
         final projection = await projectionService.project(
           accountId: account.id,
-          balance: balance,
+          balance: Money.fromDouble(balance),
         );
 
         return (
           account: account,
-          balance: balance,
+          balance: Money.fromDouble(balance),
           reserved: projection.reserved,
         );
       }),

@@ -19,7 +19,7 @@ import '../value_objects/allocation_status.dart';
 /// - Create or mutate Allocations.
 /// - Access Hive directly.
 /// - Calculate account balance from Transactions.
-/// - Depend on the legacy ReservedMoneyService.
+/// - Depend on any legacy Reserved Money persistence service.
 ///
 /// Formula:
 ///

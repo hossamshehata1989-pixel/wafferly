@@ -28,6 +28,7 @@ import 'package:wafferly/models/schedule_rule.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/services/balance_service.dart';
 import 'package:wafferly/services/ledger_account_seeder.dart';
+import 'package:wafferly/services/scheduled_execution_journal.dart';
 import 'package:wafferly/features/financial_action_center/financial_action_center.dart';
 import 'package:wafferly/constants/transaction_constants.dart';
 
@@ -42,6 +43,7 @@ void main() {
   late Box<Commitment> commitmentBox;
   late Box<ScheduleRule> scheduleRuleBox;
   late Box<ScheduleOccurrence> occurrenceBox;
+  late Box<Map> scheduledExecutionJournalBox;
 
   setUpAll(() async {
     testDirectory = await Directory.systemTemp.createTemp(
@@ -128,6 +130,8 @@ void main() {
     scheduleRuleBox = await Hive.openBox<ScheduleRule>('schedule_rules');
     occurrenceBox =
         await Hive.openBox<ScheduleOccurrence>('schedule_occurrences');
+    scheduledExecutionJournalBox =
+        await Hive.openBox<Map>(ScheduledExecutionJournal.boxName);
 
     await LedgerAccountSeeder().seedIfNeeded();
   });
@@ -150,6 +154,7 @@ void main() {
     await commitmentBox.clear();
     await scheduleRuleBox.clear();
     await occurrenceBox.clear();
+    await scheduledExecutionJournalBox.clear();
 
     await accountsBox.put(
       'wallet',

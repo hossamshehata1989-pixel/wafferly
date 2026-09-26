@@ -14,7 +14,6 @@ import '../features/members/models/member_model.dart';
 import '../features/transactions/calculator/calculator_engine.dart';
 import '../features/transactions/calculator/calculator_state.dart';
 import '../models/enums/account_enums.dart';
-import '../services/reserved_money_service.dart';
 import '../features/transactions/models/expense_resolution_option.dart';
 import '../financial_engine/results/operation_result.dart';
 import '../constants/temp_debt_constants.dart';
@@ -258,13 +257,6 @@ class TransactionEntryController extends ChangeNotifier {
     return total;
   }
 
-  double getTotalReservedBalance() {
-    return ReservedMoneyService().getAll().fold<double>(
-      0,
-      (sum, item) => sum + item.amount,
-    );
-  }
-
   List<ExpenseResolutionOption> getLiquidityOptions() {
     final options = <ExpenseResolutionOption>[];
     for (final account in availableAccounts) {
@@ -298,19 +290,6 @@ class TransactionEntryController extends ChangeNotifier {
       );
     }
     return options;
-  }
-
-  List<ExpenseResolutionOption> getReservedOptions() {
-    final reservedItems = ReservedMoneyService().getAll();
-    return reservedItems
-        .map(
-          (item) => ExpenseResolutionOption(
-            id: item.id,
-            name: item.title,
-            amount: item.amount,
-          ),
-        )
-        .toList();
   }
 
   double getTotalAvailableBalance() {

@@ -9,7 +9,7 @@ import '../registry/category_registry.dart';
 import '../widgets/custom_donut_chart.dart';
 
 class AnalysisController {
-  final TransactionQueryService _transactionQueryService;
+  final TransactionQueryService _transactionQueryService = const TransactionQueryService();
 
   // State
   bool isLoading = true;
@@ -39,8 +39,7 @@ class AnalysisController {
   // Simple callback for UI updates
   final VoidCallback onUpdate;
 
-  AnalysisController({required this.onUpdate, required TransactionQueryService transactionQueryService})
-      : _transactionQueryService = transactionQueryService;
+  AnalysisController({required this.onUpdate});
 
   Future<void> loadData({
     required DateTime startDate,

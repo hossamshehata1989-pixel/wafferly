@@ -75,6 +75,10 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
   FinancialExecutionPlan _planExpense(PlanningContext context) {
     final intent = context.intent;
 
+    if (intent.amount <= Money.zero) {
+      throw ArgumentError('Expense amount must be greater than zero.');
+    }
+
     final categoryId =
         intent.categoryId ?? (throw StateError('Category is required'));
 

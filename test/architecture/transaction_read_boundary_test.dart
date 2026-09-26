@@ -14,12 +14,10 @@ void main() {
   test('legacy TransactionService is isolated from production callers', () {
     const allowedCompatibilityFile =
         'lib/services/transaction_service.dart';
-
     final violations = <String>[];
 
     for (final file in dartFiles()) {
       final normalized = file.path.replaceAll('\\', '/');
-
       if (normalized == allowedCompatibilityFile) continue;
 
       final source = file.readAsStringSync();
@@ -42,34 +40,15 @@ void main() {
   });
 
   test('TransactionQueryService is the production transaction read API', () {
-    final file = File('lib/services/transaction_query_service.dart');
-    final source = file.readAsStringSync();
+    final source =
+        File('lib/services/transaction_query_service.dart').readAsStringSync();
 
-    expect(
-      source,
-      contains('FinancialEffectiveTransactionQuery'),
-    );
+    expect(source, contains('FinancialEffectiveTransactionQuery'));
+    expect(source, contains('getEffectiveTransactions'));
+    expect(source, contains('getEffectiveById'));
 
-    expect(
-      source,
-      contains('getEffectiveTransactions'),
-    );
-
-    expect(
-      source,
-      contains('getEffectiveById'),
-    );
-
-    // Block persistence mutations specifically.
-    //
-    // Do NOT use broad checks such as:
-    //   contains('.add(')
-    //
-    // because valid read-side code may legitimately call methods such as:
-    //   DateTime.add(...)
-    //
-    // The rule here is specifically that TransactionQueryService must not
-    // mutate the persisted transaction store.
+    // TransactionQueryService is read-only and must not mutate
+    // the transaction persistence store.
     final persistenceMutationPattern = RegExp(
       r'\b(?:_box|box|transactionsBox)\s*\.\s*'
       r'(?:put|add|delete|clear)\s*\(',

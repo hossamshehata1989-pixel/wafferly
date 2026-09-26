@@ -2,11 +2,12 @@
 import '../models/transaction.dart';
 import 'transaction_query_service.dart';
 
-/// Transitional compatibility facade for legacy callers/tests.
+/// Compatibility-only read facade for tests and legacy callers.
 ///
-/// New production code must depend on [TransactionQueryService].
-/// This class is query-only and contains no financial mutation capability.
-@Deprecated('Use TransactionQueryService instead.')
+/// Financial writes are intentionally absent. All production callers should
+/// use [TransactionQueryService] for reads and [FinancialOperationEngine] for
+/// financial mutations.
+@Deprecated('Use TransactionQueryService for reads and FinancialOperationEngine for writes.')
 final class TransactionService {
   TransactionService._privateConstructor();
 
@@ -15,39 +16,57 @@ final class TransactionService {
 
   static TransactionService get instance => _instance;
 
-  final TransactionQueryService _query = const TransactionQueryService();
+  final TransactionQueryService _queryService = const TransactionQueryService();
 
-  List<Transaction> getAllTransactions() => _query.getAllTransactions();
-  Transaction? getById(String id) => _query.getById(id);
-  List<Transaction> getByType(String type) => _query.getByType(type);
+  List<Transaction> getAllTransactions() => _queryService.getAllTransactions();
+
+  Transaction? getById(String id) => _queryService.getById(id);
+
+  List<Transaction> getByType(String type) => _queryService.getByType(type);
+
   List<Transaction> getIncomeTransactions() =>
-      _query.getIncomeTransactions();
+      _queryService.getIncomeTransactions();
+
   List<Transaction> getExpenseTransactions() =>
-      _query.getExpenseTransactions();
+      _queryService.getExpenseTransactions();
+
   List<Transaction> getByCategory(String categoryId) =>
-      _query.getByCategory(categoryId);
+      _queryService.getByCategory(categoryId);
+
   List<Transaction> getByDateRange(DateTime start, DateTime end) =>
-      _query.getByDateRange(start, end);
+      _queryService.getByDateRange(start, end);
+
   List<Transaction> getForAccount(String accountId) =>
-      _query.getForAccount(accountId);
+      _queryService.getForAccount(accountId);
+
   bool hasTransactionsForAccount(String accountId) =>
-      _query.hasTransactionsForAccount(accountId);
+      _queryService.hasTransactionsForAccount(accountId);
+
   double getTotalByType(String type, DateTime start, DateTime end) =>
-      _query.getTotalByType(type, start, end);
+      _queryService.getTotalByType(type, start, end);
+
   double getTotalExpenses(DateTime start, DateTime end) =>
-      _query.getTotalExpenses(start, end);
+      _queryService.getTotalExpenses(start, end);
+
   double getTotalIncome(DateTime start, DateTime end) =>
-      _query.getTotalIncome(start, end);
+      _queryService.getTotalIncome(start, end);
+
   double getNormalExpenses(DateTime start, DateTime end) =>
-      _query.getNormalExpenses(start, end);
+      _queryService.getNormalExpenses(start, end);
+
   double getExceptionalExpenses(DateTime start, DateTime end) =>
-      _query.getExceptionalExpenses(start, end);
+      _queryService.getExceptionalExpenses(start, end);
+
   Map<String, double> getExpensesByCategory(DateTime start, DateTime end) =>
-      _query.getExpensesByCategory(start, end);
+      _queryService.getExpensesByCategory(start, end);
+
   Map<String, double> getExpensesBySource(DateTime start, DateTime end) =>
-      _query.getExpensesBySource(start, end);
-  List<Transaction> getLegacyTransactions() => _query.getLegacyTransactions();
-  int get count => _query.count;
-  bool get isEmpty => _query.isEmpty;
-  bool get isNotEmpty => _query.isNotEmpty;
+      _queryService.getExpensesBySource(start, end);
+
+  List<Transaction> getLegacyTransactions() =>
+      _queryService.getLegacyTransactions();
+
+  int get count => _queryService.count;
+  bool get isEmpty => _queryService.isEmpty;
+  bool get isNotEmpty => _queryService.isNotEmpty;
 }

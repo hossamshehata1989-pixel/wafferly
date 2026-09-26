@@ -11,6 +11,9 @@ import '../../../financial_engine/engine/financial_operation_engine.dart';
 import '../../../financial_engine/results/operation_result.dart';
 
 import '../../../services/schedule_occurrence_service.dart';
+import '../../../services/scheduled_execution_journal.dart';
+import '../../../services/scheduled_financial_execution_coordinator.dart';
+import 'package:hive/hive.dart';
 
 class FinancialActionExecutor {
   final FinancialOperationEngine engine;
@@ -87,32 +90,31 @@ class FinancialActionExecutor {
       '${action.commitment.id}',
     );
 
-    final result = await engine.execute(
-      operation,
-      executionContext,
+    final journal = ScheduledExecutionJournal(
+      Hive.box<Map>(ScheduledExecutionJournal.boxName),
+    );
+    final coordinator = ScheduledFinancialExecutionCoordinator(
+      occurrenceService: occurrenceService,
+      journal: journal,
     );
 
-    if (result is! OperationSucceeded) {
-      debugPrint(
-        'Commitment payment failed: ${result.runtimeType}',
-      );
-      return false;
-    }
+    return coordinator.execute(
+      action: action,
+      idempotencyKey: executionContext.idempotencyKey,
+      executeFinancialOperation: () async {
+        final result = await engine.execute(
+          operation,
+          executionContext,
+        );
 
-    await occurrenceService.completeOccurrence(action.occurrence);
+        if (result is! OperationSucceeded) {
+          debugPrint(
+            'Commitment payment failed: ${result.runtimeType}',
+          );
+        }
 
-    final latestRule =
-        occurrenceService.ruleService.getRule(action.scheduleRule.id) ??
-        action.scheduleRule;
-
-    await occurrenceService.advanceRuleAfterOccurrence(
-      latestRule,
-      action.occurrence,
+        return result;
+      },
     );
-
-    debugPrint(
-      'Commitment payment succeeded: ${action.commitment.id}',
-    );
-    return true;
   }
 }

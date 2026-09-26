@@ -9,15 +9,11 @@ import 'features/members/models/member_model.dart';
 
 import 'models/account.dart';
 import 'models/budget.dart';
-import 'models/reserved_money.dart';
 import 'models/goal.dart';
-import 'models/allocation.dart';
 
 import 'models/enums/account_enums.dart';
 import 'models/enums/budget_period.dart';
-import 'models/enums/reserved_money_type.dart';
 import 'models/enums/goal_status.dart';
-import 'models/enums/allocation_type.dart';
 
 import 'models/transaction.dart';
 import 'models/ledger_entry.dart';
@@ -76,6 +72,7 @@ import 'services/reserved_money_projection_service.dart';
 import 'services/ledger_account_seeder.dart';
 
 import 'services/schedule_rule_service.dart';
+import 'services/scheduled_execution_journal.dart';
 
 
 
@@ -167,18 +164,6 @@ void main() async {
   }
 
   // ====================================================
-  // Reserved Money Foundation
-  // ====================================================
-
-  if (!Hive.isAdapterRegistered(50)) {
-    Hive.registerAdapter(ReservedMoneyTypeAdapter());
-  }
-
-  if (!Hive.isAdapterRegistered(51)) {
-    Hive.registerAdapter(ReservedMoneyAdapter());
-  }
-
-  // ====================================================
   // Goals Foundation
   // ====================================================
 
@@ -202,21 +187,10 @@ void main() async {
     Hive.registerAdapter(MemberModelAdapter());
   }
 
-  // ====================================================
-  // Allocation Foundation
-  // ====================================================
-
-  if (!Hive.isAdapterRegistered(80)) {
-    Hive.registerAdapter(AllocationAdapter());
-  }
-
   if (!Hive.isAdapterRegistered(90)) {
     Hive.registerAdapter(GoalActivityAdapter());
   }
 
-  if (!Hive.isAdapterRegistered(81)) {
-    Hive.registerAdapter(AllocationTypeAdapter());
-  }
 
   // ====================================================
   // Commitment Foundation
@@ -276,17 +250,16 @@ void main() async {
   await Hive.openBox<LedgerAccount>('ledger_accounts');
   await LedgerAccountSeeder().seedIfNeeded();
   await Hive.openBox<Budget>('budgets');
-  await Hive.openBox<ReservedMoney>('reserved_money');
   await Hive.openBox<Goal>('goals');
   await Hive.openBox<MemberModel>('members');
   await MemberSeeder.ensureOwnerExists();
-  await Hive.openBox<Allocation>('allocations');
   await Hive.openBox<HiveAllocationRecord>('planning_allocations');
   await Hive.openBox<GoalActivity>('goal_activities');
   await Hive.openBox<Commitment>('commitments');
 
   await Hive.openBox<ScheduleRule>('schedule_rules');
   await Hive.openBox<ScheduleOccurrence>('schedule_occurrences');
+  await Hive.openBox<Map>(ScheduledExecutionJournal.boxName);
 
   // ====================================================
   // Financial Action Engine Test

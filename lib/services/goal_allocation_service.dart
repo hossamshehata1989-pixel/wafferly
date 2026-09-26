@@ -1,24 +1,21 @@
 import 'package:uuid/uuid.dart';
 
+import '../core/money/money.dart';
 import '../core/planning/engine/planning_engine.dart';
-import '../core/planning/operations/reserve_operation.dart';
 import '../core/planning/operations/release_operation.dart';
+import '../core/planning/operations/reserve_operation.dart';
 import '../core/planning/value_objects/planning_source_type.dart';
-
-import '../models/enums/allocation_type.dart';
-import 'allocation_service.dart';
 import 'goal_funding_projection_service.dart';
 import 'goal_service.dart';
-import '../core/money/money.dart';
+
 class GoalAllocationService {
   GoalAllocationService({
     required PlanningEngine engine,
     required GoalFundingProjectionService projectionService,
-  }) : _engine = engine,
-       _projectionService = projectionService;
+  })  : _engine = engine,
+        _projectionService = projectionService;
 
   final PlanningEngine _engine;
-  final AllocationService _allocationService = AllocationService();
   final GoalService _goalService = GoalService();
   final GoalFundingProjectionService _projectionService;
 
@@ -44,7 +41,7 @@ class GoalAllocationService {
       sourceId: goalId,
       sourceType: PlanningSourceType.goal,
       accountId: accountId,
-amount: Money.fromDouble(amount),
+      amount: Money.fromDouble(amount),
     );
 
     try {
@@ -92,8 +89,7 @@ amount: Money.fromDouble(amount),
       sourceId: goalId,
       sourceType: PlanningSourceType.goal,
       accountId: accountId,
-              amount: Money.fromDouble(reductionAmount),
-
+      amount: Money.fromDouble(reductionAmount),
     );
 
     await _engine.execute(operation);
@@ -125,14 +121,6 @@ amount: Money.fromDouble(amount),
     await _engine.execute(operation);
   }
 
-  /// Temporary compatibility read for existing callers.
-  List getGoalAllocations(String goalId) {
-    return _allocationService
-        .getAll()
-        .where((a) => a.type == AllocationType.goal && a.referenceId == goalId)
-        .toList();
-  }
-
   /// Release all funding from one Goal funding account through the
   /// Planning Engine.
   Future<void> releaseFundingSource({
@@ -150,7 +138,8 @@ amount: Money.fromDouble(amount),
         sourceId: goalId,
         sourceType: PlanningSourceType.goal,
         accountId: accountId,
-amount: Money.fromDouble(source.amount),      );
+        amount: Money.fromDouble(source.amount),
+      );
 
       await _engine.execute(operation);
       return;
