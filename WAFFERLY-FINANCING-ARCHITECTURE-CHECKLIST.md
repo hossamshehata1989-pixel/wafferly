@@ -76,15 +76,20 @@ Updated: 2026-09-27
 - [x] Fix missing Hive `FrequencyAdapter` registration in ADR-070 conversion tests
 - [x] Fix credit-card charge test fixture seeding order so ledger category mappings exist after per-test cleanup
 - [x] Define and implement the exact statement-generation service/repository integration around `StatementInstallmentContribution`
-- [ ] Implement pure interest/amortization calculator
-- [ ] Implement deterministic installment schedule generation
-- [ ] Implement payment allocation integration with financing installments
+- [x] Implement pure interest/amortization calculator
+- [x] Define ADR-053 fixed-rate model and pure interest/amortization calculator implementation
+- [x] Verify ADR-053 calculator tests locally
+- [x] Implement deterministic installment schedule generation
+- [x] Verify deterministic installment schedule tests locally
+- [x] Implement pure financing payment allocation calculator for ADR-054/055/062
 - [ ] Implement financing lifecycle transitions
 - [x] Add architecture tests for financing writer boundaries
 - [x] Add end-to-end tests for statement/installment no-double-counting
 - [x] Correct Statement Projection so installment contributions are projected independently from the originating-charge loop
 - [x] Fix Statement Projection to use the canonical `TransactionType.creditCardCharge` value for originating-charge detection
-- [ ] E2E no-double-counting tests pass locally
+- [x] Expand Statement ↔ Installment E2E coverage for future-cycle eligibility, interest/fees preservation, and payment separation
+- [x] Align E2E installment identity assertions with the canonical conversion-generated installment IDs (`scheduleId|sequence`)
+- [x] E2E no-double-counting tests pass locally — 6/6
 - [ ] Add idempotency/recovery tests across financing + FinancialOperationEngine
 - [ ] Run full `flutter test` and `flutter analyze` after implementation changes
 

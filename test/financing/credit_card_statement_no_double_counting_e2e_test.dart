@@ -239,6 +239,129 @@ void main() {
     expect(lines.single.amount, Money.parse('3333.33'));
   });
 
+  test('future installments are excluded from an earlier statement cycle', () async {
+    await seedCharge();
+    await conversionOperation.execute(
+      request(effectiveDate: DateTime(2026, 9, 27)),
+    );
+
+    await installmentService.generateForCycle(
+      statementId: 'statement-oct',
+      liabilityAccountId: 'card-1',
+      cycleStartInclusive: DateTime(2026, 10, 1),
+      cycleEndExclusive: DateTime(2026, 11, 1),
+      createdAt: DateTime(2026, 10, 31),
+    );
+
+    final october = await buildProjection();
+    final octoberLines = october.project(
+      statementId: 'statement-oct',
+      liabilityAccountId: 'card-1',
+      cycleStartInclusive: DateTime(2026, 10, 1),
+      cycleEndExclusive: DateTime(2026, 11, 1),
+    );
+
+    expect(octoberLines, hasLength(1));
+    expect(octoberLines.single.installmentId, 'schedule-1|1');
+
+    await installmentService.generateForCycle(
+      statementId: 'statement-nov',
+      liabilityAccountId: 'card-1',
+      cycleStartInclusive: DateTime(2026, 11, 1),
+      cycleEndExclusive: DateTime(2026, 12, 1),
+      createdAt: DateTime(2026, 11, 30),
+    );
+
+    final november = await buildProjection();
+    final novemberLines = november.project(
+      statementId: 'statement-nov',
+      liabilityAccountId: 'card-1',
+      cycleStartInclusive: DateTime(2026, 11, 1),
+      cycleEndExclusive: DateTime(2026, 12, 1),
+    );
+
+    expect(novemberLines, hasLength(1));
+    expect(novemberLines.single.installmentId, 'schedule-1|2');
+    expect(novemberLines.single.amount, Money.parse('3333.33'));
+  });
+
+  test('statement contribution preserves principal interest and financing fees', () async {
+    await seedCharge();
+    await conversionOperation.execute(
+      request(effectiveDate: DateTime(2026, 9, 27)),
+    );
+
+    await installments.clear();
+    await installments.put(
+      'i-interest-fee',
+      FinancingInstallment(
+        installmentId: 'i-interest-fee',
+        contractId: 'contract-1',
+        scheduleId: 'schedule-1',
+        sequence: 1,
+        dueDate: DateTime(2026, 10, 26),
+        openingPrincipalValue: '3000',
+        principalComponentValue: '3000',
+        interestComponentValue: '100',
+        feesValue: '25',
+        amountValue: '3125',
+        status: 'scheduled',
+      ),
+    );
+
+    await installmentService.generateForCycle(
+      statementId: 'statement-oct',
+      liabilityAccountId: 'card-1',
+      cycleStartInclusive: DateTime(2026, 10, 1),
+      cycleEndExclusive: DateTime(2026, 11, 1),
+      createdAt: DateTime(2026, 10, 31),
+    );
+
+    final contribution = contributionBox.values.single;
+    expect(contribution.principal, Money.parse('3000'));
+    expect(contribution.interest, Money.parse('100'));
+    expect(contribution.fees, Money.parse('25'));
+    expect(contribution.contribution, Money.parse('3125'));
+
+    final projection = await buildProjection();
+    final lines = projection.project(
+      statementId: 'statement-oct',
+      liabilityAccountId: 'card-1',
+      cycleStartInclusive: DateTime(2026, 10, 1),
+      cycleEndExclusive: DateTime(2026, 11, 1),
+    );
+    expect(lines, hasLength(1));
+    expect(lines.single.amount, Money.parse('3125'));
+  });
+
+  test('payment transactions are not statement installment contributions', () async {
+    await seedCharge();
+    await transactions.put(
+      'payment-1',
+      Transaction(
+        id: 'payment-1',
+        amount: 500,
+        type: TransactionType.transfer,
+        fromAccountId: 'cash',
+        toAccountId: 'card-1',
+        date: DateTime(2026, 10, 15),
+        paymentMethod: 'cash',
+        currencyCode: 'EGP',
+        source: TransactionSource.manual,
+      ),
+    );
+
+    final projection = await buildProjection();
+    final lines = projection.project(
+      statementId: 'statement-oct',
+      liabilityAccountId: 'card-1',
+      cycleStartInclusive: DateTime(2026, 10, 1),
+      cycleEndExclusive: DateTime(2026, 11, 1),
+    );
+
+    expect(lines, isEmpty);
+  });
+
   test('conversion after statement close does not rewrite the historical statement period', () async {
     await seedCharge();
     await conversionOperation.execute(

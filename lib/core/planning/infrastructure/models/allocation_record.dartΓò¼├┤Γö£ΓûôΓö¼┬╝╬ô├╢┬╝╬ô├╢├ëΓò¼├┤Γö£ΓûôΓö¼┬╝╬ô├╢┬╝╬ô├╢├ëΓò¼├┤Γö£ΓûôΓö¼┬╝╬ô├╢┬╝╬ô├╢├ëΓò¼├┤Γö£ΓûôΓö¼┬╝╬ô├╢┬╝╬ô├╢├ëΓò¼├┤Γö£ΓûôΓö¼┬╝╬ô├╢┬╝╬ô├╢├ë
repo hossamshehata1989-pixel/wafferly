@@ -1,0 +1,48 @@
+import 'package:hive/hive.dart';
+
+import '../../value_objects/allocation_status.dart';
+import '../../value_objects/planning_source_type.dart';
+
+part 'allocation_record.g.dart';
+
+@HiveType(typeId: 30)
+class AllocationRecord extends HiveObject {
+  AllocationRecord({
+    required this.id,
+    required this.sourceId,
+    required this.sourceType,
+    required this.accountId,
+    required this.amount,
+    required this.status,
+    required this.version,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  @HiveField(0)
+  String id;
+
+  @HiveField(1)
+  String sourceId;
+
+  @HiveField(2)
+  PlanningSourceType sourceType;
+
+  @HiveField(3)
+  String accountId;
+
+  @HiveField(4)
+  double amount;
+
+  @HiveField(5)
+  AllocationStatus status;
+
+  @HiveField(6)
+  int version;
+
+  @HiveField(7)
+  DateTime createdAt;
+
+  @HiveField(8)
+  DateTime? updatedAt;
+}
