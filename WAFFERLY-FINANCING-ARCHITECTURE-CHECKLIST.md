@@ -71,17 +71,20 @@ Updated: 2026-09-27
 
 ## Still Open After ADR-070 Implementation
 
-- [ ] Verify the full ADR-047 → ADR-070 reference graph after applying all patches
+- [x] Verify the ADR-047 → ADR-070 reference graph and canonical numbering
 - [x] Implement the ADR-070 financing-conversion domain operation
 - [x] Fix missing Hive `FrequencyAdapter` registration in ADR-070 conversion tests
 - [x] Fix credit-card charge test fixture seeding order so ledger category mappings exist after per-test cleanup
-- [ ] Define the exact statement-generation service/repository integration around `StatementInstallmentContribution`
+- [x] Define and implement the exact statement-generation service/repository integration around `StatementInstallmentContribution`
 - [ ] Implement pure interest/amortization calculator
 - [ ] Implement deterministic installment schedule generation
 - [ ] Implement payment allocation integration with financing installments
 - [ ] Implement financing lifecycle transitions
 - [x] Add architecture tests for financing writer boundaries
-- [ ] Add end-to-end tests for statement/installment no-double-counting
+- [x] Add end-to-end tests for statement/installment no-double-counting
+- [x] Correct Statement Projection so installment contributions are projected independently from the originating-charge loop
+- [x] Fix Statement Projection to use the canonical `TransactionType.creditCardCharge` value for originating-charge detection
+- [ ] E2E no-double-counting tests pass locally
 - [ ] Add idempotency/recovery tests across financing + FinancialOperationEngine
 - [ ] Run full `flutter test` and `flutter analyze` after implementation changes
 
@@ -89,11 +92,11 @@ Updated: 2026-09-27
 
 Latest local execution reported by the user:
 - Schema test: passed 4/4.
-- Financing conversion test: blocked during setup by missing `FrequencyAdapter` registration; fixed in this revision.
+- Financing conversion test: passed 4/4.
 - Financing writer-boundary test: passed 1/1.
-- Credit-card charge pipeline: 4 tests passed and 1 failed because the fixture cleared seeded `LedgerAccount` mappings after seeding; the fixture seeding order is fixed in this revision. The production warning was `Missing LedgerAccount mapping for category: dailyTransport`.
+- Credit-card charge pipeline: passed 5/5.
 
-The revised tests still require local execution after applying this full-project revision.
+The ADR reference-graph consistency pass was performed against the canonical financing source set and the implementation ADRs used by this project. No remaining known ADR-048 reference exists in that canonical set.
 
 ## Important Boundary
 

@@ -2,7 +2,7 @@
 
 **Status:** Proposed → Implementation
 **Date:** 2026-09-26
-**Related:** ADR-035 Credit Card Domain, ADR-046 Monthly Due-Date Rollover Policy, ADR-049 Credit Limit Domain Guard
+**Related:** ADR-035 Credit Card Domain, ADR-046 Monthly Due-Date Rollover Policy
 
 ## 1. Context
 
@@ -135,28 +135,33 @@ The limit is card-domain configuration.
 
 It is not itself a financial transaction and does not affect net worth.
 
-## 5. Credit Exposure and Available Credit
+## 5. Available Credit
 
-The canonical definitions of **Credit Limit**, **Current Credit Exposure**, and
-**Available Credit** are owned by **ADR-049 — Credit Limit Domain Guard**.
+Available credit is derived.
 
-This ADR consumes those derived values for charge validation and must not
-redefine their calculation.
+It must not be persisted as an independent financial balance.
 
-The invariant used here is:
+For the initial contract:
 
 ```text
-Current Credit Exposure + Charge Amount <= Credit Limit
+Available Credit
+    =
+Credit Limit
+    -
+Credit Exposure
 ```
 
-Equivalently:
+where Credit Exposure represents the amount currently consuming the card's credit capacity.
 
-```text
-Charge Amount <= Available Credit
+The exact exposure calculation must use the authoritative liability/account state and the card-domain rules.
+
+No independent:
+
+```dart
+availableCredit
 ```
 
-`Available Credit` is derived and is never persisted as an independent
-financial balance.
+balance is persisted.
 
 ## 6. Charge validation
 
@@ -178,8 +183,8 @@ Example:
 
 ```text
 Limit       = 10,000
-Current Exposure = 7,000
-Available Credit = 3,000
+Exposure    = 7,000
+Available   = 3,000
 
 Charge      = 2,500
 Result      = 9,500 exposure
@@ -190,8 +195,8 @@ But:
 
 ```text
 Limit       = 10,000
-Current Exposure = 7,000
-Available Credit = 3,000
+Exposure    = 7,000
+Available   = 3,000
 
 Charge      = 3,001
              → rejected
@@ -205,8 +210,8 @@ Example:
 
 ```text
 Limit       = 10,000
-Current Exposure = 7,000
-Available Credit = 3,000
+Exposure    = 7,000
+Available   = 3,000
 Charge      = 3,000
 
 Result:

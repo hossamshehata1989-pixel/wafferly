@@ -1,8 +1,8 @@
 # ADR-069 — Credit Card Statement ↔ Installment Relationship
 
-**Status:** Proposed → Implementation  
+**Status:** Implemented — Integration Boundary  
 **Date:** 2026-09-27  
-**Related:** ADR-050 (Credit Card Statement Lifecycle & Due-Date Generation), ADR-052 (Installment / Financing Contract Model), ADR-053 (Interest Calculation and Installment Allocation Model), ADR-051 (Credit Card Payment / Settlement Operation)
+**Related:** ADR-050 (Credit Card Statement Lifecycle & Due-Date Generation), ADR-052 (Installment / Financing Contract Model), ADR-053 (Interest Calculation and Installment Allocation Model), ADR-051 (Credit Card Payment / Settlement Operation), ADR-070 (Credit Card Financing Conversion Boundary)
 
 ## 1. Context
 
@@ -223,7 +223,37 @@ Actual Financial Effect
 FinancialOperationEngine
 ```
 
-## 13. Consequence
+## 14. Implementation Boundary
+
+The first implementation gate is now explicit and isolated in the financing domain:
+
+```text
+Statement Domain
+    ↓ statementId + cycle boundaries
+CreditCardStatementInstallmentService
+    ↓ eligible installment selection
+StatementInstallmentContributionRepository
+    ↓ idempotent persistence
+StatementInstallmentContribution
+```
+
+The integration currently guarantees:
+
+- only installments whose due date falls inside `[cycleStartInclusive, cycleEndExclusive)` are eligible;
+- installments are filtered through their financing contract and target liability account;
+- contribution identity is `statementId + installmentId`;
+- repeated generation of the same contribution is idempotent;
+- an existing contribution identity cannot be rebound to different monetary data;
+- principal, scheduled interest, and scheduled fees are copied from the installment rather than recalculated at statement time;
+- no Account, Transaction, Ledger, Balance, or Financial Engine state is mutated.
+
+This is deliberately **not** the complete statement-close implementation. Statement lifecycle/close remains ADR-050, while this service implements the ADR-069 Statement ↔ Installment read-model boundary.
+
+## 15. Remaining Integration Gate
+
+The next implementation gate is the end-to-end statement projection proving that a posted financed charge is not represented twice: the original financial charge must not be added again on top of the eligible installment contribution for the same economic obligation.
+
+## 16. Consequence
 
 The resulting boundary is:
 
@@ -244,3 +274,32 @@ Statements
 This prevents double counting while allowing each installment's principal, interest, and applicable fees to appear in the statement period in which they are contractually eligible.
 
 No second liability ledger is introduced.
+
+## 17. End-to-End No-Double-Counting Gate
+
+The implementation now includes a financing-aware statement projection boundary:
+
+```text
+Posted Credit Card Charge
+        ↓
+ADR-070 Conversion
+        ↓
+Financing Contract + Installments
+        ↓
+ADR-069 Statement Contributions
+        ↓
+CreditCardStatementProjection
+```
+
+The projection enforces the statement-close boundary:
+
+- if financing conversion is effective on/before statement close, the originating full charge is not emitted as a statement line; eligible installment contributions represent the obligation for that statement;
+- if conversion is effective after statement close, the historical originating charge remains eligible for that closed period and is not rewritten;
+- contribution selection is bound to the requested `statementId`, preventing a contribution generated for another statement cycle from leaking into the current projection;
+- repeated contribution generation remains a single persisted relationship and therefore a single statement line.
+
+This projection is a read-model boundary only. It performs no mutation of Account, Transaction, Ledger, Balance, or Financial Engine state.
+
+The focused end-to-end gate is covered by:
+
+`test/financing/credit_card_statement_no_double_counting_e2e_test.dart`

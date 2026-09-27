@@ -8,7 +8,7 @@ ADR-050-CREDIT-CAR…ATE-GENERATION.md
 ADR-050 — Credit Card Statement Lifecycle & Due-Date Generation
 Status: Proposed → Implementation
 Date: 2026-09-27
-Related: ADR-035 (Credit Card Domain), ADR-046 (Monthly / Periodic Due-Date Rollover Policy), ADR-048 (Credit Card Charge Operation), ADR-049 (Credit Limit Domain Guard)
+Related: ADR-035 (Credit Card Domain), ADR-046 (Monthly / Periodic Due-Date Rollover Policy), ADR-047 (Credit Card Charge Operation), ADR-049 (Credit Limit Domain Guard)
 
 1. Context
 Credit Card Charge and Credit Limit validation are now separate domain concerns.

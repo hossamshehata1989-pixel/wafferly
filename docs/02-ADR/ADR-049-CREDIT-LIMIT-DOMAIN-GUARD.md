@@ -2,7 +2,7 @@
 
 **Status:** Accepted  
 **Date:** 2026-09-26  
-**Related:** ADR-035 (Credit Card Domain), ADR-043/045 (Money Boundaries), ADR-047 (Credit Card Charge Operation)  
+**Related:** ADR-032 (Debt Domain Architecture), ADR-035 (Credit Card Domain), ADR-043/045 (Money Boundaries)  
 **Supersedes:** Any implicit assumption that a generic balance/liquidity guard is sufficient for Credit Card purchases
 
 ## 1. Context
@@ -38,30 +38,6 @@ The guard is read-only. It has no mutation capability and must not create,
 update, or delete financial state.
 
 ## 3. Credit Exposure Rule
-
-This ADR is the **canonical definition** of Credit Exposure and Available Credit
-for the Credit Card domain. Other Credit Card and Financing ADRs must reference
-this rule rather than redefine the exposure calculation.
-
-The canonical terminology is:
-
-- **Credit Limit** — the configured maximum credit capacity owned by `CreditCardProfile`.
-- **Current Credit Exposure** — the derived amount currently consuming that capacity.
-- **Available Credit** — the remaining derived capacity after current exposure.
-
-These are distinct concepts:
-
-```text
-Credit Limit
-      -
-Current Credit Exposure
-      =
-Available Credit
-```
-
-`Credit Limit` is configuration. `Current Credit Exposure` and `Available Credit`
-are derived values. Neither is an independent financial balance.
-
 
 For the current MVP, the authoritative liability balance is read through
 `CreditCardBalanceReader`.
