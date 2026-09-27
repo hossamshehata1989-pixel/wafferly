@@ -7,12 +7,12 @@ class TransactionSource {
   static const String accountCreation = 'account_creation';
   static const String balanceAdjustment = 'balance_adjustment';
   static const String balanceReconciliation = 'balance_reconciliation';
+  static const String creditCardCharge = 'credit_card_charge';
   static const String tempDebt = 'temp_debt';
   static const String importedCsv = 'imported_csv';
   static const String bankSync = 'bank_sync';
   static const String autoDetected = 'auto_detected';
   static const String scheduled = 'scheduled';
-  static const String creditCardCharge = 'credit_card_charge';
 
   /// قائمة بكل المصادر (للقوائم والفلترة)
   static const List<String> all = [

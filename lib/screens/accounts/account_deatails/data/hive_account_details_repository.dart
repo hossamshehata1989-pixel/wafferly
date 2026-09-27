@@ -1,8 +1,6 @@
 
 import 'package:hive_flutter/hive_flutter.dart';
 
-import '../../../../core/money/money.dart';
-
 import '../../../../models/account.dart';
 import '../../../../models/transaction.dart';
 import '../../../../services/account_service.dart';
@@ -49,14 +47,14 @@ class HiveAccountDetailsRepository implements AccountDetailsRepository {
   }) async {
     final projection = await projectionService.project(
       accountId: accountId,
-      balance: Money.fromDouble(balance),
+      balance: balance,
     );
 
     return AccountProjection(
-      balance: projection.balance.toDouble(),
-      available: projection.available.toDouble(),
-      reserved: projection.reserved.toDouble(),
-    );
+  balance: projection.balance.toDouble(),
+  available: projection.available.toDouble(),
+  reserved: projection.reserved.toDouble(),
+);
   }
 
   @override

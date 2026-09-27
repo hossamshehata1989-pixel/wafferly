@@ -61,6 +61,8 @@ import 'core/money/money.dart';
 import 'core/planning/bootstrap/planning_engine_bootstrap.dart';
 import 'core/planning/engine/planning_engine.dart';
 import 'core/planning/infrastructure/persistence/hive_allocation_record.dart';
+import 'credit_card/domain/credit_card_profile.dart';
+import 'credit_card/infrastructure/hive_credit_card_profile_repository.dart';
 import 'services/manual_reserve_application_service.dart';
 
 import 'services/balance_service.dart';
@@ -80,6 +82,7 @@ import 'models/financing/financing_contract.dart';
 import 'models/financing/financing_schedule.dart';
 import 'models/financing/financing_installment.dart';
 import 'models/financing/statement_installment_contribution.dart';
+import 'models/financing/financing_conversion_event.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -106,6 +109,7 @@ void main() async {
     await Hive.deleteBoxFromDisk('budgets');
     await Hive.deleteBoxFromDisk('goals');
     await Hive.deleteBoxFromDisk('members');
+    await Hive.deleteBoxFromDisk('credit_card_profiles');
   }
 
   // ====================================================
@@ -250,6 +254,13 @@ void main() async {
   if (!Hive.isAdapterRegistered(113)) {
     Hive.registerAdapter(StatementInstallmentContributionAdapter());
   }
+  if (!Hive.isAdapterRegistered(114)) {
+    Hive.registerAdapter(FinancingConversionEventAdapter());
+  }
+
+  if (!Hive.isAdapterRegistered(100)) {
+    Hive.registerAdapter(CreditCardProfileAdapter());
+  }
 
   // ====================================================
   // Planning Allocation Persistence
@@ -264,11 +275,15 @@ void main() async {
   // ====================================================
 
   await Hive.openBox<Account>('accounts');
+  await Hive.openBox<CreditCardProfile>('credit_card_profiles');
   await Hive.openBox<FinancingContract>('financing_contracts');
   await Hive.openBox<FinancingSchedule>('financing_schedules');
   await Hive.openBox<FinancingInstallment>('financing_installments');
   await Hive.openBox<StatementInstallmentContribution>(
     'statement_installment_contributions',
+  );
+  await Hive.openBox<FinancingConversionEvent>(
+    'financing_conversion_events',
   );
 
   await Hive.openBox<Transaction>('transactions');
@@ -347,6 +362,9 @@ CommitmentActionProvider(
 
   final availableBalanceProjectionService = AvailableBalanceProjectionService(
     allocationRepository: allocationRepository,
+    creditCardProfileRepository: HiveCreditCardProfileRepository(
+      Hive.box<CreditCardProfile>('credit_card_profiles'),
+    ),
   );
 
   // ====================================================

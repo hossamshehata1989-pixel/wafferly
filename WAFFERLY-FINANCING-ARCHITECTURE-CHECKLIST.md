@@ -44,6 +44,21 @@ Updated: 2026-09-27
 - [x] Closed statements remain immutable after later conversion
 - [x] Future interest is not posted as immediate full liability merely because it is scheduled
 
+## Persisted Financing Schema
+
+- [x] Concrete persisted `FinancingContract` model
+- [x] Concrete persisted `FinancingSchedule` model linked to existing `ScheduleRule`
+- [x] Concrete persisted `FinancingInstallment` model
+- [x] Concrete persisted `StatementInstallmentContribution` relationship/read-model
+- [x] Financing monetary persistence uses exact decimal strings and exposes `Money` in the domain model
+- [x] Hive adapter IDs allocated without colliding with existing model IDs (110–114)
+- [x] Financing boxes registered/opened in application bootstrap
+- [x] Schema tests added for principal semantics, installment composition, schedule linkage, and statement contribution identity
+- [x] Durable `FinancingConversionEvent` model added (Hive 114)
+- [x] ADR-070 conversion operation implementation added
+- [x] ADR-070 focused conversion tests added
+- [x] Financing conversion writer-boundary test added
+
 ## Consistency / Numbering
 
 - [x] Credit Card Charge canonical number = ADR-047
@@ -54,23 +69,32 @@ Updated: 2026-09-27
 - [x] ADR-069 created as the explicit Statement ↔ Installment boundary
 - [x] ADR-070 created as the explicit posted-charge → installment conversion boundary
 
-## Still Open Before Implementation
+## Still Open After ADR-070 Implementation
 
 - [ ] Verify the full ADR-047 → ADR-070 reference graph after applying all patches
-- [ ] Define concrete persisted schema/models for Contract, Schedule, Installment, and Statement relationship
-- [ ] Implement the ADR-070 financing-conversion domain operation
-- [ ] Define the exact statement-contribution persistence/read model
+- [x] Implement the ADR-070 financing-conversion domain operation
+- [x] Fix missing Hive `FrequencyAdapter` registration in ADR-070 conversion tests
+- [x] Fix credit-card charge test fixture seeding order so ledger category mappings exist after per-test cleanup
+- [ ] Define the exact statement-generation service/repository integration around `StatementInstallmentContribution`
 - [ ] Implement pure interest/amortization calculator
 - [ ] Implement deterministic installment schedule generation
 - [ ] Implement payment allocation integration with financing installments
 - [ ] Implement financing lifecycle transitions
-- [ ] Add architecture tests for financing writer boundaries
+- [x] Add architecture tests for financing writer boundaries
 - [ ] Add end-to-end tests for statement/installment no-double-counting
 - [ ] Add idempotency/recovery tests across financing + FinancialOperationEngine
 - [ ] Run full `flutter test` and `flutter analyze` after implementation changes
 
+## Verification Note
+
+Latest local execution reported by the user:
+- Schema test: passed 4/4.
+- Financing conversion test: blocked during setup by missing `FrequencyAdapter` registration; fixed in this revision.
+- Financing writer-boundary test: passed 1/1.
+- Credit-card charge pipeline: 4 tests passed and 1 failed because the fixture cleared seeded `LedgerAccount` mappings after seeding; the fixture seeding order is fixed in this revision. The production warning was `Missing LedgerAccount mapping for category: dailyTransport`.
+
+The revised tests still require local execution after applying this full-project revision.
+
 ## Important Boundary
 
-The ADR layer is now substantially specified. The posted-charge conversion boundary is explicitly defined in ADR-070.
-
-Remaining work should move toward concrete domain models, pure calculators, operations, persistence boundaries, and tests rather than creating ADRs for already-settled domain fundamentals.
+The concrete persisted schema and ADR-070 conversion operation are now implemented without creating a second financial ledger. The next gate is local test execution, followed by statement/installment integration.

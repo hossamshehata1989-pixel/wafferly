@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 
 import 'package:wafferly/bootstrap/financial_engine_bootstrap.dart';
+import 'package:wafferly/core/planning/services/available_balance_projection_service.dart';
 import 'package:wafferly/bootstrap/financial_engine_context.dart';
 import 'package:wafferly/core/money/money.dart';
 import 'package:wafferly/core/planning/infrastructure/repositories/memory_allocation_repository.dart';
@@ -61,8 +62,8 @@ void main() {
       Hive.registerAdapter(LedgerAccountTypeAdapter());
     }
     if (!Hive.isAdapterRegistered(31)) {
-  Hive.registerAdapter(LedgerAccountAdapter());
-}
+      Hive.registerAdapter(LedgerAccountAdapter());
+    }
     if (!Hive.isAdapterRegistered(100)) {
       Hive.registerAdapter(CreditCardProfileAdapter());
     }
@@ -72,7 +73,6 @@ void main() {
     ledgerBox = await Hive.openBox<LedgerEntry>('ledger_entries');
     ledgerAccountsBox = await Hive.openBox<LedgerAccount>('ledger_accounts');
     profileBox = await Hive.openBox<CreditCardProfile>('credit_card_profiles');
-    await LedgerAccountSeeder().seedIfNeeded();
   });
 
   tearDownAll(() async {
@@ -86,7 +86,9 @@ void main() {
     await transactionBox.clear();
     await accountsBox.clear();
     await ledgerBox.clear();
+    await ledgerAccountsBox.clear();
     await profileBox.clear();
+    await LedgerAccountSeeder().seedIfNeeded();
   });
 
   Future<void> seedCard({
@@ -136,7 +138,12 @@ void main() {
 
   Future<FinancialEngineContext> buildContext() async {
     final allocationRepository = MemoryAllocationRepository();
-    final balanceService = BalanceService();
+    final projectionService = AvailableBalanceProjectionService(
+      allocationRepository: allocationRepository,
+    );
+    final balanceService = BalanceService(
+      availableBalanceProjectionService: projectionService,
+    );
 
     return FinancialEngineBootstrap.create(
       balanceService: balanceService,

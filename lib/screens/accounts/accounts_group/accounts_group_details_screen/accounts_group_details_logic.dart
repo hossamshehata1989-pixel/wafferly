@@ -554,21 +554,16 @@ class GroupFinancialData {
       // Reserved cannot exceed current balance.
       // ----------------------------------------------------------------------
 
-      final reservedMoney = item.reserved <= Money.zero
-          ? Money.zero
-          : item.reserved >= item.balance
-              ? item.balance
-              : item.reserved;
-      final reserved = reservedMoney.toDouble();
-
+      final reserved = item.reserved
+    .toDouble()
+    .clamp(0.0, item.balance)
+    .toDouble();
       // ----------------------------------------------------------------------
       // Available cannot become negative.
       // ----------------------------------------------------------------------
 
-      final availableMoney = item.balance - reservedMoney;
-      final available = (availableMoney < Money.zero
-              ? Money.zero
-              : availableMoney)
+      final available = (item.balance - reserved)
+          .clamp(0.0, double.infinity)
           .toDouble();
 
       // ----------------------------------------------------------------------
@@ -576,7 +571,7 @@ class GroupFinancialData {
       // ----------------------------------------------------------------------
 
       totalsByCurrency[accountCurrency] =
-          (totalsByCurrency[accountCurrency] ?? 0) + item.balance.toDouble();
+          (totalsByCurrency[accountCurrency] ?? 0) + item.balance;
 
       reservedByCurrency[accountCurrency] =
           (reservedByCurrency[accountCurrency] ?? 0) + reserved;
