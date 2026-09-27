@@ -222,6 +222,43 @@ class LedgerProjectionService {
     );
   }
 
+  List<LedgerEntry> _buildCreditCardChargeEntries(
+    Transaction transaction,
+  ) {
+    if (transaction.toAccountId == null) {
+      throw Exception(
+        'Credit Card charge transaction missing liability account',
+      );
+    }
+
+    if (transaction.categoryId == null) {
+      throw Exception(
+        'Credit Card charge transaction missing categoryId',
+      );
+    }
+
+    final expenseLedgerId =
+        _categoryMapper.getLedgerAccountIdForCategory(
+      transaction.categoryId!,
+    );
+
+    if (expenseLedgerId == null) {
+      print(
+        '⚠️ Missing LedgerAccount mapping for category: '
+        '${transaction.categoryId}',
+      );
+      return [];
+    }
+
+    return _builder.buildCreditCardChargeEntries(
+      transactionId: transaction.id,
+      expenseLedgerAccountId: expenseLedgerId,
+      liabilityAccountId: transaction.toAccountId!,
+      amount: Money.fromDouble(transaction.amount),
+      date: transaction.date,
+    );
+  }
+
   List<LedgerEntry> _buildIncomeEntries(
     Transaction transaction,
   ) {
@@ -272,6 +309,9 @@ class LedgerProjectionService {
       case TransactionType.transfer:
         return _buildTransferEntries(transaction);
 
+      case TransactionType.creditCardCharge:
+        return _buildCreditCardChargeEntries(transaction);
+
       default:
         return [];
     }
@@ -304,6 +344,12 @@ class LedgerProjectionService {
         projectionId: projectionId,
       );
 
+      case TransactionType.creditCardCharge:
+        return _buildCreditCardChargeEntriesFromRecord(
+        record,
+        projectionId: projectionId,
+      );
+
       case TransactionType.balanceReconciliation:
         return _buildBalanceReconciliationEntriesFromRecord(
         record,
@@ -318,6 +364,42 @@ class LedgerProjectionService {
         // Do not invent Ledger rules here.
         return [];
     }
+  }
+
+  List<LedgerEntry> _buildCreditCardChargeEntriesFromRecord(
+    FinancialTransactionRecord record, {
+    String? projectionId,
+  }) {
+    if (record.toAccountId == null) {
+      throw Exception(
+        'Credit Card charge transaction missing liability account',
+      );
+    }
+
+    if (record.categoryId == null) {
+      throw Exception(
+        'Credit Card charge transaction missing categoryId',
+      );
+    }
+
+    final expenseLedgerId =
+        _categoryMapper.getLedgerAccountIdForCategory(record.categoryId!);
+
+    if (expenseLedgerId == null) {
+      print(
+        '⚠️ Missing LedgerAccount mapping for category: '
+        '${record.categoryId}',
+      );
+      return [];
+    }
+
+    return _builder.buildCreditCardChargeEntries(
+      transactionId: projectionId ?? record.transactionId,
+      expenseLedgerAccountId: expenseLedgerId,
+      liabilityAccountId: record.toAccountId!,
+      amount: record.amount,
+      date: record.occurredAt,
+    );
   }
 
   List<LedgerEntry> _buildBalanceReconciliationEntriesFromRecord(
@@ -447,7 +529,8 @@ class LedgerProjectionService {
       final mapped = _categoryMapper.getLedgerAccountIdForCategory(
         before.categoryId!,
       );
-      if (before.type == TransactionType.expense) {
+      if (before.type == TransactionType.expense ||
+          before.type == TransactionType.creditCardCharge) {
         expenseLedgerId = mapped;
       } else if (before.type == TransactionType.income) {
         incomeLedgerId = mapped;
@@ -479,7 +562,8 @@ class LedgerProjectionService {
       final mapped = _categoryMapper.getLedgerAccountIdForCategory(
         before.categoryId!,
       );
-      if (before.type == TransactionType.expense) {
+      if (before.type == TransactionType.expense ||
+          before.type == TransactionType.creditCardCharge) {
         expenseLedgerId = mapped;
       } else if (before.type == TransactionType.income) {
         incomeLedgerId = mapped;

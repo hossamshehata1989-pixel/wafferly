@@ -1,8 +1,9 @@
 import '../../core/money/money.dart';
 import '../../financial_engine/ports/balance_port.dart';
 import '../../services/balance_service.dart';
+import '../../financial_engine/ports/credit_card_balance_reader.dart';
 
-final class HiveBalancePort implements BalancePort {
+final class HiveBalancePort implements BalancePort, CreditCardBalanceReader {
   final BalanceService _balanceService;
 
   const HiveBalancePort({required BalanceService balanceService})

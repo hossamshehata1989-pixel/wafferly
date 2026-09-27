@@ -70,6 +70,17 @@ class BalanceService {
         continue;
       }
 
+      if (tx.type == TransactionType.creditCardCharge) {
+        if (tx.toAccountId == accountId) {
+          // Liability balances are signed negative in Wafferly's financial
+          // truth model. A card charge therefore increases exposure by
+          // decreasing the liability balance.
+          balance -= tx.amount;
+        }
+
+        continue;
+      }
+
       if (tx.type == TransactionType.balanceReconciliation) {
         final isLiability = _isLiability(accountId);
 
@@ -139,6 +150,17 @@ class BalanceService {
       if (tx.type == TransactionType.income) {
         if (tx.toAccountId == accountId) {
           balance += tx.amount;
+        }
+
+        continue;
+      }
+
+      if (tx.type == TransactionType.creditCardCharge) {
+        if (tx.toAccountId == accountId) {
+          // Liability balances are signed negative in Wafferly's financial
+          // truth model. A card charge therefore increases exposure by
+          // decreasing the liability balance.
+          balance -= tx.amount;
         }
 
         continue;

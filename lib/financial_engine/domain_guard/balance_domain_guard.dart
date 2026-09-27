@@ -35,6 +35,11 @@ final class BalanceDomainGuard implements DomainGuard {
       return const DomainGuardPassed();
     }
 
+    if (intent.action == FinancialActionType.creditCardCharge) {
+      // Credit Card purchases consume issuer credit, not cash liquidity.
+      return const DomainGuardPassed();
+    }
+
     if (intent.action == FinancialActionType.deletion ||
         (intent.action == FinancialActionType.correction &&
             intent.categoryId == 'balance_reconciliation') ||

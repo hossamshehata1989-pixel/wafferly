@@ -1,5 +1,6 @@
 import '../../core/money/money.dart';
 import '../operations/expense_operation.dart';
+import '../operations/credit_card_charge_operation.dart';
 import '../operations/commitment_payment_operation.dart';
 import '../operations/financial_operation.dart';
 import '../operations/income_operation.dart';
@@ -23,6 +24,17 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
   @override
   NormalizedIntent interpret(FinancialOperation operation) {
     switch (operation) {
+      case CreditCardChargeOperation operation:
+        return NormalizedIntent(
+          action: FinancialActionType.creditCardCharge,
+          sourceAccountId: operation.intent.creditCardAccountId,
+          amount: operation.intent.amount,
+          categoryId: operation.intent.categoryId,
+          actorMemberId: operation.intent.actorMemberId,
+          isExceptional: operation.intent.isExceptional,
+          resolution: operation.resolution ?? Resolution.execute,
+        );
+
       case ExpenseOperation():
         return NormalizedIntent(
           action: FinancialActionType.expense,

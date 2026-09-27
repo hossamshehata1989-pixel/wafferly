@@ -1,5 +1,6 @@
 enum FinancialActionType {
   expense,
+  creditCardCharge,
   income,
   transfer,
   commitmentPayment,

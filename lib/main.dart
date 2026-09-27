@@ -76,6 +76,11 @@ import 'services/scheduled_execution_journal.dart';
 
 
 
+import 'models/financing/financing_contract.dart';
+import 'models/financing/financing_schedule.dart';
+import 'models/financing/financing_installment.dart';
+import 'models/financing/statement_installment_contribution.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -228,6 +233,24 @@ void main() async {
     Hive.registerAdapter(CommitmentAdapter());
   }
 
+
+  // ====================================================
+  // Financing Contract Foundation
+  // ====================================================
+
+  if (!Hive.isAdapterRegistered(110)) {
+    Hive.registerAdapter(FinancingContractAdapter());
+  }
+  if (!Hive.isAdapterRegistered(111)) {
+    Hive.registerAdapter(FinancingScheduleAdapter());
+  }
+  if (!Hive.isAdapterRegistered(112)) {
+    Hive.registerAdapter(FinancingInstallmentAdapter());
+  }
+  if (!Hive.isAdapterRegistered(113)) {
+    Hive.registerAdapter(StatementInstallmentContributionAdapter());
+  }
+
   // ====================================================
   // Planning Allocation Persistence
   // ====================================================
@@ -241,6 +264,13 @@ void main() async {
   // ====================================================
 
   await Hive.openBox<Account>('accounts');
+  await Hive.openBox<FinancingContract>('financing_contracts');
+  await Hive.openBox<FinancingSchedule>('financing_schedules');
+  await Hive.openBox<FinancingInstallment>('financing_installments');
+  await Hive.openBox<StatementInstallmentContribution>(
+    'statement_installment_contributions',
+  );
+
   await Hive.openBox<Transaction>('transactions');
   await Hive.openBox<Map>('financial_corrections');
   await Hive.openBox<Map>('financial_invalidations');

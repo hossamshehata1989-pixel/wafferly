@@ -12,6 +12,7 @@ class TransactionSource {
   static const String bankSync = 'bank_sync';
   static const String autoDetected = 'auto_detected';
   static const String scheduled = 'scheduled';
+  static const String creditCardCharge = 'credit_card_charge';
 
   /// قائمة بكل المصادر (للقوائم والفلترة)
   static const List<String> all = [
@@ -20,6 +21,7 @@ class TransactionSource {
     accountCreation,
     balanceAdjustment,
     balanceReconciliation,
+    creditCardCharge,
     tempDebt,
     importedCsv,
     bankSync,
@@ -42,6 +44,7 @@ class TransactionType {
   static const String initialBalance = 'initial_balance';
   static const String balanceAdjustment = 'balance_adjustment';
   static const String balanceReconciliation = 'balance_reconciliation';
+  static const String creditCardCharge = 'credit_card_charge';
 
   static const List<String> all = [
     income,
@@ -51,5 +54,6 @@ class TransactionType {
     initialBalance,
     balanceAdjustment,
     balanceReconciliation,
+    creditCardCharge,
   ];
 }

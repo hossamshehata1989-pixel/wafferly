@@ -34,6 +34,9 @@ import '../financial_engine/planning/chart_of_accounts.dart';
 import '../financial_engine/planning/default_financial_planner.dart';
 import '../financial_engine/ports/traceability_port.dart';
 import '../financial_engine/domain_guard/balance_domain_guard.dart';
+import '../financial_engine/domain_guard/credit_card_charge_domain_guard.dart';
+import '../credit_card/domain/credit_card_profile.dart';
+import '../credit_card/domain/credit_card_profile_repository.dart';
 import '../financial_engine/domain_guard/goal_saving_transfer_domain_guard.dart';
 import '../services/account_service.dart';
 import '../financial_engine/domain_guard/domain_guard_pipeline.dart';
@@ -89,6 +92,7 @@ final class FinancialEngineBootstrap {
     Box<Map>? idempotencyBox,
     Box<Map>? traceabilityBox,
     AllocationRepository? allocationRepository,
+    CreditCardProfileRepository? creditCardProfileRepository,
   }) {
     final sharedAllocationRepository =
         allocationRepository ?? _FallbackAllocationRepository();
@@ -163,7 +167,14 @@ final class FinancialEngineBootstrap {
         );
 
     final balancePort = HiveBalancePort(balanceService: balanceService);
+    final resolvedCreditCardProfileRepository =
+        creditCardProfileRepository ?? _EmptyCreditCardProfileRepository();
     final balanceGuard = BalanceDomainGuard(balancePort: balancePort);
+    final creditCardChargeGuard = CreditCardChargeDomainGuard(
+      accountService: AccountService(),
+      profileRepository: resolvedCreditCardProfileRepository,
+      balanceReader: balancePort,
+    );
     final goalSavingTransferGuard = GoalSavingTransferDomainGuard(
       accountService: AccountService(),
     );
@@ -198,7 +209,7 @@ final class FinancialEngineBootstrap {
     final engine = FinancialOperationEngine(
       interpreter: const DefaultFinancialInterpreter(),
       domainGuardPipeline: DomainGuardPipeline(
-        guards: [goalSavingTransferGuard, balanceGuard],
+        guards: [creditCardChargeGuard, goalSavingTransferGuard, balanceGuard],
       ),
       planner: planner,
       integrityChecker: const DefaultFinancialIntegrityChecker(),
@@ -215,6 +226,12 @@ final class FinancialEngineBootstrap {
       traceabilityPort: traceabilityPort,
     );
   }
+}
+
+final class _EmptyCreditCardProfileRepository
+    implements CreditCardProfileRepository {
+  @override
+  Future<CreditCardProfile?> findByAccountId(String accountId) async => null;
 }
 
 /// Local fallback used only when FinancialEngineBootstrap is created without

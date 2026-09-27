@@ -35,6 +35,9 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       case FinancialActionType.expense:
         return _planExpense(context);
 
+      case FinancialActionType.creditCardCharge:
+        return _planCreditCardCharge(context);
+
       case FinancialActionType.income:
         return _planIncome(context);
 
@@ -70,6 +73,55 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
           'Planner not implemented for ${intent.action}',
         );
     }
+  }
+
+  FinancialExecutionPlan _planCreditCardCharge(PlanningContext context) {
+    final intent = context.intent;
+
+    if (intent.amount <= Money.zero) {
+      throw ArgumentError('Credit Card charge amount must be greater than zero.');
+    }
+
+    final categoryId =
+        intent.categoryId ?? (throw StateError('Category is required'));
+
+    final expenseAccountId =
+        _chartOfAccounts.accountForCategory(categoryId) ??
+        (throw StateError('No account mapping found for category $categoryId'));
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: TransactionType.creditCardCharge,
+      fromAccountId: null,
+      toAccountId: intent.sourceAccountId,
+      categoryId: categoryId,
+      subCategoryId: null,
+      amount: intent.amount,
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: intent.isExceptional,
+      source: TransactionSource.creditCardCharge,
+      actorMemberId: intent.actorMemberId,
+    );
+
+    return FinancialExecutionPlan(
+      planId: 'plan-${DateTime.now().microsecondsSinceEpoch}',
+      operationId: 'operation',
+      idempotencyKey: context.executionContext.idempotencyKey,
+      mutations: [
+        JournalEntryMutation(
+          journalEntryId: 'journal-${DateTime.now().microsecondsSinceEpoch}',
+          description: 'Credit Card Charge',
+          lines: [
+            EntryLine(accountId: expenseAccountId, debit: intent.amount),
+            EntryLine(accountId: intent.sourceAccountId, credit: intent.amount),
+          ],
+        ),
+        CreateTransactionMutation(record: transactionRecord),
+      ],
+    );
   }
 
   FinancialExecutionPlan _planExpense(PlanningContext context) {

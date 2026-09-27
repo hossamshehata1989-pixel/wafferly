@@ -88,6 +88,37 @@ class TransactionLedgerBuilder {
     ];
   }
 
+  /// Builds the double-entry projection for a Credit Card purchase.
+  ///
+  /// The purchase is an expense funded by the Credit Card liability:
+  /// expense is debited and the liability is credited.
+  List<LedgerEntry> buildCreditCardChargeEntries({
+    required String transactionId,
+    required String expenseLedgerAccountId,
+    required String liabilityAccountId,
+    required Money amount,
+    required DateTime date,
+  }) {
+    return [
+      _createEntry(
+        transactionId: transactionId,
+        accountId: expenseLedgerAccountId,
+        entryType: EntryType.debit,
+        amount: amount,
+        date: date,
+        purpose: LedgerPurpose.debt,
+      ),
+      _createEntry(
+        transactionId: transactionId,
+        accountId: liabilityAccountId,
+        entryType: EntryType.credit,
+        amount: amount,
+        date: date,
+        purpose: LedgerPurpose.debt,
+      ),
+    ];
+  }
+
   /// Builds the double-entry projection for Balance Reconciliation.
   /// For this dedicated transaction type, `fromAccountId` is the credit side
   /// and `toAccountId` is the debit side.
@@ -237,6 +268,20 @@ class TransactionLedgerBuilder {
           transactionId: originalTransactionId,
           debitAccountId: toAccountId,
           creditAccountId: fromAccountId,
+          amount: amount,
+          date: date,
+        );
+        break;
+      case 'credit_card_charge':
+        if (toAccountId == null || expenseLedgerAccountId == null) {
+          throw StateError(
+            'Credit Card charge correction reversal is missing accounts',
+          );
+        }
+        original = buildCreditCardChargeEntries(
+          transactionId: originalTransactionId,
+          expenseLedgerAccountId: expenseLedgerAccountId,
+          liabilityAccountId: toAccountId,
           amount: amount,
           date: date,
         );
