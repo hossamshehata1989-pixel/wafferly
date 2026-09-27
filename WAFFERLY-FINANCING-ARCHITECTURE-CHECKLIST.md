@@ -82,7 +82,8 @@ Updated: 2026-09-27
 - [x] Implement deterministic installment schedule generation
 - [x] Verify deterministic installment schedule tests locally
 - [x] Implement pure financing payment allocation calculator for ADR-054/055/062
-- [ ] Implement financing lifecycle transitions
+- [x] Implement pure financing lifecycle transitions (ADR-060/061)
+- [ ] Verify financing lifecycle transition tests locally
 - [x] Add architecture tests for financing writer boundaries
 - [x] Add end-to-end tests for statement/installment no-double-counting
 - [x] Correct Statement Projection so installment contributions are projected independently from the originating-charge loop

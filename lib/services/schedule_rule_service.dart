@@ -60,18 +60,36 @@ class ScheduleRuleService {
         return rule.nextDueDate.add(const Duration(days: 7));
 
       case Frequency.monthly:
-        return DateTime(
-          rule.nextDueDate.year,
-          rule.nextDueDate.month + 1,
-          rule.nextDueDate.day,
-        );
+        return _nextMonthlyDate(rule);
 
       case Frequency.yearly:
-        return DateTime(
-          rule.nextDueDate.year + 1,
-          rule.nextDueDate.month,
-          rule.nextDueDate.day,
-        );
+        return _nextYearlyDate(rule);
     }
+  }
+
+  DateTime _nextMonthlyDate(ScheduleRule rule) {
+    final anchorDay = rule.startDate.day;
+    final current = rule.nextDueDate;
+    final targetYear = current.year + (current.month == 12 ? 1 : 0);
+    final targetMonth = current.month == 12 ? 1 : current.month + 1;
+    final lastDay = DateTime(targetYear, targetMonth + 1, 0).day;
+
+    // ADR-046: an end-of-month anchor stays end-of-month.
+    final anchorIsEndOfMonth =
+        rule.startDate.day ==
+        DateTime(rule.startDate.year, rule.startDate.month + 1, 0).day;
+    final day = anchorIsEndOfMonth ? lastDay : (anchorDay <= lastDay ? anchorDay : lastDay);
+
+    return DateTime(targetYear, targetMonth, day);
+  }
+
+  DateTime _nextYearlyDate(ScheduleRule rule) {
+    final targetYear = rule.nextDueDate.year + 1;
+    final targetMonth = rule.startDate.month;
+    final anchorDay = rule.startDate.day;
+    final lastDay = DateTime(targetYear, targetMonth + 1, 0).day;
+    final day = anchorDay <= lastDay ? anchorDay : lastDay;
+
+    return DateTime(targetYear, targetMonth, day);
   }
 }
