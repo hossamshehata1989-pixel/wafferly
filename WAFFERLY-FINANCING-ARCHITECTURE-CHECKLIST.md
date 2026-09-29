@@ -58,3 +58,12 @@ These are documented policy/architecture decisions, but are **not claimed as imp
 ## Source-of-Truth Rule
 
 Passing the full test suite does not imply that deferred ADRs are implemented. The current release claims only the implemented V1 foundation above. Any future financing feature that produces an actual financial effect on Account, Transaction, Ledger, Balance, or Financial Engine idempotency must cross the existing Financial Operation Engine boundary.
+
+## Accounts / Liabilities UX V2
+- [x] Money You Owe shows dedicated category cards even when empty
+- [x] Credit Cards / Loans / Installments-BNPL / Borrowed Money are separate categories
+- [x] Liability category detail screens are separate from Money You Have account details
+- [x] Credit Card has a dedicated account detail screen
+- [x] Generic Money You Have account detail remains unchanged
+- [ ] Flutter test execution after UX change
+- [ ] Architecture gate after UX change

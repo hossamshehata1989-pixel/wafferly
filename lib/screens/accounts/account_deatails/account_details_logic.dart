@@ -21,6 +21,9 @@ class AccountDetailsLogic {
     }
 
     final balance = repository.getBalance(accountId);
+    final creditCardProfile = account.type == 'creditCard'
+        ? await repository.getCreditCardProfile(accountId)
+        : null;
     final projection = await repository.getProjection(
       accountId: accountId,
       balance: balance,
@@ -86,6 +89,7 @@ class AccountDetailsLogic {
       activity: activity,
       recurring: await repository.getRecurring(accountId),
       health: health,
+      creditCardProfile: creditCardProfile,
     );
   }
 

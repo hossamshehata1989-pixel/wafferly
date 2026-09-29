@@ -536,9 +536,21 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final availableRatio = data.balance == 0
+    final creditProfile = data.creditCardProfile;
+    final isCreditCard = creditProfile != null;
+    final creditLimit = creditProfile?.creditLimit.toDouble() ?? 0.0;
+    final usedCredit = isCreditCard ? math.max(0.0, -data.balance) : 0.0;
+    final availableCredit = isCreditCard
+        ? math.max(0.0, creditLimit - usedCredit)
+        : 0.0;
+    final creditUsedRatio = creditLimit <= 0
         ? 0.0
-        : (data.available / data.balance).clamp(0.0, 1.0).toDouble();
+        : (usedCredit / creditLimit).clamp(0.0, 1.0).toDouble();
+    final availableRatio = isCreditCard
+        ? (availableCredit / math.max(creditLimit, 1.0)).clamp(0.0, 1.0).toDouble()
+        : data.balance == 0
+            ? 0.0
+            : (data.available / data.balance).clamp(0.0, 1.0).toDouble();
     final reservedRatio = data.balance == 0
         ? 0.0
         : (data.reserved / data.balance).clamp(0.0, 1.0).toDouble();
@@ -608,91 +620,107 @@ class _HeroCard extends StatelessWidget {
 
           SizedBox(height: m.spacing(m.isMobile ? 2 : 5)),
 
-          // STEP: Total balance + compact expected amount card.
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total Balance',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: .58),
-                        fontSize: m.text(m.typography.body),
+          if (isCreditCard) ...[
+            _CreditCardMetrics(
+              m: m,
+              data: data,
+              creditLimit: creditLimit,
+              usedCredit: usedCredit,
+              availableCredit: availableCredit,
+              usedRatio: creditUsedRatio,
+            ),
+          ] else ...[
+            // STEP: Total balance + compact expected amount card.
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Balance',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: .58),
+                          fontSize: m.text(m.typography.body),
+                        ),
                       ),
-                    ),
-                    SizedBox(height: m.h(3)),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            _money(data.balance),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: m.text(m.isDesktop ? 34 : 28),
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.7,
+                      SizedBox(height: m.h(3)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _money(data.balance),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: m.text(m.isDesktop ? 34 : 28),
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.7,
+                              ),
                             ),
                           ),
-                        ),
-                        SizedBox(width: m.spacing(6)),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Text(
-                            data.account.currency,
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: m.text(m.typography.body),
-                              fontWeight: FontWeight.w600,
+                          SizedBox(width: m.spacing(6)),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              data.account.currency,
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: m.text(m.typography.body),
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              SizedBox(width: m.spacing(10)),
-              _MiniExpectedCard(m: m, data: data),
-            ],
-          ),
+                SizedBox(width: m.spacing(10)),
+                _MiniExpectedCard(m: m, data: data),
+              ],
+            ),
 
-          SizedBox(height: m.spacing(12)),
+            SizedBox(height: m.spacing(12)),
 
-          // STEP: Available + Reserved directly under total balance.
-          Row(
-            children: [
-              Expanded(
-                child: _BalanceMetricCard(
-                  m: m,
-                  title: 'Available',
-                  subtitle: 'Available to spend',
-                  amount: data.available,
-                  currency: data.account.currency,
-                  color: const Color(0xFF39D98A),
-                  icon: Icons.account_balance_wallet_outlined,
+            // STEP: Available + Reserved directly under total balance.
+            Row(
+              children: [
+                Expanded(
+                  child: _BalanceMetricCard(
+                    m: m,
+                    title: 'Available',
+                    subtitle: 'Available to spend',
+                    amount: data.available,
+                    currency: data.account.currency,
+                    color: const Color(0xFF39D98A),
+                    icon: Icons.account_balance_wallet_outlined,
+                  ),
                 ),
-              ),
-              SizedBox(width: m.spacing(8)),
-              Expanded(
-                child: _BalanceMetricCard(
-                  m: m,
-                  title: 'Reserved',
-                  subtitle: 'Tap to view',
-                  amount: data.reserved,
-                  currency: data.account.currency,
-                  color: const Color(0xFFFFAA2C),
-                  icon: Icons.lock_outline_rounded,
-                  onTap: () => _openReservedMoney(context, data),
+                SizedBox(width: m.spacing(8)),
+                Expanded(
+                  child: _BalanceMetricCard(
+                    m: m,
+                    title: 'Reserved',
+                    subtitle: 'Tap to view',
+                    amount: data.reserved,
+                    currency: data.account.currency,
+                    color: const Color(0xFFFFAA2C),
+                    icon: Icons.lock_outline_rounded,
+                    onTap: () => _openReservedMoney(context, data),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
+
+          if (isCreditCard) ...[
+            SizedBox(height: m.spacing(10)),
+            _CreditCardInfoStrip(m: m, data: data),
+          ],
 
           SizedBox(height: m.spacing(10)),
 
@@ -802,6 +830,212 @@ class _HeroCard extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class _CreditCardMetrics extends StatelessWidget {
+  const _CreditCardMetrics({
+    required this.m,
+    required this.data,
+    required this.creditLimit,
+    required this.usedCredit,
+    required this.availableCredit,
+    required this.usedRatio,
+  });
+
+  final _AccountPageMetrics m;
+  final AccountDetailsData data;
+  final double creditLimit;
+  final double usedCredit;
+  final double availableCredit;
+  final double usedRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Outstanding',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: .58),
+            fontSize: m.text(m.typography.body),
+          ),
+        ),
+        SizedBox(height: m.h(3)),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Flexible(
+              child: Text(
+                _money(usedCredit),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: m.text(m.isDesktop ? 34 : 28),
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.7,
+                ),
+              ),
+            ),
+            SizedBox(width: m.spacing(6)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                data.account.currency,
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: m.text(m.typography.body),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: m.spacing(10)),
+        Row(
+          children: [
+            Expanded(
+              child: _BalanceMetricCard(
+                m: m,
+                title: 'Credit Limit',
+                subtitle: 'Maximum exposure',
+                amount: creditLimit,
+                currency: data.account.currency,
+                color: const Color(0xFF6B8CFF),
+                icon: Icons.credit_score_rounded,
+              ),
+            ),
+            SizedBox(width: m.spacing(8)),
+            Expanded(
+              child: _BalanceMetricCard(
+                m: m,
+                title: 'Available',
+                subtitle: '${(usedRatio * 100).round()}% used',
+                amount: availableCredit,
+                currency: data.account.currency,
+                color: const Color(0xFF39D98A),
+                icon: Icons.account_balance_wallet_outlined,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: m.spacing(9)),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(m.size(6)),
+          child: LinearProgressIndicator(
+            minHeight: m.h(7),
+            value: usedRatio,
+            backgroundColor: Colors.white.withValues(alpha: .08),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              usedRatio >= .9
+                  ? const Color(0xFFFF5B67)
+                  : usedRatio >= .7
+                      ? const Color(0xFFFFAA2C)
+                      : const Color(0xFF39D98A),
+            ),
+          ),
+        ),
+        SizedBox(height: m.spacing(5)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '${(usedRatio * 100).round()}% used',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: .58),
+                fontSize: m.text(10),
+              ),
+            ),
+            Text(
+              '${_money(availableCredit)} ${data.account.currency} available',
+              style: TextStyle(
+                color: const Color(0xFF39D98A),
+                fontSize: m.text(10),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CreditCardInfoStrip extends StatelessWidget {
+  const _CreditCardInfoStrip({required this.m, required this.data});
+
+  final _AccountPageMetrics m;
+  final AccountDetailsData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = data.creditCardProfile!;
+    final items = <MapEntry<String, String>>[
+      if (profile.statementDay != null)
+        MapEntry('Statement Day', '${profile.statementDay}'),
+      if (profile.paymentDueDay != null)
+        MapEntry('Payment Due Day', '${profile.paymentDueDay}'),
+      if (profile.cardKind.isNotEmpty)
+        MapEntry('Card Type', _prettyCardKind(profile.cardKind)),
+      if (profile.cardNetwork != null && profile.cardNetwork!.isNotEmpty)
+        MapEntry('Network', profile.cardNetwork!),
+    ];
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: m.spacing(8),
+      runSpacing: m.spacing(8),
+      children: items
+          .map(
+            (item) => Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: m.spacing(10),
+                vertical: m.spacing(8),
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFF071E29),
+                borderRadius: BorderRadius.circular(m.size(10)),
+                border: Border.all(color: Colors.white.withValues(alpha: .07)),
+              ),
+              child: RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '${item.key}\n',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .5),
+                        fontSize: m.text(9),
+                      ),
+                    ),
+                    TextSpan(
+                      text: item.value,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: m.text(11),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+}
+
+String _prettyCardKind(String value) {
+  switch (value) {
+    case 'virtual':
+      return 'Virtual';
+    case 'physical':
+      return 'Physical';
+    default:
+      return value;
   }
 }
 

@@ -1,6 +1,7 @@
 
 import '../../../../models/account.dart';
 import '../../../../models/transaction.dart';
+import '../../../../credit_card/domain/credit_card_profile.dart';
 import '../account_details_models.dart';
 
 abstract interface class AccountDetailsRepository {
@@ -9,6 +10,8 @@ abstract interface class AccountDetailsRepository {
   double getBalance(String accountId);
 
   double getBalanceAtDate(String accountId, DateTime date);
+
+  Future<CreditCardProfile?> getCreditCardProfile(String accountId);
 
   Future<AccountProjection> getProjection({
     required String accountId,

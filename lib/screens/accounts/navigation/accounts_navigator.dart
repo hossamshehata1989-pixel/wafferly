@@ -5,9 +5,14 @@ import 'package:flutter/material.dart';
 import '../../../models/account.dart';
 import '../../../models/enums/section_type.dart';
 import '../add_account/add_account_screen.dart';
+import '../add_credit_card/add_credit_card_screen.dart';
 import '../group_accounts_screen.dart';
 import '../accounts_group/accounts_group_details_screen/accounts_group_details_screen.dart';
 import '../account_deatails/account_details_screen.dart';
+import '../liabilities/money_you_owe_screen.dart';
+import '../liabilities/liability_category_screen.dart';
+import '../liabilities/credit_card_account_details_screen.dart';
+import '../liabilities/liability_account_details_screen.dart';
 
 /// Centralized navigation for the Accounts module only.
 ///
@@ -39,6 +44,19 @@ abstract final class AccountsNavigator {
       MaterialPageRoute(
         builder: (_) => AddAccountScreen(sectionType: sectionType),
       ),
+    );
+  }
+
+  // ============================================================
+  // 🔹 Create Credit Card
+  // ============================================================
+
+  static Future<bool?> showCreateCreditCard({
+    required BuildContext context,
+  }) {
+    return Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const AddCreditCardScreen()),
     );
   }
 
@@ -83,6 +101,13 @@ abstract final class AccountsNavigator {
       );
     }
 
+    if (sectionType == SectionType.liabilities) {
+      return Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MoneyYouOweScreen()),
+      );
+    }
+
     return Navigator.push(
       context,
       MaterialPageRoute(
@@ -91,6 +116,43 @@ abstract final class AccountsNavigator {
           sectionType: sectionType,
           isSavings: isSavings,
         ),
+      ),
+    );
+  }
+
+
+  static Future<void> showLiabilityCategory({
+    required BuildContext context,
+    required LiabilityCategory category,
+  }) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LiabilityCategoryScreen(category: category),
+      ),
+    );
+  }
+
+  static Future<void> showCreditCardDetails({
+    required BuildContext context,
+    required String accountId,
+  }) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreditCardAccountDetailsScreen(accountId: accountId),
+      ),
+    );
+  }
+
+  static Future<void> showLiabilityAccountDetails({
+    required BuildContext context,
+    required String accountId,
+  }) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LiabilityAccountDetailsScreen(accountId: accountId),
       ),
     );
   }

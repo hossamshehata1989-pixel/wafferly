@@ -11,6 +11,7 @@ import '../../theme/section_type_visual.dart';
 import 'widgets/account_card.dart';
 import '../../theme/financial_group_visual_mapper.dart';
 import '../../theme/account_asset_resolver.dart';
+import 'navigation/accounts_navigator.dart';
 
 class GroupAccountsScreen extends StatelessWidget {
   final String title;
@@ -69,7 +70,7 @@ class GroupAccountsScreen extends StatelessWidget {
                   ...accounts.map(
                     (account) => AccountCard(
                       name: account.name,
-                      subtitle: account.type,
+                      subtitle: _displayType(account.type),
                       balanceText:
                           '${_balanceService.getBalance(account.id).toStringAsFixed(0)} EGP',
 
@@ -79,15 +80,36 @@ class GroupAccountsScreen extends StatelessWidget {
                       visual: sectionType.groupVisual.toEntityVisual(),
 
                       onTap: () {
-                        // TODO
+                        AccountsNavigator.showAccountDetails(
+                          context: context,
+                          accountId: account.id,
+                        );
                       },
                     ),
                   ),
                 ],
                 const SizedBox(height: 24),
+                if (sectionType == SectionType.liabilities) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final result = await AccountsNavigator.showCreateCreditCard(
+                          context: context,
+                        );
+                        if (result == true && context.mounted) {
+                          // ValueListenableBuilder will refresh from Hive.
+                        }
+                      },
+                      icon: const Icon(Icons.credit_card_rounded),
+                      label: const Text('Add Credit Card'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
+                  child: OutlinedButton(
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -97,7 +119,11 @@ class GroupAccountsScreen extends StatelessWidget {
                         ),
                       );
                     },
-                    child: const Text('Create Account'),
+                    child: Text(
+                      sectionType == SectionType.liabilities
+                          ? 'Add Other Liability'
+                          : 'Create Account',
+                    ),
                   ),
                 ),
                 if (isSavings) ...[
@@ -112,6 +138,45 @@ class GroupAccountsScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  String _displayType(String type) {
+    switch (type) {
+      case 'cash':
+        return 'Cash Account';
+      case 'bank':
+        return 'Bank Account';
+      case 'wallet':
+        return 'E-Wallet';
+      case 'debitCard':
+        return 'Debit Card';
+      case 'creditCard':
+        return 'Credit Card';
+      case 'loan':
+        return 'Loan';
+      case 'installment':
+        return 'Installment';
+      case 'debt':
+      case 'moneyBorrowed':
+        return 'Borrowed Money';
+      case 'lent':
+        return 'Money Lent';
+      case 'rosca':
+      case 'savingCircle':
+        return 'Money Circle';
+      case 'realSaving':
+        return 'Real Saving';
+      case 'investment':
+        return 'Investment';
+      case 'gold':
+        return 'Gold';
+      case 'stocks':
+        return 'Stocks';
+      case 'certificates':
+        return 'Certificates';
+      default:
+        return type;
+    }
   }
 
   Widget _buildVirtualSavingCard(BuildContext context) {

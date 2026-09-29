@@ -21,16 +21,46 @@ final class CreditCardProfile {
   @HiveField(2)
   final String creditLimitValue;
 
+  /// Presentation/configuration only; financial truth remains on the Account.
+  @HiveField(3)
+  final String cardKind;
+
+  /// Optional card-network label, e.g. Visa or Mastercard.
+  @HiveField(4)
+  final String? cardNetwork;
+
+  /// Optional statement closing day of month (1-31).
+  @HiveField(5)
+  final int? statementDay;
+
+  /// Optional payment due day of month (1-31).
+  @HiveField(6)
+  final int? paymentDueDay;
+
+  /// Optional linked debit-card Account id used for payment setup.
+  @HiveField(7)
+  final String? linkedDebitCardAccountId;
+
   const CreditCardProfile({
     required this.id,
     required this.accountId,
     required this.creditLimitValue,
+    this.cardKind = 'physical',
+    this.cardNetwork,
+    this.statementDay,
+    this.paymentDueDay,
+    this.linkedDebitCardAccountId,
   });
 
   factory CreditCardProfile.fromMoney({
     required String id,
     required String accountId,
     required Money creditLimit,
+    String cardKind = 'physical',
+    String? cardNetwork,
+    int? statementDay,
+    int? paymentDueDay,
+    String? linkedDebitCardAccountId,
   }) {
     if (creditLimit < Money.zero) {
       throw ArgumentError.value(
@@ -44,6 +74,11 @@ final class CreditCardProfile {
       id: id,
       accountId: accountId,
       creditLimitValue: creditLimit.toString(),
+      cardKind: cardKind,
+      cardNetwork: cardNetwork,
+      statementDay: statementDay,
+      paymentDueDay: paymentDueDay,
+      linkedDebitCardAccountId: linkedDebitCardAccountId,
     );
   }
 

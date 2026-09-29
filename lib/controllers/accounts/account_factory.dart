@@ -22,6 +22,8 @@ class AccountFactory {
       isArchived: original.isArchived,
       notes: notes,
       icon: icon,
+      provider: original.provider,
+      accountNumber: original.accountNumber,
       nature: original.nature,
     );
   }

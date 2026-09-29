@@ -1,5 +1,6 @@
 
 import '../../../models/account.dart';
+import '../../../credit_card/domain/credit_card_profile.dart';
 
 class AccountDetailsData {
   const AccountDetailsData({
@@ -13,6 +14,7 @@ class AccountDetailsData {
     required this.activity,
     required this.recurring,
     required this.health,
+    this.creditCardProfile,
   });
 
   final Account account;
@@ -25,6 +27,7 @@ class AccountDetailsData {
   final List<AccountActivityItem> activity;
   final List<RecurringAccountItem> recurring;
   final AccountHealthData health;
+  final CreditCardProfile? creditCardProfile;
 }
 
 class BalancePoint {

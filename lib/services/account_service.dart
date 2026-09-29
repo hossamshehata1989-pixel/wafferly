@@ -21,6 +21,8 @@ class AccountService {
     required String currency,
     String? icon,
     String? notes,
+    String? provider,
+    String? accountNumber,
   }) {
     final natureEnum = resolveNature(type);
     final group = resolveGroup(type);
@@ -38,6 +40,8 @@ class AccountService {
       isArchived: false,
       notes: notes,
       icon: icon,
+      provider: provider,
+      accountNumber: accountNumber,
     );
   }
 
@@ -48,6 +52,8 @@ class AccountService {
     required String currency,
     String? icon,
     String? notes,
+    String? provider,
+    String? accountNumber,
   }) async {
     try {
       final account = _buildAccount(
@@ -56,6 +62,8 @@ class AccountService {
         currency: currency,
         icon: icon,
         notes: notes,
+        provider: provider,
+        accountNumber: accountNumber,
       );
       await box.put(account.id, account);
       return account;

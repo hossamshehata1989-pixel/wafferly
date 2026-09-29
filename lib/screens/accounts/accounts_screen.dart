@@ -114,19 +114,19 @@ class _AccountsScreenState extends State<AccountsScreen> {
   String _getSectionSubtitle(SectionType sectionType) {
     switch (sectionType) {
       case SectionType.liquidity:
-        return 'Cash • Wallet • +2';
+        return 'Cash • Bank • Wallet';
 
       case SectionType.savings:
         return 'Real • Virtual • Circle';
 
       case SectionType.investments:
-        return 'Gold • Stocks • +2';
+        return 'Gold • Stocks • Certificates';
 
       case SectionType.liabilities:
-        return 'Loans • Cards • +1';
+        return 'Credit Cards • Loans • Installments';
 
       case SectionType.receivable:
-        return 'Friends • Family';
+        return 'Lent Money • Money Circle';
     }
   }
 

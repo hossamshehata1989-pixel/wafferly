@@ -2,6 +2,8 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../../models/account.dart';
+import '../../../../credit_card/domain/credit_card_profile.dart';
+import '../../../../credit_card/infrastructure/hive_credit_card_profile_repository.dart';
 import '../../../../models/transaction.dart';
 import '../../../../services/account_service.dart';
 import '../../../../services/balance_service.dart';
@@ -21,6 +23,11 @@ class HiveAccountDetailsRepository implements AccountDetailsRepository {
   final AvailableBalanceProjectionService projectionService;
   final FinancialActionEngine actionEngine;
 
+  HiveCreditCardProfileRepository get _creditCardProfileRepository =>
+      HiveCreditCardProfileRepository(
+        Hive.box<CreditCardProfile>('credit_card_profiles'),
+      );
+
   Box<Transaction> get _transactions =>
       Hive.box<Transaction>('transactions');
 
@@ -30,6 +37,10 @@ class HiveAccountDetailsRepository implements AccountDetailsRepository {
   Account? getAccount(String accountId) {
     return AccountService().getAccountById(accountId);
   }
+
+  @override
+  Future<CreditCardProfile?> getCreditCardProfile(String accountId) =>
+      _creditCardProfileRepository.findByAccountId(accountId);
 
   @override
   double getBalance(String accountId) {
