@@ -362,9 +362,6 @@ CommitmentActionProvider(
 
   final availableBalanceProjectionService = AvailableBalanceProjectionService(
     allocationRepository: allocationRepository,
-    creditCardProfileRepository: HiveCreditCardProfileRepository(
-      Hive.box<CreditCardProfile>('credit_card_profiles'),
-    ),
   );
 
   // ====================================================

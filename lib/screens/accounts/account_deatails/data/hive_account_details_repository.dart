@@ -6,6 +6,7 @@ import '../../../../models/transaction.dart';
 import '../../../../services/account_service.dart';
 import '../../../../services/balance_service.dart';
 import '../../../../core/planning/services/available_balance_projection_service.dart';
+import '../../../../core/money/money.dart';
 import '../../../../services/financial_action_engine.dart';
 
 import '../account_details_models.dart';
@@ -47,7 +48,7 @@ class HiveAccountDetailsRepository implements AccountDetailsRepository {
   }) async {
     final projection = await projectionService.project(
       accountId: accountId,
-      balance: balance,
+      balance: Money.fromDouble(balance),
     );
 
     return AccountProjection(

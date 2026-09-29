@@ -33,6 +33,7 @@ import '../../services/schedule_evaluator.dart';
 import '../../services/reserved_money_projection_service.dart';
 
 import '../../core/planning/services/available_balance_projection_service.dart';
+import '../../core/money/money.dart';
 
 import '../planning/goals_screen.dart';
 
@@ -385,7 +386,7 @@ class _ManageDataLoader {
 
       final projection = await availableProjectionService.project(
         accountId: account.id,
-        balance: balance,
+        balance: Money.fromDouble(balance),
       );
 
       totalBalanceMinor += _toMinor(balance);

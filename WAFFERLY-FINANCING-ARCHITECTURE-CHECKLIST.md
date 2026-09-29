@@ -1,109 +1,60 @@
 # Wafferly Financing / Credit-Card Architecture Checklist
 
-Updated: 2026-09-27
+Updated: 2026-09-28
 
-## Foundation / Source of Truth
+## Release V1 — Implemented and Verified
 
-- [x] Credit Card Charge has a dedicated Financial Engine operation — ADR-047
-- [x] Credit Limit / Credit Exposure / Available Credit canonical boundary — ADR-049
-- [x] Credit Card Statement lifecycle — ADR-050
-- [x] Credit Card Payment / Settlement operation — ADR-051
-- [x] Installment / Financing Contract boundary — ADR-052
-- [x] Interest / amortization model — ADR-053
-- [x] Payment allocation order — ADR-054
-- [x] Multi-installment payment allocation — ADR-055
-- [x] Early settlement / prepayment policy — ADR-056
-- [x] Late-payment fee policy — ADR-057
-- [x] Financing restructuring policy — ADR-058
-- [x] Financing replacement / refinancing boundary — ADR-059
-- [x] Financing settlement / closure lifecycle — ADR-060
-- [x] Financing cancellation / termination boundary — ADR-061
-- [x] Financing overpayment / excess-payment policy — ADR-062
-- [x] Financing payment reversal / refund boundary — ADR-063
-- [x] Financing default / delinquency lifecycle — ADR-064
-- [x] Financing waiver / forgiveness boundary — ADR-065
-- [x] Financing financial-effects / writer boundary — ADR-066
-- [x] Financing operation idempotency — ADR-067
-- [x] Financing audit / traceability boundary — ADR-068
-- [x] Credit Card Statement ↔ Installment relationship — ADR-069
-- [x] Credit Card posted-charge → installment conversion boundary — ADR-070
+- [x] ADR-047 — Credit Card Charge Operation
+- [x] ADR-049 — Credit Limit / Credit Exposure / Available Credit boundary
+- [x] ADR-050 — Current Statement Projection boundary (full persisted close lifecycle deferred)
+- [x] ADR-069 — Statement ↔ Installment contribution / no-double-counting boundary
+- [x] ADR-070 — Posted-charge → installment financing conversion boundary
+- [x] ADR-066 — Financing financial-effects / writer boundary as architectural constraint
+- [x] ADR-067 — Financing logical idempotency boundary as architectural constraint
 
-## Schema / Terminology Decisions
+## Contract / Calculation Foundations
 
-- [x] `principal` established as canonical amortizing contractual principal
-- [x] `financedAmount` not duplicated as a second authoritative monetary field in MVP
-- [x] `installmentAmount` belongs to scheduled installment obligation, not authoritative contract balance/term
-- [x] `repaymentTerms` decomposed into structured terms
-- [x] Contract lifecycle separated from contract delinquency
-- [x] Installment status kept separate from contract lifecycle/delinquency
-- [x] Statement inclusion based on installment eligibility for the statement cycle
-- [x] No-double-counting invariant established for financed purchases
-- [x] Existing posted charge remains the financial principal source during conversion
-- [x] Conversion does not create a second principal liability
-- [x] Conversion does not rewrite the original charge
-- [x] Closed statements remain immutable after later conversion
-- [x] Future interest is not posted as immediate full liability merely because it is scheduled
+- [x] ADR-052 — Installment / Financing Contract model defined and used by conversion foundation
+- [x] ADR-053 — Interest / amortization model defined as calculation foundation
+- [ ] Broader payment/settlement integration of ADR-052/053 — deferred to Financing Phase 2
 
-## Persisted Financing Schema
+## Financing Phase 2 — Explicitly Deferred
 
-- [x] Concrete persisted `FinancingContract` model
-- [x] Concrete persisted `FinancingSchedule` model linked to existing `ScheduleRule`
-- [x] Concrete persisted `FinancingInstallment` model
-- [x] Concrete persisted `StatementInstallmentContribution` relationship/read-model
-- [x] Financing monetary persistence uses exact decimal strings and exposes `Money` in the domain model
-- [x] Hive adapter IDs allocated without colliding with existing model IDs (110–114)
-- [x] Financing boxes registered/opened in application bootstrap
-- [x] Schema tests added for principal semantics, installment composition, schedule linkage, and statement contribution identity
-- [x] Durable `FinancingConversionEvent` model added (Hive 114)
-- [x] ADR-070 conversion operation implementation added
-- [x] ADR-070 focused conversion tests added
-- [x] Financing conversion writer-boundary test added
+These are documented policy/architecture decisions, but are **not claimed as implemented operations** in the current release:
 
-## Consistency / Numbering
+- [ ] ADR-051 — Credit Card Payment / Settlement Operation
+- [ ] ADR-054 — Payment Allocation Order integration into a real payment operation
+- [ ] ADR-055 — Multi-Installment Payment Allocation integration
+- [ ] ADR-056 — Early Settlement / Prepayment
+- [ ] ADR-057 — Late Payment Fee assessment / execution
+- [ ] ADR-058 — Financing Rescheduling / Restructuring
+- [ ] ADR-059 — Financing Replacement / Refinancing
+- [ ] ADR-060 — Full Financing Contract Settlement / Closure evaluation
+- [ ] ADR-061 — Financing Cancellation / Termination obligation classification
+- [ ] ADR-062 — Financing Overpayment / Excess Payment enforcement
+- [ ] ADR-063 — Financing Payment Reversal / Refund
+- [ ] ADR-064 — Financing Default / Delinquency lifecycle implementation
+- [ ] ADR-065 — Financing Waiver / Forgiveness
 
-- [x] Credit Card Charge canonical number = ADR-047
-- [x] Credit Limit canonical number = ADR-049
-- [x] Stale ADR-048 references found in ADR-051/066/067 corrected in the latest consistency patch
-- [x] ADR-052 updated to ADR-047 reference
-- [x] ADR-050 / ADR-053 linked to ADR-069
-- [x] ADR-069 created as the explicit Statement ↔ Installment boundary
-- [x] ADR-070 created as the explicit posted-charge → installment conversion boundary
+## Architecture Hardening — V24
 
-## Still Open After ADR-070 Implementation
+- [x] Structural transaction writer-boundary test
+- [x] Structural financing / credit-card financial-writer boundary test
+- [x] Money boundary ratchet expanded to financing / credit-card domains
+- [x] Concurrent conversion protection for the same origin charge
+- [x] Concurrent conversion regression test
+- [x] Explicit V1 financing release-scope document
 
-- [x] Verify the ADR-047 → ADR-070 reference graph and canonical numbering
-- [x] Implement the ADR-070 financing-conversion domain operation
-- [x] Fix missing Hive `FrequencyAdapter` registration in ADR-070 conversion tests
-- [x] Fix credit-card charge test fixture seeding order so ledger category mappings exist after per-test cleanup
-- [x] Define and implement the exact statement-generation service/repository integration around `StatementInstallmentContribution`
-- [x] Implement pure interest/amortization calculator
-- [x] Define ADR-053 fixed-rate model and pure interest/amortization calculator implementation
-- [x] Verify ADR-053 calculator tests locally
-- [x] Implement deterministic installment schedule generation
-- [x] Verify deterministic installment schedule tests locally
-- [x] Implement pure financing payment allocation calculator for ADR-054/055/062
-- [x] Implement pure financing lifecycle transitions (ADR-060/061)
-- [ ] Verify financing lifecycle transition tests locally
-- [x] Add architecture tests for financing writer boundaries
-- [x] Add end-to-end tests for statement/installment no-double-counting
-- [x] Correct Statement Projection so installment contributions are projected independently from the originating-charge loop
-- [x] Fix Statement Projection to use the canonical `TransactionType.creditCardCharge` value for originating-charge detection
-- [x] Expand Statement ↔ Installment E2E coverage for future-cycle eligibility, interest/fees preservation, and payment separation
-- [x] Align E2E installment identity assertions with the canonical conversion-generated installment IDs (`scheduleId|sequence`)
-- [x] E2E no-double-counting tests pass locally — 6/6
-- [ ] Add idempotency/recovery tests across financing + FinancialOperationEngine
-- [ ] Run full `flutter test` and `flutter analyze` after implementation changes
+## Verification Gates
 
-## Verification Note
+- [x] `flutter test test/architecture` — **22/22 passed**
+- [x] `flutter test test/financing/financing_idempotency_recovery_test.dart` — **5/5 passed**
+- [x] Full `flutter test` — **240/240 passed**
+- [x] `flutter analyze` — **0 compile errors** at the latest verification checkpoint
+- [x] Available UI input screens manually smoke-tested
+- [x] Final ADR / documentation cleanup
+- [x] Final release gate — technical gates complete; human release decision remains
 
-Latest local execution reported by the user:
-- Schema test: passed 4/4.
-- Financing conversion test: passed 4/4.
-- Financing writer-boundary test: passed 1/1.
-- Credit-card charge pipeline: passed 5/5.
+## Source-of-Truth Rule
 
-The ADR reference-graph consistency pass was performed against the canonical financing source set and the implementation ADRs used by this project. No remaining known ADR-048 reference exists in that canonical set.
-
-## Important Boundary
-
-The concrete persisted schema and ADR-070 conversion operation are now implemented without creating a second financial ledger. The next gate is local test execution, followed by statement/installment integration.
+Passing the full test suite does not imply that deferred ADRs are implemented. The current release claims only the implemented V1 foundation above. Any future financing feature that produces an actual financial effect on Account, Transaction, Ledger, Balance, or Financial Engine idempotency must cross the existing Financial Operation Engine boundary.

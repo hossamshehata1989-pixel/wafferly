@@ -144,7 +144,8 @@ final class CreditCardFinancingConversionOperation {
     final existingOriginConversion = conversionEvents.values.where(
       (event) =>
           event.originChargeId == request.originChargeId &&
-          event.status == financingConversionCompleted &&
+          (event.status == financingConversionStarted ||
+              event.status == financingConversionCompleted) &&
           event.conversionId != request.conversionId,
     ).toList();
     if (existingOriginConversion.isNotEmpty) {

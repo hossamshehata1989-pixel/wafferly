@@ -42,50 +42,49 @@ void main() {
   test('transaction persistence writes exist only in HiveTransactionPort', () {
     const allowedWriter = 'lib/financial_engine/adapters/hive_transaction_port.dart';
     final violations = <String>[];
-    final transactionBoxNames = <String>{
-      '_txBox',
-      'txBox',
-      'transactionBox',
-      'transactionsBox',
-      '_transactionsBox',
-    };
+
+    final directHiveMutation = RegExp(
+      r'Hive\.box<Transaction>\([^)]*\)\s*\.\s*(put|add|delete|clear)\s*\(',
+    );
+    final typedBoxDeclaration = RegExp(
+      r'\bBox<Transaction>\s+([A-Za-z_]\w*)',
+    );
 
     for (final file in dartFiles()) {
       final normalized = file.path.replaceAll('\\', '/');
       if (normalized == allowedWriter) continue;
 
       final source = file.readAsStringSync();
-      if (!source.contains("Hive.box<Transaction>")) continue;
+      final withoutComments = source
+          .split('\n')
+          .map((line) => line.split('//').first)
+          .join('\n');
 
-      // Direct transaction-box expressions.
-      if (RegExp(r"Hive\.box<Transaction>\('transactions'\)\s*\.(put|add|delete|clear)\s*\(").hasMatch(source) ||
-          RegExp(r'Hive\.box<Transaction>\(\"transactions\"\)\s*\.(put|add|delete|clear)\s*\(').hasMatch(source)) {
+      if (directHiveMutation.hasMatch(withoutComments)) {
         violations.add('$normalized: direct Hive Transaction box mutation');
       }
 
-      // Common transaction-box variable names used in the current codebase.
-      for (final name in transactionBoxNames) {
-        final declaration = RegExp(
-          r'(?:final|late\s+final|late)\s+(?:Box<Transaction>\s+)?' +
-              RegExp.escape(name) +
-              r'\s*=\s*Hive\.box<Transaction>\([^)]+\)',
-        );
-        if (!declaration.hasMatch(source)) continue;
+      final transactionBoxNames = typedBoxDeclaration
+          .allMatches(withoutComments)
+          .map((match) => match.group(1)!)
+          .toSet();
 
-        final mutation = RegExp(
-          RegExp.escape(name) + r'\s*\.(put|add|delete|clear)\s*\(',
-        );
-        if (mutation.hasMatch(source)) {
+      for (final name in transactionBoxNames) {
+        if (RegExp(
+          '\\b${RegExp.escape(name)}\\s*\\.\\s*(put|add|delete|clear)\\s*\\(',
+        ).hasMatch(withoutComments)) {
           violations.add('$normalized: $name transaction-box mutation');
         }
       }
+
     }
 
     expect(
       violations,
       isEmpty,
       reason:
-          'The transactions Hive box must only be mutated by HiveTransactionPort.',
+          'The transactions Hive box must only be mutated by HiveTransactionPort; '
+          'the boundary is enforced structurally by Box<Transaction> type, not variable name.',
     );
   });
 

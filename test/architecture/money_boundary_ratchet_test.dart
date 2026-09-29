@@ -5,7 +5,7 @@
 //
 // The previous 12-file double-amount debt was migrated in M1. This ratchet is
 // now intentionally empty: any new double amount/debit/credit/balance in the scanned
-// domain/planning roots fails immediately.
+// domain/planning/financing roots fails immediately.
 
 import 'dart:io';
 
@@ -27,7 +27,13 @@ void main() {
   test(
     'financial domain does not introduce double monetary fields',
     () {
-      const scannedRoots = ['lib/financial_engine', 'lib/core/planning'];
+      const scannedRoots = [
+        'lib/financial_engine',
+        'lib/core/planning',
+        'lib/financing',
+        'lib/credit_card',
+        'lib/models/financing',
+      ];
       final violations = <String>{};
 
       for (final root in scannedRoots) {

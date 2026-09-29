@@ -555,14 +555,14 @@ class GroupFinancialData {
       // ----------------------------------------------------------------------
 
       final reserved = item.reserved
-    .toDouble()
-    .clamp(0.0, item.balance)
-    .toDouble();
+          .toDouble()
+          .clamp(0.0, item.balance.toDouble())
+          .toDouble();
       // ----------------------------------------------------------------------
       // Available cannot become negative.
       // ----------------------------------------------------------------------
 
-      final available = (item.balance - reserved)
+      final available = (item.balance.toDouble() - reserved)
           .clamp(0.0, double.infinity)
           .toDouble();
 
@@ -571,7 +571,7 @@ class GroupFinancialData {
       // ----------------------------------------------------------------------
 
       totalsByCurrency[accountCurrency] =
-          (totalsByCurrency[accountCurrency] ?? 0) + item.balance;
+          (totalsByCurrency[accountCurrency] ?? 0) + item.balance.toDouble();
 
       reservedByCurrency[accountCurrency] =
           (reservedByCurrency[accountCurrency] ?? 0) + reserved;
