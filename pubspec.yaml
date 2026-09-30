@@ -69,6 +69,7 @@ flutter:
     - assets/icons/financial/accounts/recievable/
     - assets/icons/financial/financial_groups/
     - assets/illustrations/financial_groups/
+    - assets/images/credit_cards/
 
   fonts:
     # IBM Plex Sans Arabic

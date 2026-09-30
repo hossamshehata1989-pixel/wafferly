@@ -195,7 +195,6 @@ class _CreditCardsScreenState extends State<CreditCardsScreen> {
                 SizedBox(height: metrics.h(14)),
                 _FilterBar(
                   metrics: metrics,
-                  cards: _cards,
                 ),
                 SizedBox(height: metrics.h(14)),
                 ..._cards.map(
@@ -558,11 +557,9 @@ class _SummaryMetric extends StatelessWidget {
 class _FilterBar extends StatelessWidget {
   const _FilterBar({
     required this.metrics,
-    required this.cards,
   });
 
   final ResponsiveMetrics metrics;
-  final List<_CreditCardData> cards;
 
   @override
   Widget build(BuildContext context) {
@@ -574,20 +571,20 @@ class _FilterBar extends StatelessWidget {
         children: [
           _FilterChip(
             metrics: metrics,
-            label: 'All (${cards.length})',
+            label: 'All (${_cards.length})',
             selected: true,
           ),
           _FilterChip(
             metrics: metrics,
-            label: 'Overdue (${cards.where((c) => c.daysUntilDue < 0).length})',
+            label: 'Overdue (${_cards.where((c) => c.daysUntilDue < 0).length})',
           ),
           _FilterChip(
             metrics: metrics,
-            label: 'Due Soon (${cards.where((c) => c.daysUntilDue >= 0 && c.daysUntilDue <= 7).length})',
+            label: 'Due Soon (${_cards.where((c) => c.daysUntilDue >= 0 && c.daysUntilDue <= 7).length})',
           ),
           _FilterChip(
             metrics: metrics,
-            label: 'Upcoming (${cards.where((c) => c.daysUntilDue > 7).length})',
+            label: 'Upcoming (${_cards.where((c) => c.daysUntilDue > 7).length})',
           ),
         ],
       ),
@@ -696,12 +693,13 @@ class _CreditCardTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  CreditCardVisual(
-                    key: ValueKey('${card.accountId}_${card.cardVisual}'),
-                    visual: card.cardVisual,
-                    width: metrics.size(76),
-                    height: metrics.size(48),
-                    fit: BoxFit.cover,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(metrics.size(8)),
+                    child: CreditCardVisual(
+                      visual: card.cardVisual,
+                      width: metrics.size(62),
+                      height: metrics.size(39),
+                    ),
                   ),
                   SizedBox(width: metrics.spacing(10)),
                   Expanded(
