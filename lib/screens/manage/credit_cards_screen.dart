@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../credit_card/domain/credit_card_profile.dart';
+import '../../models/financing/financing_installment.dart';
+import '../../models/financing/financing_contract.dart';
+import '../../models/account.dart';
 import '../accounts/add_credit_card/add_credit_card_screen.dart';
 import '../accounts/liabilities/credit_card_account_details_screen.dart';
 import '../../services/account_service.dart';
@@ -83,26 +86,9 @@ class _CreditCardsScreenState extends State<CreditCardsScreen> {
     final scheme = Theme.of(context).colorScheme;
     final metrics = ResponsiveMetrics.of(context);
 
-    final totalLimit = _cards.fold<double>(
-      0,
-      (sum, card) => sum + card.limit,
+    final installmentOverview = _InstallmentOverview.fromHive(
+      accountIds: _cards.map((card) => card.accountId).toSet(),
     );
-
-    final totalUsed = _cards.fold<double>(
-      0,
-      (sum, card) => sum + card.used,
-    );
-
-    final totalAvailable = totalLimit - totalUsed;
-
-    final totalDueThisMonth = _cards.fold<double>(
-      0,
-      (sum, card) => sum + card.dueThisMonth,
-    );
-
-    final usedRatio = totalLimit == 0
-        ? 0.0
-        : (totalUsed / totalLimit).clamp(0.0, 1.0);
 
     return Scaffold(
       backgroundColor: scheme.surface,
@@ -186,11 +172,7 @@ class _CreditCardsScreenState extends State<CreditCardsScreen> {
                   ),
                 _SummaryCard(
                   metrics: metrics,
-                  totalLimit: totalLimit,
-                  totalUsed: totalUsed,
-                  totalAvailable: totalAvailable,
-                  totalDueThisMonth: totalDueThisMonth,
-                  usedRatio: usedRatio,
+                  overview: installmentOverview,
                 ),
                 SizedBox(height: metrics.h(14)),
                 _FilterBar(
@@ -319,64 +301,109 @@ class _AddCardButton extends StatelessWidget {
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.metrics,
-    required this.totalLimit,
-    required this.totalUsed,
-    required this.totalAvailable,
-    required this.totalDueThisMonth,
-    required this.usedRatio,
+    required this.overview,
   });
 
   final ResponsiveMetrics metrics;
-  final double totalLimit;
-  final double totalUsed;
-  final double totalAvailable;
-  final double totalDueThisMonth;
-  final double usedRatio;
+  final _InstallmentOverview overview;
 
   @override
   Widget build(BuildContext context) {
-    final usedPercent = usedRatio * 100;
-    final availablePercent = 100 - usedPercent;
+    final accent = const Color(0xFFFF3D81);
+    final cardColor = const Color(0xFF071B2A);
+    final borderColor = accent.withValues(alpha: .45);
 
     return Container(
-      padding: EdgeInsets.all(metrics.spacing(16)),
+      padding: EdgeInsets.fromLTRB(
+        metrics.spacing(14),
+        metrics.h(14),
+        metrics.spacing(14),
+        metrics.h(13),
+      ),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(
-          metrics.size(18),
-        ),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF10115A),
-            Color(0xFF071D30),
-          ],
-        ),
-        border: Border.all(
-          color: const Color(0xFF4D32C8).withValues(alpha: .65),
-        ),
+        color: cardColor,
+        borderRadius: BorderRadius.circular(metrics.size(18)),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(
-                child: _SummaryMetric(
-                  metrics: metrics,
-                  title: 'Total Limit',
-                  value: _money(totalLimit),
-                  color: const Color(0xFFB98AFF),
-                  icon: Icons.credit_card_rounded,
+              Container(
+                width: metrics.size(42),
+                height: metrics.size(42),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .13),
+                  borderRadius: BorderRadius.circular(metrics.size(12)),
+                  border: Border.all(
+                    color: accent.withValues(alpha: .35),
+                  ),
+                ),
+                child: Icon(
+                  Icons.credit_card_rounded,
+                  color: accent,
+                  size: metrics.size(22),
                 ),
               ),
+              SizedBox(width: metrics.spacing(10)),
               Expanded(
-                child: _SummaryMetric(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Credit Cards',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: metrics.text(16),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: metrics.h(2)),
+                    Text(
+                      'Installment overview',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .55),
+                        fontSize: metrics.text(9.5),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (overview.currencyLabel != null)
+                Text(
+                  overview.currencyLabel!,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .70),
+                    fontSize: metrics.text(9.5),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: metrics.h(13)),
+          Row(
+            children: [
+              Expanded(
+                child: _MainInstallmentMetric(
                   metrics: metrics,
-                  title: 'Used / Debt',
-                  value: _money(totalUsed),
-                  valueSuffix: '${usedPercent.round()}%',
-                  color: const Color(0xFFFF4F7D),
-                  icon: Icons.pie_chart_outline_rounded,
+                  title: 'This Month',
+                  subtitle: 'Installments',
+                  value: overview.currentTotal,
+                  currency: overview.currencyLabel,
+                  color: const Color(0xFFFFB21A),
+                ),
+              ),
+              SizedBox(width: metrics.spacing(8)),
+              Expanded(
+                child: _MainInstallmentMetric(
+                  metrics: metrics,
+                  title: 'Total',
+                  subtitle: 'Installments',
+                  value: overview.remainingTotal,
+                  currency: overview.currencyLabel,
+                  color: const Color(0xFF39E6B0),
                 ),
               ),
             ],
@@ -384,76 +411,33 @@ class _SummaryCard extends StatelessWidget {
           SizedBox(height: metrics.h(14)),
           Row(
             children: [
-              Expanded(
-                child: _SummaryMetric(
-                  metrics: metrics,
-                  title: 'Available',
-                  value: _money(totalAvailable),
-                  valueSuffix: '${availablePercent.round()}%',
-                  color: const Color(0xFF39E6B0),
-                  icon: Icons.account_balance_wallet_outlined,
-                ),
-              ),
-              Expanded(
-                child: _SummaryMetric(
-                  metrics: metrics,
-                  title: 'Due This Month',
-                  value: _money(totalDueThisMonth),
-                  color: const Color(0xFFFFB21A),
-                  icon: Icons.calendar_month_outlined,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: metrics.h(16)),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(
-              metrics.size(8),
-            ),
-            child: SizedBox(
-              height: metrics.h(10),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: math.max(1, (usedRatio * 100).round()),
-                    child: Container(
-                      color: const Color(0xFFFF3E72),
-                    ),
-                  ),
-                  Expanded(
-                    flex: math.max(
-                      1,
-                      ((1 - usedRatio) * 100).round(),
-                    ),
-                    child: Container(
-                      color: const Color(0xFF0B9DCE),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: metrics.h(7)),
-          Row(
-            children: [
               Text(
-                '${usedPercent.round()}% used',
+                'Installment trend',
                 style: TextStyle(
-                  color: const Color(0xFFFF5B82),
-                  fontSize: metrics.text(10),
+                  color: Colors.white.withValues(alpha: .70),
+                  fontSize: metrics.text(9.5),
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const Spacer(),
               Text(
-                '${availablePercent.round()}% available',
+                '3 previous • current • 3 upcoming',
                 style: TextStyle(
-                  color: const Color(0xFF35CFFF),
-                  fontSize: metrics.text(10),
-                  fontWeight: FontWeight.w700,
+                  color: Colors.white.withValues(alpha: .42),
+                  fontSize: metrics.text(8),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
+          ),
+          SizedBox(height: metrics.h(8)),
+          SizedBox(
+            height: metrics.h(122),
+            child: _InstallmentBarChart(
+              metrics: metrics,
+              periods: overview.periods,
+              currency: overview.currencyLabel,
+            ),
           ),
         ],
       ),
@@ -461,98 +445,321 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-class _SummaryMetric extends StatelessWidget {
-  const _SummaryMetric({
+class _MainInstallmentMetric extends StatelessWidget {
+  const _MainInstallmentMetric({
     required this.metrics,
     required this.title,
+    required this.subtitle,
     required this.value,
+    required this.currency,
     required this.color,
-    required this.icon,
-    this.valueSuffix,
   });
 
   final ResponsiveMetrics metrics;
   final String title;
-  final String value;
-  final String? valueSuffix;
+  final String subtitle;
+  final double value;
+  final String? currency;
   final Color color;
-  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: metrics.size(34),
-          height: metrics.size(34),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: .10),
-            borderRadius: BorderRadius.circular(
-              metrics.size(10),
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        metrics.spacing(11),
+        metrics.h(9),
+        metrics.spacing(11),
+        metrics.h(10),
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xFF051522),
+        borderRadius: BorderRadius.circular(metrics.size(12)),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: .055),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: .60),
+              fontSize: metrics.text(9),
+              fontWeight: FontWeight.w700,
             ),
           ),
-          child: Icon(
-            icon,
-            color: color,
-            size: metrics.size(17),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: .42),
+              fontSize: metrics.text(8),
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-        SizedBox(width: metrics.spacing(8)),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: .58),
-                  fontSize: metrics.text(9.5),
-                  fontWeight: FontWeight.w600,
+          SizedBox(height: metrics.h(4)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _money(value),
+                  style: TextStyle(
+                    color: color,
+                    fontSize: metrics.text(18),
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-              ),
-              SizedBox(height: metrics.h(3)),
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.end,
-                spacing: metrics.spacing(4),
-                children: [
+                if (currency != null) ...[
+                  SizedBox(width: metrics.spacing(3)),
                   Text(
-                    value,
+                    currency!,
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: metrics.text(17),
+                      color: color.withValues(alpha: .78),
+                      fontSize: metrics.text(8),
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InstallmentBarChart extends StatelessWidget {
+  const _InstallmentBarChart({
+    required this.metrics,
+    required this.periods,
+    required this.currency,
+  });
+
+  final ResponsiveMetrics metrics;
+  final List<_InstallmentPeriod> periods;
+  final String? currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final maxValue = periods.fold<double>(
+      0,
+      (max, period) => math.max(max, period.amount),
+    );
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        for (final period in periods)
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: metrics.spacing(2),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (period.amount > 0)
+                    Text(
+                      _compactMoney(period.amount),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: period.isCurrent
+                            ? const Color(0xFFFFB21A)
+                            : Colors.white.withValues(alpha: .48),
+                        fontSize: metrics.text(6.5),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  else
+                    SizedBox(height: metrics.h(9)),
+                  SizedBox(height: metrics.h(3)),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: FractionallySizedBox(
+                        heightFactor: maxValue == 0
+                            ? .05
+                            : math.max(.05, period.amount / maxValue),
+                        widthFactor: .52,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(metrics.size(4)),
+                            ),
+                            color: period.isCurrent
+                                ? const Color(0xFFFFB21A)
+                                : const Color(0xFF3A6B87),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: metrics.h(5)),
                   Text(
-                    'EGP',
+                    period.label,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: .72),
-                      fontSize: metrics.text(9),
-                      fontWeight: FontWeight.w700,
+                      color: period.isCurrent
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: .48),
+                      fontSize: metrics.text(7.5),
+                      fontWeight: period.isCurrent
+                          ? FontWeight.w800
+                          : FontWeight.w600,
                     ),
                   ),
                 ],
               ),
-              if (valueSuffix != null) ...[
-                SizedBox(height: metrics.h(2)),
-                Text(
-                  valueSuffix!,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: metrics.text(9),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
-        ),
       ],
     );
   }
+}
+
+class _InstallmentOverview {
+  const _InstallmentOverview({
+    required this.currentTotal,
+    required this.remainingTotal,
+    required this.periods,
+    required this.currencyLabel,
+  });
+
+  final double currentTotal;
+  final double remainingTotal;
+  final List<_InstallmentPeriod> periods;
+  final String? currencyLabel;
+
+  factory _InstallmentOverview.fromHive({
+    required Set<String> accountIds,
+  }) {
+    if (!Hive.isBoxOpen('financing_installments') ||
+        !Hive.isBoxOpen('financing_contracts')) {
+      return _empty();
+    }
+
+    final installments = Hive.box<FinancingInstallment>('financing_installments');
+    final contracts = Hive.box<FinancingContract>('financing_contracts');
+    final now = DateTime.now();
+    final currentStart = DateTime(now.year, now.month);
+
+    final periodStarts = List.generate(
+      7,
+      (index) => DateTime(now.year, now.month - 3 + index),
+    );
+
+    final totals = <DateTime, double>{
+      for (final start in periodStarts) start: 0,
+    };
+    double remaining = 0;
+    final currencies = <String>{};
+
+    for (final installment in installments.values) {
+      final contract = contracts.get(installment.contractId);
+      if (contract == null ||
+          !accountIds.contains(contract.liabilityAccountId)) {
+        continue;
+      }
+
+      final status = installment.status.trim().toLowerCase();
+      final amount = installment.amount.toDouble();
+      if (amount <= 0) continue;
+
+      final due = DateTime(
+        installment.dueDate.year,
+        installment.dueDate.month,
+      );
+      DateTime? bucket;
+      for (final start in periodStarts) {
+        if (start.year == due.year && start.month == due.month) {
+          bucket = start;
+          break;
+        }
+      }
+      if (bucket != null) {
+        totals[bucket] = (totals[bucket] ?? 0) + amount;
+      }
+
+      // Any non-settled installment is still an outstanding contractual
+      // installment, including overdue installments.
+      if (status != 'settled' &&
+          status != 'cancelled' &&
+          status != 'canceled' &&
+          status != 'terminated') {
+        remaining += amount;
+      }
+
+      // FinancingInstallment does not carry currency. Currency is therefore
+      // resolved at the credit-card/account layer. Keep the summary neutral
+      // when the portfolio contains multiple currencies.
+    }
+
+    final labels = <String>['-3', '-2', '-1', 'Now', '+1', '+2', '+3'];
+    final periods = List.generate(
+      7,
+      (index) => _InstallmentPeriod(
+        label: labels[index],
+        amount: totals[periodStarts[index]] ?? 0,
+        isCurrent: index == 3,
+      ),
+    );
+
+    final currentTotal = totals[currentStart] ?? 0;
+    final currencyLabel = _singlePortfolioCurrency(accountIds);
+
+    return _InstallmentOverview(
+      currentTotal: currentTotal,
+      remainingTotal: remaining,
+      periods: periods,
+      currencyLabel: currencyLabel,
+    );
+  }
+
+  static _InstallmentOverview _empty() {
+    return _InstallmentOverview(
+      currentTotal: 0,
+      remainingTotal: 0,
+      periods: const [
+        _InstallmentPeriod(label: '-3', amount: 0),
+        _InstallmentPeriod(label: '-2', amount: 0),
+        _InstallmentPeriod(label: '-1', amount: 0),
+        _InstallmentPeriod(label: 'Now', amount: 0, isCurrent: true),
+        _InstallmentPeriod(label: '+1', amount: 0),
+        _InstallmentPeriod(label: '+2', amount: 0),
+        _InstallmentPeriod(label: '+3', amount: 0),
+      ],
+      currencyLabel: null,
+    );
+  }
+
+  static String? _singlePortfolioCurrency(Set<String> accountIds) {
+    if (accountIds.isEmpty) return null;
+    final accounts = Hive.box<Account>('accounts').values;
+    final currencies = <String>{};
+    for (final account in accounts) {
+      if (accountIds.contains(account.id)) {
+        final currency = (account.currency as String?)?.trim();
+        if (currency != null && currency.isNotEmpty) currencies.add(currency);
+      }
+    }
+    return currencies.length == 1 ? currencies.first : null;
+  }
+}
+
+class _InstallmentPeriod {
+  const _InstallmentPeriod({
+    required this.label,
+    required this.amount,
+    this.isCurrent = false,
+  });
+
+  final String label;
+  final double amount;
+  final bool isCurrent;
 }
 
 class _FilterBar extends StatelessWidget {
@@ -664,162 +871,323 @@ class _CreditCardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final available = card.limit - card.used;
+    final available = math.max(0, card.limit - card.used).toDouble();
     final usage = card.limit == 0
         ? 0.0
         : (card.used / card.limit).clamp(0.0, 1.0);
 
     final status = _statusFor(card.daysUntilDue);
     final statusColor = _statusColor(status);
+    final currency = card.currency.isEmpty ? 'EGP' : card.currency;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(
-          metrics.size(16),
-        ),
+        borderRadius: BorderRadius.circular(metrics.size(14)),
         child: Container(
-          padding: EdgeInsets.all(
-            metrics.spacing(14),
+          padding: EdgeInsets.fromLTRB(
+            metrics.spacing(12),
+            metrics.h(10),
+            metrics.spacing(10),
+            metrics.h(10),
           ),
           decoration: BoxDecoration(
-            color: const Color(0xFF061827),
-            borderRadius: BorderRadius.circular(
-              metrics.size(16),
-            ),
+            color: const Color(0xFF071B2A),
+            borderRadius: BorderRadius.circular(metrics.size(14)),
             border: Border.all(
-              color: card.color.withValues(alpha: .35),
+              color: card.color.withValues(alpha: .45),
             ),
           ),
           child: Column(
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CreditCardVisual(
-                    key: ValueKey('${card.accountId}_${card.cardVisual}'),
-                    visual: card.cardVisual,
-                    width: metrics.size(76),
-                    height: metrics.size(48),
-                    fit: BoxFit.cover,
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(metrics.size(7)),
+                    child: CreditCardVisual(
+                      key: ValueKey('${card.accountId}_${card.cardVisual}'),
+                      visual: card.cardVisual,
+                      width: metrics.size(82),
+                      height: metrics.size(48),
+                      fit: BoxFit.cover,
+                    ),
                   ),
-                  SizedBox(width: metrics.spacing(10)),
+                  SizedBox(width: metrics.spacing(9)),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          card.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: metrics.text(14),
-                            fontWeight: FontWeight.w700,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: metrics.h(1)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            card.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: metrics.text(14),
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: metrics.h(3)),
-                        Text(
-                          '•••• ${card.lastFour}',
-                          style: TextStyle(
-                            color: const Color(0xFFAFC8E5),
-                            fontSize: metrics.text(11),
+                          SizedBox(height: metrics.h(2)),
+                          Text(
+                            '•••• ${card.lastFour}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: const Color(0xFFAFC8E5),
+                              fontSize: metrics.text(10.5),
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   Container(
                     padding: EdgeInsets.symmetric(
-                      horizontal: metrics.spacing(9),
-                      vertical: metrics.h(6),
+                      horizontal: metrics.spacing(8),
+                      vertical: metrics.h(5),
                     ),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: .12),
-                      borderRadius: BorderRadius.circular(
-                        metrics.size(9),
-                      ),
+                      borderRadius: BorderRadius.circular(metrics.size(8)),
                       border: Border.all(
-                        color: statusColor.withValues(alpha: .5),
+                        color: statusColor.withValues(alpha: .55),
                       ),
                     ),
                     child: Text(
                       status,
                       style: TextStyle(
                         color: statusColor,
-                        fontSize: metrics.text(9.5),
-                        fontWeight: FontWeight.w700,
+                        fontSize: metrics.text(9),
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
-                  SizedBox(width: metrics.spacing(8)),
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    color: Colors.white70,
-                    size: metrics.size(24),
+                  SizedBox(width: metrics.spacing(5)),
+                  Padding(
+                    padding: EdgeInsets.only(top: metrics.h(4)),
+                    child: Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.white70,
+                      size: metrics.size(23),
+                    ),
                   ),
                 ],
               ),
-              SizedBox(height: metrics.h(15)),
+              SizedBox(height: metrics.h(9)),
+              Container(
+                height: 1,
+                color: Colors.white.withValues(alpha: .08),
+              ),
+              SizedBox(height: metrics.h(8)),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: _CardMetric(
+                    flex: 4,
+                    child: _InstallmentMetric(
                       metrics: metrics,
-                      title: 'Limit',
-                      value: _money(card.limit),
+                      currency: currency,
+                      amount: card.dueThisMonth,
+                      daysUntilDue: card.daysUntilDue,
                     ),
                   ),
-                  _VerticalDivider(metrics: metrics),
-                  Expanded(
-                    child: _CardMetric(
-                      metrics: metrics,
-                      title: 'Used',
-                      value: _money(card.used),
-                      suffix: '${(usage * 100).round()}%',
-                      valueColor: const Color(0xFFFF4F7D),
+                  Container(
+                    width: 1,
+                    height: metrics.h(55),
+                    margin: EdgeInsets.symmetric(
+                      horizontal: metrics.spacing(10),
                     ),
+                    color: Colors.white.withValues(alpha: .10),
                   ),
-                  _VerticalDivider(metrics: metrics),
                   Expanded(
-                    child: _CardMetric(
+                    flex: 6,
+                    child: _UsageMetric(
                       metrics: metrics,
-                      title: 'Available',
-                      value: _money(available),
-                      suffix: '${((1 - usage) * 100).round()}%',
-                      valueColor: const Color(0xFF39E6B0),
-                    ),
-                  ),
-                  _VerticalDivider(metrics: metrics),
-                  Expanded(
-                    child: _CardMetric(
-                      metrics: metrics,
-                      title: 'Due This Month',
-                      value: _money(card.dueThisMonth),
-                      suffix: _dueText(card.daysUntilDue),
-                      valueColor: statusColor,
+                      used: card.used,
+                      limit: card.limit,
+                      available: available,
+                      usage: usage,
+                      currency: currency,
                     ),
                   ),
                 ],
-              ),
-              SizedBox(height: metrics.h(12)),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(
-                  metrics.size(5),
-                ),
-                child: LinearProgressIndicator(
-                  minHeight: metrics.h(5),
-                  value: usage,
-                  backgroundColor: Colors.white.withValues(alpha: .06),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    card.color,
-                  ),
-                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _InstallmentMetric extends StatelessWidget {
+  const _InstallmentMetric({
+    required this.metrics,
+    required this.currency,
+    required this.amount,
+    required this.daysUntilDue,
+  });
+
+  final ResponsiveMetrics metrics;
+  final String currency;
+  final double amount;
+  final int daysUntilDue;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = _statusColor(_statusFor(daysUntilDue));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'This Month Installment',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: .60),
+            fontSize: metrics.text(8.5),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        SizedBox(height: metrics.h(2)),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _money(amount),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: metrics.text(20),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(width: metrics.spacing(3)),
+              Text(
+                currency,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: .72),
+                  fontSize: metrics.text(9),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: metrics.h(1)),
+        Text(
+          _dueText(daysUntilDue),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: statusColor,
+            fontSize: metrics.text(10.5),
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _UsageMetric extends StatelessWidget {
+  const _UsageMetric({
+    required this.metrics,
+    required this.used,
+    required this.limit,
+    required this.available,
+    required this.usage,
+    required this.currency,
+  });
+
+  final ResponsiveMetrics metrics;
+  final double used;
+  final double limit;
+  final double available;
+  final double usage;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (usage * 100).round();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'Used',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: .60),
+                fontSize: metrics.text(9),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Flexible(
+              child: Text(
+                '${_money(used)} / ${_money(limit)} $currency',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: metrics.text(10),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: metrics.h(7)),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(metrics.size(5)),
+          child: LinearProgressIndicator(
+            minHeight: metrics.h(7),
+            value: usage,
+            backgroundColor: const Color(0xFF12334A),
+            valueColor: const AlwaysStoppedAnimation<Color>(
+              Color(0xFFFF4F7D),
+            ),
+          ),
+        ),
+        SizedBox(height: metrics.h(4)),
+        Row(
+          children: [
+            Text(
+              '$percent% used',
+              style: TextStyle(
+                color: const Color(0xFFFF4F7D),
+                fontSize: metrics.text(9.5),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const Spacer(),
+            Flexible(
+              child: Text(
+                '${_money(available)} $currency available',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  color: const Color(0xFFAFC8E5),
+                  fontSize: metrics.text(9),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -1120,6 +1488,17 @@ String _dueText(int days) {
   }
 
   return 'Due in $days days';
+}
+
+String _compactMoney(double value) {
+  final absolute = value.abs();
+  if (absolute >= 1000000) {
+    return '${(value / 1000000).toStringAsFixed(value % 1000000 == 0 ? 0 : 1)}M';
+  }
+  if (absolute >= 1000) {
+    return '${(value / 1000).toStringAsFixed(value % 1000 == 0 ? 0 : 1)}K';
+  }
+  return value.round().toString();
 }
 
 String _money(double value) {
