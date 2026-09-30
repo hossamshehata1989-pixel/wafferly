@@ -1,87 +1,92 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
+import '../../../application/credit_card/credit_card_details_projection_service.dart';
 import '../../../credit_card/domain/credit_card_profile.dart';
-import '../../../credit_card/infrastructure/hive_credit_card_profile_repository.dart';
 import '../../../models/account.dart';
-import '../../../services/account_service.dart';
-import '../../../services/balance_service.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/responsive_metrics.dart';
 
 class CreditCardAccountDetailsScreen extends StatelessWidget {
   const CreditCardAccountDetailsScreen({super.key, required this.accountId});
+
   final String accountId;
 
   @override
   Widget build(BuildContext context) {
-    final account = AccountService().getAccountById(accountId);
-    if (account == null) {
-      return const Scaffold(body: Center(child: Text('Credit card not found')));
-    }
+    final service = CreditCardDetailsProjectionService();
+    final m = ResponsiveMetrics.of(context);
+    final t = AppLocalizations.of(context)!;
 
-    final profile = HiveCreditCardProfileRepository(
-      Hive.box<CreditCardProfile>('credit_card_profiles'),
-    );
-
-    return FutureBuilder<CreditCardProfile?>(
-      future: profile.findByAccountId(accountId),
+    return FutureBuilder<CreditCardDetailsProjection?>(
+      future: service.project(accountId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
-        }
-        final card = snapshot.data;
-        if (card == null) {
-          return const Scaffold(body: Center(child: Text('Credit card configuration not found')));
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: const Center(child: CircularProgressIndicator()),
+          );
         }
 
-        final balance = BalanceService().getBalance(accountId);
-        final outstanding = math.max(0, -balance).toDouble();
-        final limit = card.creditLimit.toDouble();
-        final available = math.max(0, limit - outstanding).toDouble();
-        final utilization = limit <= 0 ? 0.0 : (outstanding / limit).clamp(0.0, 1.0);
+        final projection = snapshot.data;
+        if (projection == null) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(child: Text(t.creditCardNotFound)),
+          );
+        }
+
+        final account = projection.account;
+        final card = projection.profile;
 
         return Scaffold(
-          backgroundColor: const Color(0xFF020D16),
+          backgroundColor: AppColors.background,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: const BackButton(color: Colors.white),
-            title: const Text('Credit Card', style: TextStyle(fontWeight: FontWeight.w800)),
+            title: Text(
+              t.creditCard,
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: m.typography.title),
+            ),
             actions: [
-              IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert_rounded)),
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.more_vert_rounded),
+              ),
             ],
           ),
           body: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 28),
+            padding: EdgeInsets.fromLTRB(
+              m.spacing(16),
+              m.spacing(6),
+              m.spacing(16),
+              m.spacing(28),
+            ),
             children: [
               _CardIdentity(account: account, profile: card),
-              const SizedBox(height: 14),
-              _ExposureCard(
-                outstanding: outstanding,
-                limit: limit,
-                available: available,
-                utilization: utilization,
-                currency: account.currency,
-              ),
-              const SizedBox(height: 14),
+              SizedBox(height: m.space.md),
+              _ExposureCard(projection: projection),
+              SizedBox(height: m.space.md),
               _CardFacts(account: account, profile: card),
-              const SizedBox(height: 14),
+              SizedBox(height: m.space.md),
               _SectionCard(
-                title: 'Purchases',
-                subtitle: 'Credit card transactions will appear here.',
+                title: t.purchases,
+                subtitle: t.purchasesSubtitle,
                 icon: Icons.receipt_long_rounded,
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: m.space.sm),
               _SectionCard(
-                title: 'Statements',
-                subtitle: card.statementDay == null ? 'Statement day is not configured.' : 'Statement closes on day ${card.statementDay}.',
+                title: t.statements,
+                subtitle: card.statementDay == null
+                    ? t.statementNotConfigured
+                    : '${t.statementClosesOn} ${card.statementDay}',
                 icon: Icons.description_outlined,
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: m.space.sm),
               _SectionCard(
-                title: 'Installments',
-                subtitle: 'Financing conversions linked to this card will appear here.',
+                title: t.installments,
+                subtitle: t.installmentsSubtitle,
                 icon: Icons.calendar_month_rounded,
               ),
             ],
@@ -94,29 +99,71 @@ class CreditCardAccountDetailsScreen extends StatelessWidget {
 
 class _CardIdentity extends StatelessWidget {
   const _CardIdentity({required this.account, required this.profile});
+
   final Account account;
   final CreditCardProfile profile;
 
   @override
   Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+    final t = AppLocalizations.of(context)!;
+
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(m.spacing(18)),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF112B3D), Color(0xFF081A27)]),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFF3D81).withValues(alpha: .35)),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF112B3D), Color(0xFF081A27)],
+        ),
+        borderRadius: BorderRadius.circular(m.radius.xl),
+        border: Border.all(
+          color: const Color(0xFFFF3D81).withValues(alpha: .35),
+        ),
       ),
       child: Row(
         children: [
-          Container(width: 58, height: 58, decoration: BoxDecoration(color: const Color(0xFFFF3D81).withValues(alpha: .14), borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.credit_card_rounded, color: Color(0xFFFF3D81), size: 30)),
-          const SizedBox(width: 14),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(account.name, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 5),
-            Text('${account.provider ?? 'Credit Card'} • ${profile.cardNetwork ?? 'Network not set'}', style: const TextStyle(color: Colors.white60, fontSize: 12)),
-            const SizedBox(height: 3),
-            Text(profile.cardKind == 'virtual' ? 'Virtual card' : 'Physical card', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-          ])),
+          Container(
+            width: m.size(58),
+            height: m.size(58),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF3D81).withValues(alpha: .14),
+              borderRadius: BorderRadius.circular(m.radius.lg),
+            ),
+            child: Icon(
+              Icons.credit_card_rounded,
+              color: const Color(0xFFFF3D81),
+              size: m.icon.large,
+            ),
+          ),
+          SizedBox(width: m.space.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  account.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: m.text(20),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: m.space.xs),
+                Text(
+                  '${account.provider ?? t.creditCard} • ${profile.cardNetwork ?? t.networkNotSet}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.white60, fontSize: m.typography.caption),
+                ),
+                SizedBox(height: m.space.xs),
+                Text(
+                  profile.cardKind == 'virtual' ? t.virtualCard : t.physicalCard,
+                  style: TextStyle(color: Colors.white54, fontSize: m.typography.caption),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -124,103 +171,203 @@ class _CardIdentity extends StatelessWidget {
 }
 
 class _ExposureCard extends StatelessWidget {
-  const _ExposureCard({required this.outstanding, required this.limit, required this.available, required this.utilization, required this.currency});
-  final double outstanding;
-  final double limit;
-  final double available;
-  final double utilization;
-  final String currency;
+  const _ExposureCard({required this.projection});
+
+  final CreditCardDetailsProjection projection;
 
   @override
   Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+    final t = AppLocalizations.of(context)!;
+
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: const Color(0xFF0A1C29), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withValues(alpha: .08))),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Credit Exposure', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 16),
-        Row(children: [
-          Expanded(child: _Metric(title: 'Outstanding', value: _money(outstanding, currency), color: const Color(0xFFFF3D81))),
-          const SizedBox(width: 10),
-          Expanded(child: _Metric(title: 'Available', value: _money(available, currency), color: const Color(0xFF22E6A8))),
-        ]),
-        const SizedBox(height: 12),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('Credit Limit', style: TextStyle(color: Colors.white54, fontSize: 11)),
-          Text(_money(limit, currency), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
-        ]),
-        const SizedBox(height: 8),
-        ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: utilization, minHeight: 8, backgroundColor: Colors.white10, valueColor: const AlwaysStoppedAnimation(Color(0xFFFF3D81)))),
-        const SizedBox(height: 7),
-        Text('${(utilization * 100).round()}% used', style: const TextStyle(color: Colors.white54, fontSize: 11)),
-      ]),
-    );
-  }
-}
-
-class _CardFacts extends StatelessWidget {
-  const _CardFacts({required this.account, required this.profile});
-  final Account account;
-  final CreditCardProfile profile;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionCard(
-      title: 'Card Details',
-      icon: Icons.badge_outlined,
-      subtitle: 'Last 4: ${account.accountNumber?.isNotEmpty == true ? account.accountNumber : 'Not set'} • ${profile.cardKind == 'virtual' ? 'Virtual' : 'Physical'} • ${profile.cardNetwork ?? 'Network not set'}\nStatement: ${profile.statementDay?.toString() ?? 'Not set'} • Payment due: ${profile.paymentDueDay?.toString() ?? 'Not set'}',
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.subtitle, required this.icon});
-  final String title;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: const Color(0xFF0A1C29), borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white.withValues(alpha: .07))),
-      child: Row(children: [
-        Icon(icon, color: Colors.white70),
-        const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 5),
-          Text(subtitle, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-        ])),
-      ]),
-    );
-  }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.title, required this.value, required this.color});
-  final String title;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(m.spacing(18)),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(14),
+        color: const Color(0xFF0A1C29),
+        borderRadius: BorderRadius.circular(m.radius.xl),
+        border: Border.all(color: Colors.white.withValues(alpha: .08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: Colors.white54, fontSize: 11)),
-          const SizedBox(height: 6),
-          Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 15)),
+          Text(
+            t.creditExposure,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: m.typography.title,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          SizedBox(height: m.space.md),
+          Row(
+            children: [
+              Expanded(
+                child: _Metric(
+                  title: t.outstanding,
+                  value: _money(projection.outstanding.toDouble(), projection.account.currency),
+                  color: const Color(0xFFFF3D81),
+                ),
+              ),
+              SizedBox(width: m.space.sm),
+              Expanded(
+                child: _Metric(
+                  title: t.available,
+                  value: _money(projection.available.toDouble(), projection.account.currency),
+                  color: const Color(0xFF22E6A8),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: m.space.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  t.creditLimit,
+                  style: TextStyle(color: Colors.white54, fontSize: m.typography.caption),
+                ),
+              ),
+              SizedBox(width: m.space.sm),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Text(
+                    _money(projection.profile.creditLimit.toDouble(), projection.account.currency),
+                    style: TextStyle(color: Colors.white, fontSize: m.typography.body, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: m.space.sm),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(m.radius.sm),
+            child: LinearProgressIndicator(
+              value: projection.utilization,
+              minHeight: m.size(8),
+              backgroundColor: Colors.white10,
+              valueColor: const AlwaysStoppedAnimation(Color(0xFFFF3D81)),
+            ),
+          ),
+          SizedBox(height: m.space.xs),
+          Text(
+            '${(projection.utilization * 100).round()}% ${t.used}',
+            style: TextStyle(color: Colors.white54, fontSize: m.typography.caption),
+          ),
         ],
       ),
     );
   }
 }
 
-String _money(double value, String currency) => '${value.toStringAsFixed(2)} $currency';
+class _CardFacts extends StatelessWidget {
+  const _CardFacts({required this.account, required this.profile});
+
+  final Account account;
+  final CreditCardProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    final last4 = account.accountNumber?.isNotEmpty == true
+        ? account.accountNumber
+        : t.notSet;
+    final cardKind = profile.cardKind == 'virtual' ? t.virtualCard : t.physicalCard;
+    final network = profile.cardNetwork ?? t.networkNotSet;
+    final statement = profile.statementDay?.toString() ?? t.notSet;
+    final due = profile.paymentDueDay?.toString() ?? t.notSet;
+
+    return _SectionCard(
+      title: t.cardDetails,
+      icon: Icons.badge_outlined,
+      subtitle: '${t.last4}: $last4 • $cardKind • $network\n'
+          '${t.statementDay}: $statement • ${t.paymentDue}: $due',
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.subtitle, required this.icon});
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+
+    return Container(
+      padding: EdgeInsets.all(m.spacing(16)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A1C29),
+        borderRadius: BorderRadius.circular(m.radius.lg),
+        border: Border.all(color: Colors.white.withValues(alpha: .07)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.white70, size: m.icon.medium),
+          SizedBox(width: m.space.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: m.typography.body),
+                ),
+                SizedBox(height: m.space.xs),
+                Text(
+                  subtitle,
+                  style: TextStyle(color: Colors.white54, fontSize: m.typography.caption),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Metric extends StatelessWidget {
+  const _Metric({required this.title, required this.value, required this.color});
+
+  final String title;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+
+    return Container(
+      padding: EdgeInsets.all(m.spacing(12)),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(m.radius.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: TextStyle(color: Colors.white54, fontSize: m.typography.caption)),
+          SizedBox(height: m.space.xs),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              value,
+              style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: m.text(15)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _money(double value, String currency) =>
+    '${value.toStringAsFixed(2)} $currency';

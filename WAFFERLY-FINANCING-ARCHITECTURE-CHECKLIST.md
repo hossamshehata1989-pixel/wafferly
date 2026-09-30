@@ -67,3 +67,14 @@ Passing the full test suite does not imply that deferred ADRs are implemented. T
 - [x] Generic Money You Have account detail remains unchanged
 - [ ] Flutter test execution after UX change
 - [ ] Architecture gate after UX change
+
+## Accounts / Liabilities UX V3 — Verification Pending
+- [x] Remove orphan legacy `AllocationRecord` model that reintroduced an unapproved `double` monetary field and missing generated adapter.
+- [x] Move liability category-level outstanding aggregation into `DebtQueryService`.
+- [x] Remove independent debt aggregation from `LiabilityReadService` / `MoneyYouOweScreen`.
+- [x] Remove orphan legacy `CategoryCard` widget that referenced a missing expense bottom-sheet API.
+- [ ] Re-run `flutter analyze` after V33 changes.
+- [ ] Re-run `flutter test test/architecture/debt_balance_single_source_test.dart`.
+- [ ] Re-run `flutter test test/architecture/money_boundary_ratchet_test.dart`.
+- [ ] Re-run `flutter test test/financial_action_panel_grouping_test.dart` and inspect exact failure if it remains.
+- [ ] Re-run full `flutter test` after V33.

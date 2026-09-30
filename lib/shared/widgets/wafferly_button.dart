@@ -12,6 +12,7 @@ class WafferlyButton extends StatelessWidget {
   final bool fullWidth;
   final double? widthFactor;
   final Color? backgroundColor;
+  final Color? foregroundColor;
   final IconData? icon;
 
   const WafferlyButton({
@@ -22,6 +23,7 @@ class WafferlyButton extends StatelessWidget {
     this.fullWidth = true,
     this.widthFactor,
     this.backgroundColor,
+    this.foregroundColor,
     this.icon,
   });
 
@@ -33,7 +35,7 @@ class WafferlyButton extends StatelessWidget {
       onPressed: loading ? null : onPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor ?? AppColors.primary,
-        foregroundColor: Colors.white,
+        foregroundColor: foregroundColor ?? Colors.white,
         minimumSize: Size(0, metrics.isCompactHeight ? 48 : 52),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(metrics.radius.lg),
@@ -47,9 +49,9 @@ class WafferlyButton extends StatelessWidget {
           ? SizedBox(
               width: metrics.icon.small,
               height: metrics.icon.small,
-              child: const CircularProgressIndicator(
+              child: CircularProgressIndicator(
                 strokeWidth: 2,
-                color: Colors.white,
+                color: foregroundColor ?? Colors.white,
               ),
             )
           : Row(

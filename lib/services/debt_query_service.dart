@@ -117,6 +117,24 @@ final class DebtQueryService {
     );
   }
 
+  /// Returns the derived debt category for one or more account types.
+  ///
+  /// This is intentionally kept inside DebtQueryService so presentation and
+  /// other read services do not independently aggregate debt balances.
+  DebtCategorySummary getCategorySummary({
+    required Set<String> types,
+    required String title,
+    required DateTime today,
+  }) {
+    final summaries = getDebtSummaries(today: today);
+    return _buildCategory(
+      title,
+      types,
+      summaries,
+      today,
+    );
+  }
+
   List<DebtCategorySummary> _buildCategories(
     List<DebtSummary> summaries,
     DateTime today,
@@ -132,9 +150,10 @@ final class DebtQueryService {
       for (final definition in definitions)
         _buildCategory(
           definition.title,
-          definition.type,
+          {definition.type},
           summaries,
           today,
+          type: definition.type,
         ),
       DebtCategorySummary(
         title: 'Temporary Debt',
@@ -159,12 +178,13 @@ final class DebtQueryService {
 
   DebtCategorySummary _buildCategory(
     String title,
-    String type,
+    Set<String> types,
     List<DebtSummary> summaries,
-    DateTime today,
-  ) {
+    DateTime today, {
+    String? type,
+  }) {
     final matches = summaries
-        .where((summary) => summary.liabilityAccount.type == type)
+        .where((summary) => types.contains(summary.liabilityAccount.type))
         .toList();
 
     final outstanding = matches.fold<Money>(
@@ -185,7 +205,7 @@ final class DebtQueryService {
 
     return DebtCategorySummary(
       title: title,
-      type: type,
+      type: type ?? (types.length == 1 ? types.first : 'mixed'),
       accounts: matches.map((item) => item.liabilityAccount).toList(),
       outstanding: outstanding,
       thisMonth: thisMonth,

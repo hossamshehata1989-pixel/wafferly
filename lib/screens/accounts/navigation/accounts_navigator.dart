@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../models/account.dart';
 import '../../../models/enums/section_type.dart';
+import '../../../models/enums/liability_category.dart';
 import '../add_account/add_account_screen.dart';
 import '../add_credit_card/add_credit_card_screen.dart';
 import '../group_accounts_screen.dart';
@@ -146,6 +147,42 @@ abstract final class AccountsNavigator {
   }
 
   static Future<void> showLiabilityAccountDetails({
+    required BuildContext context,
+    required String accountId,
+  }) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LiabilityAccountDetailsScreen(accountId: accountId),
+      ),
+    );
+  }
+
+  static Future<void> showLoanDetails({
+    required BuildContext context,
+    required String accountId,
+  }) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LiabilityAccountDetailsScreen(accountId: accountId),
+      ),
+    );
+  }
+
+  static Future<void> showInstallmentDetails({
+    required BuildContext context,
+    required String accountId,
+  }) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LiabilityAccountDetailsScreen(accountId: accountId),
+      ),
+    );
+  }
+
+  static Future<void> showBorrowedMoneyDetails({
     required BuildContext context,
     required String accountId,
   }) {

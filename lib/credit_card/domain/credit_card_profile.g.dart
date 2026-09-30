@@ -23,13 +23,14 @@ class CreditCardProfileAdapter extends TypeAdapter<CreditCardProfile> {
       statementDay: fields[5] as int?,
       paymentDueDay: fields[6] as int?,
       linkedDebitCardAccountId: fields[7] as String?,
+      annualFeeValue: fields[8] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, CreditCardProfile obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -45,6 +46,8 @@ class CreditCardProfileAdapter extends TypeAdapter<CreditCardProfile> {
       ..writeByte(6)
       ..write(obj.paymentDueDay)
       ..writeByte(7)
-      ..write(obj.linkedDebitCardAccountId);
+      ..write(obj.linkedDebitCardAccountId)
+      ..writeByte(8)
+      ..write(obj.annualFeeValue);
   }
 }

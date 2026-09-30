@@ -41,6 +41,11 @@ final class CreditCardProfile {
   @HiveField(7)
   final String? linkedDebitCardAccountId;
 
+  /// Optional annual card fee. Metadata only; no financial transaction is
+  /// created when the card is created.
+  @HiveField(8)
+  final String? annualFeeValue;
+
   const CreditCardProfile({
     required this.id,
     required this.accountId,
@@ -50,6 +55,7 @@ final class CreditCardProfile {
     this.statementDay,
     this.paymentDueDay,
     this.linkedDebitCardAccountId,
+    this.annualFeeValue,
   });
 
   factory CreditCardProfile.fromMoney({
@@ -61,12 +67,21 @@ final class CreditCardProfile {
     int? statementDay,
     int? paymentDueDay,
     String? linkedDebitCardAccountId,
+    Money? annualFee,
   }) {
     if (creditLimit < Money.zero) {
       throw ArgumentError.value(
         creditLimit,
         'creditLimit',
         'Credit limit cannot be negative.',
+      );
+    }
+
+    if (annualFee != null && annualFee < Money.zero) {
+      throw ArgumentError.value(
+        annualFee,
+        'annualFee',
+        'Annual fee cannot be negative.',
       );
     }
 
@@ -79,10 +94,14 @@ final class CreditCardProfile {
       statementDay: statementDay,
       paymentDueDay: paymentDueDay,
       linkedDebitCardAccountId: linkedDebitCardAccountId,
+      annualFeeValue: annualFee?.toString(),
     );
   }
 
   /// Domain-facing credit limit. Persistence stores the canonical decimal
   /// representation in [creditLimitValue] so Money remains persistence-agnostic.
   Money get creditLimit => Money.parse(creditLimitValue);
+
+  Money? get annualFee =>
+      annualFeeValue == null ? null : Money.parse(annualFeeValue!);
 }

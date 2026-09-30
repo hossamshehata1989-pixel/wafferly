@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
+import '../../../core/money/money.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../models/account.dart';
 import '../../../models/enums/account_enums.dart';
-import '../../../models/enums/section_type.dart';
-import '../../../services/account_service.dart';
-import '../../../services/balance_service.dart';
-import '../add_account/add_account_screen.dart';
+import '../../../models/enums/liability_category.dart';
+import '../../../services/liability_read_service.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/responsive_metrics.dart';
+import '../../../shared/widgets/wafferly_button.dart';
 import '../add_credit_card/add_credit_card_screen.dart';
 import '../navigation/accounts_navigator.dart';
-import 'money_you_owe_screen.dart';
 
 class LiabilityCategoryScreen extends StatelessWidget {
   const LiabilityCategoryScreen({super.key, required this.category});
@@ -18,71 +19,62 @@ class LiabilityCategoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final service = AccountService();
-    final balances = BalanceService();
-    final spec = _spec(category);
+    final service = LiabilityReadService();
+    final spec = _spec(context, category);
+    final metrics = ResponsiveMetrics.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF031722),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const BackButton(color: Colors.white),
-        title: Text(spec.title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        title: Text(
+          spec.title,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: metrics.typography.title,
+          ),
+        ),
       ),
-      body: ValueListenableBuilder(
-        valueListenable: service.box.listenable(),
-        builder: (context, Box<Account> _, __) {
-          final accounts = service.getAllActiveAccounts()
-              .where((a) => a.group == AccountGroup.liabilities && spec.matches(a.type))
-              .toList();
-          final total = accounts.fold<double>(0, (sum, a) => sum + (-balances.getBalance(a.id)).clamp(0, double.infinity).toDouble());
+      body: AnimatedBuilder(
+        animation: service.listenable,
+        builder: (context, _) {
+          final model = service.getCategory(types: spec.types);
 
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 32),
+            padding: EdgeInsets.fromLTRB(
+              metrics.spacing(16),
+              metrics.spacing(10),
+              metrics.spacing(16),
+              metrics.spacing(32),
+            ),
             children: [
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [spec.accent.withValues(alpha: .24), const Color(0xFF0B1B29)]),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: spec.accent.withValues(alpha: .45)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(spec.icon, color: spec.accent, size: 34),
-                    const SizedBox(width: 14),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(spec.title, style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 4),
-                      Text(spec.subtitle, style: const TextStyle(color: Colors.white60, fontSize: 12)),
-                    ])),
-                    Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                      const Text('Outstanding', style: TextStyle(color: Colors.white54, fontSize: 11)),
-                      const SizedBox(height: 3),
-                      Text('${total.toStringAsFixed(0)} EGP', style: TextStyle(color: spec.accent, fontSize: 17, fontWeight: FontWeight.w800)),
-                    ]),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 18),
-              if (accounts.isEmpty)
-                _EmptyLiabilityState(spec: spec, onAdd: () => _add(context))
+              _CategoryHeader(spec: spec, total: model.totalOutstanding),
+              SizedBox(height: metrics.space.lg),
+              if (model.accounts.isEmpty)
+                _EmptyLiabilityState(
+                  spec: spec,
+                  onAdd: () => _add(context),
+                )
               else
-                ...accounts.map((account) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _LiabilityAccountTile(
-                    account: account,
-                    balance: (-balances.getBalance(account.id)).clamp(0, double.infinity).toDouble(),
-                    accent: spec.accent,
-                    onTap: () => _openAccount(context, account),
+                ...model.accounts.map(
+                  (account) => Padding(
+                    padding: EdgeInsets.only(bottom: metrics.space.sm),
+                    child: _LiabilityAccountTile(
+                      account: account,
+                      balance: service.outstandingFor(account.id),
+                      accent: spec.accent,
+                      onTap: () => _openAccount(context, account),
+                    ),
                   ),
-                )),
-              const SizedBox(height: 8),
-              FilledButton.icon(
+                ),
+              SizedBox(height: metrics.space.sm),
+              WafferlyButton(
                 onPressed: () => _add(context),
-                icon: const Icon(Icons.add_rounded),
-                label: Text(spec.addLabel),
+                title: spec.addLabel,
+                icon: Icons.add_rounded,
+                backgroundColor: spec.accent,
               ),
             ],
           );
@@ -93,109 +85,347 @@ class LiabilityCategoryScreen extends StatelessWidget {
 
   void _add(BuildContext context) {
     if (category == LiabilityCategory.creditCards) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const AddCreditCardScreen()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const AddCreditCardScreen()),
+      );
       return;
     }
-    Navigator.push(context, MaterialPageRoute(builder: (_) => AddAccountScreen(sectionType: SectionType.liabilities)));
+
+    final t = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(t.workflowUnavailableTitle),
+        content: Text(t.workflowUnavailableMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(t.close),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openAccount(BuildContext context, Account account) {
-    if (account.type == 'creditCard') {
-      AccountsNavigator.showCreditCardDetails(context: context, accountId: account.id);
-      return;
-    }
-    AccountsNavigator.showLiabilityAccountDetails(context: context, accountId: account.id);
-  }
-
-  _LiabilityCategorySpec _spec(LiabilityCategory category) {
     switch (category) {
       case LiabilityCategory.creditCards:
-        return _LiabilityCategorySpec('Credit Cards', 'Cards, limits, statements and purchases', Icons.credit_card_rounded, const Color(0xFFFF3D81), const {'creditCard'}, 'Add Credit Card');
+        AccountsNavigator.showCreditCardDetails(
+          context: context,
+          accountId: account.id,
+        );
       case LiabilityCategory.loans:
-        return _LiabilityCategorySpec('Loans', 'Principal, payments and due dates', Icons.account_balance_rounded, const Color(0xFF4D9CFF), const {'loan'}, 'Add Loan');
+        AccountsNavigator.showLoanDetails(
+          context: context,
+          accountId: account.id,
+        );
       case LiabilityCategory.installments:
-        return _LiabilityCategorySpec('Installments / BNPL', 'Installment plans and buy-now-pay-later', Icons.calendar_month_rounded, const Color(0xFFFFA52F), const {'installment', 'bnpl'}, 'Add Installment / BNPL');
+        AccountsNavigator.showInstallmentDetails(
+          context: context,
+          accountId: account.id,
+        );
       case LiabilityCategory.borrowedMoney:
-        return _LiabilityCategorySpec('Borrowed Money', 'Money borrowed from people or other sources', Icons.person_rounded, const Color(0xFF7C72FF), const {'debt', 'moneyBorrowed'}, 'Add Borrowed Money');
+        AccountsNavigator.showBorrowedMoneyDetails(
+          context: context,
+          accountId: account.id,
+        );
+    }
+  }
+
+  _LiabilityCategorySpec _spec(
+    BuildContext context,
+    LiabilityCategory category,
+  ) {
+    final t = AppLocalizations.of(context)!;
+    switch (category) {
+      case LiabilityCategory.creditCards:
+        return _LiabilityCategorySpec(
+          title: t.creditCards,
+          subtitle: t.creditCardsSubtitle,
+          icon: Icons.credit_card_rounded,
+          accent: const Color(0xFFFF3D81),
+          types: const {'creditCard'},
+          addLabel: t.addCreditCard,
+        );
+      case LiabilityCategory.loans:
+        return _LiabilityCategorySpec(
+          title: t.loans,
+          subtitle: t.loansSubtitle,
+          icon: Icons.account_balance_rounded,
+          accent: const Color(0xFF4D9CFF),
+          types: const {'loan'},
+          addLabel: t.addLoan,
+        );
+      case LiabilityCategory.installments:
+        return _LiabilityCategorySpec(
+          title: t.installmentsBnpl,
+          subtitle: t.installmentsBnplSubtitle,
+          icon: Icons.calendar_month_rounded,
+          accent: const Color(0xFFFFA52F),
+          types: const {'installment', 'bnpl'},
+          addLabel: t.addInstallmentBnpl,
+        );
+      case LiabilityCategory.borrowedMoney:
+        return _LiabilityCategorySpec(
+          title: t.borrowedMoney,
+          subtitle: t.borrowedMoneySubtitle,
+          icon: Icons.person_rounded,
+          accent: const Color(0xFF7C72FF),
+          types: const {'debt', 'moneyBorrowed'},
+          addLabel: t.addBorrowedMoney,
+        );
     }
   }
 }
 
 class _LiabilityCategorySpec {
-  const _LiabilityCategorySpec(this.title, this.subtitle, this.icon, this.accent, this.types, this.addLabel);
+  const _LiabilityCategorySpec({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.accent,
+    required this.types,
+    required this.addLabel,
+  });
+
   final String title;
   final String subtitle;
   final IconData icon;
   final Color accent;
   final Set<String> types;
   final String addLabel;
-  bool matches(String type) => types.contains(type);
+}
+
+class _CategoryHeader extends StatelessWidget {
+  const _CategoryHeader({required this.spec, required this.total});
+
+  final _LiabilityCategorySpec spec;
+  final Money total;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+    final t = AppLocalizations.of(context)!;
+
+    return Container(
+      padding: EdgeInsets.all(m.spacing(18)),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            spec.accent.withValues(alpha: .24),
+            const Color(0xFF0B1B29),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(m.radius.xl),
+        border: Border.all(color: spec.accent.withValues(alpha: .45)),
+      ),
+      child: Row(
+        children: [
+          Icon(spec.icon, color: spec.accent, size: m.icon.large),
+          SizedBox(width: m.space.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  spec.title,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: m.text(20),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: m.space.xs),
+                Text(
+                  spec.subtitle,
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: m.typography.caption,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(width: m.space.sm),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  t.outstanding,
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: m.typography.caption,
+                  ),
+                ),
+                SizedBox(height: m.space.xs),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    '${total.toDouble().toStringAsFixed(0)} ${t.currency}',
+                    style: TextStyle(
+                      color: spec.accent,
+                      fontSize: m.text(17),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _LiabilityAccountTile extends StatelessWidget {
-  const _LiabilityAccountTile({required this.account, required this.balance, required this.accent, required this.onTap});
+  const _LiabilityAccountTile({
+    required this.account,
+    required this.balance,
+    required this.accent,
+    required this.onTap,
+  });
+
   final Account account;
-  final double balance;
+  final Money balance;
   final Color accent;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+    final t = AppLocalizations.of(context)!;
+
     return ListTile(
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: m.space.sm,
+        vertical: m.space.xs,
+      ),
       tileColor: const Color(0xFF0C1C2A),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: accent.withValues(alpha: .24))),
-      leading: CircleAvatar(backgroundColor: accent.withValues(alpha: .14), child: Icon(_icon(account.type), color: accent)),
-      title: Text(account.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-      subtitle: Text(_subtitle(account), style: const TextStyle(color: Colors.white54, fontSize: 12)),
-      trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-        Text('${balance.toStringAsFixed(0)} ${account.currency}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-        const Icon(Icons.chevron_right_rounded, color: Colors.white54),
-      ]),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(m.radius.lg),
+        side: BorderSide(color: accent.withValues(alpha: .24)),
+      ),
+      leading: CircleAvatar(
+        radius: m.size(22),
+        backgroundColor: accent.withValues(alpha: .14),
+        child: Icon(_icon(account.type), color: accent, size: m.icon.medium),
+      ),
+      title: Text(
+        account.name,
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: m.typography.body,
+        ),
+      ),
+      subtitle: Text(
+        _subtitle(t, account.type),
+        style: TextStyle(color: Colors.white54, fontSize: m.typography.caption),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: m.size(110)),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '${balance.toDouble().toStringAsFixed(0)} ${account.currency}',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: m.typography.body,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: m.space.xs),
+          Icon(Icons.chevron_right_rounded, color: Colors.white54, size: m.icon.medium),
+        ],
+      ),
     );
   }
 
   IconData _icon(String type) {
     switch (type) {
-      case 'creditCard': return Icons.credit_card_rounded;
-      case 'loan': return Icons.account_balance_rounded;
+      case 'creditCard':
+        return Icons.credit_card_rounded;
+      case 'loan':
+        return Icons.account_balance_rounded;
       case 'installment':
-      case 'bnpl': return Icons.calendar_month_rounded;
-      default: return Icons.person_rounded;
+      case 'bnpl':
+        return Icons.calendar_month_rounded;
+      default:
+        return Icons.person_rounded;
     }
   }
 
-  String _subtitle(Account account) {
-    switch (account.type) {
-      case 'creditCard': return 'Credit Card';
-      case 'loan': return 'Loan';
+  String _subtitle(AppLocalizations t, String type) {
+    switch (type) {
+      case 'creditCard':
+        return t.creditCard;
+      case 'loan':
+        return t.loan;
       case 'installment':
-      case 'bnpl': return 'Installment / BNPL';
-      default: return 'Borrowed Money';
+      case 'bnpl':
+        return t.installment;
+      default:
+        return t.borrowedMoney;
     }
   }
 }
 
 class _EmptyLiabilityState extends StatelessWidget {
   const _EmptyLiabilityState({required this.spec, required this.onAdd});
+
   final _LiabilityCategorySpec spec;
   final VoidCallback onAdd;
 
   @override
   Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+    final t = AppLocalizations.of(context)!;
+
     return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(color: const Color(0xFF0C1C2A), borderRadius: BorderRadius.circular(20), border: Border.all(color: spec.accent.withValues(alpha: .22))),
-      child: Column(children: [
-        Icon(spec.icon, size: 44, color: spec.accent.withValues(alpha: .8)),
-        const SizedBox(height: 14),
-        Text('No ${spec.title.toLowerCase()} yet', style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 7),
-        Text('This category stays visible even when you have no accounts in it.', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(onPressed: onAdd, icon: const Icon(Icons.add_rounded), label: Text(spec.addLabel)),
-      ]),
+      padding: EdgeInsets.all(m.spacing(24)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0C1C2A),
+        borderRadius: BorderRadius.circular(m.radius.xl),
+        border: Border.all(color: spec.accent.withValues(alpha: .22)),
+      ),
+      child: Column(
+        children: [
+          Icon(spec.icon, size: m.icon.hero, color: spec.accent.withValues(alpha: .8)),
+          SizedBox(height: m.space.md),
+          Text(
+            '${t.noItemsYetPrefix} ${spec.title.toLowerCase()}',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: m.typography.title,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          SizedBox(height: m.space.xs),
+          Text(
+            t.liabilityCategoryAlwaysVisible,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white54, fontSize: m.typography.body),
+          ),
+          SizedBox(height: m.space.md),
+          WafferlyButton(
+            onPressed: onAdd,
+            title: spec.addLabel,
+            icon: Icons.add_rounded,
+            fullWidth: false,
+            backgroundColor: spec.accent,
+          ),
+        ],
+      ),
     );
   }
 }
