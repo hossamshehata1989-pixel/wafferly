@@ -8,6 +8,8 @@ import '../financial_engine/engine/financial_operation_engine.dart';
 import '../financial_engine/execution_context/execution_context.dart';
 import '../financial_engine/results/operation_result.dart';
 
+import '../financial_engine/commands/credit_card/credit_card_charge_intent.dart';
+import '../financial_engine/operations/credit_card_charge_operation.dart';
 import '../financial_engine/commands/expense/expense_command.dart';
 import '../financial_engine/commands/expense/expense_intent.dart';
 import '../financial_engine/commands/shared/transaction_metadata.dart';
@@ -43,6 +45,43 @@ class TransactionApplicationService {
     required TransactionQueryService transactionQueryService,
   }) : _engine = engine,
        _transactionQueryService = transactionQueryService;
+
+  // ==================== Credit Card Charge (via Engine) ====================
+
+  Future<OperationResult> addCreditCardCharge({
+    required String creditCardAccountId,
+    required double amount,
+    required String categoryId,
+    required DateTime occurredAt,
+    required String currencyCode,
+    String? note,
+    String? actorMemberId,
+  }) async {
+    final context = ExecutionContext(
+      idempotencyKey: 'cc-${DateTime.now().microsecondsSinceEpoch}',
+      actorMemberId: actorMemberId,
+      source: 'manual',
+      commandType: 'CreditCardCharge',
+    );
+
+    final operation = CreditCardChargeOperation(
+      intent: CreditCardChargeIntent(
+        creditCardAccountId: creditCardAccountId,
+        categoryId: categoryId,
+        amount: Money.fromDouble(amount),
+        actorMemberId: actorMemberId,
+      ),
+      metadata: TransactionMetadata(
+        occurredAt: occurredAt,
+        paymentMethod: 'credit_card',
+        currencyCode: currencyCode,
+        note: note,
+      ),
+      context: context,
+    );
+
+    return _engine.execute(operation, context);
+  }
 
   // ==================== Expense (via Engine) ====================
 

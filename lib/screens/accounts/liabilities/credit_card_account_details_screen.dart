@@ -1,26 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../application/credit_card/credit_card_details_projection_service.dart';
+import '../../../application/credit_card/credit_card_financing_application_service.dart';
 import '../../../credit_card/domain/credit_card_profile.dart';
 import '../../../models/account.dart';
+import '../../../models/financing/financing_installment.dart';
+import '../../../models/financing/financing_contract.dart';
+import '../../../models/transaction.dart';
+import '../../../constants/transaction_constants.dart';
+import '../../../services/transaction_query_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/responsive_metrics.dart';
 import '../../../widgets/shared/credit_card_visual.dart';
+import '../../../widgets/shared/wafferly_card_visual_layout.dart';
+import 'credit_card_installment_conversion_screen.dart';
+import 'credit_card_transaction_entry_screen.dart';
+import 'package:provider/provider.dart';
 
-class CreditCardAccountDetailsScreen extends StatelessWidget {
+class CreditCardAccountDetailsScreen extends StatefulWidget {
   const CreditCardAccountDetailsScreen({super.key, required this.accountId});
 
   final String accountId;
 
   @override
+  State<CreditCardAccountDetailsScreen> createState() =>
+      _CreditCardAccountDetailsScreenState();
+}
+
+class _CreditCardAccountDetailsScreenState
+    extends State<CreditCardAccountDetailsScreen> {
+  int _tab = 0;
+
+  Future<CreditCardDetailsProjection?> _projection() =>
+      CreditCardDetailsProjectionService().project(widget.accountId);
+
+  @override
   Widget build(BuildContext context) {
-    final service = CreditCardDetailsProjectionService();
     final m = ResponsiveMetrics.of(context);
     final t = AppLocalizations.of(context)!;
 
     return FutureBuilder<CreditCardDetailsProjection?>(
-      future: service.project(accountId),
+      future: _projection(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Scaffold(
@@ -37,8 +59,20 @@ class CreditCardAccountDetailsScreen extends StatelessWidget {
           );
         }
 
-        final account = projection.account;
-        final card = projection.profile;
+        final transactions = context
+            .read<TransactionQueryService>()
+            .getForAccount(widget.accountId)
+            .where((tx) => tx.type == TransactionType.creditCardCharge)
+            .toList();
+        final installments = Hive.box<FinancingInstallment>('financing_installments')
+            .values
+            .where((item) => _belongsToCard(item))
+            .toList()
+          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+
+        final thisMonth = installments
+            .where((item) => item.dueDate.year == DateTime.now().year && item.dueDate.month == DateTime.now().month && item.status != 'settled')
+            .fold<double>(0, (sum, item) => sum + item.amount.toDouble());
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -46,324 +80,868 @@ class CreditCardAccountDetailsScreen extends StatelessWidget {
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: const BackButton(color: Colors.white),
-            title: Text(
-              t.creditCard,
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: m.typography.title),
-            ),
+            title: const Text('Credit Card', style: TextStyle(fontWeight: FontWeight.w800)),
             actions: [
               IconButton(
-                onPressed: () {},
+                onPressed: () => _showCardMenu(projection.account, projection.profile),
                 icon: const Icon(Icons.more_vert_rounded),
               ),
             ],
           ),
           body: ListView(
-            padding: EdgeInsets.fromLTRB(
-              m.spacing(16),
-              m.spacing(6),
-              m.spacing(16),
-              m.spacing(28),
-            ),
+            padding: EdgeInsets.fromLTRB(m.spacing(16), 6, m.spacing(16), 28),
             children: [
-              _CardIdentity(account: account, profile: card),
+              _CardSummaryVisual(
+                account: projection.account,
+                profile: projection.profile,
+                available: projection.available.toDouble(),
+                totalInstallment: installments.fold<double>(
+                  0,
+                  (sum, item) => sum + item.amount.toDouble(),
+                ),
+                thisMonthInstallment: thisMonth,
+                utilization: projection.utilization,
+                overdueDays: _overdueDays(installments),
+              ),
               SizedBox(height: m.space.md),
-              _ExposureCard(projection: projection),
-              SizedBox(height: m.space.md),
-              _CardFacts(account: account, profile: card),
-              SizedBox(height: m.space.md),
-              _SectionCard(
-                title: t.purchases,
-                subtitle: t.purchasesSubtitle,
-                icon: Icons.receipt_long_rounded,
+              _ActionGrid(
+                onAddTransaction: () => _openEntry(projection.account, projection.profile, CreditCardEntryMode.expense),
+                onAddInstallment: () => _openEntry(projection.account, projection.profile, CreditCardEntryMode.installment),
+                onConvert: () => _openConvert(projection.account),
+                onPay: _showPaymentInfo,
               ),
               SizedBox(height: m.space.sm),
-              _SectionCard(
-                title: t.statements,
-                subtitle: card.statementDay == null
-                    ? t.statementNotConfigured
-                    : '${t.statementClosesOn} ${card.statementDay}',
-                icon: Icons.description_outlined,
-              ),
+              _StatementImportCard(onTap: _showStatementComingSoon),
+              SizedBox(height: m.space.md),
+              _SegmentTabs(selected: _tab, onChanged: (value) => setState(() => _tab = value)),
               SizedBox(height: m.space.sm),
-              _SectionCard(
-                title: t.installments,
-                subtitle: t.installmentsSubtitle,
-                icon: Icons.calendar_month_rounded,
-              ),
+              if (_tab == 0) _TransactionsSection(transactions: transactions, currency: projection.account.currency)
+              else if (_tab == 1) _InstallmentsSection(installments: installments, currency: projection.account.currency)
+              else _StatementsSection(profile: projection.profile),
             ],
           ),
         );
       },
     );
   }
+
+  bool _belongsToCard(FinancingInstallment item) {
+    final contracts = Hive.box<FinancingContract>('financing_contracts');
+    final contract = contracts.get(item.contractId);
+    return contract?.liabilityAccountId == widget.accountId;
+  }
+
+  Future<void> _openEntry(Account account, CreditCardProfile profile, CreditCardEntryMode mode) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => CreditCardTransactionEntryScreen(account: account, profile: profile, initialMode: mode)),
+    );
+    if (result == true && mounted) setState(() {});
+  }
+
+  Future<void> _openConvert(Account account) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => CreditCardInstallmentConversionScreen(account: account)),
+    );
+    if (result == true && mounted) setState(() {});
+  }
+
+  void _showStatementComingSoon() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (_) => const Padding(
+        padding: EdgeInsets.fromLTRB(24, 8, 24, 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(height: 12),
+            Icon(Icons.document_scanner_rounded, size: 72, color: Color(0xFF4D7CFF)),
+            SizedBox(height: 14),
+            Text('Monthly Statement Import', style: TextStyle(color: Colors.black, fontSize: 21, fontWeight: FontWeight.w900)),
+            SizedBox(height: 8),
+            Text('Automatically read your credit card statement and help you import and reconcile transactions.', textAlign: TextAlign.center, style: TextStyle(color: Colors.black54, height: 1.4)),
+            SizedBox(height: 18),
+            _ComingSoonLine(text: 'Supports PDF and images'),
+            _ComingSoonLine(text: 'Detects transactions automatically'),
+            _ComingSoonLine(text: 'Matches existing transactions'),
+            _ComingSoonLine(text: 'Helps with installment detection'),
+            SizedBox(height: 18),
+            SizedBox(width: double.infinity, height: 52, child: FilledButton(onPressed: null, child: Text('COMING SOON • PRO', style: TextStyle(fontWeight: FontWeight.w800)))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showPaymentInfo() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF0A1C29),
+      showDragHandle: true,
+      builder: (_) => const Padding(
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Pay Card', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            SizedBox(height: 8),
+            Text('Card payment entry will use the existing Financial Operation Engine and linked debit account settings.'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCardMenu(Account account, CreditCardProfile profile) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF0A1C29),
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ListTile(leading: const Icon(Icons.settings_outlined), title: const Text('Card Settings'), onTap: () => Navigator.pop(context)),
+          ListTile(leading: const Icon(Icons.document_scanner_outlined), title: const Text('Import Monthly Statement'), subtitle: const Text('PRO • Coming Soon'), onTap: () { Navigator.pop(context); _showStatementComingSoon(); }),
+        ]),
+      ),
+    );
+  }
 }
 
-class _CardIdentity extends StatelessWidget {
-  const _CardIdentity({required this.account, required this.profile});
+class _CardSummaryVisual extends StatelessWidget {
+  const _CardSummaryVisual({
+    required this.account,
+    required this.profile,
+    required this.available,
+    required this.totalInstallment,
+    required this.thisMonthInstallment,
+    required this.utilization,
+    required this.overdueDays,
+  });
 
   final Account account;
   final CreditCardProfile profile;
+  final double available;
+  final double totalInstallment;
+  final double thisMonthInstallment;
+  final double utilization;
+  final int overdueDays;
 
   @override
   Widget build(BuildContext context) {
-    final m = ResponsiveMetrics.of(context);
-    final t = AppLocalizations.of(context)!;
+    final layout = wafferlyCardLayoutForVisual(profile.cardVisual);
 
-    return Container(
-      padding: EdgeInsets.all(m.spacing(18)),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF112B3D), Color(0xFF081A27)],
-        ),
-        borderRadius: BorderRadius.circular(m.radius.xl),
-        border: Border.all(
-          color: const Color(0xFFFF3D81).withValues(alpha: .35),
-        ),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(m.radius.sm),
-            child: CreditCardVisual(
-              visual: profile.cardVisual,
-              width: m.size(78),
-              height: m.size(50),
-            ),
-          ),
-          SizedBox(width: m.space.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return AspectRatio(
+      aspectRatio: layout.aspectRatio,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final size = constraints.biggest;
+
+            Widget slot(CardTextSlot field, Widget child,
+                {bool fillWidth = false}) {
+              final definition = layout.slot(field);
+              if (definition == null) return const SizedBox.shrink();
+
+              final rect = definition.area.resolve(size);
+              return Positioned.fromRect(
+                rect: rect,
+                child: Padding(
+                  padding: definition.area.padding,
+                  child: SizedBox(
+                    width: rect.width,
+                    height: rect.height,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: definition.area.alignment,
+                      child: fillWidth
+                          ? SizedBox(width: rect.width, child: child)
+                          : child,
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            final usedPercent = (utilization * 100).clamp(0.0, 100.0);
+
+            return Stack(
+              fit: StackFit.expand,
               children: [
-                Text(
-                  account.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                CreditCardVisual(
+                  key: ValueKey(profile.cardVisual),
+                  visual: profile.cardVisual,
+                  fit: BoxFit.fill,
+                ),
+
+                // Identity
+                slot(
+                  CardTextSlot.cardName,
+                  _CardOverlayText(
+                    account.name,
+                    size: 17,
+                    weight: FontWeight.w900,
+                  ),
+                ),
+                slot(
+                  CardTextSlot.issuer,
+                  _CardOverlayText(
+                    '${account.provider ?? 'Credit Card'} • ${profile.cardNetwork ?? 'Network not set'}',
+                    size: 8.5,
+                    color: Colors.white70,
+                    maxLines: 1,
+                  ),
+                ),
+
+                // Masked card number next to the chip
+slot(
+  CardTextSlot.maskedNumber,
+  _CardOverlayText(
+    account.accountNumber?.trim().isNotEmpty == true
+        ? '•••• ${account.accountNumber!.trim()}'
+        : 'XXXX XXXX XXXX XXXX',
+    size: 15,
+    weight: FontWeight.w900,
+    color: Colors.white,
+    maxLines: 1,
+  ),
+),
+
+                // Financial secondary data (no black background)
+                slot(
+                  CardTextSlot.available,
+                  _CardCompactStat(
+                    label: 'Available',
+                    value: _money(available, account.currency),
+                    color: const Color(0xFF22E6A8),
+                  ),
+                ),
+                slot(
+                  CardTextSlot.creditLimit,
+                  _CardCompactStat(
+                    label: 'Credit Limit',
+                    value: _money(profile.creditLimit.toDouble(), account.currency),
                     color: Colors.white,
-                    fontSize: m.text(20),
-                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                SizedBox(height: m.space.xs),
-                Text(
-                  '${account.provider ?? t.creditCard} • ${profile.cardNetwork ?? t.networkNotSet}',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.white60, fontSize: m.typography.caption),
-                ),
-                SizedBox(height: m.space.xs),
-                Text(
-                  profile.cardKind == 'virtual' ? t.virtualCard : t.physicalCard,
-                  style: TextStyle(color: Colors.white54, fontSize: m.typography.caption),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
-class _ExposureCard extends StatelessWidget {
-  const _ExposureCard({required this.projection});
-
-  final CreditCardDetailsProjection projection;
-
-  @override
-  Widget build(BuildContext context) {
-    final m = ResponsiveMetrics.of(context);
-    final t = AppLocalizations.of(context)!;
-
-    return Container(
-      padding: EdgeInsets.all(m.spacing(18)),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A1C29),
-        borderRadius: BorderRadius.circular(m.radius.xl),
-        border: Border.all(color: Colors.white.withValues(alpha: .08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            t.creditExposure,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: m.typography.title,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          SizedBox(height: m.space.md),
-          Row(
-            children: [
-              Expanded(
-                child: _Metric(
-                  title: t.outstanding,
-                  value: _money(projection.outstanding.toDouble(), projection.account.currency),
-                  color: const Color(0xFFFF3D81),
-                ),
-              ),
-              SizedBox(width: m.space.sm),
-              Expanded(
-                child: _Metric(
-                  title: t.available,
-                  value: _money(projection.available.toDouble(), projection.account.currency),
-                  color: const Color(0xFF22E6A8),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: m.space.sm),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(
-                child: Text(
-                  t.creditLimit,
-                  style: TextStyle(color: Colors.white54, fontSize: m.typography.caption),
-                ),
-              ),
-              SizedBox(width: m.space.sm),
-              Flexible(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: Text(
-                    _money(projection.profile.creditLimit.toDouble(), projection.account.currency),
-                    style: TextStyle(color: Colors.white, fontSize: m.typography.body, fontWeight: FontWeight.w700),
+                slot(
+                  CardTextSlot.monthlyInstallment,
+                  _CardOverlayMoneyStat(
+                    label: 'This Month Installment',
+                    value: _money(thisMonthInstallment, account.currency),
+                    color: const Color(0xFFFF2D6F),
+                    secondary: overdueDays > 0 ? '$overdueDays days overdue' : null,
                   ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: m.space.sm),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(m.radius.sm),
-            child: LinearProgressIndicator(
-              value: projection.utilization,
-              minHeight: m.size(8),
-              backgroundColor: Colors.white10,
-              valueColor: const AlwaysStoppedAnimation(Color(0xFFFF3D81)),
-            ),
-          ),
-          SizedBox(height: m.space.xs),
-          Text(
-            '${(projection.utilization * 100).round()}% ${t.used}',
-            style: TextStyle(color: Colors.white54, fontSize: m.typography.caption),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CardFacts extends StatelessWidget {
-  const _CardFacts({required this.account, required this.profile});
-
-  final Account account;
-  final CreditCardProfile profile;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
-    final last4 = account.accountNumber?.isNotEmpty == true
-        ? account.accountNumber
-        : t.notSet;
-    final cardKind = profile.cardKind == 'virtual' ? t.virtualCard : t.physicalCard;
-    final network = profile.cardNetwork ?? t.networkNotSet;
-    final statement = profile.statementDay?.toString() ?? t.notSet;
-    final due = profile.paymentDueDay?.toString() ?? t.notSet;
-
-    return _SectionCard(
-      title: t.cardDetails,
-      icon: Icons.badge_outlined,
-      subtitle: '${t.last4}: $last4 • $cardKind • $network\n'
-          '${t.statementDay}: $statement • ${t.paymentDue}: $due',
-    );
-  }
-}
-
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.subtitle, required this.icon});
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final m = ResponsiveMetrics.of(context);
-
-    return Container(
-      padding: EdgeInsets.all(m.spacing(16)),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0A1C29),
-        borderRadius: BorderRadius.circular(m.radius.lg),
-        border: Border.all(color: Colors.white.withValues(alpha: .07)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: Colors.white70, size: m.icon.medium),
-          SizedBox(width: m.space.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: m.typography.body),
+                slot(
+                  CardTextSlot.totalInstallment,
+                  _CardOverlayMoneyStat(
+                    label: 'Total Installment',
+                    value: _money(totalInstallment, account.currency),
+                    color: Colors.white,
+                  ),
                 ),
-                SizedBox(height: m.space.xs),
-                Text(
-                  subtitle,
-                  style: TextStyle(color: Colors.white54, fontSize: m.typography.caption),
+
+                slot(
+                  CardTextSlot.statementCycle,
+                  _CardCycleInfo(
+                    statementDay: profile.statementDay,
+                    dueDay: profile.paymentDueDay,
+                  ),
+                ),
+
+                slot(
+                  CardTextSlot.usedPercent,
+                  _CardUsageOverlay(
+                    utilization: utilization,
+                    usedPercent: usedPercent,
+                    available: available,
+                    currency: account.currency,
+                  ),
+                  fillWidth: true,
                 ),
               ],
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
 }
 
-class _Metric extends StatelessWidget {
-  const _Metric({required this.title, required this.value, required this.color});
+class _CardOverlayText extends StatelessWidget {
+  const _CardOverlayText(
+    this.text, {
+    required this.size,
+    this.weight = FontWeight.w600,
+    this.color = Colors.white,
+    this.maxLines = 1,
+  });
 
-  final String title;
+  final String text;
+  final double size;
+  final FontWeight weight;
+  final Color color;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: AlignmentDirectional.centerStart,
+      child: Text(
+        text,
+        maxLines: maxLines,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: color, fontSize: size, fontWeight: weight),
+      ),
+    );
+  }
+}
+
+/// Available / Credit Limit (no black background, larger fonts)
+class _CardCompactStat extends StatelessWidget {
+  const _CardCompactStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
   final String value;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final m = ResponsiveMetrics.of(context);
-
-    return Container(
-      padding: EdgeInsets.all(m.spacing(12)),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(m.radius.md),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: TextStyle(color: Colors.white54, fontSize: m.typography.caption)),
-          SizedBox(height: m.space.xs),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              value,
-              style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: m.text(15)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerEnd,
+          child: Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
             ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+/// This Month / Total Installment (no black background, larger fonts, smaller currency)
+class _CardOverlayMoneyStat extends StatelessWidget {
+  const _CardOverlayMoneyStat({
+    required this.label,
+    required this.value,
+    required this.color,
+    this.secondary,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+  final String? secondary;
+
+  @override
+  Widget build(BuildContext context) {
+    // Split value into amount and currency to make currency smaller
+    final parts = value.split(' ');
+    final amount = parts.isNotEmpty ? parts[0] : value;
+    final currency = parts.length > 1 ? parts[1] : '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 3),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: amount,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                if (currency.isNotEmpty)
+                  TextSpan(
+                    text: ' $currency',
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (secondary != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              secondary!,
+              style: TextStyle(
+                color: color,
+                fontSize: 8.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _CardCycleInfo extends StatelessWidget {
+  const _CardCycleInfo({required this.statementDay, required this.dueDay});
+
+  final int? statementDay;
+  final int? dueDay;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget line(String label, int? day) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$label ',
+                style: const TextStyle(color: Colors.white70, fontSize: 9)),
+            Text(day == null ? '—' : 'day $day',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800)),
+          ],
+        );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        line('Statement', statementDay),
+        const SizedBox(height: 3),
+        line('Due', dueDay),
+      ],
+    );
+  }
+}
+
+/// Usage bar with larger text and smaller currency
+class _CardUsageOverlay extends StatelessWidget {
+  const _CardUsageOverlay({
+    required this.utilization,
+    required this.usedPercent,
+    required this.available,
+    required this.currency,
+  });
+
+  final double utilization;
+  final double usedPercent;
+  final double available;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Used',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              '${usedPercent.round()}% used',
+              style: const TextStyle(
+                color: Color(0xFFFF3D81),
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(5),
+          child: LinearProgressIndicator(
+            value: utilization.clamp(0.0, 1.0),
+            minHeight: 7,
+            backgroundColor: Colors.white24,
+            valueColor: const AlwaysStoppedAnimation(Color(0xFFFF3D81)),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: available.toStringAsFixed(2),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                TextSpan(
+                  text: ' $currency',
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const TextSpan(
+                  text: ' available',
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionGrid extends StatelessWidget {
+  const _ActionGrid({
+    required this.onAddTransaction,
+    required this.onAddInstallment,
+    required this.onConvert,
+    required this.onPay,
+  });
+
+  final VoidCallback onAddTransaction;
+  final VoidCallback onAddInstallment;
+  final VoidCallback onConvert;
+  final VoidCallback onPay;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: _Action(icon: Icons.add_rounded, label: 'Add\nTransaction', onTap: onAddTransaction)),
+        const SizedBox(width: 8),
+        Expanded(child: _Action(icon: Icons.calendar_month_rounded, label: 'Add\nInstallment', onTap: onAddInstallment)),
+        const SizedBox(width: 8),
+        Expanded(child: _Action(icon: Icons.autorenew_rounded, label: 'Convert to\nInstallment', onTap: onConvert)),
+        const SizedBox(width: 8),
+        Expanded(child: _Action(icon: Icons.credit_card_rounded, label: 'Pay\nCard', onTap: onPay)),
+      ],
+    );
+  }
+}
+
+class _Action extends StatelessWidget {
+  const _Action({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF0A1C29),
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: SizedBox(
+          height: 82,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: const Color(0xFFFF3D81), size: 22),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-String _money(double value, String currency) =>
-    '${value.toStringAsFixed(2)} $currency';
+class _StatementImportCard extends StatelessWidget {
+  const _StatementImportCard({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF3A182E),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6B2B55),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.document_scanner_outlined, color: Color(0xFF7DA4FF)),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Import Monthly Statement', style: TextStyle(fontWeight: FontWeight.w800)),
+                    SizedBox(height: 3),
+                    Text('Coming Soon', style: TextStyle(color: Color(0xFFFF6D9D), fontSize: 11)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFB21A),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('PRO', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w900)),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SegmentTabs extends StatelessWidget {
+  const _SegmentTabs({required this.selected, required this.onChanged});
+  final int selected;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _seg('Transactions', 0),
+        _seg('Installments', 1),
+        _seg('Statements', 2),
+      ],
+    );
+  }
+
+  Widget _seg(String label, int value) {
+    final active = selected == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onChanged(value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: active ? const Color(0xFFFF2D6F) : Colors.white12,
+                width: active ? 2 : 1,
+              ),
+            ),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: active ? const Color(0xFFFF2D6F) : Colors.white70,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TransactionsSection extends StatelessWidget {
+  const _TransactionsSection({required this.transactions, required this.currency});
+  final List<Transaction> transactions;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    if (transactions.isEmpty) {
+      return const _EmptySection(
+        title: 'No transactions yet',
+        subtitle: 'Credit card transactions will appear here.',
+      );
+    }
+
+    return Column(
+      children: transactions.take(12).map((tx) {
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+          leading: const CircleAvatar(
+            backgroundColor: Color(0xFF182B45),
+            child: Icon(Icons.shopping_cart_outlined, color: Color(0xFF8CB3FF), size: 19),
+          ),
+          title: Text(
+            tx.note?.split(' • ').first ?? 'Credit Card purchase',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(
+            '${tx.date.day}/${tx.date.month}/${tx.date.year}',
+            style: const TextStyle(color: Colors.white54, fontSize: 11),
+          ),
+          trailing: Text(
+            '-${tx.amount.toStringAsFixed(2)} $currency',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _InstallmentsSection extends StatelessWidget {
+  const _InstallmentsSection({required this.installments, required this.currency});
+  final List<FinancingInstallment> installments;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
+    if (installments.isEmpty) {
+      return const _EmptySection(
+        title: 'No installments yet',
+        subtitle: 'Converted and new installment purchases will appear here.',
+      );
+    }
+
+    return Column(
+      children: installments.take(12).map((item) {
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+          leading: const CircleAvatar(
+            backgroundColor: Color(0xFF182B45),
+            child: Icon(Icons.event_repeat_rounded, color: Color(0xFF8CB3FF), size: 19),
+          ),
+          title: Text('Installment ${item.sequence}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(
+            '${item.dueDate.day}/${item.dueDate.month}/${item.dueDate.year} • ${item.status}',
+            style: const TextStyle(color: Colors.white54, fontSize: 11),
+          ),
+          trailing: Text(
+            '${item.amount.toDouble().toStringAsFixed(2)} $currency',
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _StatementsSection extends StatelessWidget {
+  const _StatementsSection({required this.profile});
+  final CreditCardProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return _EmptySection(
+      title: 'Statements',
+      subtitle: profile.statementDay == null
+          ? 'Statement day is not configured.'
+          : 'Statement closes on day ${profile.statementDay}. Monthly statement import is coming soon.',
+    );
+  }
+}
+
+class _EmptySection extends StatelessWidget {
+  const _EmptySection({required this.title, required this.subtitle});
+  final String title;
+  final String subtitle;
+  @override
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(18), decoration: BoxDecoration(color: const Color(0xFF0A1C29), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withValues(alpha: .07))), child: Column(children: [Text(title, style: const TextStyle(fontWeight: FontWeight.w800)), const SizedBox(height: 6), Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54, fontSize: 12))]));
+}
+
+class _ComingSoonLine extends StatelessWidget {
+  const _ComingSoonLine({required this.text});
+  final String text;
+  @override
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(children: [const Icon(Icons.check_circle, color: Color(0xFFFF3D81), size: 18), const SizedBox(width: 8), Expanded(child: Text(text, style: const TextStyle(color: Colors.black87)))]));
+}
+
+class _Metric extends StatelessWidget {
+  const _Metric({required this.title, required this.value, required this.color});
+  final String title;
+  final String value;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.black.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white54, fontSize: 11)), const SizedBox(height: 5), FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 15)))]));
+}
+
+int _overdueDays(List<FinancingInstallment> installments) {
+  final now = DateTime.now();
+  var maxDays = 0;
+  for (final item in installments) {
+    if (item.status == 'settled') continue;
+    if (item.dueDate.isBefore(now)) {
+      final days = now.difference(item.dueDate).inDays;
+      if (days > maxDays) maxDays = days;
+    }
+  }
+  return maxDays;
+}
+
+String _money(double value, String currency) => '${value.toStringAsFixed(2)} $currency';

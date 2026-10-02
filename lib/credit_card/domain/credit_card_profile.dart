@@ -46,7 +46,7 @@ final class CreditCardProfile {
   @HiveField(8)
   final String? annualFeeValue;
 
-  /// Optional visual card design identifier used by the presentation layer.
+  /// Wafferly-owned visual identity for this card.
   @HiveField(9)
   final String cardVisual;
 
@@ -60,7 +60,7 @@ final class CreditCardProfile {
     this.paymentDueDay,
     this.linkedDebitCardAccountId,
     this.annualFeeValue,
-    this.cardVisual = 'classic',
+    this.cardVisual = 'credit_midnight',
   });
 
   factory CreditCardProfile.fromMoney({
@@ -73,7 +73,7 @@ final class CreditCardProfile {
     int? paymentDueDay,
     String? linkedDebitCardAccountId,
     Money? annualFee,
-    String cardVisual = 'classic',
+    String cardVisual = 'credit_midnight',
   }) {
     if (creditLimit < Money.zero) {
       throw ArgumentError.value(

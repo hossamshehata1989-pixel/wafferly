@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
-/// Reusable presentation widget for a credit-card visual.
-/// The selected visual is metadata on CreditCardProfile; this widget only renders it.
+import 'wafferly_financial_card.dart';
+
+/// Backward-compatible visual-only widget.
+/// Existing screens can keep using CreditCardVisual while the artwork itself
+/// is now owned by Wafferly and selected by visual id.
 class CreditCardVisual extends StatelessWidget {
   const CreditCardVisual({
     super.key,
     required this.visual,
     this.width,
     this.height,
-    this.fit = BoxFit.contain,
+    this.fit = BoxFit.cover,
   });
 
   final String visual;
@@ -17,21 +19,25 @@ class CreditCardVisual extends StatelessWidget {
   final double? height;
   final BoxFit fit;
 
-  static const _assets = <String, String>{
-    'classic': 'assets/images/credit_cards/classic.svg',
-    'midnight': 'assets/images/credit_cards/midnight.svg',
-    'aurora': 'assets/images/credit_cards/aurora.svg',
-  };
-
-  String get _asset => _assets[visual] ?? _assets['classic']!;
-
   @override
   Widget build(BuildContext context) {
-    return SvgPicture.asset(
-      _asset,
+    final kind = visual.startsWith('debit_')
+        ? WafferlyCardKind.debit
+        : visual.startsWith('prepaid_')
+            ? WafferlyCardKind.prepaid
+            : visual.startsWith('virtual_')
+                ? WafferlyCardKind.virtual
+                : visual.startsWith('charge_')
+                    ? WafferlyCardKind.charge
+                    : WafferlyCardKind.credit;
+
+    return WafferlyFinancialCard(
+      kind: kind,
+      visual: visual,
       width: width,
       height: height,
       fit: fit,
+      showFinancialData: false,
     );
   }
 }

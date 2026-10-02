@@ -17,6 +17,7 @@ class WafferlyTextField extends StatelessWidget {
   final TextInputType keyboardType;
   final TextInputAction textInputAction;
   final int maxLines;
+  final int? maxLength;
 
   final String? Function(String?)? validator;
   final bool readOnly;
@@ -31,7 +32,8 @@ class WafferlyTextField extends StatelessWidget {
     this.prefixText,
     this.keyboardType = TextInputType.text,
     this.textInputAction = TextInputAction.next,
-    this.maxLines = 1,
+    this.maxLines = 1, 
+    this.maxLength,
     this.validator,
     this.readOnly = false,
     this.minLines,
@@ -55,6 +57,7 @@ class WafferlyTextField extends StatelessWidget {
 
       maxLines: maxLines,
       minLines: minLines,
+      maxLength: maxLength,
 
       autofillHints: autofillHints,
 

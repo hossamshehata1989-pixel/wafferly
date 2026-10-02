@@ -24,7 +24,7 @@ class CreditCardProfileAdapter extends TypeAdapter<CreditCardProfile> {
       paymentDueDay: fields[6] as int?,
       linkedDebitCardAccountId: fields[7] as String?,
       annualFeeValue: fields[8] as String?,
-      cardVisual: fields[9] as String? ?? 'classic',
+      cardVisual: fields[9] as String? ?? 'credit_midnight',
     );
   }
 

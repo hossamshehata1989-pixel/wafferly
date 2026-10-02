@@ -42,7 +42,7 @@ final class CreditCardAccountApplicationService {
     int? paymentDueDay,
     String? linkedDebitCardAccountId,
     String? annualFeeValue,
-    String cardVisual = 'classic',
+    String cardVisual = 'credit_midnight',
   }) async {
     final normalizedLimit = creditLimitValue.trim();
     final creditLimit = Money.parse(normalizedLimit);

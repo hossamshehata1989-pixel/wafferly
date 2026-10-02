@@ -63,6 +63,7 @@ import 'core/planning/engine/planning_engine.dart';
 import 'core/planning/infrastructure/persistence/hive_allocation_record.dart';
 import 'credit_card/domain/credit_card_profile.dart';
 import 'credit_card/infrastructure/hive_credit_card_profile_repository.dart';
+import 'application/credit_card/credit_card_financing_application_service.dart';
 import 'services/manual_reserve_application_service.dart';
 
 import 'services/balance_service.dart';
@@ -391,6 +392,9 @@ CommitmentActionProvider(
     idempotencyBox: Hive.box<Map>('financial_idempotency'),
     traceabilityBox: Hive.box<Map>('financial_traceability'),
     allocationRepository: allocationRepository,
+    creditCardProfileRepository: HiveCreditCardProfileRepository(
+      Hive.box<CreditCardProfile>('credit_card_profiles'),
+    ),
   );
 
   final engine = engineContext.engine;
@@ -444,6 +448,11 @@ CommitmentActionProvider(
             transactionQueryService: context.read<TransactionQueryService>(),
           ),
         ),
+
+        Provider<CreditCardFinancingApplicationService>(
+          create: (_) => CreditCardFinancingApplicationService(),
+        ),
+        
       ],
       child: const WafferlyApp(),
     ),
