@@ -79,13 +79,39 @@ class _CreditCardAccountDetailsScreenState
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            leading: const BackButton(color: Colors.white),
-            title: const Text('Credit Card', style: TextStyle(fontWeight: FontWeight.w800)),
+            toolbarHeight: m.isCompactHeight ? m.h(48) : m.h(54),
+            leadingWidth: m.isCompactHeight ? m.size(48) : m.size(52),
+            leading: IconButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: Icon(
+                Icons.arrow_back_rounded,
+                color: Colors.white,
+                size: m.isCompactHeight ? m.size(22) : m.size(24),
+              ),
+            ),
+            titleSpacing: 0,
+            title: Text(
+              'Credit Card',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: m.isCompactHeight ? m.text(20) : m.text(22),
+              ),
+            ),
             actions: [
               IconButton(
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(
+                  minWidth: m.isCompactHeight ? m.size(40) : m.size(44),
+                  minHeight: m.isCompactHeight ? m.size(40) : m.size(44),
+                ),
                 onPressed: () => _showCardMenu(projection.account, projection.profile),
-                icon: const Icon(Icons.more_vert_rounded),
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  size: m.isCompactHeight ? m.size(22) : m.size(24),
+                ),
               ),
+              SizedBox(width: m.spacing(4)),
             ],
           ),
           body: ListView(
@@ -235,11 +261,27 @@ class _CardSummaryVisual extends StatelessWidget {
   Widget build(BuildContext context) {
     final layout = wafferlyCardLayoutForVisual(profile.cardVisual);
 
-    return AspectRatio(
-      aspectRatio: layout.aspectRatio,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(22),
-        child: LayoutBuilder(
+    final m = ResponsiveMetrics.of(context);
+    final cardScale = m.isCompactHeight ? 0.80 : 1.0;
+
+    return LayoutBuilder(
+      builder: (context, outerConstraints) {
+        final cardWidth = outerConstraints.maxWidth;
+        final cardHeight = cardWidth / layout.aspectRatio;
+
+        return SizedBox(
+          width: cardWidth,
+          height: cardHeight * cardScale,
+          child: FittedBox(
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: cardWidth / cardScale,
+              child: AspectRatio(
+                aspectRatio: layout.aspectRatio,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(m.size(22)),
+                  child: LayoutBuilder(
           builder: (context, constraints) {
             final size = constraints.biggest;
 
@@ -279,12 +321,12 @@ class _CardSummaryVisual extends StatelessWidget {
                   fit: BoxFit.fill,
                 ),
 
-                // Identity
+                // Identity: these occupy the safe area above the chip.
                 slot(
                   CardTextSlot.cardName,
                   _CardOverlayText(
                     account.name,
-                    size: 17,
+                    size: 18,
                     weight: FontWeight.w900,
                   ),
                 ),
@@ -292,27 +334,26 @@ class _CardSummaryVisual extends StatelessWidget {
                   CardTextSlot.issuer,
                   _CardOverlayText(
                     '${account.provider ?? 'Credit Card'} • ${profile.cardNetwork ?? 'Network not set'}',
-                    size: 8.5,
+                    size: 9,
                     color: Colors.white70,
                     maxLines: 1,
                   ),
                 ),
 
-                // Masked card number next to the chip
-slot(
-  CardTextSlot.maskedNumber,
-  _CardOverlayText(
-    account.accountNumber?.trim().isNotEmpty == true
-        ? '•••• ${account.accountNumber!.trim()}'
-        : 'XXXX XXXX XXXX XXXX',
-    size: 15,
-    weight: FontWeight.w900,
-    color: Colors.white,
-    maxLines: 1,
-  ),
-),
+                // Card number: the data model currently stores the last 4 digits
+                // on Account.accountNumber, so keep the visual PAN-safe.
+                if ((account.accountNumber ?? '').trim().isNotEmpty)
+                  slot(
+                    CardTextSlot.maskedNumber,
+                    _CardOverlayText(
+                      _displayCardNumber(account.accountNumber),
+                      size: 13,
+                      weight: FontWeight.w700,
+                      maxLines: 1,
+                    ),
+                  ),
 
-                // Financial secondary data (no black background)
+                // Financial secondary data
                 slot(
                   CardTextSlot.available,
                   _CardCompactStat(
@@ -368,9 +409,14 @@ slot(
                 ),
               ],
             );
-          },
-        ),
-      ),
+                  },
+                ),
+              ),
+            ),
+          ),
+          ),
+        );
+      },
     );
   }
 }
@@ -405,7 +451,7 @@ class _CardOverlayText extends StatelessWidget {
   }
 }
 
-/// Available / Credit Limit (no black background, larger fonts)
+// تم إلغاء الخلفية السوداء وتكبير الخطوط
 class _CardCompactStat extends StatelessWidget {
   const _CardCompactStat({
     required this.label,
@@ -427,7 +473,7 @@ class _CardCompactStat extends StatelessWidget {
           label,
           style: const TextStyle(
             color: Colors.white70,
-            fontSize: 18,
+            fontSize: 9, // تم التكبير
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -439,7 +485,7 @@ class _CardCompactStat extends StatelessWidget {
             value,
             style: TextStyle(
               color: color,
-              fontSize: 22,
+              fontSize: 15, // تم التكبير
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -449,7 +495,7 @@ class _CardCompactStat extends StatelessWidget {
   }
 }
 
-/// This Month / Total Installment (no black background, larger fonts, smaller currency)
+// تم إلغاء الخلفية السوداء وتكبير الخطوط
 class _CardOverlayMoneyStat extends StatelessWidget {
   const _CardOverlayMoneyStat({
     required this.label,
@@ -465,11 +511,6 @@ class _CardOverlayMoneyStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Split value into amount and currency to make currency smaller
-    final parts = value.split(' ');
-    final amount = parts.isNotEmpty ? parts[0] : value;
-    final currency = parts.length > 1 ? parts[1] : '';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -480,7 +521,7 @@ class _CardOverlayMoneyStat extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white70,
-            fontSize: 9,
+            fontSize: 9, // تم التكبير
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -488,27 +529,12 @@ class _CardOverlayMoneyStat extends StatelessWidget {
         FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,
-          child: RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: amount,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                if (currency.isNotEmpty)
-                  TextSpan(
-                    text: ' $currency',
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-              ],
+          child: Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 18, // تم التكبير
+              fontWeight: FontWeight.w900,
             ),
           ),
         ),
@@ -519,7 +545,7 @@ class _CardOverlayMoneyStat extends StatelessWidget {
               secondary!,
               style: TextStyle(
                 color: color,
-                fontSize: 8.5,
+                fontSize: 9, // تم التكبير
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -541,11 +567,11 @@ class _CardCycleInfo extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('$label ',
-                style: const TextStyle(color: Colors.white70, fontSize: 9)),
+                style: const TextStyle(color: Colors.white70, fontSize: 8)),
             Text(day == null ? '—' : 'day $day',
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 10,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.w800)),
           ],
         );
@@ -562,7 +588,7 @@ class _CardCycleInfo extends StatelessWidget {
   }
 }
 
-/// Usage bar with larger text and smaller currency
+// تم تكبير الخطوط الخاصة بشريط الحالة
 class _CardUsageOverlay extends StatelessWidget {
   const _CardUsageOverlay({
     required this.utilization,
@@ -589,7 +615,7 @@ class _CardUsageOverlay extends StatelessWidget {
               'Used',
               style: TextStyle(
                 color: Colors.white70,
-                fontSize: 11,
+                fontSize: 10, // تم التكبير
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -597,7 +623,7 @@ class _CardUsageOverlay extends StatelessWidget {
               '${usedPercent.round()}% used',
               style: const TextStyle(
                 color: Color(0xFFFF3D81),
-                fontSize: 11,
+                fontSize: 10, // تم التكبير
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -608,7 +634,7 @@ class _CardUsageOverlay extends StatelessWidget {
           borderRadius: BorderRadius.circular(5),
           child: LinearProgressIndicator(
             value: utilization.clamp(0.0, 1.0),
-            minHeight: 7,
+            minHeight: 8, // تم زيادة السماكة
             backgroundColor: Colors.white24,
             valueColor: const AlwaysStoppedAnimation(Color(0xFFFF3D81)),
           ),
@@ -616,34 +642,12 @@ class _CardUsageOverlay extends StatelessWidget {
         const SizedBox(height: 4),
         Align(
           alignment: AlignmentDirectional.centerEnd,
-          child: RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: available.toStringAsFixed(2),
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                TextSpan(
-                  text: ' $currency',
-                  style: const TextStyle(
-                    color: Colors.white60,
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const TextSpan(
-                  text: ' available',
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+          child: Text(
+            '${_money(available, currency)} available',
+            style: const TextStyle(
+              color: Colors.white70, // تم تفتيح اللون قليلاً
+              fontSize: 10, // تم التكبير
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -667,14 +671,17 @@ class _ActionGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+    final gap = m.spacing(8);
+
     return Row(
       children: [
         Expanded(child: _Action(icon: Icons.add_rounded, label: 'Add\nTransaction', onTap: onAddTransaction)),
-        const SizedBox(width: 8),
+        SizedBox(width: gap),
         Expanded(child: _Action(icon: Icons.calendar_month_rounded, label: 'Add\nInstallment', onTap: onAddInstallment)),
-        const SizedBox(width: 8),
+        SizedBox(width: gap),
         Expanded(child: _Action(icon: Icons.autorenew_rounded, label: 'Convert to\nInstallment', onTap: onConvert)),
-        const SizedBox(width: 8),
+        SizedBox(width: gap),
         Expanded(child: _Action(icon: Icons.credit_card_rounded, label: 'Pay\nCard', onTap: onPay)),
       ],
     );
@@ -690,23 +697,29 @@ class _Action extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+
     return Material(
       color: const Color(0xFF0A1C29),
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(m.radius.md),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(m.radius.md),
         child: SizedBox(
-          height: 82,
+          height: m.isCompactHeight ? m.h(68) : m.h(74),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: const Color(0xFFFF3D81), size: 22),
-              const SizedBox(height: 6),
+              Icon(icon, color: const Color(0xFFFF3D81), size: m.size(20)),
+              SizedBox(height: m.spacing(4)),
               Text(
                 label,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: m.text(9),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -722,45 +735,57 @@ class _StatementImportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+
     return Material(
       color: const Color(0xFF3A182E),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(m.radius.md),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(m.radius.md),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(m.spacing(12)),
           child: Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: m.size(38),
+                height: m.size(38),
                 decoration: BoxDecoration(
                   color: const Color(0xFF6B2B55),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(m.radius.sm),
                 ),
-                child: const Icon(Icons.document_scanner_outlined, color: Color(0xFF7DA4FF)),
+                child: Icon(Icons.document_scanner_outlined, color: const Color(0xFF7DA4FF), size: m.size(22)),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
+              SizedBox(width: m.spacing(10)),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('Import Monthly Statement', style: TextStyle(fontWeight: FontWeight.w800)),
-                    SizedBox(height: 3),
-                    Text('Coming Soon', style: TextStyle(color: Color(0xFFFF6D9D), fontSize: 11)),
+                    Text(
+                      'Import Monthly Statement',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: m.text(16)),
+                    ),
+                    SizedBox(height: m.spacing(2)),
+                    Text(
+                      'Coming Soon',
+                      style: TextStyle(color: const Color(0xFFFF6D9D), fontSize: m.text(10)),
+                    ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                padding: EdgeInsets.symmetric(horizontal: m.spacing(8), vertical: m.spacing(4)),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFB21A),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(m.radius.sm),
                 ),
-                child: const Text('PRO', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w900)),
+                child: Text(
+                  'PRO',
+                  style: TextStyle(color: Colors.black, fontSize: m.text(9), fontWeight: FontWeight.w900),
+                ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+              Icon(Icons.chevron_right_rounded, color: Colors.white54, size: m.size(22)),
             ],
           ),
         ),
@@ -776,27 +801,31 @@ class _SegmentTabs extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+
     return Row(
       children: [
-        _seg('Transactions', 0),
-        _seg('Installments', 1),
-        _seg('Statements', 2),
+        _seg(m, 'Transactions', 0),
+        _seg(m, 'Installments', 1),
+        _seg(m, 'Statements', 2),
       ],
     );
   }
 
-  Widget _seg(String label, int value) {
+  Widget _seg(ResponsiveMetrics m, String label, int value) {
     final active = selected == value;
     return Expanded(
       child: GestureDetector(
         onTap: () => onChanged(value),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 11),
+          padding: EdgeInsets.symmetric(
+            vertical: m.isCompactHeight ? m.spacing(5) : m.spacing(6),
+          ),
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
                 color: active ? const Color(0xFFFF2D6F) : Colors.white12,
-                width: active ? 2 : 1,
+                width: active ? m.size(2) : m.size(1),
               ),
             ),
           ),
@@ -806,7 +835,7 @@ class _SegmentTabs extends StatelessWidget {
             style: TextStyle(
               color: active ? const Color(0xFFFF2D6F) : Colors.white70,
               fontWeight: FontWeight.w800,
-              fontSize: 12,
+              fontSize: m.isCompactHeight ? m.text(10) : m.text(11),
             ),
           ),
         ),
@@ -822,6 +851,8 @@ class _TransactionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+
     if (transactions.isEmpty) {
       return const _EmptySection(
         title: 'No transactions yet',
@@ -832,22 +863,47 @@ class _TransactionsSection extends StatelessWidget {
     return Column(
       children: transactions.take(12).map((tx) {
         return ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-          leading: const CircleAvatar(
-            backgroundColor: Color(0xFF182B45),
-            child: Icon(Icons.shopping_cart_outlined, color: Color(0xFF8CB3FF), size: 19),
+          dense: true,
+          visualDensity: VisualDensity(
+            horizontal: 0,
+            vertical: m.isCompactHeight ? -3 : -2,
+          ),
+          minVerticalPadding: m.isCompactHeight ? 2 : 4,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: m.spacing(2),
+            vertical: 0,
+          ),
+          leading: CircleAvatar(
+            radius: m.isCompactHeight ? m.size(14) : m.size(15),
+            backgroundColor: const Color(0xFF182B45),
+            child: Icon(
+              Icons.shopping_cart_outlined,
+              color: const Color(0xFF8CB3FF),
+              size: m.isCompactHeight ? m.size(15) : m.size(16),
+            ),
           ),
           title: Text(
             tx.note?.split(' • ').first ?? 'Credit Card purchase',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: m.isCompactHeight ? m.text(14) : m.text(15),
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           subtitle: Text(
             '${tx.date.day}/${tx.date.month}/${tx.date.year}',
-            style: const TextStyle(color: Colors.white54, fontSize: 11),
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: m.isCompactHeight ? m.text(9) : m.text(10),
+            ),
           ),
           trailing: Text(
             '-${tx.amount.toStringAsFixed(2)} $currency',
-            style: const TextStyle(fontWeight: FontWeight.w800),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: m.isCompactHeight ? m.text(12) : m.text(13),
+            ),
           ),
         );
       }).toList(),
@@ -862,6 +918,8 @@ class _InstallmentsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+
     if (installments.isEmpty) {
       return const _EmptySection(
         title: 'No installments yet',
@@ -872,19 +930,45 @@ class _InstallmentsSection extends StatelessWidget {
     return Column(
       children: installments.take(12).map((item) {
         return ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-          leading: const CircleAvatar(
-            backgroundColor: Color(0xFF182B45),
-            child: Icon(Icons.event_repeat_rounded, color: Color(0xFF8CB3FF), size: 19),
+          dense: true,
+          visualDensity: VisualDensity(
+            horizontal: 0,
+            vertical: m.isCompactHeight ? -3 : -2,
           ),
-          title: Text('Installment ${item.sequence}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          minVerticalPadding: m.isCompactHeight ? 2 : 4,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: m.spacing(2),
+            vertical: 0,
+          ),
+          leading: CircleAvatar(
+            radius: m.isCompactHeight ? m.size(14) : m.size(15),
+            backgroundColor: const Color(0xFF182B45),
+            child: Icon(
+              Icons.event_repeat_rounded,
+              color: const Color(0xFF8CB3FF),
+              size: m.isCompactHeight ? m.size(15) : m.size(16),
+            ),
+          ),
+          title: Text(
+            'Installment ${item.sequence}',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: m.isCompactHeight ? m.text(14) : m.text(15),
+            ),
+          ),
           subtitle: Text(
             '${item.dueDate.day}/${item.dueDate.month}/${item.dueDate.year} • ${item.status}',
-            style: const TextStyle(color: Colors.white54, fontSize: 11),
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: m.isCompactHeight ? m.text(9) : m.text(10),
+            ),
           ),
           trailing: Text(
             '${item.amount.toDouble().toStringAsFixed(2)} $currency',
-            style: const TextStyle(fontWeight: FontWeight.w800),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: m.isCompactHeight ? m.text(12) : m.text(13),
+            ),
           ),
         );
       }).toList(),
@@ -912,7 +996,32 @@ class _EmptySection extends StatelessWidget {
   final String title;
   final String subtitle;
   @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(18), decoration: BoxDecoration(color: const Color(0xFF0A1C29), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withValues(alpha: .07))), child: Column(children: [Text(title, style: const TextStyle(fontWeight: FontWeight.w800)), const SizedBox(height: 6), Text(subtitle, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white54, fontSize: 12))]));
+  Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+
+    return Container(
+      padding: EdgeInsets.all(m.spacing(14)),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A1C29),
+        borderRadius: BorderRadius.circular(m.radius.md),
+        border: Border.all(color: Colors.white.withValues(alpha: .07)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: m.text(15)),
+          ),
+          SizedBox(height: m.spacing(4)),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white54, fontSize: m.text(11)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ComingSoonLine extends StatelessWidget {
@@ -942,6 +1051,13 @@ int _overdueDays(List<FinancingInstallment> installments) {
     }
   }
   return maxDays;
+}
+
+String _displayCardNumber(String? raw) {
+  final digits = (raw ?? '').replaceAll(RegExp(r'\D'), '');
+  if (digits.isEmpty) return '';
+  final last4 = digits.length > 4 ? digits.substring(digits.length - 4) : digits;
+  return '•••• •••• •••• $last4';
 }
 
 String _money(double value, String currency) => '${value.toStringAsFixed(2)} $currency';
