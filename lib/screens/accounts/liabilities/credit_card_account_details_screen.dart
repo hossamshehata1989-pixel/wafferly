@@ -70,9 +70,14 @@ class _CreditCardAccountDetailsScreenState
             .toList()
           ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
-        final thisMonth = installments
-            .where((item) => item.dueDate.year == DateTime.now().year && item.dueDate.month == DateTime.now().month && item.status != 'settled')
-            .fold<double>(0, (sum, item) => sum + item.amount.toDouble());
+        final now = DateTime.now();
+        final dueBreakdown = _calculateDueBreakdown(
+          transactions: transactions,
+          installments: installments,
+          statementDay: projection.profile.statementDay,
+          paymentDueDay: projection.profile.paymentDueDay,
+          now: now,
+        );
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -121,11 +126,13 @@ class _CreditCardAccountDetailsScreenState
                 account: projection.account,
                 profile: projection.profile,
                 available: projection.available.toDouble(),
-                totalInstallment: installments.fold<double>(
-                  0,
-                  (sum, item) => sum + item.amount.toDouble(),
-                ),
-                thisMonthInstallment: thisMonth,
+                outstanding: (projection.profile.creditLimit.toDouble() - projection.available.toDouble()).clamp(0.0, double.infinity),
+                thisMonthDue: dueBreakdown.thisMonthTotal,
+                thisMonthExpenses: dueBreakdown.thisMonthExpenses,
+                thisMonthInstallments: dueBreakdown.thisMonthInstallments,
+                nextMonthDue: dueBreakdown.nextMonthTotal,
+                nextMonthExpenses: dueBreakdown.nextMonthExpenses,
+                nextMonthInstallments: dueBreakdown.nextMonthInstallments,
                 utilization: projection.utilization,
                 overdueDays: _overdueDays(installments),
               ),
@@ -243,8 +250,13 @@ class _CardSummaryVisual extends StatelessWidget {
     required this.account,
     required this.profile,
     required this.available,
-    required this.totalInstallment,
-    required this.thisMonthInstallment,
+    required this.outstanding,
+    required this.thisMonthDue,
+    required this.thisMonthExpenses,
+    required this.thisMonthInstallments,
+    required this.nextMonthDue,
+    required this.nextMonthExpenses,
+    required this.nextMonthInstallments,
     required this.utilization,
     required this.overdueDays,
   });
@@ -252,8 +264,13 @@ class _CardSummaryVisual extends StatelessWidget {
   final Account account;
   final CreditCardProfile profile;
   final double available;
-  final double totalInstallment;
-  final double thisMonthInstallment;
+  final double outstanding;
+  final double thisMonthDue;
+  final double thisMonthExpenses;
+  final double thisMonthInstallments;
+  final double nextMonthDue;
+  final double nextMonthExpenses;
+  final double nextMonthInstallments;
   final double utilization;
   final int overdueDays;
 
@@ -262,7 +279,9 @@ class _CardSummaryVisual extends StatelessWidget {
     final layout = wafferlyCardLayoutForVisual(profile.cardVisual);
 
     final m = ResponsiveMetrics.of(context);
-    final cardScale = m.isCompactHeight ? 0.80 : 1.0;
+    // Small/compact screens: enlarge the complete card + all of its contents
+    // by about 20% relative to the current compact presentation.
+    final cardScale = m.isCompactHeight ? 0.98 : 1.0;
 
     return LayoutBuilder(
       builder: (context, outerConstraints) {
@@ -298,13 +317,22 @@ class _CardSummaryVisual extends StatelessWidget {
                   child: SizedBox(
                     width: rect.width,
                     height: rect.height,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: definition.area.alignment,
-                      child: fillWidth
-                          ? SizedBox(width: rect.width, child: child)
-                          : child,
-                    ),
+                    // The status block is already responsive internally.
+                    // Do not scale it down again, otherwise Used/Available,
+                    // the progress bar, and Card Limit become tiny.
+                    child: field == CardTextSlot.usedPercent
+                        ? SizedBox(
+                            width: rect.width,
+                            height: rect.height,
+                            child: child,
+                          )
+                        : FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: definition.area.alignment,
+                            child: fillWidth
+                                ? SizedBox(width: rect.width, child: child)
+                                : child,
+                          ),
                   ),
                 ),
               );
@@ -325,8 +353,8 @@ class _CardSummaryVisual extends StatelessWidget {
                 slot(
                   CardTextSlot.cardName,
                   _CardOverlayText(
-                    account.name,
-                    size: 18,
+                    account.name.trim().isEmpty ? 'Credit Card' : account.name.trim(),
+                    size: 20,
                     weight: FontWeight.w900,
                   ),
                 ),
@@ -353,38 +381,32 @@ class _CardSummaryVisual extends StatelessWidget {
                     ),
                   ),
 
-                // Financial secondary data
+                // Total outstanding replaces Available / Credit Limit.
                 slot(
-                  CardTextSlot.available,
-                  _CardCompactStat(
-                    label: 'Available',
-                    value: _money(available, account.currency),
-                    color: const Color(0xFF22E6A8),
-                  ),
-                ),
-                slot(
-                  CardTextSlot.creditLimit,
-                  _CardCompactStat(
-                    label: 'Credit Limit',
-                    value: _money(profile.creditLimit.toDouble(), account.currency),
+                  CardTextSlot.outstanding,
+                  _CardOverlayMoneyStat(
+                    label: 'Total Outstanding',
+                    value: _money(outstanding, account.currency),
                     color: Colors.white,
                   ),
                 ),
-
                 slot(
-                  CardTextSlot.monthlyInstallment,
-                  _CardOverlayMoneyStat(
-                    label: 'This Month Installment',
-                    value: _money(thisMonthInstallment, account.currency),
+                  CardTextSlot.thisMonthDue,
+                  _CardDueStat(
+                    label: 'This Month Due',
+                    total: _money(thisMonthDue, account.currency),
+                    expenses: _money(thisMonthExpenses, account.currency),
+                    installments: _money(thisMonthInstallments, account.currency),
                     color: const Color(0xFFFF2D6F),
-                    secondary: overdueDays > 0 ? '$overdueDays days overdue' : null,
                   ),
                 ),
                 slot(
-                  CardTextSlot.totalInstallment,
-                  _CardOverlayMoneyStat(
-                    label: 'Total Installment',
-                    value: _money(totalInstallment, account.currency),
+                  CardTextSlot.nextMonthDue,
+                  _CardDueStat(
+                    label: 'Next Month Due',
+                    total: _money(nextMonthDue, account.currency),
+                    expenses: _money(nextMonthExpenses, account.currency),
+                    installments: _money(nextMonthInstallments, account.currency),
                     color: Colors.white,
                   ),
                 ),
@@ -403,6 +425,7 @@ class _CardSummaryVisual extends StatelessWidget {
                     utilization: utilization,
                     usedPercent: usedPercent,
                     available: available,
+                    creditLimit: profile.creditLimit.toDouble(),
                     currency: account.currency,
                   ),
                   fillWidth: true,
@@ -473,7 +496,7 @@ class _CardCompactStat extends StatelessWidget {
           label,
           style: const TextStyle(
             color: Colors.white70,
-            fontSize: 9, // تم التكبير
+            fontSize: 10, // تم التكبير
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -521,7 +544,7 @@ class _CardOverlayMoneyStat extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Colors.white70,
-            fontSize: 9, // تم التكبير
+            fontSize: 10, // تم التكبير
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -533,7 +556,7 @@ class _CardOverlayMoneyStat extends StatelessWidget {
             value,
             style: TextStyle(
               color: color,
-              fontSize: 18, // تم التكبير
+              fontSize: 20, // Total Outstanding
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -545,11 +568,79 @@ class _CardOverlayMoneyStat extends StatelessWidget {
               secondary!,
               style: TextStyle(
                 color: color,
-                fontSize: 9, // تم التكبير
+                fontSize: 10, // تم التكبير
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
+      ],
+    );
+  }
+}
+
+class _CardDueStat extends StatelessWidget {
+  const _CardDueStat({
+    required this.label,
+    required this.total,
+    required this.expenses,
+    required this.installments,
+    required this.color,
+  });
+
+  final String label;
+  final String total;
+  final String expenses;
+  final String installments;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 1),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(
+            total,
+            style: TextStyle(
+              color: color,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(
+            'Expenses  $expenses',
+            maxLines: 1,
+            style: const TextStyle(color: Colors.white70, fontSize: 9.5, fontWeight: FontWeight.w600),
+          ),
+        ),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(
+            'Installments  $installments',
+            maxLines: 1,
+            style: const TextStyle(color: Colors.white70, fontSize: 9.5, fontWeight: FontWeight.w600),
+          ),
+        ),
       ],
     );
   }
@@ -583,6 +674,7 @@ class _CardCycleInfo extends StatelessWidget {
         line('Statement', statementDay),
         const SizedBox(height: 3),
         line('Due', dueDay),
+        
       ],
     );
   }
@@ -594,64 +686,140 @@ class _CardUsageOverlay extends StatelessWidget {
     required this.utilization,
     required this.usedPercent,
     required this.available,
+    required this.creditLimit,
     required this.currency,
   });
 
   final double utilization;
   final double usedPercent;
   final double available;
+  final double creditLimit;
   final String currency;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Used',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 10, // تم التكبير
-                fontWeight: FontWeight.w600,
+    final usedAmount = (creditLimit - available).clamp(0.0, double.infinity);
+    final percent = (usedPercent.clamp(0.0, 1.0) * 100).round();
+
+
+
+    return SizedBox(
+      width: double.infinity,
+      
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Used',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 7,
+                      height: 1.0,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    _money(usedAmount, currency),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 7,
+                      height: 1.0,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            Text(
-              '${usedPercent.round()}% used',
-              style: const TextStyle(
-                color: Color(0xFFFF3D81),
-                fontSize: 10, // تم التكبير
-                fontWeight: FontWeight.w800,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Available',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 7,
+                      height: 1.0,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    _money(available, currency),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 7,
+                      height: 1.0,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 5),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(5),
-          child: LinearProgressIndicator(
-            value: utilization.clamp(0.0, 1.0),
-            minHeight: 8, // تم زيادة السماكة
-            backgroundColor: Colors.white24,
-            valueColor: const AlwaysStoppedAnimation(Color(0xFFFF3D81)),
+            ],
           ),
-        ),
-        const SizedBox(height: 4),
-        Align(
-          alignment: AlignmentDirectional.centerEnd,
-          child: Text(
-            '${_money(available, currency)} available',
-            style: const TextStyle(
-              color: Colors.white70, // تم تفتيح اللون قليلاً
-              fontSize: 10, // تم التكبير
-              fontWeight: FontWeight.w600,
-            ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: LinearProgressIndicator(
+                    value: utilization.clamp(0.0, 1.0),
+                    minHeight: 8,
+                    backgroundColor: Colors.white24,
+                    valueColor:
+                        const AlwaysStoppedAnimation(Color(0xFFFF3D81)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$percent% used',
+                style: const TextStyle(
+                  color: Color(0xFFFF3D81),
+                  fontSize: 7,
+                  height: 1.0,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Card Limit',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 7,
+                  height: 1.0,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                _money(creditLimit, currency),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 7,
+                  height: 1.0,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1038,6 +1206,87 @@ class _Metric extends StatelessWidget {
   final Color color;
   @override
   Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.black.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white54, fontSize: 11)), const SizedBox(height: 5), FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 15)))]));
+}
+
+class _DueBreakdown {
+  const _DueBreakdown({
+    required this.thisMonthExpenses,
+    required this.thisMonthInstallments,
+    required this.nextMonthExpenses,
+    required this.nextMonthInstallments,
+  });
+
+  final double thisMonthExpenses;
+  final double thisMonthInstallments;
+  final double nextMonthExpenses;
+  final double nextMonthInstallments;
+
+  double get thisMonthTotal => thisMonthExpenses + thisMonthInstallments;
+  double get nextMonthTotal => nextMonthExpenses + nextMonthInstallments;
+}
+
+_DueBreakdown _calculateDueBreakdown({
+  required List<Transaction> transactions,
+  required List<FinancingInstallment> installments,
+  required int? statementDay,
+  required int? paymentDueDay,
+  required DateTime now,
+}) {
+  var thisExpenses = 0.0;
+  var nextExpenses = 0.0;
+
+  if (statementDay != null && paymentDueDay != null) {
+    for (final tx in transactions) {
+      final dueDate = _chargeDueDate(tx.date, statementDay, paymentDueDay);
+      if (_sameMonth(dueDate, now)) {
+        thisExpenses += tx.amount.abs();
+      } else if (_sameMonth(dueDate, _addMonths(now, 1))) {
+        nextExpenses += tx.amount.abs();
+      }
+    }
+  }
+
+  var thisInstallments = 0.0;
+  var nextInstallments = 0.0;
+  final nextMonth = _addMonths(now, 1);
+
+  for (final item in installments) {
+    if (item.status == 'settled') continue;
+    if (_sameMonth(item.dueDate, now)) {
+      thisInstallments += item.amount.toDouble();
+    } else if (_sameMonth(item.dueDate, nextMonth)) {
+      nextInstallments += item.amount.toDouble();
+    }
+  }
+
+  return _DueBreakdown(
+    thisMonthExpenses: thisExpenses,
+    thisMonthInstallments: thisInstallments,
+    nextMonthExpenses: nextExpenses,
+    nextMonthInstallments: nextInstallments,
+  );
+}
+
+DateTime _chargeDueDate(DateTime chargeDate, int statementDay, int paymentDueDay) {
+  final closeDay = _validDay(chargeDate.year, chargeDate.month, statementDay);
+  final closeMonth = chargeDate.day <= closeDay
+      ? DateTime(chargeDate.year, chargeDate.month, closeDay)
+      : DateTime(chargeDate.year, chargeDate.month + 1, _validDay(chargeDate.year, chargeDate.month + 1, statementDay));
+
+  final dueYear = closeMonth.month == 12 ? closeMonth.year + 1 : closeMonth.year;
+  final dueMonth = closeMonth.month == 12 ? 1 : closeMonth.month + 1;
+  return DateTime(dueYear, dueMonth, _validDay(dueYear, dueMonth, paymentDueDay));
+}
+
+DateTime _addMonths(DateTime date, int months) =>
+    DateTime(date.year, date.month + months, 1);
+
+bool _sameMonth(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month;
+
+int _validDay(int year, int month, int requestedDay) {
+  final lastDay = DateTime(year, month + 1, 0).day;
+  return requestedDay.clamp(1, lastDay);
 }
 
 int _overdueDays(List<FinancingInstallment> installments) {

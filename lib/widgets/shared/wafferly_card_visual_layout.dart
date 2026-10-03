@@ -44,6 +44,9 @@ enum CardTextSlot {
   usedPercent,
   monthlyInstallment,
   totalInstallment,
+  outstanding,
+  thisMonthDue,
+  nextMonthDue,
   minimumPayment,
   overdue,
   statementCycle,
@@ -282,18 +285,18 @@ const Map<CardTextSlot, CardVisualSlot> _standardSlots =
   // --- Identity (Top Left) ---
   CardTextSlot.cardName: CardVisualSlot(
     zone: CardZone.identity,
-    area: CardVisualZone(x: .08, y: .08, width: .50, height: .10),
+    area: CardVisualZone(x: .08, y: .08, width: .50, height: .12),
   ),
   CardTextSlot.issuer: CardVisualSlot(
     zone: CardZone.identity,
-    area: CardVisualZone(x: .08, y: .18, width: .50, height: .08),
+    area: CardVisualZone(x: .08, y: .18, width: .50, height: .09),
     minFontScale: .65,
   ),
 
   // --- Masked Number (next to chip, on the right side in the empty area) ---
   CardTextSlot.maskedNumber: CardVisualSlot(
     zone: CardZone.identity,
-    area: CardVisualZone(x: .30, y: .30, width: .42, height: .10),
+    area: CardVisualZone(x: .30, y: .30, width: .45, height: .12),
     maxLines: 1,
     minFontScale: .62,
   ),
@@ -312,26 +315,32 @@ const Map<CardTextSlot, CardVisualSlot> _standardSlots =
     minFontScale: .62,
   ),
 
-  // --- Installments (Middle) ---
-  CardTextSlot.monthlyInstallment: CardVisualSlot(
-    zone: CardZone.financialPrimary,
-    area: CardVisualZone(x: .36, y: .53, width: .28, height: .18),
+  // --- Current balance / due breakdown (Middle) ---
+  CardTextSlot.outstanding: CardVisualSlot(
+    zone: CardZone.financialSecondary,
+    area: CardVisualZone(x: .69, y: .06, width: .27, height: .24),
     maxLines: 2,
-    minFontScale: .62,
+    minFontScale: .55,
   ),
-  CardTextSlot.totalInstallment: CardVisualSlot(
+  CardTextSlot.thisMonthDue: CardVisualSlot(
     zone: CardZone.financialPrimary,
-    area: CardVisualZone(x: .66, y: .53, width: .28, height: .18),
-    maxLines: 2,
-    minFontScale: .62,
+    area: CardVisualZone(x: .30, y: .48, width: .34, height: .27),
+    maxLines: 4,
+    minFontScale: .52,
+  ),
+  CardTextSlot.nextMonthDue: CardVisualSlot(
+    zone: CardZone.financialPrimary,
+    area: CardVisualZone(x: .69, y: .48, width: .26, height: .27),
+    maxLines: 4,
+    minFontScale: .52,
   ),
 
   // --- Usage (Bottom) ---
   CardTextSlot.usedPercent: CardVisualSlot(
     zone: CardZone.usage,
-    area: CardVisualZone(x: .36, y: .72, width: .60, height: .16),
-    maxLines: 2,
-    minFontScale: .62,
+    area: CardVisualZone(x: .08, y: .76, width: .84, height: .25),
+    maxLines: 3,
+    minFontScale: .70,
   ),
 
   // --- Cycle Info (Bottom Left, under chip) ---
@@ -398,17 +407,11 @@ const CardVisualLayout compactFinancialLayout =
       maxLines: 1,
       maxFontScale: 0.78,
     ),
-    CardTextSlot.available: CardVisualSlot(
+    CardTextSlot.outstanding: CardVisualSlot(
       zone: CardZone.financialSecondary,
-      area: CardVisualZone(x: 0.70, y: 0.06, width: 0.24, height: 0.16),
+      area: CardVisualZone(x: 0.69, y: 0.06, width: 0.27, height: 0.24),
       maxLines: 2,
-      minFontScale: 0.68,
-    ),
-    CardTextSlot.creditLimit: CardVisualSlot(
-      zone: CardZone.financialSecondary,
-      area: CardVisualZone(x: 0.70, y: 0.23, width: 0.24, height: 0.16),
-      maxLines: 2,
-      minFontScale: 0.68,
+      minFontScale: 0.55,
     ),
     CardTextSlot.monthlyInstallment: CardVisualSlot(
       zone: CardZone.financialPrimary,
@@ -424,7 +427,7 @@ const CardVisualLayout compactFinancialLayout =
     ),
     CardTextSlot.usedPercent: CardVisualSlot(
       zone: CardZone.usage,
-      area: CardVisualZone(x: 0.36, y: 0.70, width: 0.55, height: 0.12),
+      area: CardVisualZone(x: 0.36, y: 0.76, width: 0.55, height: 0.11),
       maxLines: 1,
       minFontScale: 0.68,
     ),
@@ -463,6 +466,9 @@ const Map<WafferlyCardKind, Set<CardTextSlot>>
     CardTextSlot.usedPercent,
     CardTextSlot.monthlyInstallment,
     CardTextSlot.totalInstallment,
+    CardTextSlot.outstanding,
+    CardTextSlot.thisMonthDue,
+    CardTextSlot.nextMonthDue,
     CardTextSlot.minimumPayment,
     CardTextSlot.overdue,
     CardTextSlot.statementCycle,
