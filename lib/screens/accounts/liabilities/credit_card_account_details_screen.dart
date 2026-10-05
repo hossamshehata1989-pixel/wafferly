@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-
 import '../../../application/credit_card/credit_card_details_projection_service.dart';
-import '../../../application/credit_card/credit_card_financing_application_service.dart';
 import '../../../credit_card/domain/credit_card_profile.dart';
 import '../../../models/account.dart';
 import '../../../models/financing/financing_installment.dart';
-import '../../../models/financing/financing_contract.dart';
 import '../../../models/transaction.dart';
 import '../../../constants/transaction_constants.dart';
-import '../../../services/transaction_query_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/responsive_metrics.dart';
@@ -17,7 +12,6 @@ import '../../../widgets/shared/credit_card_visual.dart';
 import '../../../widgets/shared/wafferly_card_visual_layout.dart';
 import 'credit_card_installment_conversion_screen.dart';
 import 'credit_card_transaction_entry_screen.dart';
-import 'package:provider/provider.dart';
 
 class CreditCardAccountDetailsScreen extends StatefulWidget {
   const CreditCardAccountDetailsScreen({super.key, required this.accountId});
@@ -59,21 +53,14 @@ class _CreditCardAccountDetailsScreenState
           );
         }
 
-        final transactions = context
-            .read<TransactionQueryService>()
-            .getForAccount(widget.accountId)
-            .where((tx) => tx.type == TransactionType.creditCardCharge)
-            .toList();
-        final installments = Hive.box<FinancingInstallment>('financing_installments')
-            .values
-            .where((item) => _belongsToCard(item))
-            .toList()
-          ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+        final transactions = projection.transactions;
+        final installments = projection.installments;
 
         final now = DateTime.now();
         final dueBreakdown = _calculateDueBreakdown(
           transactions: transactions,
           installments: installments,
+          convertedChargeIds: projection.convertedChargeIds,
           statementDay: projection.profile.statementDay,
           paymentDueDay: projection.profile.paymentDueDay,
           now: now,
@@ -122,12 +109,11 @@ class _CreditCardAccountDetailsScreenState
           body: ListView(
             padding: EdgeInsets.fromLTRB(m.spacing(16), 6, m.spacing(16), 28),
             children: [
-              Semantics(
-                label: '${t.creditExposure}: ${projection.outstanding}',
-                child: _CardSummaryVisual(
-                  account: projection.account,
+              _CardSummaryVisual(
+                account: projection.account,
                 profile: projection.profile,
-                available: projection.available.toDouble(),
+                creditExposureLabel: t.creditExposure,
+creditExposureValue: projection.outstanding.toDouble(),                available: projection.available.toDouble(),
                 outstanding: (projection.profile.creditLimit.toDouble() - projection.available.toDouble()).clamp(0.0, double.infinity),
                 thisMonthDue: dueBreakdown.thisMonthTotal,
                 thisMonthExpenses: dueBreakdown.thisMonthExpenses,
@@ -136,8 +122,7 @@ class _CreditCardAccountDetailsScreenState
                 nextMonthExpenses: dueBreakdown.nextMonthExpenses,
                 nextMonthInstallments: dueBreakdown.nextMonthInstallments,
                 utilization: projection.utilization,
-                  overdueDays: _overdueDays(installments),
-                ),
+                overdueDays: _overdueDays(installments),
               ),
               SizedBox(height: m.space.md),
               _ActionGrid(
@@ -159,12 +144,6 @@ class _CreditCardAccountDetailsScreenState
         );
       },
     );
-  }
-
-  bool _belongsToCard(FinancingInstallment item) {
-    final contracts = Hive.box<FinancingContract>('financing_contracts');
-    final contract = contracts.get(item.contractId);
-    return contract?.liabilityAccountId == widget.accountId;
   }
 
   Future<void> _openEntry(Account account, CreditCardProfile profile, CreditCardEntryMode mode) async {
@@ -252,6 +231,8 @@ class _CardSummaryVisual extends StatelessWidget {
   const _CardSummaryVisual({
     required this.account,
     required this.profile,
+      required this.creditExposureLabel,
+  required this.creditExposureValue,
     required this.available,
     required this.outstanding,
     required this.thisMonthDue,
@@ -266,6 +247,8 @@ class _CardSummaryVisual extends StatelessWidget {
 
   final Account account;
   final CreditCardProfile profile;
+  final String creditExposureLabel;
+final double creditExposureValue;
   final double available;
   final double outstanding;
   final double thisMonthDue;
@@ -387,11 +370,14 @@ class _CardSummaryVisual extends StatelessWidget {
                 // Total outstanding replaces Available / Credit Limit.
                 slot(
                   CardTextSlot.outstanding,
-                  _CardOverlayMoneyStat(
-                    label: 'Total Outstanding',
-                    value: _money(outstanding, account.currency),
-                    color: Colors.white,
-                  ),
+                  Semantics(
+  label: '$creditExposureLabel: $creditExposureValue',
+  child: _CardOverlayMoneyStat(
+    label: 'Total Outstanding',
+    value: _money(outstanding, account.currency),
+    color: Colors.white,
+  ),
+),
                 ),
                 slot(
                   CardTextSlot.thisMonthDue,
@@ -677,7 +663,6 @@ class _CardCycleInfo extends StatelessWidget {
         line('Statement', statementDay),
         const SizedBox(height: 3),
         line('Due', dueDay),
-        
       ],
     );
   }
@@ -704,11 +689,8 @@ class _CardUsageOverlay extends StatelessWidget {
     final usedAmount = (creditLimit - available).clamp(0.0, double.infinity);
     final percent = (usedPercent.clamp(0.0, 1.0) * 100).round();
 
-
-
     return SizedBox(
       width: double.infinity,
-      
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -725,7 +707,7 @@ class _CardUsageOverlay extends StatelessWidget {
                     'Used',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 7,
+                      fontSize: 11,
                       height: 1.0,
                       fontWeight: FontWeight.w700,
                     ),
@@ -735,7 +717,7 @@ class _CardUsageOverlay extends StatelessWidget {
                     _money(usedAmount, currency),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 7,
+                      fontSize: 13,
                       height: 1.0,
                       fontWeight: FontWeight.w800,
                     ),
@@ -750,7 +732,7 @@ class _CardUsageOverlay extends StatelessWidget {
                     'Available',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 7,
+                      fontSize: 11,
                       height: 1.0,
                       fontWeight: FontWeight.w700,
                     ),
@@ -760,7 +742,7 @@ class _CardUsageOverlay extends StatelessWidget {
                     _money(available, currency),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 7,
+                      fontSize: 13,
                       height: 1.0,
                       fontWeight: FontWeight.w800,
                     ),
@@ -790,7 +772,7 @@ class _CardUsageOverlay extends StatelessWidget {
                 '$percent% used',
                 style: const TextStyle(
                   color: Color(0xFFFF3D81),
-                  fontSize: 7,
+                  fontSize: 10,
                   height: 1.0,
                   fontWeight: FontWeight.w800,
                 ),
@@ -805,7 +787,7 @@ class _CardUsageOverlay extends StatelessWidget {
                 'Card Limit',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 7,
+                  fontSize: 10,
                   height: 1.0,
                   fontWeight: FontWeight.w700,
                 ),
@@ -814,7 +796,7 @@ class _CardUsageOverlay extends StatelessWidget {
                 _money(creditLimit, currency),
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 7,
+                  fontSize: 12,
                   height: 1.0,
                   fontWeight: FontWeight.w800,
                 ),
@@ -1231,6 +1213,7 @@ class _DueBreakdown {
 _DueBreakdown _calculateDueBreakdown({
   required List<Transaction> transactions,
   required List<FinancingInstallment> installments,
+  required Set<String> convertedChargeIds,
   required int? statementDay,
   required int? paymentDueDay,
   required DateTime now,
@@ -1238,8 +1221,12 @@ _DueBreakdown _calculateDueBreakdown({
   var thisExpenses = 0.0;
   var nextExpenses = 0.0;
 
+  // ADR-069: converted charges are represented by their financing
+  // installments and must not also be counted as full statement expenses.
   if (statementDay != null && paymentDueDay != null) {
     for (final tx in transactions) {
+      if (convertedChargeIds.contains(tx.id)) continue;
+
       final dueDate = _chargeDueDate(tx.date, statementDay, paymentDueDay);
       if (_sameMonth(dueDate, now)) {
         thisExpenses += tx.amount.abs();
