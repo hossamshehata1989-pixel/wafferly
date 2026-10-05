@@ -22,6 +22,10 @@ class CreditCardProfileAdapter extends TypeAdapter<CreditCardProfile> {
       cardNetwork: fields[4] as String?,
       statementDay: fields[5] as int?,
       paymentDueDay: fields[6] as int?,
+      statementStartDay: fields[10] as int?,
+      graceDays: fields[11] == null
+          ? const <int>[]
+          : List<int>.from(fields[11] as List),
       linkedDebitCardAccountId: fields[7] as String?,
       annualFeeValue: fields[8] as String?,
       cardVisual: fields[9] as String? ?? 'credit_midnight',
@@ -31,7 +35,7 @@ class CreditCardProfileAdapter extends TypeAdapter<CreditCardProfile> {
   @override
   void write(BinaryWriter writer, CreditCardProfile obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -48,6 +52,10 @@ class CreditCardProfileAdapter extends TypeAdapter<CreditCardProfile> {
       ..write(obj.paymentDueDay)
       ..writeByte(7)
       ..write(obj.linkedDebitCardAccountId)
+      ..writeByte(10)
+      ..write(obj.statementStartDay)
+      ..writeByte(11)
+      ..write(obj.graceDays)
       ..writeByte(8)
       ..write(obj.annualFeeValue)
       ..writeByte(9)

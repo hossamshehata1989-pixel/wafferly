@@ -430,6 +430,13 @@
   "linkedDebitOptional": "بطاقة الخصم المرتبطة (اختياري)",
   "statementPaymentOptional": "كشف الحساب والسداد (اختياري)",
   "paymentDueDay": "يوم استحقاق السداد",
+
+  "billingCycleAndPayment": "دورة الحساب والسداد",
+  "statementStartDay": "يوم بداية دورة الحساب",
+  "selectDayOfMonth": "اختر يومًا من الشهر",
+  "graceDays": "أيام السماح",
+  "graceDaysHelper": "حدد أيام الشهر التي تعتبر أيام سماح.",
+  "selectedDays": "الأيام المحددة",
   "notesOptional": "ملاحظات (اختياري)",
   "notesHint": "أي شيء تريد تذكره",
   "creditCardConfigurationNote": "تبدأ البطاقة الجديدة برصيد مستحق يساوي صفرًا. الحد الائتماني إعداد، بينما الدين الحالي يُحسب من المعاملات الفعلية.",

@@ -431,6 +431,13 @@
   "linkedDebitOptional": "Linked debit card (optional)",
   "statementPaymentOptional": "Statement & payment (optional)",
   "paymentDueDay": "Payment due day",
+
+  "billingCycleAndPayment": "Billing cycle & payment",
+  "statementStartDay": "Statement cycle start day",
+  "selectDayOfMonth": "Select a day of the month",
+  "graceDays": "Grace days",
+  "graceDaysHelper": "Select the days of the month that are allowed as grace days.",
+  "selectedDays": "Selected days",
   "notesOptional": "Notes (optional)",
   "notesHint": "Anything you want to remember",
   "creditCardConfigurationNote": "A new card starts with zero outstanding balance. The credit limit is configuration; current debt is calculated from real transactions.",

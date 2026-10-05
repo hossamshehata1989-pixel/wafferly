@@ -147,6 +147,9 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
           categoryId: after.categoryId,
           actorMemberId: after.actorMemberId,
           isExceptional: after.isExceptional,
+          // A Credit Card correction targets a liability account. It must
+          // not be subjected to the cash/liquidity balance guard.
+          isLiability: after.type == 'credit_card_charge',
           resolution: operation.resolution ?? Resolution.execute,
         );
 

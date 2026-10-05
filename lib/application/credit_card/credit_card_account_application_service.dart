@@ -40,6 +40,8 @@ final class CreditCardAccountApplicationService {
     String? cardNetwork,
     int? statementDay,
     int? paymentDueDay,
+    int? statementStartDay,
+    List<int> graceDays = const <int>[],
     String? linkedDebitCardAccountId,
     String? annualFeeValue,
     String cardVisual = 'credit_midnight',
@@ -57,6 +59,10 @@ final class CreditCardAccountApplicationService {
     if (creditLimit <= Money.zero) {
       throw ArgumentError('Credit limit must be greater than zero.');
     }
+
+    final effectiveStatementDay = statementStartDay == null
+        ? statementDay
+        : (statementStartDay == 1 ? 31 : statementStartDay - 1);
 
     final account = await _accountService.createAccount(
       name: name.trim(),
@@ -76,8 +82,12 @@ final class CreditCardAccountApplicationService {
         creditLimit: creditLimit,
         cardKind: cardKind,
         cardNetwork: cardNetwork,
-        statementDay: statementDay,
+        // The domain still stores statementDay as the cycle closing day.
+        // For the new create-card UX, derive it from the selected cycle start.
+        statementDay: effectiveStatementDay,
         paymentDueDay: paymentDueDay,
+        statementStartDay: statementStartDay,
+        graceDays: graceDays,
         linkedDebitCardAccountId: linkedDebitCardAccountId,
         annualFee: annualFee,
         cardVisual: cardVisual,

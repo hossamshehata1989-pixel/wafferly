@@ -37,6 +37,15 @@ final class CreditCardProfile {
   @HiveField(6)
   final int? paymentDueDay;
 
+  /// Optional first day of the statement/billing cycle (1-31).
+  @HiveField(10)
+  final int? statementStartDay;
+
+  /// Optional allowed/grace days of the month (1-31).
+  /// These are day-of-month selections, not a duration.
+  @HiveField(11)
+  final List<int> graceDays;
+
   /// Optional linked debit-card Account id used for payment setup.
   @HiveField(7)
   final String? linkedDebitCardAccountId;
@@ -50,7 +59,7 @@ final class CreditCardProfile {
   @HiveField(9)
   final String cardVisual;
 
-  const CreditCardProfile({
+  CreditCardProfile({
     required this.id,
     required this.accountId,
     required this.creditLimitValue,
@@ -58,10 +67,12 @@ final class CreditCardProfile {
     this.cardNetwork,
     this.statementDay,
     this.paymentDueDay,
+    this.statementStartDay,
+    List<int> graceDays = const <int>[],
     this.linkedDebitCardAccountId,
     this.annualFeeValue,
     this.cardVisual = 'credit_midnight',
-  });
+  }) : graceDays = _normalizeGraceDays(graceDays);
 
   factory CreditCardProfile.fromMoney({
     required String id,
@@ -71,6 +82,8 @@ final class CreditCardProfile {
     String? cardNetwork,
     int? statementDay,
     int? paymentDueDay,
+    int? statementStartDay,
+    List<int> graceDays = const <int>[],
     String? linkedDebitCardAccountId,
     Money? annualFee,
     String cardVisual = 'credit_midnight',
@@ -99,10 +112,27 @@ final class CreditCardProfile {
       cardNetwork: cardNetwork,
       statementDay: statementDay,
       paymentDueDay: paymentDueDay,
+      statementStartDay: statementStartDay,
+      graceDays: graceDays,
       linkedDebitCardAccountId: linkedDebitCardAccountId,
       annualFeeValue: annualFee?.toString(),
       cardVisual: cardVisual,
     );
+  }
+
+
+  static List<int> _normalizeGraceDays(Iterable<int> days) {
+    final normalized = days.toSet().toList()..sort();
+    for (final day in normalized) {
+      if (day < 1 || day > 31) {
+        throw ArgumentError.value(
+          day,
+          'graceDays',
+          'Grace days must be between 1 and 31.',
+        );
+      }
+    }
+    return List.unmodifiable(normalized);
   }
 
   /// Domain-facing credit limit. Persistence stores the canonical decimal

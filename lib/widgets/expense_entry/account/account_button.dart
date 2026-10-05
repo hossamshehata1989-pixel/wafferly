@@ -5,6 +5,8 @@ import '../../../controllers/transaction_entry_controller.dart';
 import '../../../theme/responsive_metrics.dart';
 import '../../../features/transactions/models/entry_mode.dart';
 import '../../../models/account_display_extension.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import '../../../models/account.dart';
 import '../entry_context_chip.dart';
 import 'account_selector.dart';
 import 'no_account_sheet.dart';
@@ -38,9 +40,21 @@ class _AccountButtonState extends State<AccountButton> {
         final accounts = widget.controller.availableAccounts;
         final selectedId = widget.controller.selectedAccountId;
 
-        final selectedAccount = accounts
+        Account? selectedAccount = accounts
             .where((acc) => acc.id == selectedId)
             .firstOrNull;
+
+        // Credit Card charges are liability transactions. During edit the
+        // selected card is intentionally not part of availableAccounts,
+        // which is reserved for liquidity accounts. Resolve the selected
+        // liability directly so the editor never asks the user to create a
+        // replacement liquidity account.
+        final isCreditCardEdit =
+            widget.controller.isEditing &&
+            widget.controller.isCreditCardCharge;
+        if (selectedAccount == null && isCreditCardEdit) {
+          selectedAccount = Hive.box<Account>('accounts').get(selectedId);
+        }
 
         if (selectedAccount == null) {
           return EntryContextChip(
@@ -65,7 +79,7 @@ class _AccountButtonState extends State<AccountButton> {
             leading: Icon(display.icon, color: display.color, size: 17),
             iconColor: display.color,
             label: selectedAccount.name,
-            trailing: accountCount > 1
+            trailing: !isCreditCardEdit && accountCount > 1
                 ? Icon(
                     Icons.keyboard_arrow_down_rounded,
                     size: 16,
@@ -73,7 +87,7 @@ class _AccountButtonState extends State<AccountButton> {
                   )
                 : null,
             borderColor: display.color.withValues(alpha: 0.20),
-            onTap: _handleTap,
+            onTap: isCreditCardEdit ? null : _handleTap,
           ),
         );
       },

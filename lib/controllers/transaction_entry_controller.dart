@@ -95,6 +95,12 @@ class TransactionEntryController extends ChangeNotifier {
 
   // ✅ اختيار أفضل حساب (قابلة للتوسع)
   void _selectBestAccount() {
+    // A Credit Card charge is owned by the liability account in
+    // Transaction.toAccountId. While editing, never replace that account
+    // with a liquidity account just because the normal expense picker only
+    // exposes liquidity accounts.
+    if (isCreditCardCharge && _editingTransaction != null) return;
+
     final accounts = availableAccounts;
     if (accounts.isEmpty) return;
 
@@ -161,7 +167,10 @@ class TransactionEntryController extends ChangeNotifier {
   String get selectedToAccountName => _selectedToAccountName;
 
   bool get isIncome => _selectedTransactionType == TransactionType.income;
-  bool get isExpense => _selectedTransactionType == TransactionType.expense;
+  bool get isCreditCardCharge =>
+      _selectedTransactionType == TransactionType.creditCardCharge;
+  bool get isExpense =>
+      _selectedTransactionType == TransactionType.expense || isCreditCardCharge;
   bool get isExceptional => _isExceptional;
 
   CategoryType get categoryType =>
@@ -445,7 +454,9 @@ class TransactionEntryController extends ChangeNotifier {
   void setTransactionType(String type) {
     _selectedTransactionType = type;
     _selectedCategoryId = "";
-    if (type == TransactionType.expense || type == TransactionType.income) {
+    if (type == TransactionType.expense ||
+        type == TransactionType.income ||
+        type == TransactionType.creditCardCharge) {
       try {
         final owner = Hive.box<MemberModel>(
           'members',
@@ -470,13 +481,23 @@ class TransactionEntryController extends ChangeNotifier {
     _selectedTransactionType = tx.type;
     _selectedMemberId = tx.actorMemberId;
 
+    // Older Credit Card charges may not have actorMemberId persisted.
+    // Keep the Member control visible in Edit by falling back to the owner,
+    // exactly like a normal expense entry.
+    if (_selectedMemberId == null &&
+        (tx.type == TransactionType.expense ||
+            tx.type == TransactionType.creditCardCharge)) {
+      _initializeDefaultMember();
+    }
+
     final categoryId = (tx.subCategoryId?.isNotEmpty == true)
         ? tx.subCategoryId!
         : (tx.categoryId ?? '');
 
     _selectedCategoryId = categoryId;
 
-    if (tx.type == TransactionType.income) {
+    if (tx.type == TransactionType.income ||
+        tx.type == TransactionType.creditCardCharge) {
       _selectedAccountId = tx.toAccountId ?? '';
     } else {
       _selectedAccountId = tx.fromAccountId ?? '';
@@ -598,6 +619,46 @@ class TransactionEntryController extends ChangeNotifier {
         break;
     }
     final amountValue = double.parse(_amount);
+
+    if (isCreditCardCharge) {
+      // Credit-card charges are liability transactions. They are not generic
+      // expenses: the card account remains in Transaction.toAccountId and
+      // must be corrected in place through the Financial Engine.
+      if (_editingTransaction == null) {
+        _saveStatus = SaveStatus.idle;
+        notifyListeners();
+        return const SaveResult(
+          success: false,
+          errorMessage: 'Credit Card charges must be edited from the card transaction.',
+        );
+      }
+
+      final updated = _editingTransaction!.copyWith(
+        amount: amountValue,
+        toAccountId: _selectedAccountId,
+        categoryId: _getMainCategoryId(_selectedCategoryId),
+        subCategoryId: _isSubCategory(_selectedCategoryId)
+            ? _selectedCategoryId
+            : null,
+        date: _selectedDate,
+        note: _note.isEmpty ? null : _note,
+        paymentMethod: _paymentMethod,
+        isExceptional: isExceptional,
+        actorMemberId: _selectedMemberId,
+      );
+
+      final result = await _transactionService.updateCreditCardCharge(updated);
+
+      if (result is OperationSucceeded) {
+        _onSuccessfulSave();
+        return const SaveResult(
+          success: true,
+          action: SaveAction.showNormalSuccess,
+        );
+      }
+
+      return _handleOperationFailure(result);
+    }
 
     if (isExpense) {
       late final OperationResult result;

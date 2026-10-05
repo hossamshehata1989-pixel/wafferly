@@ -2,6 +2,7 @@ import '../core/money/money.dart';
 // lib/services/transaction_application_service.dart
 
 import '../models/transaction.dart';
+import '../constants/transaction_constants.dart';
 import 'account_service.dart';
 import 'transaction_query_service.dart';
 import '../financial_engine/engine/financial_operation_engine.dart';
@@ -210,6 +211,26 @@ class TransactionApplicationService {
   // ==================== Update (Engine-based) ====================
 
   Future<OperationResult> updateExpense(Transaction transaction) async {
+    return await _updateViaEngine(transaction);
+  }
+
+  /// Correct an existing Credit Card charge without changing its financial
+  /// identity into a generic expense. The correction engine preserves the
+  /// transaction id and applies the before/after delta to financial truth.
+  Future<OperationResult> updateCreditCardCharge(
+    Transaction transaction,
+  ) async {
+    if (transaction.type != TransactionType.creditCardCharge) {
+      throw ArgumentError(
+        'updateCreditCardCharge requires a credit_card_charge transaction.',
+      );
+    }
+    if (transaction.toAccountId == null || transaction.toAccountId!.isEmpty) {
+      throw ArgumentError(
+        'A Credit Card charge must keep its liability account in toAccountId.',
+      );
+    }
+
     return await _updateViaEngine(transaction);
   }
 

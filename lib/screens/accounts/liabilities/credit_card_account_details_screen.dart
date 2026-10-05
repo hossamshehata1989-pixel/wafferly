@@ -122,8 +122,10 @@ class _CreditCardAccountDetailsScreenState
           body: ListView(
             padding: EdgeInsets.fromLTRB(m.spacing(16), 6, m.spacing(16), 28),
             children: [
-              _CardSummaryVisual(
-                account: projection.account,
+              Semantics(
+                label: '${t.creditExposure}: ${projection.outstanding}',
+                child: _CardSummaryVisual(
+                  account: projection.account,
                 profile: projection.profile,
                 available: projection.available.toDouble(),
                 outstanding: (projection.profile.creditLimit.toDouble() - projection.available.toDouble()).clamp(0.0, double.infinity),
@@ -134,7 +136,8 @@ class _CreditCardAccountDetailsScreenState
                 nextMonthExpenses: dueBreakdown.nextMonthExpenses,
                 nextMonthInstallments: dueBreakdown.nextMonthInstallments,
                 utilization: projection.utilization,
-                overdueDays: _overdueDays(installments),
+                  overdueDays: _overdueDays(installments),
+                ),
               ),
               SizedBox(height: m.space.md),
               _ActionGrid(

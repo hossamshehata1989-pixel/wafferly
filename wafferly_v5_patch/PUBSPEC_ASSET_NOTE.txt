@@ -1,7 +1,0 @@
-The project already uses flutter_svg elsewhere. Make sure pubspec.yaml declares the new credit-card assets, e.g.:
-
-flutter:
-  assets:
-    - assets/images/credit_cards/
-
-If your project already exposes the whole assets/ directory, no additional pubspec change is needed.

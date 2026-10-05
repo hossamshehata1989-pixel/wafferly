@@ -583,6 +583,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       case 'expense':
       case 'income':
       case 'transfer':
+      case TransactionType.creditCardCharge:
       case TransactionType.balanceReconciliation:
         break;
       default:

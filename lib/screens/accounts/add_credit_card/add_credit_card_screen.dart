@@ -29,6 +29,9 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
 
   String _currency = 'EGP';
   String? _bank;
+  int? _statementStartDay;
+  int? _paymentDueDay;
+  final Set<int> _graceDays = <int>{};
   String _cardVisual = 'credit_midnight';
   bool _saving = false;
 
@@ -123,6 +126,9 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
         annualFeeValue: _annualFeeController.text.trim().isEmpty
             ? null
             : _annualFeeController.text.trim(),
+        statementStartDay: _statementStartDay,
+        paymentDueDay: _paymentDueDay,
+        graceDays: _graceDays.toList()..sort(),
       );
 
       if (!mounted) return;
@@ -301,6 +307,88 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                       ],
                     ),
                     WafferlyFormSection(
+                      title: t.billingCycleAndPayment,
+                      children: [
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final compact = constraints.maxWidth < m.size(390);
+                            final cycleStart = _DayOfMonthSelector(
+                              label: t.statementStartDay,
+                              value: _statementStartDay,
+                              hint: t.selectDayOfMonth,
+                              onChanged: (value) =>
+                                  setState(() => _statementStartDay = value),
+                            );
+                            final paymentDue = _DayOfMonthSelector(
+                              label: t.paymentDueDay,
+                              value: _paymentDueDay,
+                              hint: t.selectDayOfMonth,
+                              onChanged: (value) =>
+                                  setState(() => _paymentDueDay = value),
+                            );
+
+                            if (compact) {
+                              return Column(
+                                children: [
+                                  cycleStart,
+                                  SizedBox(height: m.space.sm),
+                                  paymentDue,
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: cycleStart),
+                                SizedBox(width: m.space.sm),
+                                Expanded(child: paymentDue),
+                              ],
+                            );
+                          },
+                        ),
+                        SizedBox(height: m.space.md),
+                        Text(
+                          t.graceDays,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            fontSize: m.typography.body,
+                          ),
+                        ),
+                        SizedBox(height: m.space.xs),
+                        Text(
+                          t.graceDaysHelper,
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: m.typography.caption,
+                            height: 1.3,
+                          ),
+                        ),
+                        SizedBox(height: m.space.sm),
+                        _GraceDaysCalendar(
+                          selectedDays: _graceDays,
+                          onToggle: (day) {
+                            setState(() {
+                              if (!_graceDays.add(day)) {
+                                _graceDays.remove(day);
+                              }
+                            });
+                          },
+                        ),
+                        if (_graceDays.isNotEmpty) ...[
+                          SizedBox(height: m.space.xs),
+                          Text(
+                            '${t.selectedDays}: ${_graceDays.toList()..sort()}',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: m.typography.caption,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    WafferlyFormSection(
                       title: t.feesOptional,
                       children: [
                         WafferlyTextField(
@@ -365,6 +453,102 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+class _DayOfMonthSelector extends StatelessWidget {
+  const _DayOfMonthSelector({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    required this.hint,
+  });
+
+  final String label;
+  final int? value;
+  final String hint;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return WafferlyDropdown<int>(
+      label: label,
+      value: value,
+      items: [
+        for (var day = 1; day <= 31; day++)
+          DropdownMenuItem<int>(
+            value: day,
+            child: Text('$day'),
+          ),
+      ],
+      onChanged: onChanged,
+    );
+  }
+}
+
+class _GraceDaysCalendar extends StatelessWidget {
+  const _GraceDaysCalendar({
+    required this.selectedDays,
+    required this.onToggle,
+  });
+
+  final Set<int> selectedDays;
+  final ValueChanged<int> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+    return Container(
+      padding: EdgeInsets.all(m.space.sm),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(m.radius.lg),
+        border: Border.all(color: Colors.white.withValues(alpha: .06)),
+      ),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 31,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 7,
+          crossAxisSpacing: m.space.xs,
+          mainAxisSpacing: m.space.xs,
+          childAspectRatio: 1,
+        ),
+        itemBuilder: (context, index) {
+          final day = index + 1;
+          final selected = selectedDays.contains(day);
+          return InkWell(
+            onTap: () => onToggle(day),
+            borderRadius: BorderRadius.circular(m.radius.sm),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 120),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected
+                    ? const Color(0xFF35E0B5)
+                    : Colors.white.withValues(alpha: .045),
+                borderRadius: BorderRadius.circular(m.radius.sm),
+                border: Border.all(
+                  color: selected
+                      ? const Color(0xFF35E0B5)
+                      : Colors.white.withValues(alpha: .06),
+                ),
+              ),
+              child: Text(
+                '$day',
+                style: TextStyle(
+                  color: selected ? Colors.black : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: m.typography.caption,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
