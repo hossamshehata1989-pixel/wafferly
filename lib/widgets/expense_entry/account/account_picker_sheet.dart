@@ -11,6 +11,8 @@ import '../../bottom_sheet/sheet_header.dart';
 import '../../bottom_sheet/sheet_footer.dart';
 import '../account_card.dart';
 import '../../../services/balance_service.dart';
+import '../../../core/planning/bootstrap/planning_engine_bootstrap.dart';
+import '../../../core/planning/services/available_balance_projection_service.dart';
 import '../../../theme/app_colors.dart'; // ✅ إضافة الاستيراد المفقود
 
 Future<void> showAccountPickerSheet(
@@ -54,7 +56,16 @@ Future<void> showAccountPickerSheet(
     return;
   }
 
-  final balanceService = BalanceService();
+  // Available balance must come from the Planning Allocation read path.
+  // Do not use the retired synchronous BalanceService.getAvailableBalance().
+  final allocationRepository =
+      PlanningEngineBootstrap.createProductionAllocationRepository();
+  final availableBalanceProjectionService = AvailableBalanceProjectionService(
+    allocationRepository: allocationRepository,
+  );
+  final balanceService = BalanceService(
+    availableBalanceProjectionService: availableBalanceProjectionService,
+  );
 
   // ✅ 2. استخدام حيثية مستقرة لتقديم الحساب المختار أولاً
   final selectedAccount = accounts.where(
@@ -64,6 +75,17 @@ Future<void> showAccountPickerSheet(
     (a) => a.id != controller.selectedAccountId,
   );
   final sortedAccounts = [...selectedAccount, ...otherAccounts];
+
+  // Resolve balances before building the list because the Planning read path
+  // is asynchronous. This also prevents a per-row legacy balance call from
+  // crashing the sheet during build.
+  final availableBalances = <String, double>{};
+  for (final acc in sortedAccounts) {
+    availableBalances[acc.id] =
+        await balanceService.getAvailableBalanceFromPlanning(acc.id);
+  }
+
+  if (!context.mounted) return;
 
   await WafferlyBottomSheet.show(
     context: context,
@@ -87,7 +109,7 @@ Future<void> showAccountPickerSheet(
             children: sortedAccounts.map((acc) {
               final selected = acc.id == controller.selectedAccountId;
 
-              final balance = balanceService.getAvailableBalance(acc.id);
+              final balance = availableBalances[acc.id] ?? 0;
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
