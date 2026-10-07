@@ -19,7 +19,9 @@ import '../financial_engine/results/operation_result.dart';
 import '../constants/temp_debt_constants.dart';
 import '../financial_engine/resolution/resolution.dart';
 import '../services/account_service.dart';
+import '../application/credit_card/credit_card_financing_application_service.dart';
 import '../features/transactions/models/entry_state.dart';
+import '../features/transactions/models/expense_payment_mode.dart';
 import '../features/transactions/models/entry_validation_result.dart';
 
 enum SaveStatus { idle, saving }
@@ -95,11 +97,19 @@ class TransactionEntryController extends ChangeNotifier {
 
   // ✅ اختيار أفضل حساب (قابلة للتوسع)
   void _selectBestAccount() {
-    // A Credit Card charge is owned by the liability account in
-    // Transaction.toAccountId. While editing, never replace that account
-    // with a liquidity account just because the normal expense picker only
-    // exposes liquidity accounts.
-    if (isCreditCardCharge && _editingTransaction != null) return;
+    final selected = _selectedAccountId.isEmpty
+        ? null
+        : Hive.box<Account>('accounts').get(_selectedAccountId);
+
+    // Preserve an explicitly selected expense source, including savings and
+    // credit cards, even though `availableAccounts` remains liquidity-only.
+    if (selected != null &&
+        !selected.isArchived &&
+        selected.bookId == 'default' &&
+        ((isCreditCardCharge && selected.type == 'creditCard') ||
+            (isExpense && _isExpenseSource(selected)))) {
+      return;
+    }
 
     final accounts = availableAccounts;
     if (accounts.isEmpty) return;
@@ -112,11 +122,21 @@ class TransactionEntryController extends ChangeNotifier {
     _selectedAccountName = account.name;
   }
 
+  bool _isExpenseSource(Account account) {
+    return !account.isArchived &&
+        account.bookId == 'default' &&
+        (account.group == AccountGroup.liquidity ||
+            account.group == AccountGroup.savings ||
+            account.type == 'prepaid' ||
+            account.type == 'creditCard');
+  }
+
   String _amount = "0";
   String _expression = "";
   DateTime _selectedDate = DateTime.now();
   String _note = "";
   String _paymentMethod = "cash";
+  ExpensePaymentMode _expensePaymentMode = ExpensePaymentMode.fullPayment;
   String _selectedAccountId = "";
   String _selectedAccountName = "اختر حساب";
   String _selectedCategoryId = "";
@@ -154,6 +174,7 @@ class TransactionEntryController extends ChangeNotifier {
   DateTime get selectedDate => _selectedDate;
   String get note => _note;
   String get paymentMethod => _paymentMethod;
+  ExpensePaymentMode get expensePaymentMode => _expensePaymentMode;
   String get selectedAccountId => _selectedAccountId;
   String get selectedAccountName => _selectedAccountName;
   String get selectedCategoryId => _selectedCategoryId;
@@ -234,6 +255,67 @@ class TransactionEntryController extends ChangeNotifier {
     return activeAccounts
         .where((acc) => acc.group == AccountGroup.liquidity)
         .toList();
+  }
+
+  /// Expense sources are broader than liquidity: savings, prepaid products,
+  /// and credit cards can also fund an expense. Financing-only liabilities
+  /// and temporary debt are intentionally excluded.
+  List<Account> get expenseSourceAccounts {
+    return activeAccounts.where(_isExpenseSource).toList();
+  }
+
+  List<Account> get savingsAccounts => activeAccounts
+      .where((acc) => acc.group == AccountGroup.savings)
+      .toList();
+
+  List<Account> get prepaidAccounts => activeAccounts
+      .where((acc) => acc.type == 'prepaid')
+      .toList();
+
+  List<Account> get creditCardAccounts => activeAccounts
+      .where(
+        (acc) =>
+            acc.group == AccountGroup.liabilities &&
+            acc.type == 'creditCard',
+      )
+      .toList();
+
+  List<Account> get installmentProviderAccounts => activeAccounts
+      .where(
+        (acc) =>
+            acc.group == AccountGroup.liabilities &&
+            acc.type == 'installment',
+      )
+      .toList();
+
+  bool get hasExtendedExpenseSources =>
+      savingsAccounts.isNotEmpty ||
+      prepaidAccounts.isNotEmpty ||
+      creditCardAccounts.isNotEmpty;
+
+  bool get hasExpensePaymentSources => expenseSourceAccounts.isNotEmpty;
+
+  /// Preserve the old 1/2-account toggle, but switch to the richer payment
+  /// method sheet once the expense has multiple source families.
+  bool get shouldOpenPaymentMethodSheet =>
+      isExpense &&
+      (availableAccounts.length > 2 || hasExtendedExpenseSources);
+
+  void setExpensePaymentMode(ExpensePaymentMode mode) {
+    _expensePaymentMode = mode;
+    if (mode == ExpensePaymentMode.fullPayment) {
+      final account = _selectedAccountId.isEmpty
+          ? null
+          : Hive.box<Account>('accounts').get(_selectedAccountId);
+      if (account?.type == 'creditCard') {
+        _selectedTransactionType = TransactionType.creditCardCharge;
+        _paymentMethod = 'credit_card';
+      } else if (isExpense) {
+        _selectedTransactionType = TransactionType.expense;
+        _paymentMethod = 'cash';
+      }
+    }
+    notifyListeners();
   }
 
   // ==============================
@@ -356,6 +438,19 @@ class TransactionEntryController extends ChangeNotifier {
   void selectAccount(String id, String name) {
     _selectedAccountId = id;
     _selectedAccountName = name;
+
+    final account = Hive.box<Account>('accounts').get(id);
+    if (isExpense || isCreditCardCharge) {
+      if (account?.type == 'creditCard') {
+        _selectedTransactionType = TransactionType.creditCardCharge;
+        _paymentMethod = 'credit_card';
+      } else if (_editingTransaction == null) {
+        _selectedTransactionType = TransactionType.expense;
+        _paymentMethod = 'cash';
+      }
+      _expensePaymentMode = ExpensePaymentMode.fullPayment;
+    }
+
     notifyListeners();
   }
 
@@ -620,34 +715,48 @@ class TransactionEntryController extends ChangeNotifier {
     }
     final amountValue = double.parse(_amount);
 
+    if (isExpense && _expensePaymentMode != ExpensePaymentMode.fullPayment) {
+      _saveStatus = SaveStatus.idle;
+      notifyListeners();
+      return const SaveResult(
+        success: false,
+        errorMessage:
+            'Complete the installment setup before saving this expense.',
+      );
+    }
+
     if (isCreditCardCharge) {
-      // Credit-card charges are liability transactions. They are not generic
-      // expenses: the card account remains in Transaction.toAccountId and
-      // must be corrected in place through the Financial Engine.
-      if (_editingTransaction == null) {
-        _saveStatus = SaveStatus.idle;
-        notifyListeners();
-        return const SaveResult(
-          success: false,
-          errorMessage: 'Credit Card charges must be edited from the card transaction.',
+      // Credit-card charges are liability transactions. A new charge is a
+      // valid Expense-screen action; editing still corrects the existing
+      // charge in place through the Financial Engine.
+      late final OperationResult result;
+
+      if (_editingTransaction != null) {
+        final updated = _editingTransaction!.copyWith(
+          amount: amountValue,
+          toAccountId: _selectedAccountId,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          subCategoryId: _isSubCategory(_selectedCategoryId)
+              ? _selectedCategoryId
+              : null,
+          date: _selectedDate,
+          note: _note.isEmpty ? null : _note,
+          paymentMethod: _paymentMethod,
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+        result = await _transactionService.updateCreditCardCharge(updated);
+      } else {
+        result = await _transactionService.addCreditCardCharge(
+          creditCardAccountId: _selectedAccountId,
+          amount: amountValue,
+          categoryId: _getMainCategoryId(_selectedCategoryId),
+          occurredAt: _selectedDate,
+          currencyCode: currentCurrency,
+          note: _note.isEmpty ? null : _note,
+          actorMemberId: _selectedMemberId,
         );
       }
-
-      final updated = _editingTransaction!.copyWith(
-        amount: amountValue,
-        toAccountId: _selectedAccountId,
-        categoryId: _getMainCategoryId(_selectedCategoryId),
-        subCategoryId: _isSubCategory(_selectedCategoryId)
-            ? _selectedCategoryId
-            : null,
-        date: _selectedDate,
-        note: _note.isEmpty ? null : _note,
-        paymentMethod: _paymentMethod,
-        isExceptional: isExceptional,
-        actorMemberId: _selectedMemberId,
-      );
-
-      final result = await _transactionService.updateCreditCardCharge(updated);
 
       if (result is OperationSucceeded) {
         _onSuccessfulSave();
@@ -752,6 +861,258 @@ class TransactionEntryController extends ChangeNotifier {
     notifyListeners();
 
     return SaveResult(success: false, errorMessage: _lastErrorMessage);
+  }
+
+  /// Saves a manual expense financed through a Credit Card installment plan.
+  ///
+  /// A no-down-payment plan creates one Credit Card charge for the purchase
+  /// amount and then creates the financing contract/schedule around that
+  /// already-posted charge. A down-payment plan creates a normal expense for
+  /// the amount paid now, then charges only the financed remainder to the
+  /// Credit Card before creating the financing contract.
+  ///
+  /// Financing persistence itself is contractual state; the actual financial
+  /// effects always go through [TransactionApplicationService]/FinancialEngine.
+  Future<SaveResult> saveCreditCardInstallment({
+    required String creditCardAccountId,
+    required int installmentCount,
+    required DateTime firstDueDate,
+    double downPayment = 0,
+    String? downPaymentAccountId,
+  }) async {
+    if (_saveStatus == SaveStatus.saving) {
+      return const SaveResult(success: false);
+    }
+
+    _lastErrorMessage = null;
+    _saveStatus = SaveStatus.saving;
+    notifyListeners();
+
+    String? downPaymentTransactionId;
+    String? chargeTransactionId;
+
+    try {
+      final amountValue = double.tryParse(_amount) ?? 0;
+      final categoryId = _getMainCategoryId(_selectedCategoryId);
+
+      if (amountValue <= 0) {
+        return const SaveResult(
+          success: false,
+          action: SaveAction.invalidAmount,
+          errorMessage: 'Enter a valid purchase amount.',
+        );
+      }
+
+      if (_selectedCategoryId.isEmpty) {
+        return const SaveResult(
+          success: false,
+          action: SaveAction.noCategorySelected,
+          errorMessage: 'Select a category first.',
+        );
+      }
+
+      final card = Hive.box<Account>('accounts').get(creditCardAccountId);
+      if (card == null ||
+          card.isArchived ||
+          card.bookId != 'default' ||
+          card.type != 'creditCard') {
+        return const SaveResult(
+          success: false,
+          errorMessage: 'Select a valid Credit Card.',
+        );
+      }
+
+      if (installmentCount < 1) {
+        return const SaveResult(
+          success: false,
+          errorMessage: 'Installment count must be at least 1.',
+        );
+      }
+
+      if (downPayment < 0 || downPayment >= amountValue) {
+        return const SaveResult(
+          success: false,
+          errorMessage:
+              'Down payment must be greater than or equal to 0 and less than the purchase amount.',
+        );
+      }
+
+      if (downPayment > 0) {
+        if (downPaymentAccountId == null || downPaymentAccountId.isEmpty) {
+          return const SaveResult(
+            success: false,
+            errorMessage: 'Select an account for the down payment.',
+          );
+        }
+
+        final source = Hive.box<Account>('accounts').get(downPaymentAccountId);
+        if (source == null ||
+            source.isArchived ||
+            source.bookId != 'default' ||
+            !_isExpenseSource(source) ||
+            source.type == 'creditCard') {
+          return const SaveResult(
+            success: false,
+            errorMessage:
+                'Down payment must be paid from a spendable non-credit account.',
+          );
+        }
+      }
+
+      final financedAmount = amountValue - downPayment;
+      if (financedAmount <= 0) {
+        return const SaveResult(
+          success: false,
+          errorMessage: 'The financed amount must be greater than zero.',
+        );
+      }
+
+      // 1) Optional down payment: a normal financial Expense.
+      if (downPayment > 0) {
+        final result = await _transactionService.addExpense(
+          sourceAccountId: downPaymentAccountId!,
+          amount: downPayment,
+          categoryId: categoryId,
+          occurredAt: _selectedDate,
+          note: _note.isEmpty ? 'Down payment' : '${_note} • Down payment',
+          isExceptional: isExceptional,
+          actorMemberId: _selectedMemberId,
+        );
+
+        if (result is! OperationSucceeded) {
+          return _handleOperationFailure(result);
+        }
+
+        // The Financial Engine returns the authoritative transaction identity.
+        // Use it directly instead of resolving the transaction by timestamp,
+        // which is unnecessarily fragile when multiple writes share the same
+        // occurredAt value.
+        if (result.summary.createdTransactionIds.isNotEmpty) {
+          downPaymentTransactionId =
+              result.summary.createdTransactionIds.first;
+        }
+      }
+
+      // 2) Charge only the financed remainder to the Credit Card.
+      final chargeResult = await _transactionService.addCreditCardCharge(
+        creditCardAccountId: creditCardAccountId,
+        amount: financedAmount,
+        categoryId: categoryId,
+        occurredAt: _selectedDate,
+        currencyCode: card.currency,
+        note: _note.isEmpty
+            ? 'Installment purchase'
+            : '${_note} • Installment',
+        actorMemberId: _selectedMemberId,
+      );
+
+      if (chargeResult is! OperationSucceeded) {
+        await _rollbackCreatedTransaction(downPaymentTransactionId);
+        return _handleOperationFailure(chargeResult);
+      }
+
+      // The charge operation already gives us the created transaction id.
+      // Rely on that canonical id instead of a post-hoc Hive search.
+      if (chargeResult.summary.createdTransactionIds.isNotEmpty) {
+        chargeTransactionId = chargeResult.summary.createdTransactionIds.first;
+      }
+
+      if (chargeTransactionId == null) {
+        await _rollbackCreatedTransaction(downPaymentTransactionId);
+        return const SaveResult(
+          success: false,
+          errorMessage:
+              'Credit Card charge was posted, but its transaction could not be resolved for financing conversion.',
+        );
+      }
+
+      // 3) Persist the contractual financing schedule around the posted charge.
+      final charge = Hive.box<Transaction>('transactions').get(
+        chargeTransactionId,
+      );
+      if (charge == null) {
+        await _rollbackCreatedTransaction(downPaymentTransactionId);
+        await _rollbackCreatedTransaction(chargeTransactionId);
+        return const SaveResult(
+          success: false,
+          errorMessage: 'The created Credit Card charge could not be loaded.',
+        );
+      }
+
+      try {
+        await CreditCardFinancingApplicationService().convertCharge(
+          charge: charge,
+          installmentCount: installmentCount,
+          firstDueDate: firstDueDate,
+        );
+      } catch (error) {
+        // The conversion service rolls back its own contractual partial writes.
+        // Since the financial charge is only a staging effect for this atomic
+        // user flow, remove the just-created transactions if conversion fails.
+        await _rollbackCreatedTransaction(chargeTransactionId);
+        await _rollbackCreatedTransaction(downPaymentTransactionId);
+        return SaveResult(
+          success: false,
+          errorMessage: 'Installment conversion failed: $error',
+        );
+      }
+
+      _onSuccessfulSave();
+      return const SaveResult(
+        success: true,
+        action: SaveAction.showNormalSuccess,
+      );
+    } catch (error) {
+      await _rollbackCreatedTransaction(chargeTransactionId);
+      await _rollbackCreatedTransaction(downPaymentTransactionId);
+      _lastErrorMessage = error.toString();
+      notifyListeners();
+      return SaveResult(success: false, errorMessage: _lastErrorMessage);
+    } finally {
+      _saveStatus = SaveStatus.idle;
+      notifyListeners();
+    }
+  }
+
+  String? _findLatestTransactionId({
+    required String type,
+    String? fromAccountId,
+    String? toAccountId,
+    required double amount,
+    required DateTime occurredAt,
+    required DateTime createdAfter,
+  }) {
+    final candidates = Hive.box<Transaction>('transactions').values.where((tx) {
+      if (tx.type != type) return false;
+      if (fromAccountId != null && tx.fromAccountId != fromAccountId) {
+        return false;
+      }
+      if (toAccountId != null && tx.toAccountId != toAccountId) return false;
+      if ((tx.amount - amount).abs() > 0.000001) return false;
+      if (tx.date != occurredAt) return false;
+      return !tx.createdAt.isBefore(createdAfter);
+    }).toList();
+
+    candidates.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    try {
+      return candidates.first.id;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _rollbackCreatedTransaction(String? transactionId) async {
+    if (transactionId == null) return;
+    try {
+      final result = await _transactionService.delete(transactionId);
+      if (result is! OperationSucceeded) {
+        debugPrint(
+          'INSTALLMENT ROLLBACK FAILED for $transactionId: $result',
+        );
+      }
+    } catch (error) {
+      debugPrint('INSTALLMENT ROLLBACK ERROR for $transactionId: $error');
+    }
   }
 
   // ==============================
@@ -886,10 +1247,10 @@ class TransactionEntryController extends ChangeNotifier {
 
     _isExceptional = false;
     _selectedDate = DateTime.now();
+    _expensePaymentMode = ExpensePaymentMode.fullPayment;
+    _paymentMethod = "cash";
 
     _selectBestAccount();
-
-    _paymentMethod = "cash";
 
     try {
       final owner = Hive.box<MemberModel>(
