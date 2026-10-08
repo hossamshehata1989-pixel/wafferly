@@ -1,14 +1,13 @@
 // lib/widgets/expense_entry/entry_bottom_actions.dart
 
 import 'package:flutter/material.dart';
-import '../../controllers/transaction_entry_controller.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/responsive_metrics.dart';
-import '../../financial_engine/resolution/resolution.dart';
-import '../../features/transactions/models/entry_mode.dart';
-import '../../features/transactions/models/entry_mode_extension.dart';
-import '../notifications/wafferly_toast.dart';
-import 'entry_done_handler.dart';
+import '../../../controllers/transaction_entry_controller.dart';
+import '../../../theme/app_colors.dart';
+import '../../../theme/responsive_metrics.dart';
+import '../../../features/transactions/models/entry_mode.dart';
+import '../../../features/transactions/models/entry_mode_extension.dart';
+import '../../notifications/wafferly_toast.dart';
+import '../entry_done_handler.dart';
 
 class EntryBottomActions extends StatelessWidget {
   final TransactionEntryController controller;
@@ -75,11 +74,12 @@ class EntryBottomActions extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            flex: 10,
+            flex: 9,
             child: _compactActionButton(
               height: height,
               icon: Icons.document_scanner_outlined,
               label: 'Scan',
+              subtitle: 'Import',
               onTap: () {},
             ),
           ),
@@ -142,7 +142,7 @@ class EntryBottomActions extends StatelessWidget {
           ),
           SizedBox(width: metrics.spacing(4)),
           Expanded(
-            flex: 10,
+            flex: 9,
             child: _compactActionButton(
               height: height,
               icon: Icons.note_alt_outlined,
@@ -530,12 +530,11 @@ class _NotchedAddButton extends StatelessWidget {
           children: [
             // Exceptional toggle: a property of the entry, always available.
             SizedBox(
-              width: 50,
+              width: 54,
               height: height,
-              // Keep a dedicated, generous hit area while keeping the star clear
-              // of the mic cut-out.
+              // left padding keeps the star clear of the mic cut-out
               child: Padding(
-                padding: const EdgeInsets.only(left: 14),
+                padding: const EdgeInsets.only(left: 16),
                 child: Tooltip(
                 message: 'Exceptional',
                 child: InkWell(
@@ -561,19 +560,17 @@ class _NotchedAddButton extends StatelessWidget {
                 child: Center(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                      Text(
-                        'Add',
-                        style: TextStyle(
-                          color: enabled ? activeText : Colors.white38,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.1,
-                        ),
+                    child: Text(
+                      'Add',
+                      maxLines: 1,
+                      softWrap: false,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: enabled ? activeText : Colors.white38,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.1,
                       ),
-                      ],
                     ),
                   ),
                 ),
@@ -631,7 +628,7 @@ class _NotchedActionButton extends StatelessWidget {
                 children: [
                   Icon(
                     icon,
-                    size: 17,
+                    size: 16,
                     color: iconColor ?? foregroundColor,
                   ),
                   const SizedBox(width: 5),
@@ -639,7 +636,7 @@ class _NotchedActionButton extends StatelessWidget {
                     label,
                     style: TextStyle(
                       color: foregroundColor,
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w800,
                     ),
                   ),

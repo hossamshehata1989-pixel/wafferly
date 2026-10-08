@@ -518,6 +518,20 @@ class TransactionEntryController extends ChangeNotifier {
 
   bool get hasAccount => _selectedAccountId.isNotEmpty;
 
+  /// Expense-entry interaction rules exposed by the controller so widgets
+  /// render state without owning business/state decisions.
+  ///
+  /// Installment can be opened once a category exists; the amount may still
+  /// be entered/adjusted inside the installment flow.
+  bool get canOpenExpenseInstallment => isExpense && hasCategory;
+
+  /// Add requires the minimum data needed for a normal expense save.
+  bool get canAddExpenseEntry => isExpense && hasCategory && hasAmount;
+
+  /// Shared message for actions blocked by missing entry prerequisites.
+  String get expenseEntryPrerequisiteMessage =>
+      'Choose a category and enter an amount first';
+
   bool get hasDraftData {
     return _amount != "0" ||
         _selectedCategoryId.isNotEmpty ||

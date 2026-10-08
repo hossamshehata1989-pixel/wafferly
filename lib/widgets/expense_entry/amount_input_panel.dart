@@ -28,8 +28,12 @@ class AmountInputPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final metrics = ResponsiveMetrics.of(context);
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
-    final isSmallScreen = metrics.width < 360;
-    final double buttonSize = metrics.h(isKeyboardOpen ? 28 : 45);
+    final isSmallScreen = metrics.width < 360 || metrics.isCompactHeight;
+    final double buttonSize = metrics.h(
+      isSmallScreen
+          ? (isKeyboardOpen ? 28 : 44)
+          : (isKeyboardOpen ? 28 : 45),
+    );
 
     return Padding(
       padding: EdgeInsets.symmetric(

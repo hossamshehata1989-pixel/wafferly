@@ -63,7 +63,9 @@ class EntryContextChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = metrics.width < 360 ? metrics.h(38) : metrics.h(45);
+    // Match EntryBottomActions exactly: one shared row height per device.
+    final isCompactDevice = metrics.width < 360 || metrics.isCompactHeight;
+    final height = isCompactDevice ? metrics.h(42) : metrics.h(48);
     final effectiveBackgroundColor =
         backgroundColor ?? AppColors.calculatorButton;
     final effectiveIconColor = iconColor ?? Colors.white70;

@@ -83,99 +83,73 @@ class EntryContextRow extends StatelessWidget {
     );
   }
 
-  /// Account (Full Payment), Installment and Add stay locked until the user
-  /// has picked a category and entered an amount. Date and member are
-  /// always available.
-  static const _lockedMessage = 'Choose a category and enter an amount first';
-
-  Widget _gated({
-    required BuildContext context,
-    required bool locked,
-    required Widget child,
-  }) {
-    if (!locked) return child;
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => WafferlyToast.showError(context, message: _lockedMessage),
-      child: Opacity(
-        opacity: .45,
-        child: AbsorbPointer(child: child),
-      ),
-    );
-  }
-
   Widget _buildExpenseContextRow(BuildContext context) {
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) {
-        final unlocked = controller.hasCategory && controller.hasAmount;
-        const installmentColor = Color(0xFFD36BFF);
+    final canOpenInstallment = controller.canOpenExpenseInstallment;
+    const installmentColor = Color(0xFFD36BFF);
 
-        return Row(
-          children: [
-            Expanded(
-              flex: 8,
-              child: EntryContextChip(
-                metrics: metrics,
-                leading: const Icon(
-                  Icons.calendar_today_outlined,
-                  color: Colors.white70,
-                  size: 17,
-                ),
-                iconColor: Colors.white70,
-                label: controller.transactionDateLabel,
-                onTap: () {
-                  WafferlyBottomSheet.show(
-                    context: context,
-                    child: DatePickerSheet(controller: controller),
-                  );
-                },
-              ),
+    return Row(
+      children: [
+        Expanded(
+          flex: 10,
+          child: EntryContextChip(
+            metrics: metrics,
+            leading: const Icon(
+              Icons.calendar_today_outlined,
+              color: Colors.white70,
+              size: 17,
             ),
-            SizedBox(width: metrics.spacing(5)),
-            Expanded(
-              flex: 17,
-              child: _gated(
+            iconColor: Colors.white70,
+            label: controller.transactionDateLabel,
+            onTap: () {
+              WafferlyBottomSheet.show(
                 context: context,
-                locked: !unlocked,
-                child: AccountButton(
-                  controller: controller,
-                  metrics: metrics,
-                  mode: mode,
-                  showPaymentModeLabel: true,
-                ),
-              ),
+                child: DatePickerSheet(controller: controller),
+              );
+            },
+          ),
+        ),
+        SizedBox(width: metrics.spacing(5)),
+        Expanded(
+          flex: 15,
+          child: AccountButton(
+            controller: controller,
+            metrics: metrics,
+            mode: mode,
+            showPaymentModeLabel: true,
+          ),
+        ),
+        SizedBox(width: metrics.spacing(5)),
+        Expanded(
+          flex: 13,
+          child: EntryContextChip(
+            metrics: metrics,
+            leading: const Icon(
+              Icons.bar_chart_rounded,
+              color: installmentColor,
+              size: 18,
             ),
-            SizedBox(width: metrics.spacing(5)),
-            Expanded(
-              flex: 13,
-              child: _gated(
-                context: context,
-                locked: !unlocked,
-                child: EntryContextChip(
-                  metrics: metrics,
-                  leading: const Icon(
-                    Icons.bar_chart_rounded,
-                    color: installmentColor,
-                    size: 18,
+            iconColor: installmentColor,
+            label: 'Installment',
+            backgroundColor: canOpenInstallment
+                ? AppColors.cardSecondary
+                : AppColors.background,
+            borderColor: canOpenInstallment
+                ? installmentColor.withValues(alpha: .28)
+                : Colors.white10,
+            onTap: canOpenInstallment
+                ? () => _openInstallment(context)
+                : () => WafferlyToast.showError(
+                    context,
+                    message: 'Please select a category first',
                   ),
-                  iconColor: installmentColor,
-                  label: 'Installment',
-                  backgroundColor: AppColors.cardSecondary,
-                  borderColor: installmentColor.withValues(alpha: .28),
-                  onTap: () => _openInstallment(context),
-                ),
-              ),
-            ),
-            SizedBox(width: metrics.spacing(5)),
-            Expanded(
-              flex: 8,
-              child: MemberButton(controller: controller, metrics: metrics),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+        SizedBox(width: metrics.spacing(5)),
+        Expanded(
+          flex: 10,
+          child: MemberButton(controller: controller, metrics: metrics),
+        ),
+      ],
     );
   }
 

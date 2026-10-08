@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:wafferly/controllers/transaction_entry_controller.dart';
 import 'package:wafferly/theme/responsive_metrics.dart';
+import 'package:wafferly/theme/app_colors.dart';
 import 'package:wafferly/features/transactions/models/entry_mode.dart';
 import 'package:wafferly/models/account_display_extension.dart';
 import 'package:wafferly/models/account.dart';
@@ -84,6 +85,84 @@ class _AccountButtonState extends State<AccountButton> {
         final display = selectedAccount.display;
         final showChevron = !isLockedCreditCardEdit && hasPaymentSources;
 
+        if (widget.showPaymentModeLabel) {
+          return AnimatedScale(
+            scale: _pressed ? 0.97 : 1,
+            duration: const Duration(milliseconds: 80),
+            curve: Curves.easeOut,
+            child: Material(
+              color: AppColors.calculatorButton,
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                key: _anchorKey,
+                onTap: isLockedCreditCardEdit ? null : _handleTap,
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  height: widget.metrics.width < 360 || widget.metrics.isCompactHeight
+                      ? widget.metrics.h(42)
+                      : widget.metrics.h(48),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: display.color.withValues(alpha: 0.20),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(display.icon, color: display.color, size: 16),
+                      SizedBox(width: widget.metrics.spacing(4)),
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Full Payment',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    selectedAccount.name,
+                                    maxLines: 1,
+                                    style: const TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (showChevron) ...[
+                                    const SizedBox(width: 2),
+                                    Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      size: 13,
+                                      color: Colors.white70,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
+
         return AnimatedScale(
           scale: _pressed ? 0.97 : 1,
           duration: const Duration(milliseconds: 80),
@@ -93,12 +172,7 @@ class _AccountButtonState extends State<AccountButton> {
             metrics: widget.metrics,
             leading: Icon(display.icon, color: display.color, size: 17),
             iconColor: display.color,
-            label: widget.showPaymentModeLabel
-                ? 'Full Payment'
-                : selectedAccount.name,
-            subtitle: widget.showPaymentModeLabel
-                ? selectedAccount.name
-                : null,
+            label: selectedAccount.name,
             trailing: showChevron
                 ? Icon(
                     Icons.keyboard_arrow_down_rounded,
@@ -110,6 +184,7 @@ class _AccountButtonState extends State<AccountButton> {
             onTap: isLockedCreditCardEdit ? null : _handleTap,
           ),
         );
+
       },
     );
   }
@@ -125,7 +200,7 @@ class _AccountButtonState extends State<AccountButton> {
 
     if (!mounted) return;
 
-    if (widget.controller.isExpense && _shouldUsePaymentMethodSheet()) {
+    if (widget.controller.shouldOpenPaymentMethodSheet) {
       await showPaymentMethodSheet(
         context: context,
         controller: widget.controller,
@@ -140,32 +215,6 @@ class _AccountButtonState extends State<AccountButton> {
     );
   }
 
-  bool _shouldUsePaymentMethodSheet() {
-    final box = Hive.box<Account>('accounts');
-    final active = box.values.where(
-      (a) =>
-          a.bookId == 'default' &&
-          !a.isArchived &&
-          a.id != 'liability.temp_debt',
-    );
-
-    final liquidityCount = active
-        .where((a) => a.group == AccountGroup.liquidity)
-        .length;
-
-    final hasExtendedSource = active.any(
-      (a) =>
-          a.group == AccountGroup.savings ||
-          a.type == 'prepaid' ||
-          a.type == 'creditCard',
-    );
-
-    // 1 liquidity account -> old fixed button.
-    // 2 liquidity accounts -> old Toggle.
-    // 3+ liquidity accounts OR any extra spendable source family ->
-    // Payment Method Sheet.
-    return liquidityCount > 2 || hasExtendedSource;
-  }
 
   Future<void> _showNoAccountSheet() async {
     await WafferlyBottomSheet.show(
