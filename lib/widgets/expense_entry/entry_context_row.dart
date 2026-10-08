@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 
 import '../../controllers/transaction_entry_controller.dart';
 import '../../features/transactions/models/entry_mode.dart';
-import '../../features/transactions/models/entry_state.dart';
+import '../../features/transactions/models/expense_payment_mode.dart';
+import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
 import '../../widgets/bottom_sheet/wafferly_bottom_sheet.dart';
 
 import 'account/account_button.dart';
 import 'date/date_picker_sheet.dart';
-import 'discard_entry_sheet.dart';
+import 'entry_done_handler.dart';
 import 'entry_context_chip.dart';
 import 'member/member_button.dart';
-import '../bottom_sheet/bottom_sheet_theme.dart';
 import '../notifications/wafferly_toast.dart';
+import 'payment_method_sheet.dart';
 
 class EntryContextRow extends StatelessWidget {
   final TransactionEntryController controller;
@@ -28,6 +29,10 @@ class EntryContextRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (mode == EntryMode.expense) {
+      return _buildExpenseContextRow(context);
+    }
+
     return Row(
       children: [
         Expanded(
@@ -48,9 +53,7 @@ class EntryContextRow extends StatelessWidget {
             },
           ),
         ),
-
         SizedBox(width: metrics.spacing(6)),
-
         Expanded(
           child: AccountButton(
             controller: controller,
@@ -58,15 +61,11 @@ class EntryContextRow extends StatelessWidget {
             mode: mode,
           ),
         ),
-
         SizedBox(width: metrics.spacing(6)),
-
         Expanded(
           child: MemberButton(controller: controller, metrics: metrics),
         ),
-
         SizedBox(width: metrics.spacing(6)),
-
         Expanded(
           child: EntryContextChip(
             metrics: metrics,
@@ -84,72 +83,111 @@ class EntryContextRow extends StatelessWidget {
     );
   }
 
-  Future<void> _handleDone(BuildContext context) async {
-    switch (controller.entryState) {
-      case EntryState.empty:
-        Navigator.pop(context, true);
-        return;
+  /// Account (Full Payment), Installment and Add stay locked until the user
+  /// has picked a category and entered an amount. Date and member are
+  /// always available.
+  static const _lockedMessage = 'Choose a category and enter an amount first';
 
-      case EntryState.draft:
-        await WafferlyBottomSheet.show(
-          context: context,
-          theme: BottomSheetTheme.glass,
+  Widget _gated({
+    required BuildContext context,
+    required bool locked,
+    required Widget child,
+  }) {
+    if (!locked) return child;
 
-          child: DiscardEntrySheet(
-            onDiscard: () {
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            },
-          ),
-        );
-        return;
-
-      case EntryState.readyToSave:
-        final result = await controller.submitEntry();
-
-        if (!context.mounted) return;
-
-        if (!result.success) {
-          switch (result.action) {
-            case SaveAction.invalidAmount:
-              WafferlyToast.showError(
-                context,
-                message: "Please enter a valid amount",
-              );
-              return;
-
-            case SaveAction.noCategorySelected:
-              WafferlyToast.showError(
-                context,
-                message: "Please enter a valid amount",
-              );
-              return;
-
-            case SaveAction.noAccountSelected:
-              WafferlyToast.showError(
-                context,
-                message: "Please select an account",
-              );
-              (const SnackBar(content: Text('Please select account')),);
-              return;
-
-            default:
-              if (result.errorMessage != null) {
-                WafferlyToast.showError(context, message: result.errorMessage!);
-              }
-              return;
-          }
-        }
-
-        WafferlyToast.showSuccess(context, message: "Transaction saved");
-
-        await Future.delayed(const Duration(milliseconds: 1200));
-
-        if (!context.mounted) return;
-
-        Navigator.pop(context, true);
-        return;
-    }
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => WafferlyToast.showError(context, message: _lockedMessage),
+      child: Opacity(
+        opacity: .45,
+        child: AbsorbPointer(child: child),
+      ),
+    );
   }
+
+  Widget _buildExpenseContextRow(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final unlocked = controller.hasCategory && controller.hasAmount;
+        const installmentColor = Color(0xFFD36BFF);
+
+        return Row(
+          children: [
+            Expanded(
+              flex: 8,
+              child: EntryContextChip(
+                metrics: metrics,
+                leading: const Icon(
+                  Icons.calendar_today_outlined,
+                  color: Colors.white70,
+                  size: 17,
+                ),
+                iconColor: Colors.white70,
+                label: controller.transactionDateLabel,
+                onTap: () {
+                  WafferlyBottomSheet.show(
+                    context: context,
+                    child: DatePickerSheet(controller: controller),
+                  );
+                },
+              ),
+            ),
+            SizedBox(width: metrics.spacing(5)),
+            Expanded(
+              flex: 17,
+              child: _gated(
+                context: context,
+                locked: !unlocked,
+                child: AccountButton(
+                  controller: controller,
+                  metrics: metrics,
+                  mode: mode,
+                  showPaymentModeLabel: true,
+                ),
+              ),
+            ),
+            SizedBox(width: metrics.spacing(5)),
+            Expanded(
+              flex: 13,
+              child: _gated(
+                context: context,
+                locked: !unlocked,
+                child: EntryContextChip(
+                  metrics: metrics,
+                  leading: const Icon(
+                    Icons.bar_chart_rounded,
+                    color: installmentColor,
+                    size: 18,
+                  ),
+                  iconColor: installmentColor,
+                  label: 'Installment',
+                  backgroundColor: AppColors.cardSecondary,
+                  borderColor: installmentColor.withValues(alpha: .28),
+                  onTap: () => _openInstallment(context),
+                ),
+              ),
+            ),
+            SizedBox(width: metrics.spacing(5)),
+            Expanded(
+              flex: 8,
+              child: MemberButton(controller: controller, metrics: metrics),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _openInstallment(BuildContext context) async {
+    await showPaymentMethodSheet(
+      context: context,
+      controller: controller,
+      initialMode: ExpensePaymentMode.installment,
+      installmentOnly: true,
+    );
+  }
+
+  Future<void> _handleDone(BuildContext context) =>
+      handleEntryDone(context, controller);
 }

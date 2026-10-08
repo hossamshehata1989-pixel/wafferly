@@ -17,12 +17,14 @@ class AccountButton extends StatefulWidget {
   final TransactionEntryController controller;
   final ResponsiveMetrics metrics;
   final EntryMode mode;
+  final bool showPaymentModeLabel;
 
   const AccountButton({
     super.key,
     required this.controller,
     required this.metrics,
     required this.mode,
+    this.showPaymentModeLabel = false,
   });
 
   @override
@@ -71,7 +73,9 @@ class _AccountButtonState extends State<AccountButton> {
           return EntryContextChip(
             key: _anchorKey,
             metrics: widget.metrics,
-            label: showPaymentPicker ? 'Select Payment' : 'No Account',
+            label: widget.showPaymentModeLabel
+                ? 'Full Payment'
+                : (showPaymentPicker ? 'Select Payment' : 'No Account'),
             iconColor: Colors.white54,
             onTap: showPaymentPicker ? _handleTap : _showNoAccountSheet,
           );
@@ -89,7 +93,12 @@ class _AccountButtonState extends State<AccountButton> {
             metrics: widget.metrics,
             leading: Icon(display.icon, color: display.color, size: 17),
             iconColor: display.color,
-            label: selectedAccount.name,
+            label: widget.showPaymentModeLabel
+                ? 'Full Payment'
+                : selectedAccount.name,
+            subtitle: widget.showPaymentModeLabel
+                ? selectedAccount.name
+                : null,
             trailing: showChevron
                 ? Icon(
                     Icons.keyboard_arrow_down_rounded,

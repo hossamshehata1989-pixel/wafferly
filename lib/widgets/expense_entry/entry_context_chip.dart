@@ -11,6 +11,7 @@ class EntryContextChip extends StatelessWidget {
   final Color? iconColor;
 
   final String label;
+  final String? subtitle;
 
   final Widget? trailing;
 
@@ -26,12 +27,39 @@ class EntryContextChip extends StatelessWidget {
     this.leading,
     this.iconColor,
     required this.label,
+    this.subtitle,
     this.trailing,
     this.onTap,
     this.borderColor,
     this.backgroundColor,
     this.padding,
   });
+
+  Widget _textContent(
+    TextStyle labelStyle,
+    TextStyle subtitleStyle, {
+    Alignment alignment = Alignment.centerLeft,
+  }) {
+    final hasSubtitle = subtitle != null && subtitle!.trim().isNotEmpty;
+
+    // scaleDown: when the chip is narrow the text gets smaller instead of
+    // being cut to "…" or disappearing completely.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: alignment,
+      child: hasSubtitle
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, maxLines: 1, style: labelStyle),
+                const SizedBox(height: 1),
+                Text(subtitle!, maxLines: 1, style: subtitleStyle),
+              ],
+            )
+          : Text(label, maxLines: 1, style: labelStyle),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,16 +70,22 @@ class EntryContextChip extends StatelessWidget {
     final effectiveBorderColor =
         borderColor ?? effectiveIconColor.withValues(alpha: .20);
     final effectivePadding =
-        padding ?? const EdgeInsets.symmetric(horizontal: 10);
+        padding ?? const EdgeInsets.symmetric(horizontal: 8);
 
     final borderRadius = BorderRadius.circular(10);
     final labelStyle = TextStyle(
       fontSize: metrics.text(12),
-      fontWeight: FontWeight.w500,
+      fontWeight: FontWeight.w600,
       color: Colors.white.withValues(alpha: .90),
+      height: 1.0,
+    );
+    final subtitleStyle = TextStyle(
+      fontSize: metrics.text(10),
+      fontWeight: FontWeight.w500,
+      color: Colors.white.withValues(alpha: .62),
+      height: 1.0,
     );
 
-    // الحالة الأولى: لا يوجد leading ولا trailing → نص فقط في المنتصف
     if (leading == null && trailing == null) {
       return InkWell(
         onTap: onTap,
@@ -69,17 +103,15 @@ class EntryContextChip extends StatelessWidget {
           ),
           alignment: Alignment.center,
           padding: effectivePadding,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: labelStyle,
+          child: _textContent(
+            labelStyle,
+            subtitleStyle,
+            alignment: Alignment.center,
           ),
         ),
       );
     }
 
-    // الحالة الثانية: يوجد leading أو trailing → تخطيط Row
     return InkWell(
       onTap: onTap,
       borderRadius: borderRadius,
@@ -99,17 +131,15 @@ class EntryContextChip extends StatelessWidget {
           children: [
             if (leading != null) ...[
               leading!,
-              SizedBox(width: metrics.spacing(6)),
+              SizedBox(width: metrics.spacing(5)),
             ],
             Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: labelStyle,
-              ),
+              child: _textContent(labelStyle, subtitleStyle),
             ),
-            if (trailing != null) trailing!,
+            if (trailing != null) ...[
+              SizedBox(width: metrics.spacing(4)),
+              trailing!,
+            ],
           ],
         ),
       ),

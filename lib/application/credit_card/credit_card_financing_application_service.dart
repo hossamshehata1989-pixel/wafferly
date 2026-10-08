@@ -1,6 +1,4 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:uuid/uuid.dart';
-
 import '../../core/money/money.dart';
 import '../../financing/domain/credit_card_financing_conversion.dart';
 import '../../models/account.dart';
@@ -43,7 +41,6 @@ final class CreditCardFinancingApplicationService {
   final Box<FinancingConversionEvent> _conversionEvents;
   final Box<ScheduleRule> _scheduleRules;
 
-  static const _uuid = Uuid();
 
   Future<CreditCardFinancingConversionResult> convertCharge({
     required Transaction charge,
@@ -65,10 +62,14 @@ final class CreditCardFinancingApplicationService {
     final totalCents = (charge.amount * 100).round();
     final baseCents = totalCents ~/ installmentCount;
     final remainder = totalCents % installmentCount;
-    final conversionId = 'conversion-${_uuid.v4()}';
-    final contractId = 'contract-${_uuid.v4()}';
-    final scheduleId = 'schedule-${_uuid.v4()}';
-    final ruleId = 'rule-${_uuid.v4()}';
+    // Financing conversion is a logical operation tied to one immutable
+    // origin charge. These identities MUST remain stable across retries; a
+    // fresh UUID per attempt would make a retry look like a new financing
+    // operation even when the charge already exists.
+    final conversionId = 'conversion-cc-charge-${charge.id}';
+    final contractId = 'contract-cc-charge-${charge.id}';
+    final scheduleId = 'schedule-cc-charge-${charge.id}';
+    final ruleId = 'rule-cc-charge-${charge.id}';
     final now = DateTime.now();
 
     final rule = ScheduleRule(

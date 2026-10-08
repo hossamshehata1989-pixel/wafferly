@@ -20,6 +20,8 @@ import '../constants/temp_debt_constants.dart';
 import '../financial_engine/resolution/resolution.dart';
 import '../services/account_service.dart';
 import '../application/credit_card/credit_card_financing_application_service.dart';
+import '../credit_card/domain/credit_card_profile.dart';
+import '../credit_card/infrastructure/hive_credit_card_profile_repository.dart';
 import '../features/transactions/models/entry_state.dart';
 import '../features/transactions/models/expense_payment_mode.dart';
 import '../features/transactions/models/entry_validation_result.dart';
@@ -143,6 +145,14 @@ class TransactionEntryController extends ChangeNotifier {
   String _selectedTransactionType = TransactionType.expense;
   SaveStatus _saveStatus = SaveStatus.idle;
   Transaction? _editingTransaction;
+
+  // Stable logical identity for the current installment workflow. It is reused
+  // on retries so the Financial Engine sees the same idempotency keys instead
+  // of creating a second charge/expense. A changed workflow signature creates
+  // a new identity, which preserves the distinction between retry and a new
+  // user intent.
+  String? _installmentWorkflowId;
+  String? _installmentWorkflowSignature;
 
   String? _selectedMemberId;
   bool _isExceptional = false;
@@ -567,6 +577,8 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   void loadTransaction(Transaction tx) {
+    _installmentWorkflowId = null;
+    _installmentWorkflowSignature = null;
     _editingTransaction = tx;
     _amount = tx.amount.toString();
     _syncCalculatorState();
@@ -873,6 +885,13 @@ class TransactionEntryController extends ChangeNotifier {
   ///
   /// Financing persistence itself is contractual state; the actual financial
   /// effects always go through [TransactionApplicationService]/FinancialEngine.
+  /// Saves a manual expense financed through a Credit Card installment plan.
+  ///
+  /// The workflow has one stable logical identity. Each financial mutation
+  /// derives its own stable idempotency key from that identity, while financing
+  /// conversion derives its contractual identity from the immutable charge id.
+  /// This means a retry after a successful write reuses the same result instead
+  /// of creating a second transaction or second financing contract.
   Future<SaveResult> saveCreditCardInstallment({
     required String creditCardAccountId,
     required int installmentCount,
@@ -887,9 +906,6 @@ class TransactionEntryController extends ChangeNotifier {
     _lastErrorMessage = null;
     _saveStatus = SaveStatus.saving;
     notifyListeners();
-
-    String? downPaymentTransactionId;
-    String? chargeTransactionId;
 
     try {
       final amountValue = double.tryParse(_amount) ?? 0;
@@ -949,13 +965,50 @@ class TransactionEntryController extends ChangeNotifier {
         if (source == null ||
             source.isArchived ||
             source.bookId != 'default' ||
-            !_isExpenseSource(source) ||
-            source.type == 'creditCard') {
+            !_isExpenseSource(source)) {
           return const SaveResult(
             success: false,
             errorMessage:
-                'Down payment must be paid from a spendable non-credit account.',
+                'Select an eligible spendable source for the down payment.',
           );
+        }
+
+        // A down payment may be funded by a different Credit Card.
+        // Reusing the same card as the financing source is intentionally
+        // blocked in the MVP because the conversion engine currently converts
+        // one immutable charge in full; splitting the same charge into a
+        // normal + financed portion would require explicit partial-conversion
+        // support rather than creating two artificial card charges.
+        if (source.type == 'creditCard') {
+          if (source.id == creditCardAccountId) {
+            return const SaveResult(
+              success: false,
+              errorMessage:
+                  'Use a different Credit Card for the down payment, or set the down payment to 0.',
+            );
+          }
+
+          final profile = await _findCreditCardProfile(source.id);
+          if (profile == null) {
+            return const SaveResult(
+              success: false,
+              errorMessage:
+                  'The selected down-payment Credit Card has no valid card profile.',
+            );
+          }
+
+          final outstanding = _creditCardOutstanding(source.id);
+          final availableCredit =
+              (profile.creditLimit.toDouble() - outstanding)
+                  .clamp(0.0, double.infinity)
+                  .toDouble();
+          if (downPayment > availableCredit + 0.000001) {
+            return SaveResult(
+              success: false,
+              errorMessage:
+                  "Down payment exceeds the selected card's available credit (${availableCredit.toStringAsFixed(2)}).",
+            );
+          }
         }
       }
 
@@ -967,33 +1020,33 @@ class TransactionEntryController extends ChangeNotifier {
         );
       }
 
-      // 1) Optional down payment: a normal financial Expense.
-      if (downPayment > 0) {
-        final result = await _transactionService.addExpense(
-          sourceAccountId: downPaymentAccountId!,
-          amount: downPayment,
-          categoryId: categoryId,
-          occurredAt: _selectedDate,
-          note: _note.isEmpty ? 'Down payment' : '${_note} • Down payment',
-          isExceptional: isExceptional,
-          actorMemberId: _selectedMemberId,
-        );
+      final workflowSignature = _buildInstallmentWorkflowSignature(
+        creditCardAccountId: creditCardAccountId,
+        amount: amountValue,
+        categoryId: categoryId,
+        installmentCount: installmentCount,
+        firstDueDate: firstDueDate,
+        downPayment: downPayment,
+        downPaymentAccountId: downPaymentAccountId,
+      );
+      final workflowId = _ensureInstallmentWorkflowId(workflowSignature);
 
-        if (result is! OperationSucceeded) {
-          return _handleOperationFailure(result);
-        }
+      final chargeIdempotencyKey =
+          'installment:$workflowId:credit-card-charge';
+      final downPaymentIdempotencyKey =
+          'installment:$workflowId:down-payment';
 
-        // The Financial Engine returns the authoritative transaction identity.
-        // Use it directly instead of resolving the transaction by timestamp,
-        // which is unnecessarily fragile when multiple writes share the same
-        // occurredAt value.
-        if (result.summary.createdTransactionIds.isNotEmpty) {
-          downPaymentTransactionId =
-              result.summary.createdTransactionIds.first;
-        }
-      }
+      debugPrint(
+        'INSTALLMENT WORKFLOW: id=$workflowId signature=$workflowSignature',
+      );
 
-      // 2) Charge only the financed remainder to the Credit Card.
+      // 1) Post the financed Credit Card charge first.
+      //
+      // This ordering is intentional. If contractual conversion fails, the
+      // charge remains a recoverable staged financial effect. Retrying with the
+      // same idempotency key returns the same transaction instead of posting a
+      // second charge. We never delete a successful financial mutation merely
+      // because a downstream contractual step needs to be retried.
       final chargeResult = await _transactionService.addCreditCardCharge(
         creditCardAccountId: creditCardAccountId,
         amount: financedAmount,
@@ -1004,57 +1057,112 @@ class TransactionEntryController extends ChangeNotifier {
             ? 'Installment purchase'
             : '${_note} • Installment',
         actorMemberId: _selectedMemberId,
+        idempotencyKey: chargeIdempotencyKey,
       );
 
       if (chargeResult is! OperationSucceeded) {
-        await _rollbackCreatedTransaction(downPaymentTransactionId);
         return _handleOperationFailure(chargeResult);
       }
 
-      // The charge operation already gives us the created transaction id.
-      // Rely on that canonical id instead of a post-hoc Hive search.
-      if (chargeResult.summary.createdTransactionIds.isNotEmpty) {
-        chargeTransactionId = chargeResult.summary.createdTransactionIds.first;
-      }
-
-      if (chargeTransactionId == null) {
-        await _rollbackCreatedTransaction(downPaymentTransactionId);
+      if (chargeResult.summary.createdTransactionIds.isEmpty) {
         return const SaveResult(
           success: false,
           errorMessage:
-              'Credit Card charge was posted, but its transaction could not be resolved for financing conversion.',
+              'Credit Card charge succeeded but returned no transaction identity.',
         );
       }
 
-      // 3) Persist the contractual financing schedule around the posted charge.
+      final chargeTransactionId =
+          chargeResult.summary.createdTransactionIds.first;
       final charge = Hive.box<Transaction>('transactions').get(
         chargeTransactionId,
       );
       if (charge == null) {
-        await _rollbackCreatedTransaction(downPaymentTransactionId);
-        await _rollbackCreatedTransaction(chargeTransactionId);
         return const SaveResult(
           success: false,
-          errorMessage: 'The created Credit Card charge could not be loaded.',
+          errorMessage:
+              'Credit Card charge succeeded but could not be reloaded for financing conversion.',
         );
       }
 
+      // 2) Convert the already-posted charge. The conversion layer uses IDs
+      // derived from charge.id, so retries converge on the same contract,
+      // schedule, rule and installments.
       try {
-        await CreditCardFinancingApplicationService().convertCharge(
+        final conversionResult =
+            await CreditCardFinancingApplicationService().convertCharge(
           charge: charge,
           installmentCount: installmentCount,
           firstDueDate: firstDueDate,
         );
+
+        debugPrint(
+          'INSTALLMENT CONVERSION: alreadyCompleted=${conversionResult.alreadyCompleted} '
+          'contract=${conversionResult.contract.contractId} '
+          'installments=${conversionResult.installments.length}',
+        );
       } catch (error) {
-        // The conversion service rolls back its own contractual partial writes.
-        // Since the financial charge is only a staging effect for this atomic
-        // user flow, remove the just-created transactions if conversion fails.
-        await _rollbackCreatedTransaction(chargeTransactionId);
-        await _rollbackCreatedTransaction(downPaymentTransactionId);
+        // Do NOT delete the successful charge. The stable charge idempotency
+        // key plus charge-derived conversion identities make the workflow
+        // safely retryable without a second financial effect.
+        debugPrint('INSTALLMENT CONVERSION RETRYABLE FAILURE: $error');
         return SaveResult(
           success: false,
-          errorMessage: 'Installment conversion failed: $error',
+          errorMessage:
+              'Credit Card charge was saved, but installment conversion is pending. '
+              'Press Continue to retry safely. Details: $error',
         );
+      }
+
+      // 3) Optional Down Payment. It may come from liquidity/savings/prepaid
+      // (normal Expense) or from a DIFFERENT Credit Card (card charge). Both
+      // mutations use the same stable workflow-derived idempotency key.
+      if (downPayment > 0) {
+        final downPaymentSource =
+            Hive.box<Account>('accounts').get(downPaymentAccountId);
+
+        if (downPaymentSource == null) {
+          return const SaveResult(
+            success: false,
+            errorMessage: 'The down-payment source is no longer available.',
+          );
+        }
+
+        final OperationResult result;
+        if (downPaymentSource.type == 'creditCard') {
+          result = await _transactionService.addCreditCardCharge(
+            creditCardAccountId: downPaymentSource.id,
+            amount: downPayment,
+            categoryId: categoryId,
+            occurredAt: _selectedDate,
+            currencyCode: downPaymentSource.currency,
+            note: _note.isEmpty
+                ? 'Down payment'
+                : '${_note} • Down payment',
+            actorMemberId: _selectedMemberId,
+            idempotencyKey: downPaymentIdempotencyKey,
+          );
+        } else {
+          result = await _transactionService.addExpense(
+            sourceAccountId: downPaymentSource.id,
+            amount: downPayment,
+            categoryId: categoryId,
+            occurredAt: _selectedDate,
+            note: _note.isEmpty ? 'Down payment' : '${_note} • Down payment',
+            isExceptional: isExceptional,
+            actorMemberId: _selectedMemberId,
+            idempotencyKey: downPaymentIdempotencyKey,
+          );
+        }
+
+        if (result is! OperationSucceeded) {
+          return SaveResult(
+            success: false,
+            errorMessage:
+                'Installment plan was saved, but the down payment is pending. '
+                'Press Continue to retry safely. Details: ${result is OperationFailed ? result.error : result}',
+          );
+        }
       }
 
       _onSuccessfulSave();
@@ -1063,14 +1171,74 @@ class TransactionEntryController extends ChangeNotifier {
         action: SaveAction.showNormalSuccess,
       );
     } catch (error) {
-      await _rollbackCreatedTransaction(chargeTransactionId);
-      await _rollbackCreatedTransaction(downPaymentTransactionId);
+      // No blanket deletion here. Any successful financial mutation may now
+      // be durable behind an idempotency key and/or financing conversion. The
+      // safe recovery path is retrying the same logical workflow, not creating
+      // compensating duplicate-looking deletes from the UI layer.
+      debugPrint('INSTALLMENT WORKFLOW ERROR: $error');
       _lastErrorMessage = error.toString();
       notifyListeners();
       return SaveResult(success: false, errorMessage: _lastErrorMessage);
     } finally {
       _saveStatus = SaveStatus.idle;
       notifyListeners();
+    }
+  }
+
+  String _buildInstallmentWorkflowSignature({
+    required String creditCardAccountId,
+    required double amount,
+    required String categoryId,
+    required int installmentCount,
+    required DateTime firstDueDate,
+    required double downPayment,
+    required String? downPaymentAccountId,
+  }) {
+    return [
+      creditCardAccountId,
+      amount.toStringAsFixed(2),
+      categoryId,
+      installmentCount.toString(),
+      firstDueDate.toIso8601String(),
+      downPayment.toStringAsFixed(2),
+      downPaymentAccountId ?? '',
+      _selectedDate.toIso8601String(),
+      _note,
+      _selectedMemberId ?? '',
+      _isExceptional.toString(),
+    ].join('|');
+  }
+
+  String _ensureInstallmentWorkflowId(String signature) {
+    if (_installmentWorkflowId != null &&
+        _installmentWorkflowSignature == signature) {
+      return _installmentWorkflowId!;
+    }
+
+    final generated =
+        'iw-${DateTime.now().microsecondsSinceEpoch}-${signature.hashCode.abs()}';
+    _installmentWorkflowId = generated;
+    _installmentWorkflowSignature = signature;
+    return generated;
+  }
+
+  Future<CreditCardProfile?> _findCreditCardProfile(String accountId) async {
+    try {
+      final repository = HiveCreditCardProfileRepository(
+        Hive.box<CreditCardProfile>('credit_card_profiles'),
+      );
+      return repository.findByAccountId(accountId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  double _creditCardOutstanding(String accountId) {
+    try {
+      final balance = BalanceService().getBalance(accountId);
+      return balance < 0 ? -balance : 0.0;
+    } catch (_) {
+      return double.infinity;
     }
   }
 
@@ -1238,6 +1406,8 @@ class TransactionEntryController extends ChangeNotifier {
   // ==============================
 
   void _resetExpenseForm() {
+    _installmentWorkflowId = null;
+    _installmentWorkflowSignature = null;
     _amount = "0";
     _syncCalculatorState();
     _expression = "";

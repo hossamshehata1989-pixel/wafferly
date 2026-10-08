@@ -20,19 +20,31 @@ import 'package:wafferly/features/transactions/models/expense_payment_mode.dart'
 Future<void> showPaymentMethodSheet({
   required BuildContext context,
   required TransactionEntryController controller,
+  ExpensePaymentMode? initialMode,
+  bool installmentOnly = false,
 }) async {
   await WafferlyBottomSheet.show(
     context: context,
     scrollable: true,
     bodyPadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-    child: _PaymentMethodSheet(controller: controller),
+    child: _PaymentMethodSheet(
+      controller: controller,
+      initialMode: initialMode,
+      installmentOnly: installmentOnly,
+    ),
   );
 }
 
 class _PaymentMethodSheet extends StatefulWidget {
-  const _PaymentMethodSheet({required this.controller});
+  const _PaymentMethodSheet({
+    required this.controller,
+    this.initialMode,
+    this.installmentOnly = false,
+  });
 
   final TransactionEntryController controller;
+  final ExpensePaymentMode? initialMode;
+  final bool installmentOnly;
 
   @override
   State<_PaymentMethodSheet> createState() => _PaymentMethodSheetState();
@@ -53,7 +65,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   @override
   void initState() {
     super.initState();
-    _mode = controller.expensePaymentMode;
+    _mode = widget.initialMode ?? controller.expensePaymentMode;
     _future = _loadSources();
     _downPayment = 0;
     _firstDueDate = _addMonths(controller.selectedDate, 1);
@@ -232,7 +244,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         (_downPaymentAccountId == null ||
             _downPaymentAccountId!.isEmpty)) {
       _showInstallmentError(
-        'Select an account for the down payment.',
+        'Select a valid source for the down payment.',
       );
       return;
     }
@@ -362,6 +374,36 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
 
         if (!canInstallment && _mode != ExpensePaymentMode.fullPayment) {
           _mode = ExpensePaymentMode.fullPayment;
+        }
+
+        if (widget.installmentOnly) {
+          if (!canInstallment) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'No installment financing source is available.',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            );
+          }
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SheetHeader(
+                title: 'Installment Details',
+                subtitle: 'Configure how this purchase will be financed',
+                icon: Icons.bar_chart_rounded,
+                onClose: () => Navigator.pop(context),
+              ),
+              const SizedBox(height: 12),
+              _buildInstallment(
+                sources,
+                downPayment: _mode == ExpensePaymentMode.downPaymentInstallment,
+                showDownPaymentToggle: true,
+              ),
+            ],
+          );
         }
 
         return Column(
@@ -520,6 +562,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   Widget _buildInstallment(
     _PaymentSources sources, {
     required bool downPayment,
+    bool showDownPaymentToggle = false,
   }) {
     final amount = _parseAmount();
     final financed = downPayment
@@ -529,12 +572,41 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         ? 0.0
         : financed / _installmentMonths;
 
+    final eligibleDownPaymentAccounts = [
+      ...sources.liquidity.where(
+        (account) => (sources.balances[account.id] ?? 0) >= _downPayment,
+      ),
+      ...sources.savings.where(
+        (account) => (sources.balances[account.id] ?? 0) >= _downPayment,
+      ),
+      ...sources.prepaid.where(
+        (account) => (sources.balances[account.id] ?? 0) >= _downPayment,
+      ),
+    ];
+
+    final eligibleDownPaymentCards = sources.creditCards
+        .where(
+          (card) =>
+              card.account.id != _financingSourceId &&
+              card.available + 0.000001 >= _downPayment,
+        )
+        .toList();
+
+    if (downPayment && _downPaymentAccountId != null) {
+      final stillEligible =
+          eligibleDownPaymentAccounts.any((a) => a.id == _downPaymentAccountId) ||
+          eligibleDownPaymentCards.any((c) => c.account.id == _downPaymentAccountId);
+      if (!stillEligible) {
+        _downPaymentAccountId = null;
+      }
+    }
+
     if (downPayment && _downPaymentAccountId == null) {
-      final candidates = [...sources.liquidity, ...sources.savings, ...sources.prepaid]
-          .where((account) => (sources.balances[account.id] ?? 0) > 0)
-          .toList();
-      if (candidates.isNotEmpty) {
-        _downPaymentAccountId = candidates.first.id;
+      // Prefer real money; use a different Credit Card only when needed.
+      if (eligibleDownPaymentAccounts.isNotEmpty) {
+        _downPaymentAccountId = eligibleDownPaymentAccounts.first.id;
+      } else if (eligibleDownPaymentCards.isNotEmpty) {
+        _downPaymentAccountId = eligibleDownPaymentCards.first.account.id;
       }
     }
 
@@ -566,6 +638,36 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
           ),
         ),
         const SizedBox(height: 14),
+        if (showDownPaymentToggle)
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.cardSecondary,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: SwitchListTile.adaptive(
+              value: downPayment,
+              onChanged: (enabled) {
+                setState(() {
+                  _mode = enabled
+                      ? ExpensePaymentMode.downPaymentInstallment
+                      : ExpensePaymentMode.installment;
+                });
+              },
+              activeColor: AppColors.primary,
+              title: const Text(
+                'Down Payment',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              subtitle: const Text(
+                'Pay part now and finance the remaining amount',
+                style: TextStyle(color: Colors.white54, fontSize: 11),
+              ),
+            ),
+          ),
         if (downPayment) ...[
           _AmountField(
             label: 'Down Payment',
@@ -574,31 +676,75 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
             onChanged: (value) => setState(() => _downPayment = value),
           ),
           const SizedBox(height: 12),
-          const _SectionLabel(
+          _SectionLabel(
             icon: Icons.payments_outlined,
             title: 'Pay Down Payment From',
-            subtitle: 'Use an existing spendable account',
+            subtitle: 'Use existing money or another Credit Card',
             color: AppColors.primary,
           ),
           const SizedBox(height: 10),
-          ...[...sources.liquidity, ...sources.savings, ...sources.prepaid]
-              .where((account) =>
-                  (sources.balances[account.id] ?? 0) > 0)
-              .map(
-                (account) => _ChoiceCard(
-                  icon: account.group == AccountGroup.savings
-                      ? Icons.savings_outlined
-                      : Icons.account_balance_wallet_outlined,
-                  color: AppColors.primary,
-                  title: account.name,
-                  subtitle:
-                      '${account.currency} ${
-                      (sources.balances[account.id] ?? 0).toStringAsFixed(0)
-                    } available',
-                  selected: _downPaymentAccountId == account.id,
-                  onTap: () => setState(() => _downPaymentAccountId = account.id),
+
+          if (eligibleDownPaymentAccounts.isNotEmpty)
+            ...eligibleDownPaymentAccounts.map(
+              (account) => _ChoiceCard(
+                icon: account.group == AccountGroup.savings
+                    ? Icons.savings_outlined
+                    : Icons.account_balance_wallet_outlined,
+                color: AppColors.primary,
+                title: account.name,
+                subtitle:
+                    '${account.currency} ${(sources.balances[account.id] ?? 0).toStringAsFixed(0)} available',
+                selected: _downPaymentAccountId == account.id,
+                onTap: () => setState(() => _downPaymentAccountId = account.id),
+              ),
+            ),
+
+          if (eligibleDownPaymentCards.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            const _SectionLabel(
+              icon: Icons.credit_card_outlined,
+              title: 'Credit Cards',
+              subtitle: 'Use a different Credit Card for the down payment',
+              color: Color(0xFFD36BFF),
+            ),
+            const SizedBox(height: 10),
+            ...eligibleDownPaymentCards.map(
+              (card) => _ChoiceCard(
+                icon: Icons.credit_card_outlined,
+                color: const Color(0xFFD36BFF),
+                title: card.account.name,
+                subtitle:
+                    'Available ${card.available.toStringAsFixed(0)} ${card.account.currency} • Separate card charge',
+                selected: _downPaymentAccountId == card.account.id,
+                onTap: () => setState(
+                  () => _downPaymentAccountId = card.account.id,
                 ),
               ),
+            ),
+          ],
+
+          if (eligibleDownPaymentAccounts.isEmpty &&
+              eligibleDownPaymentCards.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.cardSecondary,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.white54),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'No eligible source can cover this down payment. Choose a lower down payment, create a spendable account, or use another Credit Card with enough available credit.',
+                      style: TextStyle(color: Colors.white60, height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 12),
           _ReadOnlyMetric(
             label: 'Amount to Finance',
