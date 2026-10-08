@@ -16,6 +16,9 @@ import 'package:wafferly/widgets/bottom_sheet/wafferly_bottom_sheet.dart';
 import 'package:wafferly/screens/accounts/add_account/add_account_screen.dart';
 import 'package:wafferly/models/enums/section_type.dart';
 import 'package:wafferly/features/transactions/models/expense_payment_mode.dart';
+import 'package:wafferly/config/category_config.dart';
+import 'package:wafferly/config/category_type.dart';
+import 'package:wafferly/l10n/app_localizations.dart';
 
 Future<void> showPaymentMethodSheet({
   required BuildContext context,
@@ -23,14 +26,35 @@ Future<void> showPaymentMethodSheet({
   ExpensePaymentMode? initialMode,
   bool installmentOnly = false,
 }) async {
+  final media = MediaQuery.of(context);
+  final availableHeight = media.size.height - media.viewInsets.bottom;
+  final maxSheetHeight =
+      (availableHeight > 0 ? availableHeight : media.size.height) * .86;
+
   await WafferlyBottomSheet.show(
     context: context,
-    scrollable: true,
-    bodyPadding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-    child: _PaymentMethodSheet(
-      controller: controller,
-      initialMode: initialMode,
-      installmentOnly: installmentOnly,
+    // The sheet owns the scroll area so its height stays compact instead of
+    // expanding with every account/card/financing row.
+    scrollable: false,
+    bodyPadding: const EdgeInsets.fromLTRB(8, 4, 8, 6),
+    child: Align(
+      alignment: Alignment.bottomCenter,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 430,
+          maxHeight: maxSheetHeight,
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(2, 0, 2, 4),
+          child: _PaymentMethodSheet(
+            controller: controller,
+            initialMode: initialMode,
+            installmentOnly: installmentOnly,
+          ),
+        ),
+      ),
     ),
   );
 }
@@ -596,13 +620,10 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
       final stillEligible =
           eligibleDownPaymentAccounts.any((a) => a.id == _downPaymentAccountId) ||
           eligibleDownPaymentCards.any((c) => c.account.id == _downPaymentAccountId);
-      if (!stillEligible) {
-        _downPaymentAccountId = null;
-      }
+      if (!stillEligible) _downPaymentAccountId = null;
     }
 
     if (downPayment && _downPaymentAccountId == null) {
-      // Prefer real money; use a different Credit Card only when needed.
       if (eligibleDownPaymentAccounts.isNotEmpty) {
         _downPaymentAccountId = eligibleDownPaymentAccounts.first.id;
       } else if (eligibleDownPaymentCards.isNotEmpty) {
@@ -614,264 +635,305 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
       key: ValueKey(downPayment ? 'down-payment' : 'installment'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF5A1F78).withOpacity(.22),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFD36BFF).withOpacity(.28)),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.calendar_month_outlined, color: Color(0xFFD36BFF)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  downPayment
-                      ? 'Pay part now and finance the remaining amount.'
-                      : 'Finance the purchase through a credit card or a financing provider.',
-                  style: const TextStyle(color: Colors.white70, height: 1.35),
-                ),
-              ),
-            ],
-          ),
+        _buildPurchaseSummary(context),
+        const SizedBox(height: 8),
+        const _CompactSectionTitle(
+          icon: Icons.account_balance_outlined,
+          title: 'Financing Source',
+          color: Color(0xFFD36BFF),
         ),
-        const SizedBox(height: 14),
-        if (showDownPaymentToggle)
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.cardSecondary,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: SwitchListTile.adaptive(
-              value: downPayment,
-              onChanged: (enabled) {
-                setState(() {
-                  _mode = enabled
-                      ? ExpensePaymentMode.downPaymentInstallment
-                      : ExpensePaymentMode.installment;
-                });
-              },
-              activeColor: AppColors.primary,
-              title: const Text(
-                'Down Payment',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              subtitle: const Text(
-                'Pay part now and finance the remaining amount',
-                style: TextStyle(color: Colors.white54, fontSize: 11),
-              ),
-            ),
-          ),
-        if (downPayment) ...[
-          _AmountField(
-            label: 'Down Payment',
-            value: _downPayment,
-            currency: 'EGP',
-            onChanged: (value) => setState(() => _downPayment = value),
-          ),
-          const SizedBox(height: 12),
-          _SectionLabel(
-            icon: Icons.payments_outlined,
-            title: 'Pay Down Payment From',
-            subtitle: 'Use existing money or another Credit Card',
-            color: AppColors.primary,
-          ),
-          const SizedBox(height: 10),
-
-          if (eligibleDownPaymentAccounts.isNotEmpty)
-            ...eligibleDownPaymentAccounts.map(
-              (account) => _ChoiceCard(
-                icon: account.group == AccountGroup.savings
-                    ? Icons.savings_outlined
-                    : Icons.account_balance_wallet_outlined,
-                color: AppColors.primary,
-                title: account.name,
-                subtitle:
-                    '${account.currency} ${(sources.balances[account.id] ?? 0).toStringAsFixed(0)} available',
-                selected: _downPaymentAccountId == account.id,
-                onTap: () => setState(() => _downPaymentAccountId = account.id),
-              ),
-            ),
-
-          if (eligibleDownPaymentCards.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            const _SectionLabel(
+        const SizedBox(height: 6),
+        if (sources.creditCards.isNotEmpty)
+          ...sources.creditCards.map(
+            (card) => _CompactSourceCard(
               icon: Icons.credit_card_outlined,
-              title: 'Credit Cards',
-              subtitle: 'Use a different Credit Card for the down payment',
-              color: Color(0xFFD36BFF),
+              color: const Color(0xFFD36BFF),
+              title: card.account.name,
+              subtitle:
+                  'Available ${card.available.toStringAsFixed(0)} ${card.account.currency}  •  Limit ${card.profile.creditLimit.toDouble().toStringAsFixed(0)}',
+              selected: _financingSourceId == card.account.id,
+              onTap: () => setState(() => _financingSourceId = card.account.id),
             ),
-            const SizedBox(height: 10),
-            ...eligibleDownPaymentCards.map(
-              (card) => _ChoiceCard(
-                icon: Icons.credit_card_outlined,
-                color: const Color(0xFFD36BFF),
-                title: card.account.name,
-                subtitle:
-                    'Available ${card.available.toStringAsFixed(0)} ${card.account.currency} • Separate card charge',
-                selected: _downPaymentAccountId == card.account.id,
-                onTap: () => setState(
-                  () => _downPaymentAccountId = card.account.id,
-                ),
+          ),
+        if (sources.financingProviders.isNotEmpty)
+          ...sources.financingProviders.map(
+            (account) => _CompactSourceCard(
+              icon: Icons.account_balance_outlined,
+              color: AppColors.debt,
+              title: account.provider?.trim().isNotEmpty == true
+                  ? account.provider!
+                  : account.name,
+              subtitle: 'Financing Provider',
+              selected: _financingSourceId == account.id,
+              onTap: () => setState(() => _financingSourceId = account.id),
+            ),
+          ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: const _CompactSectionTitle(
+                icon: Icons.timelapse_outlined,
+                title: 'Installment Plan',
+                color: AppColors.primary,
               ),
+            ),
+            _CompactDateButton(
+              date: _firstDueDate,
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime(2100),
+                  initialDate: _firstDueDate,
+                );
+                if (picked != null && mounted) {
+                  setState(() => _firstDueDate = picked);
+                }
+              },
             ),
           ],
-
-          if (eligibleDownPaymentAccounts.isEmpty &&
-              eligibleDownPaymentCards.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.cardSecondary,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.info_outline, color: Colors.white54),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'No eligible source can cover this down payment. Choose a lower down payment, create a spendable account, or use another Credit Card with enough available credit.',
-                      style: TextStyle(color: Colors.white60, height: 1.35),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 12),
-          _ReadOnlyMetric(
-            label: 'Amount to Finance',
-            value: 'EGP ${financed.toStringAsFixed(0)}',
-          ),
-        ] else ...[
-          _ReadOnlyMetric(
-            label: 'Purchase Amount',
-            value: 'EGP ${amount.toStringAsFixed(0)}',
-          ),
-        ],
-        const SizedBox(height: 14),
-        _SectionLabel(
-          icon: Icons.account_balance_outlined,
-          title: downPayment
-              ? 'Financing Source'
-              : 'Credit Card Financing',
-          subtitle: 'Credit Card installment execution is available now',
-          color: const Color(0xFFD36BFF),
         ),
-        const SizedBox(height: 10),
-        ...sources.creditCards.map(
-          (card) => _ChoiceCard(
-            icon: Icons.credit_card_outlined,
-            color: const Color(0xFFD36BFF),
-            title: card.account.name,
-            subtitle:
-                'Credit Card • Available ${card.available.toStringAsFixed(0)} ${card.account.currency}',
-            selected: _financingSourceId == card.account.id,
-            onTap: () => setState(() => _financingSourceId = card.account.id),
-          ),
-        ),
-        ...sources.financingProviders.map(
-          (account) => _ChoiceCard(
-            icon: Icons.account_balance_outlined,
-            color: AppColors.debt,
-            title: account.provider?.trim().isNotEmpty == true
-                ? account.provider!
-                : account.name,
-            subtitle: 'Financing Provider',
-            selected: _financingSourceId == account.id,
-            onTap: () => setState(() => _financingSourceId = account.id),
-          ),
-        ),
-        const SizedBox(height: 14),
-        _ChoiceCard(
-          icon: Icons.event_outlined,
-          color: AppColors.primary,
-          title: 'First Installment Date',
-          subtitle:
-              '${_firstDueDate.day}/${_firstDueDate.month}/${_firstDueDate.year}',
-          selected: false,
-          trailing: 'Change',
-          onTap: () async {
-            final picked = await showDatePicker(
-              context: context,
-              firstDate: DateTime.now(),
-              lastDate: DateTime(2100),
-              initialDate: _firstDueDate,
-            );
-            if (picked != null && mounted) {
-              setState(() => _firstDueDate = picked);
-            }
-          },
-        ),
-        const SizedBox(height: 14),
-        const _SectionLabel(
-          icon: Icons.timelapse_outlined,
-          title: 'Installment Plan',
-          subtitle: 'Choose the repayment term',
-          color: AppColors.primary,
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
+        const SizedBox(height: 6),
+        Row(
           children: [3, 6, 9, 12].map((months) {
             final selected = _installmentMonths == months;
-            return ChoiceChip(
-              label: Text('$months months'),
-              selected: selected,
-              onSelected: (_) => setState(() => _installmentMonths = months),
-              selectedColor: AppColors.primary,
-              backgroundColor: AppColors.cardSecondary,
-              labelStyle: TextStyle(
-                color: selected ? Colors.white : Colors.white70,
-                fontWeight: FontWeight.w700,
-              ),
-              side: BorderSide(
-                color: selected ? AppColors.primary : Colors.white12,
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: months == 12 ? 0 : 5),
+                child: InkWell(
+                  onTap: () => setState(() => _installmentMonths = months),
+                  borderRadius: BorderRadius.circular(10),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 140),
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.primary
+                          : AppColors.cardSecondary,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: selected ? AppColors.primary : Colors.white10,
+                      ),
+                    ),
+                    child: Text(
+                      '$months mo',
+                      style: TextStyle(
+                        color: selected ? Colors.white : Colors.white70,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             );
           }).toList(),
         ),
-        const SizedBox(height: 14),
+        if (showDownPaymentToggle) ...[
+          const SizedBox(height: 8),
+          _CompactToggle(
+            title: 'Down Payment',
+            value: downPayment,
+            onChanged: (enabled) {
+              setState(() {
+                _mode = enabled
+                    ? ExpensePaymentMode.downPaymentInstallment
+                    : ExpensePaymentMode.installment;
+                if (!enabled) _downPaymentAccountId = null;
+              });
+            },
+          ),
+        ],
+        if (downPayment) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _AmountField(
+                  label: 'Down Payment',
+                  value: _downPayment,
+                  currency: 'EGP',
+                  onChanged: (value) => setState(() => _downPayment = value),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _CompactSourcePicker(
+                  title: 'Pay From',
+                  selectedTitle: _selectedDownPaymentSourceTitle(
+                    sources,
+                    _downPaymentAccountId,
+                  ),
+                  onTap: () => _showDownPaymentSourcePicker(
+                    sources,
+                    eligibleDownPaymentAccounts,
+                    eligibleDownPaymentCards,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
               child: _ReadOnlyMetric(
-                label: 'Monthly',
-                value: 'EGP ${monthly.toStringAsFixed(0)}',
+                label: 'Amount to Finance',
+                value: 'EGP ${financed.toStringAsFixed(0)}',
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: _ReadOnlyMetric(
-                label: 'Financed',
-                value: 'EGP ${financed.toStringAsFixed(0)}',
+                label: 'Monthly Installment',
+                value: 'EGP ${monthly.toStringAsFixed(2)}',
               ),
             ),
           ],
         ),
-        const SizedBox(height: 14),
-        FilledButton(
-          onPressed: _savingPlan ? null : _executeInstallmentPlan,
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-          ),
-          child: Text(
-            _savingPlan ? 'Saving…' : 'Continue',
-            style: const TextStyle(fontWeight: FontWeight.w800),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          height: 46,
+          child: FilledButton(
+            onPressed: _savingPlan ? null : _executeInstallmentPlan,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              _savingPlan ? 'Saving…' : 'Continue',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
           ),
         ),
-        const SizedBox(height: 8),
       ],
+    );
+  }
+
+  Widget _buildPurchaseSummary(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    final amount = _parseAmount();
+    final categoryName = _categoryDisplayName(t);
+    return Row(
+      children: [
+        Expanded(
+          child: _CompactInfoCard(
+            icon: Icons.payments_outlined,
+            label: 'Purchase Amount',
+            value: 'EGP ${amount.toStringAsFixed(0)}',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _CompactInfoCard(
+            icon: Icons.category_outlined,
+            label: 'Category',
+            value: categoryName,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _categoryDisplayName(AppLocalizations t) {
+    final id = controller.selectedCategoryId;
+    if (id.isEmpty) return 'Not selected';
+    for (final category in getCategories(CategoryType.expense)) {
+      if (category.id == id) return category.resolveTitle(t);
+      final sub = category.subCategories;
+      if (sub != null) {
+        for (final item in sub) {
+          if (item.id == id) return item.title(t);
+        }
+      }
+    }
+    return id;
+  }
+
+  String _selectedDownPaymentSourceTitle(
+    _PaymentSources sources,
+    String? id,
+  ) {
+    if (id == null || id.isEmpty) return 'Select source';
+    for (final account in [
+      ...sources.liquidity,
+      ...sources.savings,
+      ...sources.prepaid,
+    ]) {
+      if (account.id == id) return account.name;
+    }
+    for (final card in sources.creditCards) {
+      if (card.account.id == id) return card.account.name;
+    }
+    return 'Select source';
+  }
+
+  Future<void> _showDownPaymentSourcePicker(
+    _PaymentSources sources,
+    List<Account> accounts,
+    List<_CreditCardSource> cards,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            children: [
+              const _CompactSheetHandle(),
+              const Padding(
+                padding: EdgeInsets.only(left: 4, top: 4, bottom: 8),
+                child: Text(
+                  'Pay Down Payment From',
+                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+              ),
+              ...accounts.map(
+                (account) => _CompactSourceCard(
+                  icon: account.group == AccountGroup.savings
+                      ? Icons.savings_outlined
+                      : Icons.account_balance_wallet_outlined,
+                  color: AppColors.primary,
+                  title: account.name,
+                  subtitle:
+                      'Available ${(sources.balances[account.id] ?? 0).toStringAsFixed(0)} ${account.currency}',
+                  selected: _downPaymentAccountId == account.id,
+                  onTap: () {
+                    setState(() => _downPaymentAccountId = account.id);
+                    Navigator.pop(sheetContext);
+                  },
+                ),
+              ),
+              ...cards.map(
+                (card) => _CompactSourceCard(
+                  icon: Icons.credit_card_outlined,
+                  color: const Color(0xFFD36BFF),
+                  title: card.account.name,
+                  subtitle:
+                      'Available ${card.available.toStringAsFixed(0)} ${card.account.currency}',
+                  selected: _downPaymentAccountId == card.account.id,
+                  onTap: () {
+                    setState(() => _downPaymentAccountId = card.account.id);
+                    Navigator.pop(sheetContext);
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -888,6 +950,229 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         return AppColors.primary;
     }
   }
+}
+
+
+class _CompactSheetHandle extends StatelessWidget {
+  const _CompactSheetHandle();
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Container(
+          width: 38,
+          height: 4,
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: Colors.white24,
+            borderRadius: BorderRadius.circular(99),
+          ),
+        ),
+      );
+}
+
+class _CompactInfoCard extends StatelessWidget {
+  const _CompactInfoCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: AppColors.cardSecondary,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.white54, size: 17),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 9.5)),
+                const SizedBox(height: 2),
+                Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompactSectionTitle extends StatelessWidget {
+  const _CompactSectionTitle({required this.icon, required this.title, required this.color});
+  final IconData icon;
+  final String title;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 7),
+          Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+        ],
+      );
+}
+
+class _CompactSourceCard extends StatelessWidget {
+  const _CompactSourceCard({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          height: 54,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: selected ? color.withOpacity(.16) : AppColors.cardSecondary,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: selected ? color : Colors.white10, width: selected ? 1.4 : 1),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: color.withOpacity(.13), shape: BoxShape.circle),
+                child: Icon(icon, color: color, size: 17),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 9.5)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(selected ? Icons.check_circle_rounded : Icons.chevron_right_rounded, color: selected ? color : Colors.white30, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactToggle extends StatelessWidget {
+  const _CompactToggle({required this.title, required this.value, required this.onChanged});
+  final String title;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 50,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: AppColors.cardSecondary,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Row(
+          children: [
+            Expanded(child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800))),
+            Switch.adaptive(value: value, onChanged: onChanged, activeColor: AppColors.primary),
+          ],
+        ),
+      );
+}
+
+class _CompactDateButton extends StatelessWidget {
+  const _CompactDateButton({required this.date, required this.onTap});
+  final DateTime date;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 9),
+          decoration: BoxDecoration(
+            color: AppColors.cardSecondary,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.event_outlined, color: AppColors.primary, size: 15),
+              const SizedBox(width: 5),
+              Text('${date.day}/${date.month}/${date.year}', style: const TextStyle(color: Colors.white70, fontSize: 10.5, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      );
+}
+
+class _CompactSourcePicker extends StatelessWidget {
+  const _CompactSourcePicker({required this.title, required this.selectedTitle, required this.onTap});
+  final String title;
+  final String selectedTitle;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          height: 62,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: AppColors.cardSecondary,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.payments_outlined, color: AppColors.primary, size: 17),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 9.5)),
+                    const SizedBox(height: 2),
+                    Text(selectedTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.expand_more, color: Colors.white38, size: 18),
+            ],
+          ),
+        ),
+      );
 }
 
 class _PaymentSources {
@@ -1020,7 +1305,7 @@ class _SectionLabel extends StatelessWidget {
                 title,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -1178,13 +1463,13 @@ class _ChoiceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: selected
                 ? color.withOpacity(.16)
@@ -1209,15 +1494,15 @@ class _ChoiceCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 36,
+                    height: 36,
                     decoration: BoxDecoration(
                       color: color.withOpacity(.14),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(icon, color: color, size: 24),
+                    child: Icon(icon, color: color, size: 19),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1228,19 +1513,19 @@ class _ChoiceCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 13,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Text(
                           subtitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: Colors.white54,
-                            fontSize: 11,
-                            height: 1.2,
+                            fontSize: 9.5,
+                            height: 1.05,
                           ),
                         ),
                       ],
@@ -1264,12 +1549,12 @@ class _ChoiceCard extends StatelessWidget {
                         ? Icons.check_circle_rounded
                         : Icons.chevron_right_rounded,
                     color: selected ? color : Colors.white38,
-                    size: 24,
+                    size: 21,
                   ),
                 ],
               ),
               if (bottom != null) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 bottom!,
               ],
             ],
@@ -1289,10 +1574,10 @@ class _ReadOnlyMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.cardSecondary,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white10),
       ),
       child: Column(
@@ -1304,7 +1589,7 @@ class _ReadOnlyMetric extends StatelessWidget {
             value,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 17,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1351,10 +1636,10 @@ class _AmountFieldState extends State<_AmountField> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.cardSecondary,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white10),
       ),
       child: TextField(
@@ -1365,7 +1650,7 @@ class _AmountFieldState extends State<_AmountField> {
         },
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: FontWeight.w800,
         ),
         decoration: InputDecoration(
