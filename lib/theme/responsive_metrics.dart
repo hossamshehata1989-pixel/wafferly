@@ -259,6 +259,14 @@ class _ResponsiveSpacing {
   double get lg => m.isCompactHeight ? m.spacing(18) : m.spacing(24);
 
   double get xl => m.isCompactHeight ? m.spacing(24) : m.spacing(32);
+
+  /// Default vertical gap between consecutive Wafferly form fields.
+  /// Compact phones use tighter spacing; larger layouts get more breathing room.
+  double get fieldSpacing => m.isCompactHeight
+      ? 6.0
+      : m.isMobile
+          ? 8.0
+          : 10.0;
 }
 
 // ------------------------------------------------------------

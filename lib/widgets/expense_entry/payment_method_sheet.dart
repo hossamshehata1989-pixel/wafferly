@@ -102,7 +102,9 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   @override
   void initState() {
     super.initState();
-    _mode = widget.initialMode ?? controller.expensePaymentMode;
+    _mode = widget.installmentOnly
+        ? (widget.initialMode ?? controller.expensePaymentMode)
+        : ExpensePaymentMode.fullPayment;
     _future = _loadSources();
     _downPayment = 0;
     _firstDueDate = _addMonths(controller.selectedDate, 1);
@@ -533,7 +535,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                 icon: Icons.bar_chart_rounded,
                 onClose: () => Navigator.pop(context),
               ),
-              SizedBox(height: MediaQuery.sizeOf(context).width < 390 ? 5 : 10),
+              SizedBox(height: MediaQuery.sizeOf(context).width < 430 ? 5 : 10),
               _buildInstallment(
                 sources,
                 downPayment: _mode == ExpensePaymentMode.downPaymentInstallment,
@@ -553,31 +555,10 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
               icon: Icons.account_balance_wallet_outlined,
               onClose: () => Navigator.pop(context),
             ),
-            SizedBox(height: MediaQuery.sizeOf(context).width < 390 ? 5 : 10),
-            _ModeTabs(
-              selected: _mode,
-              showInstallment: canInstallment,
-              onChanged: (mode) => setState(() {
-                _mode = mode;
-                if (_financingSourceId == null &&
-                    sources.creditCards.isNotEmpty &&
-                    mode != ExpensePaymentMode.fullPayment) {
-                  _financingSourceId = sources.creditCards.first.account.id;
-                }
-              }),
-            ),
-            SizedBox(height: MediaQuery.sizeOf(context).width < 390 ? 8 : 14),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              child: switch (_mode) {
-                ExpensePaymentMode.fullPayment =>
-                  _buildFullPayment(sources),
-                ExpensePaymentMode.installment =>
-                  _buildInstallment(sources, downPayment: false),
-                ExpensePaymentMode.downPaymentInstallment =>
-                  _buildInstallment(sources, downPayment: true),
-              },
-            ),
+            SizedBox(height: MediaQuery.sizeOf(context).width < 430 ? 6 : 10),
+            // Full Payment is now a dedicated screen. Installment has its own
+            // entry point and sheet, so do not show mode tabs here.
+            _buildFullPayment(sources),
           ],
         );
       },
@@ -585,6 +566,9 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   }
 
   Widget _buildFullPayment(_PaymentSources sources) {
+    final compact = MediaQuery.sizeOf(context).width < 430;
+    final sectionGap = compact ? 8.0 : 14.0;
+    final cardGap = compact ? 6.0 : 10.0;
     return Column(
       key: const ValueKey('full-payment'),
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -595,7 +579,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
           subtitle: 'Pay from your existing money',
           color: AppColors.primary,
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: cardGap),
         ...sources.liquidity.map(
           (account) => _SourceCard(
             account: account,
@@ -609,14 +593,14 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
           ),
         ),
         if (sources.savings.isNotEmpty) ...[
-          const SizedBox(height: 14),
+          SizedBox(height: sectionGap),
           const _SectionLabel(
             icon: Icons.savings_outlined,
             title: 'Savings',
             subtitle: 'Use a savings account when accessible',
             color: AppColors.accountSaving,
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: cardGap),
           ...sources.savings.map(
             (account) => _SourceCard(
               account: account,
@@ -631,14 +615,14 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
           ),
         ],
         if (sources.prepaid.isNotEmpty) ...[
-          const SizedBox(height: 14),
+          SizedBox(height: sectionGap),
           const _SectionLabel(
             icon: Icons.account_balance_wallet_outlined,
             title: 'Prepaid Accounts',
             subtitle: 'Only prepaid products with a spendable balance',
             color: AppColors.accountWallet,
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: cardGap),
           ...sources.prepaid.map(
             (account) => _SourceCard(
               account: account,
@@ -653,14 +637,14 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
           ),
         ],
         if (sources.creditCards.isNotEmpty) ...[
-          const SizedBox(height: 14),
+          SizedBox(height: sectionGap),
           const _SectionLabel(
             icon: Icons.credit_card_outlined,
             title: 'Credit Cards',
             subtitle: 'Pay with credit — creates a card charge',
             color: Color(0xFFD36BFF),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: cardGap),
           ...sources.creditCards.map(
             (card) => _CreditCardSourceCard(
               source: card,
@@ -669,7 +653,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
             ),
           ),
         ],
-        const SizedBox(height: 12),
+        SizedBox(height: compact ? 8 : 12),
         SheetFooter(
           actions: [
             FilledButton.icon(
@@ -702,7 +686,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     required bool downPayment,
     bool showDownPaymentToggle = false,
   }) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     final amount = _parseAmount();
     final currencyCode = _currencyCode(sources);
     final financed = downPayment
@@ -1014,7 +998,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     final amount = _parseAmount();
     final currencyCode = _currencyCode(sources);
     final categoryName = _categoryDisplayName(t);
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return Row(
       children: [
         Expanded(
@@ -1311,7 +1295,7 @@ class _CompactInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return Container(
       height: compact ? 48 : 52,
       padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 10),
@@ -1369,7 +1353,7 @@ class _CompactNoteCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          height: MediaQuery.sizeOf(context).width < 390 ? 48 : 52,
+          height: MediaQuery.sizeOf(context).width < 430 ? 48 : 52,
           padding: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
             color: AppColors.cardSecondary,
@@ -1412,7 +1396,7 @@ class _ContextToggleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return Container(
       constraints: const BoxConstraints(minHeight: 52),
       padding: EdgeInsetsDirectional.only(
@@ -1528,7 +1512,7 @@ class _InlineMoneySummary extends StatelessWidget {
   final String value;
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: compact ? 5 : 7),
@@ -1584,7 +1568,7 @@ class _CompactSourceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return Padding(
       padding: EdgeInsets.only(bottom: compact ? 3 : 5),
       child: InkWell(
@@ -1664,7 +1648,7 @@ class _CompactDateButton extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -1697,7 +1681,7 @@ class _CompactSourcePicker extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -1851,27 +1835,28 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: color, size: 21),
-        const SizedBox(width: 10),
+        Icon(icon, color: color, size: compact ? 18 : 21),
+        SizedBox(width: compact ? 7 : 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style:  TextStyle(
                   color: Colors.white,
-                  fontSize: 15,
+                  fontSize: compact ? 13 : 15,
                   fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
+                style: TextStyle(color: Colors.white54, fontSize: compact ? 10 : 12),
               ),
             ],
           ),
@@ -2021,7 +2006,7 @@ class _ChoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return Padding(
       padding: EdgeInsets.only(bottom: compact ? 4 : 8),
       child: InkWell(
@@ -2131,7 +2116,7 @@ class _ReadOnlyMetric extends StatelessWidget {
   final String value;
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12, vertical: compact ? 7 : 10),
       decoration: BoxDecoration(
@@ -2188,7 +2173,7 @@ class _AmountFieldState extends State<_AmountField> {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12, vertical: compact ? 5 : 8),
       decoration: BoxDecoration(
@@ -2232,7 +2217,7 @@ class _ResponsivePaymentSheetHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -2367,7 +2352,7 @@ class _InstallmentPlanPickerSheetState
 
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 390;
+    final compact = MediaQuery.sizeOf(context).width < 430;
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
         compact ? 12 : 16,

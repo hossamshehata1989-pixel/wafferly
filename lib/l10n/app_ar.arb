@@ -428,10 +428,13 @@
   "cardType": "نوع البطاقة",
   "cardNetworkOptional": "شبكة البطاقة (اختياري)",
   "linkedDebitOptional": "بطاقة الخصم المرتبطة (اختياري)",
+  "paymentAccount": "حساب السداد",
+  "selectPaymentAccount": "اختر حسابًا بنكيًا أو بطاقة خصم مباشر",
+  "selectPaymentAccountRequired": "اختر حسابًا بنكيًا أو بطاقة خصم مباشر لسداد بطاقة الائتمان.",
+  "addPaymentAccountFirst": "أضف حسابًا بنكيًا نشطًا أو بطاقة خصم مباشر قبل إنشاء بطاقة الائتمان.",
   "statementPaymentOptional": "كشف الحساب والسداد (اختياري)",
   "paymentDueDay": "يوم استحقاق السداد",
-
-  "billingCycleAndPayment": "دورة الحساب والسداد",
+  "billingCycleAndPayment": "دورة الفاتورة وتاريخ الاستحقاق",
   "statementStartDay": "يوم بداية دورة الحساب",
   "selectDayOfMonth": "اختر يومًا من الشهر",
   "graceDays": "أيام السماح",
@@ -451,7 +454,6 @@
   "addCustomBank": "إضافة بنك مخصص",
   "bankName": "اسم البنك",
   "bankNameHint": "مثال: AlexBank أو ADIB أو أي بنك آخر",
-  "cancel": "إلغاء",
   "add": "إضافة",
   "cardAppearance": "مظهر البطاقة (اختياري)",
   "feesOptional": "الرسوم (اختياري)",
@@ -470,5 +472,9 @@
   "workflowUnavailableTitle": "يلزم مسار مخصص",
   "workflowUnavailableMessage": "هذا النوع من الالتزامات يجب أن يستخدم مساره المخصص. لن نستخدم نموذج حساب عام هنا حفاظًا على ملكية المجال.",
   "borrowedMoney": "أموال مقترضة",
-  "creditLimit": "الحد الائتماني"
+  "creditLimit": "الحد الائتماني",
+  "bankAccountRequiredTitle": "يلزم وجود حساب بنكي",
+  "bankAccountRequiredMessage": "أضف حسابًا بنكيًا إلى Wafferly قبل إنشاء بطاقة ائتمان. لا يشترط وجود رصيد أو بطاقة خصم مباشر.",
+  "createBankAccount": "إنشاء حساب بنكي",
+"moneyDistribution": "توزيع أموالك"
 }

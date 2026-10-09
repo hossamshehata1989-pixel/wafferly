@@ -61,6 +61,9 @@ class _MainNavigationState extends State<MainNavigation> {
     final t = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    // Keep compact navigation exclusive to Accounts; all other tabs retain
+    // the original navigation sizing and floating action button dimensions.
+    final isAccountsTab = _selectedIndex == 0;
 
     return Stack(
       children: [
@@ -89,47 +92,94 @@ class _MainNavigationState extends State<MainNavigation> {
                 ),
               ],
             ),
-            bottomNavigationBar: BottomNavigationBar(
-              currentIndex: _selectedIndex,
-              type: BottomNavigationBarType.fixed,
-              selectedItemColor: const Color(0xFF3A7BFF),
-              unselectedItemColor: Colors.grey,
-              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
-              showUnselectedLabels: true,
-              onTap: _onItemTapped,
-              items: [
-                BottomNavigationBarItem(
-                  icon: const Icon(Icons.account_balance_wallet),
-                  label: t.accounts,
-                ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.receipt_long),
-                  label: 'Transactions',
-                ),
-
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.dashboard_customize_outlined),
-                  activeIcon: Icon(Icons.dashboard_customize),
-                  label: 'Manage',
-                ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.analytics_outlined),
-                  activeIcon: Icon(Icons.analytics),
-                  label: 'Analysis',
-                ),
-
-                BottomNavigationBarItem(
-                  icon: Icon(_showMoreMenu ? Icons.close : Icons.more_horiz),
-                  label: 'More',
-                ),
-              ],
-            ),
-            floatingActionButton: FloatingActionButton(
-              heroTag: "mainNavigationFab",
-              onPressed: _showAddBottomSheet,
-              backgroundColor: const Color(0xFF3A7BFF),
-              child: const Icon(Icons.add, color: Colors.white),
-            ),
+            bottomNavigationBar: isAccountsTab
+                ? SizedBox(
+                    height: 58,
+                    child: BottomNavigationBar(
+                      iconSize: 20,
+                      currentIndex: _selectedIndex,
+                      type: BottomNavigationBarType.fixed,
+                      selectedItemColor: const Color(0xFF3A7BFF),
+                      unselectedItemColor: Colors.grey,
+                      selectedLabelStyle: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                      unselectedLabelStyle: const TextStyle(fontSize: 10),
+                      showUnselectedLabels: true,
+                      onTap: _onItemTapped,
+                      items: [
+                        BottomNavigationBarItem(
+                          icon: const Icon(Icons.account_balance_wallet),
+                          label: t.accounts,
+                        ),
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.receipt_long),
+                          label: 'Transactions',
+                        ),
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.dashboard_customize_outlined),
+                          activeIcon: Icon(Icons.dashboard_customize),
+                          label: 'Manage',
+                        ),
+                        const BottomNavigationBarItem(
+                          icon: Icon(Icons.analytics_outlined),
+                          activeIcon: Icon(Icons.analytics),
+                          label: 'Analysis',
+                        ),
+                        BottomNavigationBarItem(
+                          icon: Icon(_showMoreMenu ? Icons.close : Icons.more_horiz),
+                          label: 'More',
+                        ),
+                      ],
+                    ),
+                  )
+                : BottomNavigationBar(
+                    currentIndex: _selectedIndex,
+                    type: BottomNavigationBarType.fixed,
+                    selectedItemColor: const Color(0xFF3A7BFF),
+                    unselectedItemColor: Colors.grey,
+                    selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    showUnselectedLabels: true,
+                    onTap: _onItemTapped,
+                    items: [
+                      BottomNavigationBarItem(
+                        icon: const Icon(Icons.account_balance_wallet),
+                        label: t.accounts,
+                      ),
+                      const BottomNavigationBarItem(
+                        icon: Icon(Icons.receipt_long),
+                        label: 'Transactions',
+                      ),
+                      const BottomNavigationBarItem(
+                        icon: Icon(Icons.dashboard_customize_outlined),
+                        activeIcon: Icon(Icons.dashboard_customize),
+                        label: 'Manage',
+                      ),
+                      const BottomNavigationBarItem(
+                        icon: Icon(Icons.analytics_outlined),
+                        activeIcon: Icon(Icons.analytics),
+                        label: 'Analysis',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(_showMoreMenu ? Icons.close : Icons.more_horiz),
+                        label: 'More',
+                      ),
+                    ],
+                  ),
+            floatingActionButton: isAccountsTab
+                ? FloatingActionButton.small(
+                    heroTag: "mainNavigationFab",
+                    onPressed: _showAddBottomSheet,
+                    backgroundColor: const Color(0xFF3A7BFF),
+                    child: const Icon(Icons.add, color: Colors.white, size: 22),
+                  )
+                : FloatingActionButton(
+                    heroTag: "mainNavigationFab",
+                    onPressed: _showAddBottomSheet,
+                    backgroundColor: const Color(0xFF3A7BFF),
+                    child: const Icon(Icons.add, color: Colors.white),
+                  ),
             floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           ),
         ),

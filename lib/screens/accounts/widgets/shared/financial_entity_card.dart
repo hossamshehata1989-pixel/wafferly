@@ -16,11 +16,13 @@ class FinancialEntityCard extends StatelessWidget {
     required this.visual,
     required this.child,
     this.onTap,
+    this.compact = false,
   });
 
   final FinancialEntityVisual visual;
   final Widget child;
   final VoidCallback? onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -39,8 +41,8 @@ class FinancialEntityCard extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: metrics.spacing(12),
-        vertical: metrics.spacing(4),
+        horizontal: metrics.spacing(compact ? 3 : 12),
+        vertical: metrics.spacing(compact ? 2 : 4),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -92,7 +94,7 @@ class FinancialEntityCard extends StatelessWidget {
                     ),
                     onTap: onTap,
                     child: Padding(
-                      padding: EdgeInsets.all(metrics.spacing(14)),
+                      padding: EdgeInsets.all(metrics.spacing(compact ? 8 : 14)),
                       child: child,
                     ),
                   ),

@@ -145,7 +145,7 @@ class AccountService {
   }
 
   /// ✅ مصدر استماع لتغييرات الحسابات (يخفي تفاصيل Hive)
-  Listenable get accountsListenable => box.listenable();
+  ValueListenable<Box<Account>> get accountsListenable => box.listenable();
 
   // ===========================
 // Get account by ID

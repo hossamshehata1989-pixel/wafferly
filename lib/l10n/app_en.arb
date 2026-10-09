@@ -429,10 +429,13 @@
   "cardType": "Card type",
   "cardNetworkOptional": "Card network (optional)",
   "linkedDebitOptional": "Linked debit card (optional)",
+  "paymentAccount": "Payment account",
+  "selectPaymentAccount": "Choose a bank account or debit card",
+  "selectPaymentAccountRequired": "Select a bank account or debit card for credit-card payments.",
+  "addPaymentAccountFirst": "Add an active bank account or debit card before creating a credit card.",
   "statementPaymentOptional": "Statement & payment (optional)",
   "paymentDueDay": "Payment due day",
-
-  "billingCycleAndPayment": "Billing cycle & payment",
+  "billingCycleAndPayment": "Billing cycle & due date",
   "statementStartDay": "Statement cycle start day",
   "selectDayOfMonth": "Select a day of the month",
   "graceDays": "Grace days",
@@ -452,7 +455,6 @@
   "addCustomBank": "Add custom bank",
   "bankName": "Bank name",
   "bankNameHint": "e.g. AlexBank, ADIB, or another bank",
-  "cancel": "Cancel",
   "add": "Add",
   "cardAppearance": "Card appearance (optional)",
   "feesOptional": "Fees (optional)",
@@ -471,5 +473,9 @@
   "workflowUnavailableTitle": "Dedicated workflow required",
   "workflowUnavailableMessage": "This liability type must use its dedicated workflow. A generic account form is intentionally not used here.",
   "borrowedMoney": "Borrowed Money",
-  "creditLimit": "Credit Limit"
+  "creditLimit": "Credit Limit",
+  "bankAccountRequiredTitle": "Bank account required",
+  "bankAccountRequiredMessage": "Add a bank account to Wafferly before creating a credit card. No balance or debit card is required.",
+  "createBankAccount": "Create bank account",
+  "moneyDistribution": "Your Money Breakdown"
 }

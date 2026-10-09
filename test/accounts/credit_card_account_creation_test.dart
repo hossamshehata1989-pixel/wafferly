@@ -41,11 +41,20 @@ void main() {
     await tempDirectory.delete(recursive: true);
   });
 
-  test('creating a credit card creates a liability account and profile', () async {
-    final account = await CreditCardAccountApplicationService(
-      accountService: AccountService(),
+  test('creating a credit card requires an existing bank account, not a payment link', () async {
+    final accountService = AccountService();
+    // A newly registered bank account has no transactions and no credited balance.
+    await accountService.createAccount(
+      name: 'Main Bank Account',
+      type: 'bank',
+      currency: 'EGP',
+    );
+    final cardService = CreditCardAccountApplicationService(
+      accountService: accountService,
       profileBox: profileBox,
-    ).create(
+    );
+
+    final account = await cardService.create(
       name: 'CIB Credit Card',
       bank: 'CIB',
       currency: 'EGP',
@@ -66,12 +75,40 @@ void main() {
     final profiles = profileBox.values
         .where((profile) => profile.accountId == account.id)
         .toList();
-
     expect(profiles, hasLength(1));
     expect(profiles.single.creditLimit.toString(), '30000');
     expect(profiles.single.cardKind, 'virtual');
     expect(profiles.single.cardNetwork, 'Visa');
     expect(profiles.single.statementDay, 5);
     expect(profiles.single.paymentDueDay, 30);
+    expect(profiles.single.linkedDebitCardAccountId, isNull);
+  });
+
+  test('creating a credit card is rejected when no bank account exists', () async {
+    final accountService = AccountService();
+    // A cash wallet or debit card alone does not satisfy the bank-account rule.
+    await accountService.createAccount(
+      name: 'Cash Wallet',
+      type: 'cash',
+      currency: 'EGP',
+    );
+    final cardService = CreditCardAccountApplicationService(
+      accountService: accountService,
+      profileBox: profileBox,
+    );
+
+    await expectLater(
+      cardService.create(
+        name: 'Credit Card Without Bank Account',
+        bank: 'CIB',
+        currency: 'EGP',
+        creditLimitValue: '1000',
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(
+      accountsBox.values.where((item) => item.type == 'creditCard'),
+      isEmpty,
+    );
   });
 }

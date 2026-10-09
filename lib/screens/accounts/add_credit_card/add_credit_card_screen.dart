@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../application/credit_card/credit_card_account_application_service.dart';
 import '../../../core/money/money.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../models/enums/section_type.dart';
+import '../add_account/add_account_screen.dart';
 import '../../../shared/widgets/wafferly_button.dart';
 import '../../../shared/widgets/wafferly_dropdown.dart';
 import '../../../shared/widgets/wafferly_form_section.dart';
@@ -26,6 +28,7 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
   final _last4Controller = TextEditingController();
 
   final _applicationService = CreditCardAccountApplicationService();
+  bool _hasActiveBankAccount = false;
 
   String _currency = 'EGP';
   String? _bank;
@@ -36,12 +39,61 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
   bool _saving = false;
 
   @override
+  void initState() {
+    super.initState();
+    _hasActiveBankAccount = _applicationService.hasActiveBankAccount();
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _limitController.dispose();
     _annualFeeController.dispose();
     _last4Controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _openBankAccountCreation() async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => const AddAccountScreen(
+          sectionType: SectionType.liquidity,
+          initialAccountType: 'bank',
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _hasActiveBankAccount = _applicationService.hasActiveBankAccount();
+    });
+  }
+
+  Future<void> _promptBankAccountCreation() async {
+    final t = AppLocalizations.of(context)!;
+    final shouldCreate = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text(t.bankAccountRequiredTitle),
+        content: Text(t.bankAccountRequiredMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(t.cancel),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            icon: const Icon(Icons.account_balance_outlined),
+            label: Text(t.createBankAccount),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldCreate == true && mounted) {
+      await _openBankAccountCreation();
+    }
   }
 
   Future<void> _selectBank() async {
@@ -110,6 +162,13 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
   }
 
   Future<void> _save() async {
+    // Re-check at save time so archiving the last bank account while this form
+    // is open cannot bypass the prerequisite. No payment source is selected.
+    if (!_applicationService.hasActiveBankAccount()) {
+      setState(() => _hasActiveBankAccount = false);
+      await _promptBankAccountCreation();
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
@@ -187,10 +246,73 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (!_hasActiveBankAccount)
+                      Padding(
+                        padding: EdgeInsets.only(bottom: m.space.md),
+                        child: Container(
+                          padding: EdgeInsets.all(m.space.md),
+                          decoration: BoxDecoration(
+                            color: AppColors.card,
+                            borderRadius: BorderRadius.circular(m.radius.lg),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: .08),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.account_balance_outlined,
+                                    size: m.icon.medium,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  SizedBox(width: m.space.sm),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          t.bankAccountRequiredTitle,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: m.typography.body,
+                                          ),
+                                        ),
+                                        SizedBox(height: m.space.xs),
+                                        Text(
+                                          t.bankAccountRequiredMessage,
+                                          style: TextStyle(
+                                            color: AppColors.textSecondary,
+                                            fontSize: m.typography.caption,
+                                            height: 1.35,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: m.space.sm),
+                              Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: TextButton.icon(
+                                  onPressed: _openBankAccountCreation,
+                                  icon: const Icon(Icons.add_rounded),
+                                  label: Text(t.createBankAccount),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     WafferlyFormSection(
                       title: t.basicInformation,
                       children: [
                         WafferlyTextField(
+                          spacingAfter: 0,
                           controller: _nameController,
                           label: t.cardName,
                           hint: t.cardNameHint,
@@ -199,7 +321,7 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                                   ? t.enterCardName
                                   : null,
                         ),
-                        SizedBox(height: m.space.sm),
+                        SizedBox(height: m.space.fieldSpacing),
                         _BankSelectorField(
                           label: t.bankIssuerOptional,
                           value: _bank,
@@ -207,8 +329,9 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                           onTap: _selectBank,
                           onClear: () => setState(() => _bank = null),
                         ),
-                        SizedBox(height: m.space.sm),
+                        SizedBox(height: m.space.fieldSpacing),
                         WafferlyTextField(
+                          spacingAfter: 0,
                           controller: _last4Controller,
                           label: t.last4Optional,
                           hint: '4582',
@@ -309,6 +432,7 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                     WafferlyFormSection(
                       title: t.billingCycleAndPayment,
                       children: [
+                        SizedBox(height: m.space.md),
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final compact = constraints.maxWidth < m.size(390);

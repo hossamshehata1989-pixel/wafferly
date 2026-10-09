@@ -8,6 +8,8 @@ class WafferlyDropdown<T> extends StatelessWidget {
   final T? value;
   final List<DropdownMenuItem<T>> items;
   final String label;
+  final String? hint;
+  final FormFieldValidator<T>? validator;
   final Function(T?) onChanged;
 
   const WafferlyDropdown({
@@ -15,6 +17,8 @@ class WafferlyDropdown<T> extends StatelessWidget {
     required this.value,
     required this.items,
     required this.label,
+    this.hint,
+    this.validator,
     required this.onChanged,
   });
 
@@ -24,6 +28,10 @@ class WafferlyDropdown<T> extends StatelessWidget {
       initialValue: value,
       items: items,
       onChanged: onChanged,
+      hint: hint == null
+          ? null
+          : Text(hint!, style: const TextStyle(color: AppColors.textSecondary)),
+      validator: validator,
       decoration: WafferlyInputDecoration.build(context, label: label),
       dropdownColor: AppColors.card,
       style: const TextStyle(color: AppColors.textPrimary),

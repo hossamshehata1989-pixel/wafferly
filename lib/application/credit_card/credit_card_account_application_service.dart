@@ -24,10 +24,20 @@ final class CreditCardAccountApplicationService {
   final Box<CreditCardProfile> _profileBox;
   static const _uuid = Uuid();
 
-  List<Account> getActiveDebitCardAccounts() => _accountService
+  /// Active bank accounts are a prerequisite for creating a credit card.
+  /// This models an existing banking relationship only; it does not select
+  /// or persist a payment source, and account balance is intentionally ignored.
+  List<Account> getActiveBankAccounts() => _accountService
       .getAllActiveAccounts()
-      .where((account) => account.type == 'debitCard' && account.group == AccountGroup.liquidity)
+      .where(
+        (account) =>
+            !account.isArchived &&
+            account.group == AccountGroup.liquidity &&
+            account.type == 'bank',
+      )
       .toList();
+
+  bool hasActiveBankAccount() => getActiveBankAccounts().isNotEmpty;
 
   Future<Account> create({
     required String name,
@@ -42,10 +52,15 @@ final class CreditCardAccountApplicationService {
     int? paymentDueDay,
     int? statementStartDay,
     List<int> graceDays = const <int>[],
-    String? linkedDebitCardAccountId,
     String? annualFeeValue,
     String cardVisual = 'credit_midnight',
   }) async {
+    if (!hasActiveBankAccount()) {
+      throw StateError(
+        'Create a bank account in Wafferly before creating a credit card.',
+      );
+    }
+
     final normalizedLimit = creditLimitValue.trim();
     final creditLimit = Money.parse(normalizedLimit);
 
@@ -88,7 +103,6 @@ final class CreditCardAccountApplicationService {
         paymentDueDay: paymentDueDay,
         statementStartDay: statementStartDay,
         graceDays: graceDays,
-        linkedDebitCardAccountId: linkedDebitCardAccountId,
         annualFee: annualFee,
         cardVisual: cardVisual,
       );
