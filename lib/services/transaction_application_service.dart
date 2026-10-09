@@ -58,6 +58,7 @@ class TransactionApplicationService {
     String? note,
     String? actorMemberId,
     String? idempotencyKey,
+    bool isExceptional = false,
   }) async {
     final context = ExecutionContext(
       idempotencyKey:
@@ -72,6 +73,7 @@ class TransactionApplicationService {
         creditCardAccountId: creditCardAccountId,
         categoryId: categoryId,
         amount: Money.fromDouble(amount),
+        isExceptional: isExceptional,
         actorMemberId: actorMemberId,
       ),
       metadata: TransactionMetadata(

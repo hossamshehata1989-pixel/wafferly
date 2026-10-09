@@ -516,21 +516,11 @@ class TransactionEntryController extends ChangeNotifier {
 
   bool get hasCategory => _selectedCategoryId.isNotEmpty;
 
+  /// Whether the installment action can be opened from the expense entry UI.
+  /// Keep this prerequisite decision in the controller, not in the widget.
+  bool get canOpenExpenseInstallment => hasCategory && hasAmount;
+
   bool get hasAccount => _selectedAccountId.isNotEmpty;
-
-  /// Expense-entry interaction rules exposed by the controller so widgets
-  /// render state without owning business/state decisions.
-  ///
-  /// Installment can be opened once a category exists; the amount may still
-  /// be entered/adjusted inside the installment flow.
-  bool get canOpenExpenseInstallment => isExpense && hasCategory;
-
-  /// Add requires the minimum data needed for a normal expense save.
-  bool get canAddExpenseEntry => isExpense && hasCategory && hasAmount;
-
-  /// Shared message for actions blocked by missing entry prerequisites.
-  String get expenseEntryPrerequisiteMessage =>
-      'Choose a category and enter an amount first';
 
   bool get hasDraftData {
     return _amount != "0" ||
@@ -987,21 +977,22 @@ class TransactionEntryController extends ChangeNotifier {
           );
         }
 
-        // A down payment may be funded by a different Credit Card.
-        // Reusing the same card as the financing source is intentionally
-        // blocked in the MVP because the conversion engine currently converts
-        // one immutable charge in full; splitting the same charge into a
-        // normal + financed portion would require explicit partial-conversion
-        // support rather than creating two artificial card charges.
-        if (source.type == 'creditCard') {
-          if (source.id == creditCardAccountId) {
-            return const SaveResult(
-              success: false,
-              errorMessage:
-                  'Use a different Credit Card for the down payment, or set the down payment to 0.',
-            );
-          }
+        if (source.currency != card.currency) {
+          return SaveResult(
+            success: false,
+            errorMessage:
+                'The down-payment source must use the financing card currency (${card.currency}).',
+          );
+        }
 
+        // A down payment can use either another Credit Card or the same card
+        // that will finance the remainder. The workflow posts these as two
+        // distinct, idempotent charge operations: only the financed charge is
+        // converted to installments; the down-payment charge stays ordinary.
+        // When both charges use the same card, its available credit must cover
+        // the entire purchase amount before we begin either write.
+        if (source.type == 'creditCard') {
+          final isSameFinancingCard = source.id == creditCardAccountId;
           final profile = await _findCreditCardProfile(source.id);
           if (profile == null) {
             return const SaveResult(
@@ -1016,11 +1007,13 @@ class TransactionEntryController extends ChangeNotifier {
               (profile.creditLimit.toDouble() - outstanding)
                   .clamp(0.0, double.infinity)
                   .toDouble();
-          if (downPayment > availableCredit + 0.000001) {
+          final requiredCredit = isSameFinancingCard ? amountValue : downPayment;
+          if (requiredCredit > availableCredit + 0.000001) {
             return SaveResult(
               success: false,
-              errorMessage:
-                  "Down payment exceeds the selected card's available credit (${availableCredit.toStringAsFixed(2)}).",
+              errorMessage: isSameFinancingCard
+                  ? 'The selected card must have enough available credit for the full purchase amount (${availableCredit.toStringAsFixed(2)} available).'
+                  : "Down payment exceeds the selected card's available credit (${availableCredit.toStringAsFixed(2)}).",
             );
           }
         }
@@ -1072,6 +1065,7 @@ class TransactionEntryController extends ChangeNotifier {
             : '${_note} • Installment',
         actorMemberId: _selectedMemberId,
         idempotencyKey: chargeIdempotencyKey,
+        isExceptional: isExceptional,
       );
 
       if (chargeResult is! OperationSucceeded) {
@@ -1155,6 +1149,7 @@ class TransactionEntryController extends ChangeNotifier {
                 : '${_note} • Down payment',
             actorMemberId: _selectedMemberId,
             idempotencyKey: downPaymentIdempotencyKey,
+            isExceptional: isExceptional,
           );
         } else {
           result = await _transactionService.addExpense(
