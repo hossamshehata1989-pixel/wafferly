@@ -9,6 +9,7 @@ class WafferlyButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String title;
   final bool loading;
+  final bool enabled;
   final bool fullWidth;
   final double? widthFactor;
   final Color? backgroundColor;
@@ -20,6 +21,7 @@ class WafferlyButton extends StatelessWidget {
     required this.onPressed,
     required this.title,
     this.loading = false,
+    this.enabled = true,
     this.fullWidth = true,
     this.widthFactor,
     this.backgroundColor,
@@ -32,10 +34,14 @@ class WafferlyButton extends StatelessWidget {
     final metrics = ResponsiveMetrics.of(context);
 
     final button = ElevatedButton(
-      onPressed: loading ? null : onPressed,
+      onPressed: loading || !enabled ? null : onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: backgroundColor ?? AppColors.primary,
-        foregroundColor: foregroundColor ?? Colors.white,
+        backgroundColor: enabled
+            ? (backgroundColor ?? AppColors.primary)
+            : AppColors.inactive,
+        foregroundColor: enabled
+            ? (foregroundColor ?? Colors.white)
+            : AppColors.textSecondary,
         minimumSize: Size(0, metrics.isCompactHeight ? 48 : 52),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(metrics.radius.lg),

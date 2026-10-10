@@ -9,7 +9,7 @@ import '../../../services/liability_read_service.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/responsive_metrics.dart';
 import '../../../shared/widgets/wafferly_button.dart';
-import '../add_credit_card/add_credit_card_screen.dart';
+import '../add_credit_card/credit_card_intro_screen.dart';
 import '../navigation/accounts_navigator.dart';
 
 class LiabilityCategoryScreen extends StatelessWidget {
@@ -50,7 +50,7 @@ class LiabilityCategoryScreen extends StatelessWidget {
               metrics.spacing(32),
             ),
             children: [
-              _CategoryHeader(spec: spec, total: model.totalOutstanding),
+              _CategoryHeader(spec: spec, totalsByCurrency: model.outstandingByCurrency),
               SizedBox(height: metrics.space.lg),
               if (model.accounts.isEmpty)
                 _EmptyLiabilityState(
@@ -87,7 +87,7 @@ class LiabilityCategoryScreen extends StatelessWidget {
     if (category == LiabilityCategory.creditCards) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const AddCreditCardScreen()),
+        MaterialPageRoute(builder: (_) => const CreditCardIntroScreen()),
       );
       return;
     }
@@ -198,10 +198,10 @@ class _LiabilityCategorySpec {
 }
 
 class _CategoryHeader extends StatelessWidget {
-  const _CategoryHeader({required this.spec, required this.total});
+  const _CategoryHeader({required this.spec, required this.totalsByCurrency});
 
   final _LiabilityCategorySpec spec;
-  final Money total;
+  final Map<String, Money> totalsByCurrency;
 
   @override
   Widget build(BuildContext context) {
@@ -260,17 +260,33 @@ class _CategoryHeader extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: m.space.xs),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    '${total.toDouble().toStringAsFixed(0)} ${t.currency}',
+                if (totalsByCurrency.isEmpty)
+                  Text(
+                    '0',
                     style: TextStyle(
                       color: spec.accent,
                       fontSize: m.text(17),
                       fontWeight: FontWeight.w800,
                     ),
+                  )
+                else
+                  ...totalsByCurrency.entries.map(
+                    (entry) => Padding(
+                      padding: EdgeInsets.only(top: m.spacing(2)),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: Text(
+                          '${entry.value.toDouble().toStringAsFixed(0)} ${entry.key}',
+                          style: TextStyle(
+                            color: spec.accent,
+                            fontSize: m.text(17),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
               ],
             ),
           ),

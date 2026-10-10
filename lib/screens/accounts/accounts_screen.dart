@@ -231,22 +231,22 @@ class _AccountsScreenState extends State<AccountsScreen> {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Padding(
-  padding: EdgeInsets.only(
-    top: metrics.spacing(10),
-    bottom: metrics.spacing(6),
-  ),
-  child: Align(
-    alignment: AlignmentDirectional.centerStart,
-    child: Text(
-      t.moneyDistribution,
-      style: TextStyle(
-        fontSize: metrics.size(18),
-        fontWeight: FontWeight.w600,
-        color: const Color(0xFFB8C2D1),
-      ),
-    ),
-  ),
-),
+                              padding: EdgeInsets.only(
+                               top: metrics.spacing(10),
+                               bottom: metrics.spacing(6),
+                             ),
+                             child: Align(
+                               alignment: AlignmentDirectional.centerStart,
+                              child: Text(
+                                  t.moneyDistribution,
+                                 style: TextStyle(
+                                 fontSize: metrics.size(18),
+                                 fontWeight: FontWeight.w600,
+                                   color: const Color(0xFFB8C2D1),
+                                   ),
+                                 ),
+                                        ),
+                                   ),
                               ...sections.map((section) {
                                 final accountsList = section.selector(data);
                                 final total = _controller.calculateSectionTotal(

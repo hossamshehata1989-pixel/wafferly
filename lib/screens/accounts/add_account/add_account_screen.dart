@@ -25,7 +25,7 @@ import 'package:wafferly/application/accounts/account_bootstrap.dart';
 import 'package:wafferly/shared/widgets/wafferly_form_section.dart';
 import 'package:wafferly/shared/widgets/wafferly_button.dart';
 import 'package:wafferly/theme/responsive_metrics.dart';
-import '../add_credit_card/add_credit_card_screen.dart';
+import '../add_credit_card/credit_card_intro_screen.dart';
 
 class AddAccountScreen extends StatefulWidget {
   final SectionType? sectionType;
@@ -256,7 +256,7 @@ class _AddAccountScreenState extends State<AddAccountScreen> {
           Navigator.pushReplacement<bool, bool>(
             context,
             MaterialPageRoute(
-              builder: (_) => const AddCreditCardScreen(),
+              builder: (_) => const CreditCardIntroScreen(),
             ),
           );
           return;

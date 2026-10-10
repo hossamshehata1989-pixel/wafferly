@@ -59,6 +59,12 @@ final class CreditCardProfile {
   @HiveField(9)
   final String cardVisual;
 
+  /// Bank account selected as this card's primary linked payment account.
+  /// Nullable only for backward compatibility with profiles saved before
+  /// this relationship was introduced. New cards must provide it.
+  @HiveField(12)
+  final String? linkedBankAccountId;
+
   CreditCardProfile({
     required this.id,
     required this.accountId,
@@ -72,6 +78,7 @@ final class CreditCardProfile {
     this.linkedDebitCardAccountId,
     this.annualFeeValue,
     this.cardVisual = 'credit_midnight',
+    this.linkedBankAccountId,
   }) : graceDays = _normalizeGraceDays(graceDays);
 
   factory CreditCardProfile.fromMoney({
@@ -87,6 +94,7 @@ final class CreditCardProfile {
     String? linkedDebitCardAccountId,
     Money? annualFee,
     String cardVisual = 'credit_midnight',
+    String? linkedBankAccountId,
   }) {
     if (creditLimit < Money.zero) {
       throw ArgumentError.value(
@@ -117,6 +125,7 @@ final class CreditCardProfile {
       linkedDebitCardAccountId: linkedDebitCardAccountId,
       annualFeeValue: annualFee?.toString(),
       cardVisual: cardVisual,
+      linkedBankAccountId: linkedBankAccountId,
     );
   }
 

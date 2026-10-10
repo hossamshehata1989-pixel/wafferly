@@ -6,7 +6,7 @@ import '../../../models/account.dart';
 import '../../../models/enums/section_type.dart';
 import '../../../models/enums/liability_category.dart';
 import '../add_account/add_account_screen.dart';
-import '../add_credit_card/add_credit_card_screen.dart';
+import '../add_credit_card/credit_card_intro_screen.dart';
 import '../group_accounts_screen.dart';
 import '../accounts_group/accounts_group_details_screen/accounts_group_details_screen.dart';
 import '../account_deatails/account_details_screen.dart';
@@ -57,7 +57,7 @@ abstract final class AccountsNavigator {
   }) {
     return Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => const AddCreditCardScreen()),
+      MaterialPageRoute(builder: (_) => const CreditCardIntroScreen()),
     );
   }
 

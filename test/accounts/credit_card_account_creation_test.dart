@@ -13,7 +13,7 @@ void main() {
   late Box<Account> accountsBox;
   late Box<CreditCardProfile> profileBox;
 
-  setUp(() async {
+  setUpAll(() async {
     tempDirectory = await Directory.systemTemp.createTemp('wafferly_cc_account_');
     Hive.init(tempDirectory.path);
 
@@ -34,17 +34,22 @@ void main() {
     profileBox = await Hive.openBox<CreditCardProfile>('credit_card_profiles');
   });
 
-  tearDown(() async {
+  setUp(() async {
+    await accountsBox.clear();
+    await profileBox.clear();
+  });
+
+  tearDownAll(() async {
     await accountsBox.close();
     await profileBox.close();
     await Hive.close();
     await tempDirectory.delete(recursive: true);
   });
 
-  test('creating a credit card requires an existing bank account, not a payment link', () async {
+  test('creating a credit card stores the selected bank account link', () async {
     final accountService = AccountService();
     // A newly registered bank account has no transactions and no credited balance.
-    await accountService.createAccount(
+    final bankAccount = await accountService.createAccount(
       name: 'Main Bank Account',
       type: 'bank',
       currency: 'EGP',
@@ -59,6 +64,7 @@ void main() {
       bank: 'CIB',
       currency: 'EGP',
       creditLimitValue: '30000',
+      linkedBankAccountId: bankAccount.id,
       last4Digits: '5678',
       cardKind: 'virtual',
       cardNetwork: 'Visa',
@@ -82,12 +88,13 @@ void main() {
     expect(profiles.single.statementDay, 5);
     expect(profiles.single.paymentDueDay, 30);
     expect(profiles.single.linkedDebitCardAccountId, isNull);
+    expect(profiles.single.linkedBankAccountId, bankAccount.id);
   });
 
   test('creating a credit card is rejected when no bank account exists', () async {
     final accountService = AccountService();
     // A cash wallet or debit card alone does not satisfy the bank-account rule.
-    await accountService.createAccount(
+    final cashAccount = await accountService.createAccount(
       name: 'Cash Wallet',
       type: 'cash',
       currency: 'EGP',
@@ -103,6 +110,63 @@ void main() {
         bank: 'CIB',
         currency: 'EGP',
         creditLimitValue: '1000',
+        linkedBankAccountId: cashAccount.id,
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(
+      accountsBox.values.where((item) => item.type == 'creditCard'),
+      isEmpty,
+    );
+  });
+  test('creating a credit card rejects a bank account with a different currency', () async {
+    final accountService = AccountService();
+    final bankAccount = await accountService.createAccount(
+      name: 'USD Bank Account',
+      type: 'bank',
+      currency: 'USD',
+    );
+    final cardService = CreditCardAccountApplicationService(
+      accountService: accountService,
+      profileBox: profileBox,
+    );
+
+    await expectLater(
+      cardService.create(
+        name: 'EGP Credit Card',
+        bank: 'CIB',
+        currency: 'EGP',
+        creditLimitValue: '1000',
+        linkedBankAccountId: bankAccount.id,
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(
+      accountsBox.values.where((item) => item.type == 'creditCard'),
+      isEmpty,
+    );
+  });
+
+  test('creating a credit card rejects an archived/non-selected bank account id', () async {
+    final accountService = AccountService();
+    final bankAccount = await accountService.createAccount(
+      name: 'Main Bank Account',
+      type: 'bank',
+      currency: 'EGP',
+    );
+    await accountService.archiveAccount(bankAccount.id);
+    final cardService = CreditCardAccountApplicationService(
+      accountService: accountService,
+      profileBox: profileBox,
+    );
+
+    await expectLater(
+      cardService.create(
+        name: 'Unlinked Credit Card',
+        bank: 'CIB',
+        currency: 'EGP',
+        creditLimitValue: '1000',
+        linkedBankAccountId: bankAccount.id,
       ),
       throwsA(isA<StateError>()),
     );

@@ -9,6 +9,8 @@ void main() {
     'lib/screens/accounts/liabilities/liability_account_details_screen.dart',
     'lib/screens/accounts/liabilities/credit_card_account_details_screen.dart',
     'lib/screens/accounts/add_credit_card/add_credit_card_screen.dart',
+    'lib/screens/accounts/add_credit_card/credit_card_intro_screen.dart',
+    'lib/screens/accounts/add_credit_card/credit_card_bank_account_selection_screen.dart',
   ];
 
   test('liability UI does not bypass data-access boundaries', () {

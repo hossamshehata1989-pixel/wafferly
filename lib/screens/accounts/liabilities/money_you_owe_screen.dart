@@ -63,7 +63,7 @@ class MoneyYouOweScreen extends StatelessWidget {
                 icon: Icons.credit_card_rounded,
                 accent: const Color(0xFFFF3D81),
                 accounts: creditCards.accounts,
-                totalOutstanding: creditCards.totalOutstanding,
+                totalsByCurrency: creditCards.outstandingByCurrency,
                 balanceService: service,
                 emptyLabel: t.noCreditCardsYet,
                 onTap: () => AccountsNavigator.showLiabilityCategory(
@@ -78,7 +78,7 @@ class MoneyYouOweScreen extends StatelessWidget {
                 icon: Icons.account_balance_rounded,
                 accent: const Color(0xFF4D9CFF),
                 accounts: loans.accounts,
-                totalOutstanding: loans.totalOutstanding,
+                totalsByCurrency: loans.outstandingByCurrency,
                 balanceService: service,
                 emptyLabel: t.noLoansYet,
                 onTap: () => AccountsNavigator.showLiabilityCategory(
@@ -93,7 +93,7 @@ class MoneyYouOweScreen extends StatelessWidget {
                 icon: Icons.calendar_month_rounded,
                 accent: const Color(0xFFFFA52F),
                 accounts: installments.accounts,
-                totalOutstanding: installments.totalOutstanding,
+                totalsByCurrency: installments.outstandingByCurrency,
                 balanceService: service,
                 emptyLabel: t.noInstallmentPlansYet,
                 onTap: () => AccountsNavigator.showLiabilityCategory(
@@ -108,7 +108,7 @@ class MoneyYouOweScreen extends StatelessWidget {
                 icon: Icons.person_rounded,
                 accent: const Color(0xFF7C72FF),
                 accounts: borrowedMoney.accounts,
-                totalOutstanding: borrowedMoney.totalOutstanding,
+                totalsByCurrency: borrowedMoney.outstandingByCurrency,
                 balanceService: service,
                 emptyLabel: t.noBorrowedMoneyYet,
                 onTap: () => AccountsNavigator.showLiabilityCategory(
@@ -144,7 +144,7 @@ class _LiabilityCategoryCard extends StatelessWidget {
     required this.icon,
     required this.accent,
     required this.accounts,
-    required this.totalOutstanding,
+    required this.totalsByCurrency,
     required this.balanceService,
     required this.emptyLabel,
     required this.onTap,
@@ -155,7 +155,7 @@ class _LiabilityCategoryCard extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final List<Account> accounts;
-  final Money totalOutstanding;
+  final Map<String, Money> totalsByCurrency;
   final LiabilityReadService balanceService;
   final String emptyLabel;
   final VoidCallback onTap;
@@ -226,18 +226,38 @@ class _LiabilityCategoryCard extends StatelessWidget {
             SizedBox(width: m.space.xs),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    '${totalOutstanding.toDouble().toStringAsFixed(0)} ${t.currency}',
+                if (totalsByCurrency.isEmpty)
+                  Text(
+                    '0',
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: m.typography.body,
                     ),
+                  )
+                else
+                  ...totalsByCurrency.entries.map(
+                    (entry) => Padding(
+                      padding: EdgeInsets.only(bottom: m.spacing(2)),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: m.size(125)),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Text(
+                            '${entry.value.toDouble().toStringAsFixed(0)} ${entry.key}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: m.typography.body,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
                 SizedBox(height: m.space.xs),
                 Icon(Icons.chevron_right_rounded, color: Colors.white54, size: m.icon.medium),
               ],

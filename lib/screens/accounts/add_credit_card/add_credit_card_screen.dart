@@ -3,18 +3,21 @@ import 'package:flutter/material.dart';
 import '../../../application/credit_card/credit_card_account_application_service.dart';
 import '../../../core/money/money.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../models/enums/section_type.dart';
-import '../add_account/add_account_screen.dart';
+import '../../../models/account.dart';
 import '../../../shared/widgets/wafferly_button.dart';
 import '../../../shared/widgets/wafferly_dropdown.dart';
 import '../../../shared/widgets/wafferly_form_section.dart';
 import '../../../shared/widgets/wafferly_text_field.dart';
 import '../../../theme/app_colors.dart';
+import '../../../theme/input/wafferly_input_decoration.dart';
 import '../../../theme/responsive_metrics.dart';
 import '../../../widgets/shared/wafferly_financial_card.dart';
+import 'credit_card_bank_account_selection_screen.dart';
 
 class AddCreditCardScreen extends StatefulWidget {
-  const AddCreditCardScreen({super.key});
+  const AddCreditCardScreen({super.key, required this.bankAccount});
+
+  final Account bankAccount;
 
   @override
   State<AddCreditCardScreen> createState() => _AddCreditCardScreenState();
@@ -28,10 +31,9 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
   final _last4Controller = TextEditingController();
 
   final _applicationService = CreditCardAccountApplicationService();
-  bool _hasActiveBankAccount = false;
+  late Account _linkedBankAccount;
 
   String _currency = 'EGP';
-  String? _bank;
   int? _statementStartDay;
   int? _paymentDueDay;
   final Set<int> _graceDays = <int>{};
@@ -41,7 +43,8 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
   @override
   void initState() {
     super.initState();
-    _hasActiveBankAccount = _applicationService.hasActiveBankAccount();
+    _linkedBankAccount = widget.bankAccount;
+    _currency = widget.bankAccount.currency;
   }
 
   @override
@@ -53,122 +56,142 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
     super.dispose();
   }
 
-  Future<void> _openBankAccountCreation() async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => const AddAccountScreen(
-          sectionType: SectionType.liquidity,
-          initialAccountType: 'bank',
+  Future<void> _changeBankAccount() async {
+    final selected = await Navigator.of(context).push<Account>(
+      MaterialPageRoute<Account>(
+        builder: (_) => CreditCardBankAccountSelectionScreen(
+          initialSelectedAccountId: _linkedBankAccount.id,
         ),
       ),
     );
+    if (selected == null || !mounted) return;
 
-    if (!mounted) return;
+    final changesCurrency = selected.currency != _currency;
+    final hasEnteredAmounts = _limitController.text.trim().isNotEmpty ||
+        _annualFeeController.text.trim().isNotEmpty;
+    if (changesCurrency && hasEnteredAmounts) {
+      final t = AppLocalizations.of(context)!;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: AppColors.card,
+          title: Text(t.bankAccountCurrencyChangeTitle),
+          content: Text(t.bankAccountCurrencyChangeMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(t.cancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(t.continueLabel),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+      _limitController.clear();
+      _annualFeeController.clear();
+    }
+
     setState(() {
-      _hasActiveBankAccount = _applicationService.hasActiveBankAccount();
+      _linkedBankAccount = selected;
+      // The preferred payment account and card currency must stay compatible
+      // until cross-currency payment is supported through the FX boundary.
+      _currency = selected.currency;
     });
   }
 
-  Future<void> _promptBankAccountCreation() async {
-    final t = AppLocalizations.of(context)!;
-    final shouldCreate = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.card,
-        title: Text(t.bankAccountRequiredTitle),
-        content: Text(t.bankAccountRequiredMessage),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(t.cancel),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            icon: const Icon(Icons.account_balance_outlined),
-            label: Text(t.createBankAccount),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldCreate == true && mounted) {
-      await _openBankAccountCreation();
+  Widget _buildLinkedBankAccountCard(
+    ResponsiveMetrics m,
+    AppLocalizations t,
+  ) {
+    final provider = _linkedBankAccount.provider?.trim();
+    final number = _linkedBankAccount.accountNumber?.trim();
+    final lastDigits = number == null || number.isEmpty
+        ? null
+        : (number.length <= 4 ? number : number.substring(number.length - 4));
+    final subtitleParts = <String>[];
+    if (provider != null && provider.isNotEmpty) subtitleParts.add(provider);
+    if (lastDigits != null && lastDigits.isNotEmpty) {
+      subtitleParts.add('•••• $lastDigits');
     }
-  }
 
-  Future<void> _selectBank() async {
-    final t = AppLocalizations.of(context)!;
-    final selected = await showModalBottomSheet<_BankOption>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _BankPickerSheet(
-        title: t.selectBankIssuer,
-        searchHint: t.searchBank,
-        popularLabel: t.popularBanks,
-        egyptLabel: t.egypt,
-        arabLabel: t.arabCountries,
-        globalLabel: t.global,
-        customLabel: t.bankNotListed,
-        onCustomBank: () async {
-          Navigator.of(context).pop();
-          final custom = await _showCustomBankDialog();
-          if (custom != null && mounted) {
-            setState(() => _bank = custom);
-          }
-        },
-      ),
-    );
-
-    if (selected != null && mounted) {
-      setState(() => _bank = selected.name);
-    }
-  }
-
-  Future<String?> _showCustomBankDialog() async {
-    final t = AppLocalizations.of(context)!;
-    final controller = TextEditingController();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.card,
-        title: Text(t.addCustomBank),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textInputAction: TextInputAction.done,
-          decoration: InputDecoration(
-            labelText: t.bankName,
-            hintText: t.bankNameHint,
-          ),
+    return Container(
+      padding: EdgeInsets.all(m.space.md),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(m.radius.lg),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: .28),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(t.cancel),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: m.size(42),
+            height: m.size(42),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: .14),
+              borderRadius: BorderRadius.circular(m.radius.md),
+            ),
+            child: Icon(
+              Icons.account_balance_rounded,
+              color: AppColors.accent,
+              size: m.icon.medium,
+            ),
           ),
-          FilledButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              if (value.isNotEmpty) Navigator.of(context).pop(value);
-            },
-            child: Text(t.add),
+          SizedBox(width: m.space.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.linkedBankAccountLabel,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: m.typography.caption,
+                  ),
+                ),
+                SizedBox(height: m.space.xs),
+                Text(
+                  _linkedBankAccount.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: m.typography.body,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (subtitleParts.isNotEmpty) ...[
+                  SizedBox(height: m.space.xs),
+                  Text(
+                    subtitleParts.join('  •  '),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: m.typography.caption,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          SizedBox(width: m.space.xs),
+          TextButton(
+            onPressed: _changeBankAccount,
+            child: Text(t.changeBankAccount),
           ),
         ],
       ),
     );
-    controller.dispose();
-    return result;
   }
 
   Future<void> _save() async {
-    // Re-check at save time so archiving the last bank account while this form
-    // is open cannot bypass the prerequisite. No payment source is selected.
-    if (!_applicationService.hasActiveBankAccount()) {
-      setState(() => _hasActiveBankAccount = false);
-      await _promptBankAccountCreation();
-      return;
-    }
+    // The application service revalidates that the selected bank account is
+    // still active and currency-compatible at the persistence boundary.
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
@@ -177,9 +200,10 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
     try {
       final account = await _applicationService.create(
         name: _nameController.text.trim(),
-        bank: _bank ?? '',
+        bank: _linkedBankAccount.provider?.trim() ?? '',
         currency: _currency,
         creditLimitValue: _limitController.text,
+        linkedBankAccountId: _linkedBankAccount.id,
         last4Digits: _last4Controller.text.trim().isEmpty ? null : _last4Controller.text.trim(),
         cardVisual: _cardVisual,
         annualFeeValue: _annualFeeController.text.trim().isEmpty
@@ -246,73 +270,13 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (!_hasActiveBankAccount)
-                      Padding(
-                        padding: EdgeInsets.only(bottom: m.space.md),
-                        child: Container(
-                          padding: EdgeInsets.all(m.space.md),
-                          decoration: BoxDecoration(
-                            color: AppColors.card,
-                            borderRadius: BorderRadius.circular(m.radius.lg),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: .08),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.account_balance_outlined,
-                                    size: m.icon.medium,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                  SizedBox(width: m.space.sm),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          t.bankAccountRequiredTitle,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: m.typography.body,
-                                          ),
-                                        ),
-                                        SizedBox(height: m.space.xs),
-                                        Text(
-                                          t.bankAccountRequiredMessage,
-                                          style: TextStyle(
-                                            color: AppColors.textSecondary,
-                                            fontSize: m.typography.caption,
-                                            height: 1.35,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: m.space.sm),
-                              Align(
-                                alignment: AlignmentDirectional.centerEnd,
-                                child: TextButton.icon(
-                                  onPressed: _openBankAccountCreation,
-                                  icon: const Icon(Icons.add_rounded),
-                                  label: Text(t.createBankAccount),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    _buildLinkedBankAccountCard(m, t),
+                    SizedBox(height: m.space.md),
                     WafferlyFormSection(
                       title: t.basicInformation,
                       children: [
                         WafferlyTextField(
-                          spacingAfter: 0,
+                          spacingAfter: m.isCompactHeight ? 12 : 14,
                           controller: _nameController,
                           label: t.cardName,
                           hint: t.cardNameHint,
@@ -321,17 +285,8 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                                   ? t.enterCardName
                                   : null,
                         ),
-                        SizedBox(height: m.space.fieldSpacing),
-                        _BankSelectorField(
-                          label: t.bankIssuerOptional,
-                          value: _bank,
-                          hint: t.selectBankIssuer,
-                          onTap: _selectBank,
-                          onClear: () => setState(() => _bank = null),
-                        ),
-                        SizedBox(height: m.space.fieldSpacing),
                         WafferlyTextField(
-                          spacingAfter: 0,
+                          spacingAfter: m.isCompactHeight ? 12 : 14,
                           controller: _last4Controller,
                           label: t.last4Optional,
                           hint: '4582',
@@ -345,9 +300,8 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                                 : t.enterExactlyFourDigits;
                           },
                         ),
-                        SizedBox(height: m.space.sm),
                         Container(
-                          padding: EdgeInsets.all(m.spacing(12)),
+                          padding: EdgeInsets.all(m.spacing(6)),
                           decoration: BoxDecoration(
                             color: AppColors.card,
                             borderRadius: BorderRadius.circular(m.radius.lg),
@@ -356,23 +310,40 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Card Visual', style: TextStyle(fontWeight: FontWeight.w800)),
-                              SizedBox(height: m.space.xs),
-                              const Text('Choose a Wafferly design to distinguish this card.', style: TextStyle(color: Colors.white60, fontSize: 11)),
-                              SizedBox(height: m.space.sm),
+                              Text(
+                                'Card Visual',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: m.typography.body,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              SizedBox(height: m.spacing(2)),
+                              Text(
+                                'Choose a Wafferly design to distinguish this card.',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: m.typography.caption,
+                                  height: 1.15,
+                                ),
+                              ),
+                              SizedBox(height: m.spacing(4)),
                               WafferlyCardVisualPicker(
                                 kind: WafferlyCardKind.credit,
                                 value: _cardVisual,
-                                onChanged: (value) => setState(() => _cardVisual = value),
+                                onChanged: (value) => setState(
+                                  () => _cardVisual = value,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        SizedBox(height: m.space.sm),
+                        SizedBox(height: m.spacing(10)),
                         LayoutBuilder(
                           builder: (context, constraints) {
                             final compact = constraints.maxWidth < m.size(390);
                             final limitField = WafferlyTextField(
+                              spacingAfter: 0,
                               controller: _limitController,
                               label: t.creditLimit,
                               hint: '30,000',
@@ -392,26 +363,34 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                                 }
                               },
                             );
-                            final currencyField = WafferlyDropdown<String>(
-                              label: t.currency,
-                              value: _currency,
-                              items: const [
-                                DropdownMenuItem(value: 'EGP', child: Text('EGP')),
-                                DropdownMenuItem(value: 'USD', child: Text('USD')),
-                                DropdownMenuItem(value: 'EUR', child: Text('EUR')),
-                              ],
-                              onChanged: (value) {
-                                if (value != null) {
-                                  setState(() => _currency = value);
-                                }
-                              },
+                            final currencyField = Tooltip(
+                              message: t.bankAccountCurrencyLocked,
+                              child: InputDecorator(
+                                decoration: WafferlyInputDecoration.build(
+                                  context,
+                                  label: t.currency,
+                                ).copyWith(
+                                  suffixIcon: Icon(
+                                    Icons.lock_outline_rounded,
+                                    color: AppColors.textSecondary,
+                                    size: m.icon.small,
+                                  ),
+                                ),
+                                child: Text(
+                                  _currency,
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: m.typography.body,
+                                  ),
+                                ),
+                              ),
                             );
 
                             if (compact) {
                               return Column(
                                 children: [
                                   limitField,
-                                  SizedBox(height: m.space.sm),
+                                  SizedBox(height: m.isCompactHeight ? m.spacing(10) : m.spacing(12)),
                                   currencyField,
                                 ],
                               );
@@ -516,6 +495,7 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                       title: t.feesOptional,
                       children: [
                         WafferlyTextField(
+                          spacingAfter: m.isCompactHeight ? 10 : 12,
                           controller: _annualFeeController,
                           label: t.annualFeeOptional,
                           hint: t.annualFeeHint,
@@ -673,398 +653,6 @@ class _GraceDaysCalendar extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _BankSelectorField extends StatelessWidget {
-  const _BankSelectorField({
-    required this.label,
-    required this.value,
-    required this.hint,
-    required this.onTap,
-    required this.onClear,
-  });
-
-  final String label;
-  final String? value;
-  final String hint;
-  final VoidCallback onTap;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    final m = ResponsiveMetrics.of(context);
-    final hasValue = value != null && value!.trim().isNotEmpty;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(m.radius.md),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          floatingLabelBehavior: FloatingLabelBehavior.always,
-          labelStyle: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: m.typography.body,
-          ),
-          filled: true,
-          fillColor: AppColors.card,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(m.radius.md),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: m.space.md,
-            vertical: m.input.verticalPadding,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.account_balance_rounded,
-              color: hasValue ? const Color(0xFF35E0B5) : AppColors.textSecondary,
-              size: m.icon.small,
-            ),
-            SizedBox(width: m.space.sm),
-            Expanded(
-              child: Text(
-                hasValue ? value! : hint,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: hasValue ? AppColors.textPrimary : AppColors.textHint,
-                  fontSize: m.typography.body,
-                ),
-              ),
-            ),
-            if (hasValue)
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
-                onPressed: onClear,
-                icon: const Icon(Icons.close_rounded),
-                color: AppColors.textSecondary,
-              ),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: AppColors.textSecondary,
-              size: m.icon.small,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BankOption {
-  const _BankOption({
-    required this.name,
-    required this.subtitle,
-    required this.group,
-  });
-
-  final String name;
-  final String subtitle;
-  final _BankGroup group;
-}
-
-enum _BankGroup { egypt, arab, global }
-
-class _BankPickerSheet extends StatefulWidget {
-  const _BankPickerSheet({
-    required this.title,
-    required this.searchHint,
-    required this.popularLabel,
-    required this.egyptLabel,
-    required this.arabLabel,
-    required this.globalLabel,
-    required this.customLabel,
-    required this.onCustomBank,
-  });
-
-  final String title;
-  final String searchHint;
-  final String popularLabel;
-  final String egyptLabel;
-  final String arabLabel;
-  final String globalLabel;
-  final String customLabel;
-  final VoidCallback onCustomBank;
-
-  @override
-  State<_BankPickerSheet> createState() => _BankPickerSheetState();
-}
-
-class _BankPickerSheetState extends State<_BankPickerSheet> {
-  final _searchController = TextEditingController();
-  _BankGroup? _filter;
-
-  static const _banks = <_BankOption>[
-    _BankOption(
-      name: 'CIB',
-      subtitle: 'Commercial International Bank • Egypt',
-      group: _BankGroup.egypt,
-    ),
-    _BankOption(
-      name: 'Banque Misr',
-      subtitle: 'Banque Misr • Egypt',
-      group: _BankGroup.egypt,
-    ),
-    _BankOption(
-      name: 'National Bank of Egypt',
-      subtitle: 'NBE • Egypt',
-      group: _BankGroup.egypt,
-    ),
-    _BankOption(
-      name: 'QNB Egypt',
-      subtitle: 'QNB • Egypt',
-      group: _BankGroup.egypt,
-    ),
-    _BankOption(
-      name: 'Banque du Caire',
-      subtitle: 'Bank of Cairo • Egypt',
-      group: _BankGroup.egypt,
-    ),
-    _BankOption(
-      name: 'Emirates NBD',
-      subtitle: 'United Arab Emirates',
-      group: _BankGroup.arab,
-    ),
-    _BankOption(
-      name: 'First Abu Dhabi Bank',
-      subtitle: 'United Arab Emirates',
-      group: _BankGroup.arab,
-    ),
-    _BankOption(
-      name: 'Al Rajhi Bank',
-      subtitle: 'Saudi Arabia',
-      group: _BankGroup.arab,
-    ),
-    _BankOption(
-      name: 'Saudi National Bank',
-      subtitle: 'Saudi Arabia',
-      group: _BankGroup.arab,
-    ),
-    _BankOption(
-      name: 'QNB Group',
-      subtitle: 'Qatar • International',
-      group: _BankGroup.arab,
-    ),
-    _BankOption(
-      name: 'HSBC',
-      subtitle: 'International',
-      group: _BankGroup.global,
-    ),
-    _BankOption(
-      name: 'Citibank',
-      subtitle: 'International',
-      group: _BankGroup.global,
-    ),
-    _BankOption(
-      name: 'Standard Chartered',
-      subtitle: 'International',
-      group: _BankGroup.global,
-    ),
-    _BankOption(
-      name: 'Deutsche Bank',
-      subtitle: 'International',
-      group: _BankGroup.global,
-    ),
-  ];
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final m = ResponsiveMetrics.of(context);
-    final query = _searchController.text.trim().toLowerCase();
-    final filtered = _banks.where((bank) {
-      final matchesFilter = _filter == null || bank.group == _filter;
-      final matchesQuery = query.isEmpty ||
-          bank.name.toLowerCase().contains(query) ||
-          bank.subtitle.toLowerCase().contains(query);
-      return matchesFilter && matchesQuery;
-    }).toList();
-
-    return SafeArea(
-      child: Container(
-        height: MediaQuery.sizeOf(context).height * 0.82,
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(m.radius.xl),
-          ),
-        ),
-        child: Column(
-          children: [
-            SizedBox(height: m.space.xs),
-            Container(
-              width: m.size(38),
-              height: m.size(4),
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                m.spacing(16),
-                m.space.sm,
-                m.spacing(8),
-                m.space.sm,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.title,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: m.typography.title,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: m.spacing(16)),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: widget.searchHint,
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  filled: true,
-                  fillColor: AppColors.card,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(m.radius.md),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: m.space.sm),
-            SingleChildScrollView(
-              padding: EdgeInsets.symmetric(horizontal: m.spacing(16)),
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _FilterChip(
-                    label: widget.popularLabel,
-                    selected: _filter == null,
-                    onTap: () => setState(() => _filter = null),
-                  ),
-                  _FilterChip(
-                    label: widget.egyptLabel,
-                    selected: _filter == _BankGroup.egypt,
-                    onTap: () => setState(() => _filter = _BankGroup.egypt),
-                  ),
-                  _FilterChip(
-                    label: widget.arabLabel,
-                    selected: _filter == _BankGroup.arab,
-                    onTap: () => setState(() => _filter = _BankGroup.arab),
-                  ),
-                  _FilterChip(
-                    label: widget.globalLabel,
-                    selected: _filter == _BankGroup.global,
-                    onTap: () => setState(() => _filter = _BankGroup.global),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: m.space.sm),
-            Expanded(
-              child: ListView.separated(
-                padding: EdgeInsets.fromLTRB(
-                  m.spacing(16),
-                  0,
-                  m.spacing(16),
-                  m.spacing(12),
-                ),
-                itemCount: filtered.length + 1,
-                separatorBuilder: (_, __) => Divider(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  height: 1,
-                ),
-                itemBuilder: (context, index) {
-                  if (index == filtered.length) {
-                    return Padding(
-                      padding: EdgeInsets.only(top: m.space.sm),
-                      child: OutlinedButton.icon(
-                        onPressed: widget.onCustomBank,
-                        icon: const Icon(Icons.add_rounded),
-                        label: Text(widget.customLabel),
-                      ),
-                    );
-                  }
-
-                  final bank = filtered[index];
-                  return ListTile(
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: m.space.xs,
-                      vertical: m.space.xs,
-                    ),
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.card,
-                      child: Icon(
-                        Icons.account_balance_rounded,
-                        color: AppColors.textSecondary,
-                        size: m.icon.small,
-                      ),
-                    ),
-                    title: Text(
-                      bank.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    subtitle: Text(bank.subtitle),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => Navigator.of(context).pop(bank),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(end: 8),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
       ),
     );
   }

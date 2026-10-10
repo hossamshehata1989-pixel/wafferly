@@ -24,13 +24,13 @@ final class CreditCardAccountApplicationService {
   final Box<CreditCardProfile> _profileBox;
   static const _uuid = Uuid();
 
-  /// Active bank accounts are a prerequisite for creating a credit card.
-  /// This models an existing banking relationship only; it does not select
-  /// or persist a payment source, and account balance is intentionally ignored.
+  /// Active bank accounts eligible to be linked to a new credit card.
+  /// Account balance is intentionally ignored.
   List<Account> getActiveBankAccounts() => _accountService
       .getAllActiveAccounts()
       .where(
         (account) =>
+            account.bookId == 'default' &&
             !account.isArchived &&
             account.group == AccountGroup.liquidity &&
             account.type == 'bank',
@@ -44,6 +44,7 @@ final class CreditCardAccountApplicationService {
     required String bank,
     required String currency,
     required String creditLimitValue,
+    required String linkedBankAccountId,
     String? last4Digits,
     String cardKind = 'physical',
     String? notes,
@@ -55,9 +56,22 @@ final class CreditCardAccountApplicationService {
     String? annualFeeValue,
     String cardVisual = 'credit_midnight',
   }) async {
-    if (!hasActiveBankAccount()) {
+    final activeBankAccounts = getActiveBankAccounts();
+    Account? linkedBankAccount;
+    for (final candidate in activeBankAccounts) {
+      if (candidate.id == linkedBankAccountId) {
+        linkedBankAccount = candidate;
+        break;
+      }
+    }
+    if (linkedBankAccount == null) {
       throw StateError(
-        'Create a bank account in Wafferly before creating a credit card.',
+        'Select an active bank account to link to the credit card.',
+      );
+    }
+    if (linkedBankAccount.currency != currency) {
+      throw StateError(
+        'Credit card currency must match the linked bank account currency.',
       );
     }
 
@@ -105,6 +119,7 @@ final class CreditCardAccountApplicationService {
         graceDays: graceDays,
         annualFee: annualFee,
         cardVisual: cardVisual,
+        linkedBankAccountId: linkedBankAccount.id,
       );
       await _profileBox.put(profile.id, profile);
       return account;

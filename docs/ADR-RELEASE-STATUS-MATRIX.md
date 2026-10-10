@@ -30,6 +30,7 @@ This matrix prevents a design ADR from being mistaken for a completed runtime fe
 | 068 | Audit / Traceability | **Boundary defined** | V1 conversion preserves traceability references; broader financing audit workflows deferred |
 | 069 | Statement ↔ Installment Relationship | **Implemented** | Contribution projection + no-double-counting tests |
 | 070 | Posted Charge → Financing Conversion | **Implemented** | Durable conversion event + recovery/idempotency + concurrency protection |
+| 072 | Credit Card Linked Bank Account | **Implemented (flow + profile metadata)** | Intro/account-selection flow, active-account guard, currency compatibility, Hive backward compatibility; settlement execution remains deferred under ADR-051 |
 
 ## Verification Snapshot
 

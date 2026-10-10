@@ -94,6 +94,7 @@ class WafferlyFinancialCard extends StatelessWidget {
     this.width,
     this.height,
     this.fit = BoxFit.cover,
+    this.compactPreview = false,
   });
 
   final WafferlyCardKind kind;
@@ -111,6 +112,7 @@ class WafferlyFinancialCard extends StatelessWidget {
   final double? width;
   final double? height;
   final BoxFit fit;
+  final bool compactPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -133,7 +135,13 @@ class WafferlyFinancialCard extends StatelessWidget {
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  CustomPaint(painter: _WafferlyCardPainter(spec: spec, kind: kind)),
+                  CustomPaint(
+                    painter: _WafferlyCardPainter(
+                      spec: spec,
+                      kind: kind,
+                      compactPreview: compactPreview,
+                    ),
+                  ),
                   if (cardName != null) _position(w, h, 0.075, 0.065, 0.46, 0.105, _text(cardName!, 17, FontWeight.w900)),
                   if (provider != null && provider!.trim().isNotEmpty)
                     _position(w, h, 0.075, 0.165, 0.48, 0.075, _text(provider!, 8.5, FontWeight.w600, color: Colors.white70)),
@@ -204,28 +212,51 @@ class WafferlyCardVisualPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final options = WafferlyCardVisuals.forKind(kind);
     return SizedBox(
-      height: 112,
+      height: 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: options.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        separatorBuilder: (_, __) => const SizedBox(width: 4),
         itemBuilder: (context, index) {
           final option = options[index];
           final selected = option.id == value;
           return GestureDetector(
             onTap: () => onChanged(option.id),
             child: SizedBox(
-              width: 138,
+              width: 54,
               child: Column(children: [
                 Expanded(
                   child: Stack(children: [
-                    Positioned.fill(child: WafferlyFinancialCard(kind: kind, visual: option.id, showFinancialData: false)),
+                    Positioned.fill(
+                      child: WafferlyFinancialCard(
+                        kind: kind,
+                        visual: option.id,
+                        showFinancialData: false,
+                        compactPreview: true,
+                      ),
+                    ),
                     if (selected)
-                      Positioned(right: 6, top: 6, child: Container(width: 22, height: 22, decoration: const BoxDecoration(color: Color(0xFF35E0B5), shape: BoxShape.circle), child: const Icon(Icons.check, size: 15, color: Colors.black))),
+                      Positioned(
+                        right: 2,
+                        top: 2,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF35E0B5),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.check,
+                            size: 8,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
                   ]),
                 ),
-                const SizedBox(height: 5),
-                Text(option.name, style: TextStyle(color: selected ? Colors.white : Colors.white70, fontSize: 11, fontWeight: selected ? FontWeight.w800 : FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(option.name, style: TextStyle(color: selected ? Colors.white : Colors.white70, fontSize: 8.5, fontWeight: selected ? FontWeight.w800 : FontWeight.w600)),
               ]),
             ),
           );
@@ -236,9 +267,15 @@ class WafferlyCardVisualPicker extends StatelessWidget {
 }
 
 class _WafferlyCardPainter extends CustomPainter {
-  const _WafferlyCardPainter({required this.spec, required this.kind});
+  const _WafferlyCardPainter({
+    required this.spec,
+    required this.kind,
+    this.compactPreview = false,
+  });
+
   final WafferlyCardVisualSpec spec;
   final WafferlyCardKind kind;
+  final bool compactPreview;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -252,10 +289,19 @@ class _WafferlyCardPainter extends CustomPainter {
     canvas.drawCircle(Offset(size.width * .82 + shift * .02, size.height * .30), size.height * .28, accent);
     canvas.drawCircle(Offset(size.width * .93 - shift * .01, size.height * .38), size.height * .24, Paint()..color = (spec.accent ?? Colors.white).withValues(alpha: .14));
 
-    final linePaint = Paint()..color = Colors.white.withValues(alpha: .07)..strokeWidth = 1.5;
-    for (var i = 0; i < 5; i++) {
-      final y = size.height * (.12 + i * .18);
-      canvas.drawLine(Offset(-20, y), Offset(size.width + 20, y + size.height * .06), linePaint);
+    final linePaint = Paint()
+      ..color = Colors.white.withValues(alpha: compactPreview ? .035 : .07)
+      ..strokeWidth = compactPreview ? .55 : 1.5;
+    final lineCount = compactPreview ? 2 : 5;
+    for (var i = 0; i < lineCount; i++) {
+      final y = compactPreview
+          ? size.height * (.28 + i * .34)
+          : size.height * (.12 + i * .18);
+      canvas.drawLine(
+        Offset(-20, y),
+        Offset(size.width + 20, y + size.height * .06),
+        linePaint,
+      );
     }
 
     // Wafferly's neutral card chip. It is artwork, not card data.
@@ -274,5 +320,7 @@ class _WafferlyCardPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _WafferlyCardPainter oldDelegate) => oldDelegate.spec.id != spec.id;
+  bool shouldRepaint(covariant _WafferlyCardPainter oldDelegate) =>
+      oldDelegate.spec.id != spec.id ||
+      oldDelegate.compactPreview != compactPreview;
 }

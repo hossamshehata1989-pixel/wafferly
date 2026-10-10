@@ -7,7 +7,7 @@ import '../../credit_card/domain/credit_card_profile.dart';
 import '../../models/financing/financing_installment.dart';
 import '../../models/financing/financing_contract.dart';
 import '../../models/account.dart';
-import '../accounts/add_credit_card/add_credit_card_screen.dart';
+import '../accounts/add_credit_card/credit_card_intro_screen.dart';
 import '../accounts/liabilities/credit_card_account_details_screen.dart';
 import '../../services/account_service.dart';
 import '../../services/balance_service.dart';
@@ -207,7 +207,7 @@ class _CreditCardsScreenState extends State<CreditCardsScreen> {
 
   Future<void> _onAddCard() async {
     final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const AddCreditCardScreen()),
+      MaterialPageRoute(builder: (_) => const CreditCardIntroScreen()),
     );
     if (created == true) _loadCards();
   }
