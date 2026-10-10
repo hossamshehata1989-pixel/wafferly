@@ -498,5 +498,25 @@
   "creditCardIntroNoDebitCardMessage": "Only an active bank account is needed.",
   "bankAccountCurrencyChangeTitle": "Change account currency?",
   "bankAccountCurrencyChangeMessage": "Changing the linked account currency will clear the credit limit and annual fee. You can enter them again in the new currency.",
-  "moneyDistribution": "Your Money Breakdown"
+  "moneyDistribution": "Your Money Breakdown",
+  "creditCardPayment": "Pay Credit Card",
+  "creditCardPaymentDescription": "Pay from an active account in the same currency. A successful payment reduces the account balance and the card liability.",
+  "payFullOutstanding": "Pay full outstanding",
+  "choosePaymentAmount": "Choose payment amount",
+  "payStatementDue": "Pay statement due",
+  "payCustomAmount": "Custom amount",
+  "enterCustomPaymentAmount": "Enter the amount you want to pay.",
+  "paymentDueOn": "Payment due",
+  "statementClosedOn": "Statement closed",
+  "statementDueUnavailable": "Set the statement closing day and payment due day to calculate this amount.",
+  "noStatementAmountDue": "There is no amount due on the current statement.",
+  "statementDueCalculatedHint": "Calculated from recorded transactions; this is not an imported bank statement.",
+
+  "noEligiblePaymentAccounts": "No active asset accounts are available in this card currency.",
+  "confirmPayment": "Confirm payment",
+  "noOutstandingPayment": "This card has no outstanding amount to pay.",
+  "creditCardPaymentFailed": "The payment could not be completed.",
+  "enterValidAmount": "Enter a valid amount greater than zero.",
+  "paymentExceedsOutstanding": "Payment amount cannot exceed the current outstanding balance.",
+  "creditCardPaymentInsufficientBalance": "The selected payment account does not have enough available balance."
 }

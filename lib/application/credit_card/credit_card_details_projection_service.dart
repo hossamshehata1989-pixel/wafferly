@@ -2,6 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../constants/transaction_constants.dart';
 import '../../core/money/money.dart';
+import 'credit_card_statement_due_calculator.dart';
 import '../../credit_card/domain/credit_card_profile.dart';
 import '../../credit_card/domain/credit_card_profile_repository.dart';
 import '../../credit_card/infrastructure/hive_credit_card_profile_repository.dart';
@@ -23,8 +24,10 @@ final class CreditCardDetailsProjection {
     required this.available,
     required this.utilization,
     required this.transactions,
+    required this.payments,
     required this.installments,
     required this.convertedChargeIds,
+    required this.statementDue,
   });
 
   final Account account;
@@ -35,9 +38,15 @@ final class CreditCardDetailsProjection {
 
   /// Prepared read-model data for the details screen.
   /// The screen must not query Hive directly.
+  /// Purchase charges only; used by statement and due calculations.
   final List<Transaction> transactions;
+
+  /// Settlements are shown in the transaction history, separate from charges.
+  final List<Transaction> payments;
+
   final List<FinancingInstallment> installments;
   final Set<String> convertedChargeIds;
+  final CreditCardStatementDueSummary statementDue;
 }
 
 /// Read-only application projection for the Credit Card details screen.
@@ -93,9 +102,15 @@ final class CreditCardDetailsProjectionService {
         ? 0.0
         : (exposure / limit).clamp(0.0, 1.0).toDouble();
 
-    final transactions = _transactionQueryService
-        .getForAccount(accountId)
+    final accountTransactions = _transactionQueryService.getForAccount(accountId);
+    final transactions = accountTransactions
         .where((tx) => tx.type == TransactionType.creditCardCharge)
+        .toList();
+    final payments = accountTransactions
+        .where((tx) =>
+            tx.type == TransactionType.transfer &&
+            tx.source == TransactionSource.creditCardPayment &&
+            tx.toAccountId == accountId)
         .toList();
 
     final contracts = _contractBox.values.where((contract) {
@@ -117,6 +132,17 @@ final class CreditCardDetailsProjectionService {
         .where(transactionIds.contains)
         .toSet();
 
+    final statementDue = const CreditCardStatementDueCalculator().calculate(
+      liabilityAccountId: accountId,
+      profile: profile,
+      currentOutstanding: outstanding,
+      charges: transactions,
+      payments: payments,
+      installments: installments,
+      contracts: contracts,
+      now: DateTime.now(),
+    );
+
     return CreditCardDetailsProjection(
       account: account,
       profile: profile,
@@ -124,8 +150,10 @@ final class CreditCardDetailsProjectionService {
       available: available,
       utilization: utilization,
       transactions: transactions,
+      payments: payments,
       installments: installments,
       convertedChargeIds: convertedChargeIds,
+      statementDue: statementDue,
     );
   }
 }

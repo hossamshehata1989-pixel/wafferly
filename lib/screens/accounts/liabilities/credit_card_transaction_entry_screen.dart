@@ -4,17 +4,13 @@ import 'package:provider/provider.dart';
 import '../../../application/credit_card/credit_card_financing_application_service.dart';
 import '../../../credit_card/domain/credit_card_profile.dart';
 import '../../../models/account.dart';
-import '../../../models/enums/account_enums.dart';
-import '../../../services/account_service.dart';
 import '../../../services/transaction_application_service.dart';
 import '../../../services/transaction_query_service.dart';
-import '../../../models/transaction.dart';
 import '../../../financial_engine/results/operation_result.dart';
 import '../../../config/category_config.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/responsive_metrics.dart';
-import 'credit_card_installment_conversion_screen.dart';
 
 class CreditCardTransactionEntryScreen extends StatefulWidget {
   const CreditCardTransactionEntryScreen({

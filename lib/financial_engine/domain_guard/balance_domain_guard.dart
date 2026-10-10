@@ -60,6 +60,7 @@ final class BalanceDomainGuard implements DomainGuard {
 
     if (available < intent.amount) {
       if (intent.action == FinancialActionType.transfer ||
+          intent.action == FinancialActionType.creditCardPayment ||
           intent.action == FinancialActionType.goalSavingTransfer) {
         return DomainViolation(
           reason:

@@ -564,7 +564,7 @@ class _IntroCard extends StatelessWidget {
                 ? SvgPicture.asset(
                     accountIcon!,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Icon(
+                    errorBuilder: (_, _, _) => Icon(
                       Icons.account_balance_wallet_outlined,
                       color: const Color(0xFF37D991),
                       size: iconSize,

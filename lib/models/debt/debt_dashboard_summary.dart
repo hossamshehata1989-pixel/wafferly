@@ -1,7 +1,5 @@
 import '../../core/money/money.dart';
 import '../account.dart';
-import '../commitment.dart';
-import '../schedule_rule.dart';
 
 /// Aggregated read model for the Debt dashboard.
 ///

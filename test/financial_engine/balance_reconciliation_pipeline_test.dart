@@ -23,7 +23,6 @@ import 'package:wafferly/models/ledger_entry.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/services/balance_service.dart';
-import 'package:wafferly/services/ledger_projection_service.dart';
 
 void main() {
   late Directory testDirectory;

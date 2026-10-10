@@ -498,5 +498,25 @@
   "bankAccountCurrencyChangeTitle": "تغيير عملة الحساب؟",
   "bankAccountCurrencyChangeMessage": "تغيير عملة الحساب المرتبط سيمسح حد الائتمان والرسوم السنوية المدخلة. يمكنك إدخالهما مرة أخرى بالعملة الجديدة.",
   "transferFailed": "فشل التحويل",
-  "moneyDistribution": "توزيع أموالك"
+  "moneyDistribution": "توزيع أموالك",
+  "creditCardPayment": "سداد بطاقة الائتمان",
+  "creditCardPaymentDescription": "سدّد من حساب نشط بنفس العملة. السداد الناجح يقلل رصيد الحساب ومديونية البطاقة.",
+  "payFullOutstanding": "سداد كامل المديونية",
+  "choosePaymentAmount": "اختر مبلغ السداد",
+  "payStatementDue": "سداد مستحق كشف الحساب",
+  "payCustomAmount": "مبلغ مخصص",
+  "enterCustomPaymentAmount": "أدخل المبلغ الذي تريد سداده.",
+  "paymentDueOn": "تاريخ الاستحقاق",
+  "statementClosedOn": "تاريخ إغلاق الكشف",
+  "statementDueUnavailable": "أضف يوم إغلاق كشف الحساب ويوم الاستحقاق لحساب هذا المبلغ.",
+  "noStatementAmountDue": "لا يوجد مبلغ مستحق في كشف الحساب الحالي.",
+  "statementDueCalculatedHint": "المبلغ محسوب من المعاملات المسجلة، وليس كشف حساب مستوردًا من البنك.",
+
+  "noEligiblePaymentAccounts": "لا توجد حسابات أصول نشطة متاحة بعملة البطاقة.",
+  "confirmPayment": "تأكيد السداد",
+  "noOutstandingPayment": "لا توجد مديونية مستحقة على هذه البطاقة.",
+  "creditCardPaymentFailed": "تعذر إتمام عملية السداد.",
+  "enterValidAmount": "أدخل مبلغًا صحيحًا أكبر من صفر.",
+  "paymentExceedsOutstanding": "لا يمكن أن يتجاوز مبلغ السداد المديونية الحالية.",
+  "creditCardPaymentInsufficientBalance": "الرصيد المتاح في حساب السداد المختار غير كافٍ."
 }

@@ -35,6 +35,7 @@ import '../financial_engine/planning/default_financial_planner.dart';
 import '../financial_engine/ports/traceability_port.dart';
 import '../financial_engine/domain_guard/balance_domain_guard.dart';
 import '../financial_engine/domain_guard/credit_card_charge_domain_guard.dart';
+import '../financial_engine/domain_guard/credit_card_payment_domain_guard.dart';
 import '../credit_card/domain/credit_card_profile.dart';
 import '../credit_card/domain/credit_card_profile_repository.dart';
 import '../financial_engine/domain_guard/goal_saving_transfer_domain_guard.dart';
@@ -175,6 +176,11 @@ final class FinancialEngineBootstrap {
       profileRepository: resolvedCreditCardProfileRepository,
       balanceReader: balancePort,
     );
+    final creditCardPaymentGuard = CreditCardPaymentDomainGuard(
+      accountService: AccountService(),
+      profileRepository: resolvedCreditCardProfileRepository,
+      balanceReader: balancePort,
+    );
     final goalSavingTransferGuard = GoalSavingTransferDomainGuard(
       accountService: AccountService(),
     );
@@ -209,7 +215,7 @@ final class FinancialEngineBootstrap {
     final engine = FinancialOperationEngine(
       interpreter: const DefaultFinancialInterpreter(),
       domainGuardPipeline: DomainGuardPipeline(
-        guards: [creditCardChargeGuard, goalSavingTransferGuard, balanceGuard],
+        guards: [creditCardChargeGuard, creditCardPaymentGuard, goalSavingTransferGuard, balanceGuard],
       ),
       planner: planner,
       integrityChecker: const DefaultFinancialIntegrityChecker(),

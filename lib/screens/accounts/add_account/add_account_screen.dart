@@ -16,7 +16,6 @@ import '../../../widgets/accounts/account_icon_picker.dart';
 import '../../../widgets/accounts/account_type_section.dart';
 import 'package:wafferly/models/enums/account_type_option.dart';
 import '../../../widgets/accounts/account_details_section.dart';
-import '../../../shared/widgets/wafferly_section_title.dart';
 import 'package:wafferly/controllers/accounts/account_form_controller.dart';
 import 'package:wafferly/controllers/accounts/account_factory.dart';
 import 'package:wafferly/application/accounts/requests/create_account_request.dart';

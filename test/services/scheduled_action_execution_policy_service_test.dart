@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../lib/models/enums/scheduled_action_execution_policy.dart';
-import '../../lib/services/scheduled_action_execution_policy_service.dart';
+import 'package:wafferly/models/enums/scheduled_action_execution_policy.dart';
+import 'package:wafferly/services/scheduled_action_execution_policy_service.dart';
 
 void main() {
   const service = ScheduledActionExecutionPolicyService();

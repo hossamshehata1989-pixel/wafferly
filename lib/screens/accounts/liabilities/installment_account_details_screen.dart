@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../models/account.dart';
 import '../../../services/account_service.dart';
 import '../../../services/balance_service.dart';
 import 'liability_detail_widgets.dart';

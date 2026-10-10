@@ -47,8 +47,30 @@ class _AccountPageMetrics {
   double h(double value) => base.h(value) * 0.8;
   double text(double value) => base.text(value) * 0.8;
 
-  get typography => base.typography;
-  get icon => base.icon;
+  // Return local, strongly typed tokens instead of exposing inferred private
+  // token types from ResponsiveMetrics as Object across library boundaries.
+  _AccountPageTypography get typography => const _AccountPageTypography();
+  _AccountPageIcon get icon => _AccountPageIcon(this);
+}
+
+class _AccountPageTypography {
+  const _AccountPageTypography();
+
+  // These are reference font sizes. _AccountPageMetrics.text() applies the
+  // device text scale and the screen's compact-size factor at the call site.
+  double get body => 14;
+  double get caption => 10;
+}
+
+class _AccountPageIcon {
+  const _AccountPageIcon(this.m);
+
+  final _AccountPageMetrics m;
+
+  double get small => m.size(18);
+  double get medium => m.isCompactHeight ? m.size(18) : m.size(24);
+  double get large => m.size(32);
+  double get hero => m.size(56);
 }
 
 class AccountDetailsScreen extends StatefulWidget {
@@ -63,7 +85,7 @@ class AccountDetailsScreen extends StatefulWidget {
 class _AccountDetailsScreenState extends State<AccountDetailsScreen> {
   late final AccountDetailsRepository _repository;
   late Future<AccountDetailsData> _future;
-  int _tab = 0;
+  final int _tab = 0;
   _AccountChartPeriod _chartPeriod = _AccountChartPeriod.sixMonths;
 
   @override
@@ -2481,7 +2503,7 @@ class _Tabs extends StatelessWidget {
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: labels.length,
-          separatorBuilder: (_, __) => SizedBox(width: m.spacing(20)),
+          separatorBuilder: (_, _) => SizedBox(width: m.spacing(20)),
           itemBuilder: (_, index) {
             final active = index == selected;
             return InkWell(
@@ -3726,12 +3748,12 @@ class _ActivityContent extends StatelessWidget {
   const _ActivityContent({
     required this.m,
     required this.data,
-    this.compact = false,
   });
 
   final _AccountPageMetrics m;
   final AccountDetailsData data;
-  final bool compact;
+
+  bool get compact => m.isMobile || m.isCompactHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -4327,7 +4349,7 @@ class _AccountAvatar extends StatelessWidget {
           ? SvgPicture.asset(
               asset,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Icon(
+              errorBuilder: (_, _, _) => Icon(
                 _iconForType(account.type),
                 color: const Color(0xFF39D98A),
                 size: m.icon.hero,

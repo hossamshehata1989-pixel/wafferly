@@ -1,6 +1,5 @@
 import '../execution/financial_mutation_handler.dart';
 import '../execution/financial_transaction_context.dart';
-import '../domain/financial_invalidation_record.dart';
 import '../mutations/invalidate_transaction_mutation.dart';
 import '../ports/invalidation_port.dart';
 import '../../services/ledger_projection_service.dart';

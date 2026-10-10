@@ -427,10 +427,10 @@ void main() {
 
     final context = contextFor(rule());
     var financialCalls = 0;
-    final executeFinancial = () async {
+    Future<OperationSucceeded> executeFinancial() async {
       financialCalls++;
       return success();
-    };
+    }
 
     expect(
       await coordinator.execute(

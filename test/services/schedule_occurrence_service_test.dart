@@ -15,10 +15,6 @@ class _TestScheduleRuleService extends ScheduleRuleService {
     rules[rule.id] = rule;
   }
 
-  @override
-  DateTime calculateNextDueDate(ScheduleRule rule) {
-    return super.calculateNextDueDate(rule);
-  }
 }
 
 void main() {

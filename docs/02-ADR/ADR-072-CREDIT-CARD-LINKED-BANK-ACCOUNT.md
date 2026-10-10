@@ -65,4 +65,4 @@ The selected bank account must be revalidated by the application service at save
 
 ## 7. Runtime Status
 
-The Intro → bank-account selection → card form flow and profile link persistence are implemented in the current patch. A complete credit-card payment/settlement workflow remains outside this change and must not be described as implemented by this ADR.
+The Intro → bank-account selection → card form flow and profile link persistence are implemented. Actual payment/settlement is a separate operation governed by ADR-051; it does not execute merely because the linked-account metadata exists. The payment UI prefers this linked account when it remains eligible.

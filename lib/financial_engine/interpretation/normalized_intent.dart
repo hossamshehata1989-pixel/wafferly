@@ -25,12 +25,18 @@ final class NormalizedIntent {
   final bool isLiability;
 
   final Money amount;
+
+  /// Optional currency carried by operations whose domain guard needs to
+  /// validate that entered money matches the participating accounts.
+  final String? currencyCode;
+
   final Resolution resolution;
 
   const NormalizedIntent({
     required this.action,
     required this.amount,
     required this.sourceAccountId,
+    this.currencyCode,
     this.destinationAccountId,
     this.categoryId,
     this.goalId,

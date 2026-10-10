@@ -3,9 +3,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../controllers/transaction_entry_controller.dart';
-import '../../../models/account_display_extension.dart';
 
-import '../../bottom_sheet/wafferly_bottom_sheet.dart';
 import 'account_picker_sheet.dart';
 
 class AccountSelector {

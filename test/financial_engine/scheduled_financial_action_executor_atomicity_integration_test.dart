@@ -9,7 +9,6 @@ import 'package:wafferly/core/money/money.dart';
 import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/core/planning/infrastructure/repositories/memory_allocation_repository.dart';
 import 'package:wafferly/core/planning/services/available_balance_projection_service.dart';
-import 'package:wafferly/financial_engine/engine/financial_operation_engine.dart';
 import 'package:wafferly/features/financial_action_center/services/financial_action_executor.dart';
 import 'package:wafferly/models/account.dart';
 import 'package:wafferly/models/commitment.dart';

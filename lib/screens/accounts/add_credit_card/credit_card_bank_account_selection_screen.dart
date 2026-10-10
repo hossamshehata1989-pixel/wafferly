@@ -229,7 +229,7 @@ class _CreditCardBankAccountSelectionScreenState
                                   m.space.md,
                                 ),
                                 itemCount: filtered.length,
-                                separatorBuilder: (_, __) =>
+                                separatorBuilder: (_, _) =>
                                     SizedBox(height: m.space.xs),
                                 itemBuilder: (context, index) {
                                   final account = filtered[index];

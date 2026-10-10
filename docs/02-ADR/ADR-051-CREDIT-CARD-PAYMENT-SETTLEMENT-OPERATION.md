@@ -1,6 +1,6 @@
 # ADR-051 — Credit Card Payment / Settlement Operation
 
-**Status:** Proposed → Implementation  
+**Status:** Implementation (strict overpayment rejection selected)  
 **Date:** 2026-09-27  
 **Related:** ADR-032 (Debt Domain Architecture), ADR-035 (Credit Card Domain), ADR-047 (Credit Card Charge Operation), ADR-049 (Credit Limit Domain Guard), ADR-050 (Statement Lifecycle & Due-Date Generation)
 
@@ -116,6 +116,8 @@ The implementation must explicitly define the behavior when the requested paymen
 That behavior is a separate implementation policy and must not be inferred from the Credit Limit rule.
 
 The system must never silently create a new unrelated asset balance merely because a payment amount exceeds the current liability.
+
+**Initial implementation policy:** reject a payment when `payment amount > current outstanding liability`. No excess value is converted into a credit balance, refund, or unrelated asset. The same rule is enforced in the Financial Engine domain guard and checked by the payment UI. Cross-currency settlement remains unsupported until the approved FX architecture is available.
 
 ## 7. Statement Relationship
 
@@ -418,3 +420,12 @@ Credit Card payments become explicit liability-settlement operations while prese
 - Idempotency and traceability remain shared infrastructure.
 
 This provides a clean foundation for future payment allocation, statement settlement, scheduled payments, and more advanced Credit Card settlement rules without conflating them with Credit Card charges.
+
+
+## 18. Runtime Implementation Notes (2026-10-10)
+
+- The dedicated operation is wired into the canonical Financial Operation Engine and preserves idempotency, domain guards, planning, integrity checking, execution, and traceability.
+- The initial UI chooses the linked bank account first when it remains eligible; other active same-book, same-currency Asset Accounts remain selectable.
+- Payment amounts must be positive, must not exceed current outstanding, and must match the participating accounts' currency. Cross-currency payment remains rejected.
+- Payment records use a distinct `credit_card_payment` source and are represented as transfer-type account movement to preserve existing balance projection semantics. Purchase-only transactions remain separate for statement/due calculations; payment rows are shown in card transaction history.
+- Automated regression coverage has been added for partial/full payment, overpayment rejection, zero/negative amounts, cross-currency rejection, and idempotency. Runtime test results must be confirmed in a Flutter-enabled environment.

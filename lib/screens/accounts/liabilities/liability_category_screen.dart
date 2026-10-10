@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../core/money/money.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/account.dart';
-import '../../../models/enums/account_enums.dart';
 import '../../../models/enums/liability_category.dart';
 import '../../../services/liability_read_service.dart';
 import '../../../theme/app_colors.dart';

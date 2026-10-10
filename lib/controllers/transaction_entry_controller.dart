@@ -1062,7 +1062,7 @@ class TransactionEntryController extends ChangeNotifier {
         currencyCode: card.currency,
         note: _note.isEmpty
             ? 'Installment purchase'
-            : '${_note} • Installment',
+            : '$_note • Installment',
         actorMemberId: _selectedMemberId,
         idempotencyKey: chargeIdempotencyKey,
         isExceptional: isExceptional,
@@ -1146,7 +1146,7 @@ class TransactionEntryController extends ChangeNotifier {
             currencyCode: downPaymentSource.currency,
             note: _note.isEmpty
                 ? 'Down payment'
-                : '${_note} • Down payment',
+                : '$_note • Down payment',
             actorMemberId: _selectedMemberId,
             idempotencyKey: downPaymentIdempotencyKey,
             isExceptional: isExceptional,
@@ -1157,7 +1157,7 @@ class TransactionEntryController extends ChangeNotifier {
             amount: downPayment,
             categoryId: categoryId,
             occurredAt: _selectedDate,
-            note: _note.isEmpty ? 'Down payment' : '${_note} • Down payment',
+            note: _note.isEmpty ? 'Down payment' : '$_note • Down payment',
             isExceptional: isExceptional,
             actorMemberId: _selectedMemberId,
             idempotencyKey: downPaymentIdempotencyKey,

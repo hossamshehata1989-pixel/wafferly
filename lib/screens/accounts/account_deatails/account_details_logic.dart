@@ -1,8 +1,6 @@
 
-import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../constants/transaction_constants.dart';
-import '../../../models/account.dart';
 import '../../../models/transaction.dart';
 
 import 'account_details_models.dart';

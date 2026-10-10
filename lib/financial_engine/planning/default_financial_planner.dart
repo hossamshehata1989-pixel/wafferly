@@ -38,6 +38,9 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       case FinancialActionType.creditCardCharge:
         return _planCreditCardCharge(context);
 
+      case FinancialActionType.creditCardPayment:
+        return _planCreditCardPayment(context);
+
       case FinancialActionType.income:
         return _planIncome(context);
 
@@ -120,6 +123,53 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
           ],
         ),
         CreateTransactionMutation(record: transactionRecord),
+      ],
+    );
+  }
+
+  /// Plans the settlement as an account transfer while retaining a dedicated
+  /// operation/action/source identity. This preserves existing balance math:
+  /// the asset decreases and the signed-negative card liability moves toward 0.
+  FinancialExecutionPlan _planCreditCardPayment(PlanningContext context) {
+    final intent = context.intent;
+    if (intent.amount <= Money.zero) {
+      throw ArgumentError('Credit Card payment amount must be greater than zero.');
+    }
+    final creditCardAccountId = intent.destinationAccountId ??
+        (throw StateError('Credit Card liability account is required'));
+
+    final transactionRecord = FinancialTransactionRecord(
+      transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
+      type: TransactionType.transfer,
+      fromAccountId: intent.sourceAccountId,
+      toAccountId: creditCardAccountId,
+      categoryId: null,
+      subCategoryId: null,
+      amount: intent.amount,
+      currencyCode: context.metadata.currencyCode,
+      paymentMethod: context.metadata.paymentMethod,
+      occurredAt: context.metadata.occurredAt,
+      note: context.metadata.note,
+      isExceptional: false,
+      source: TransactionSource.creditCardPayment,
+      actorMemberId: context.executionContext.actorMemberId,
+    );
+
+    final timestamp = DateTime.now().microsecondsSinceEpoch;
+    return FinancialExecutionPlan(
+      planId: 'plan-$timestamp',
+      operationId: 'credit-card-payment-$timestamp',
+      idempotencyKey: context.executionContext.idempotencyKey,
+      mutations: [
+        CreateTransactionMutation(record: transactionRecord),
+        JournalEntryMutation(
+          journalEntryId: 'journal-credit-card-payment-$timestamp',
+          description: 'Credit Card Payment',
+          lines: [
+            EntryLine(accountId: creditCardAccountId, debit: intent.amount),
+            EntryLine(accountId: intent.sourceAccountId, credit: intent.amount),
+          ],
+        ),
       ],
     );
   }

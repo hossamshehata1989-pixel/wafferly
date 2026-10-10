@@ -217,13 +217,13 @@ class _BalanceOverview extends StatelessWidget {
 
     return ValueListenableBuilder<Box<Account>>(
       valueListenable: accountsBox.listenable(),
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         return ValueListenableBuilder<Box<Transaction>>(
           valueListenable: transactionsBox.listenable(),
-          builder: (context, _, __) {
+          builder: (context, _, _) {
             return ValueListenableBuilder<Box<HiveAllocationRecord>>(
               valueListenable: planningAllocationsBox.listenable(),
-              builder: (context, _, __) {
+              builder: (context, _, _) {
                 final projectionService = context
                     .read<AvailableBalanceProjectionService>();
 
@@ -1510,7 +1510,7 @@ class _AddAccountButton extends StatelessWidget {
 
     return ValueListenableBuilder<Box<Account>>(
       valueListenable: accountsBox.listenable(),
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         final hasLiquidityAccounts = accountsBox.values.any(
           (account) =>
               account.group == AccountGroup.liquidity && !account.isArchived,
@@ -1635,7 +1635,7 @@ class _AccountCard extends StatelessWidget {
                   child: SvgPicture.asset(
                     data.iconAsset,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Icon(
+                    errorBuilder: (_, _, _) => Icon(
                       Icons.account_balance_wallet_rounded,
                       color: data.iconColor,
                       size: m.size(24),

@@ -170,7 +170,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Installment plan selected: ${_installmentMonths} months • '
+          'Installment plan selected: $_installmentMonths months • '
           'EGP ${monthly.toStringAsFixed(0)}/month. '
           'Financing save flow remains behind the Financing Engine boundary.',
         ),

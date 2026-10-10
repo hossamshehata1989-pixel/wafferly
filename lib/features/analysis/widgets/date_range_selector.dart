@@ -113,8 +113,9 @@ class DateRangeSelector extends StatelessWidget {
                       );
                     },
                   );
-                  if (picked != null)
+                  if (picked != null) {
                     onDateRangeChanged(picked.start, picked.end);
+                  }
                 } else if (selectedPeriod == TimePeriod.daily) {
                   final picked = await showDatePicker(
                     context: context,

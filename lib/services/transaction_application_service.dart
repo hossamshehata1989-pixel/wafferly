@@ -11,6 +11,7 @@ import '../financial_engine/results/operation_result.dart';
 
 import '../financial_engine/commands/credit_card/credit_card_charge_intent.dart';
 import '../financial_engine/operations/credit_card_charge_operation.dart';
+import '../financial_engine/operations/credit_card_payment_operation.dart';
 import '../financial_engine/commands/expense/expense_command.dart';
 import '../financial_engine/commands/expense/expense_intent.dart';
 import '../financial_engine/commands/shared/transaction_metadata.dart';
@@ -80,6 +81,45 @@ class TransactionApplicationService {
         occurredAt: occurredAt,
         paymentMethod: 'credit_card',
         currencyCode: currencyCode,
+        note: note,
+      ),
+      context: context,
+    );
+
+    return _engine.execute(operation, context);
+  }
+
+  // ================= Credit Card Payment / Settlement (via Engine) =================
+
+  Future<OperationResult> addCreditCardPayment({
+    required String sourceAssetAccountId,
+    required String creditCardAccountId,
+    required Money amount,
+    required DateTime occurredAt,
+    required String note,
+    required String idempotencyKey,
+    String? actorMemberId,
+  }) async {
+    // Use the target card's configured currency as the operation currency.
+    // The engine domain guard validates source existence and ensures both
+    // accounts and the operation metadata agree; no balance validation is done here.
+    final creditCardAccount = AccountService().getById(creditCardAccountId);
+
+    final context = ExecutionContext(
+      idempotencyKey: idempotencyKey,
+      actorMemberId: actorMemberId,
+      source: 'manual',
+      commandType: 'CreditCardPaymentOperation',
+    );
+
+    final operation = CreditCardPaymentOperation(
+      sourceAssetAccountId: sourceAssetAccountId,
+      creditCardAccountId: creditCardAccountId,
+      amount: amount,
+      metadata: TransactionMetadata(
+        occurredAt: occurredAt,
+        paymentMethod: 'account_transfer',
+        currencyCode: creditCardAccount?.currency ?? '',
         note: note,
       ),
       context: context,

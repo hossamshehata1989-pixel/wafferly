@@ -3,4 +3,5 @@
 /// Kept as a compatibility export while callers migrate. There is deliberately
 /// no second implementation here so scheduling behavior has a single source
 /// of truth.
+library;
 export 'providers/commitment_action_provider.dart';

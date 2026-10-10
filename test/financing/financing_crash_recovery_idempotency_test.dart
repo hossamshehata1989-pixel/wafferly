@@ -34,8 +34,6 @@ import 'package:wafferly/models/schedule_rule.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/services/balance_service.dart';
 import 'package:wafferly/services/ledger_account_seeder.dart';
-import 'package:wafferly/services/transaction_application_service.dart';
-import 'package:wafferly/services/transaction_query_service.dart';
 import 'package:wafferly/application/credit_card/credit_card_financing_application_service.dart';
 
 /// Regression test for the most dangerous installment failure window:

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../core/money/money.dart';
 import '../../../application/credit_card/credit_card_details_projection_service.dart';
+import '../../../application/credit_card/credit_card_statement_due_calculator.dart';
 import '../../../credit_card/domain/credit_card_profile.dart';
 import '../../../models/account.dart';
 import '../../../models/financing/financing_installment.dart';
@@ -11,6 +13,7 @@ import '../../../theme/responsive_metrics.dart';
 import '../../../widgets/shared/credit_card_visual.dart';
 import '../../../widgets/shared/wafferly_card_visual_layout.dart';
 import 'credit_card_installment_conversion_screen.dart';
+import 'credit_card_payment_screen.dart';
 import 'credit_card_transaction_entry_screen.dart';
 
 class CreditCardAccountDetailsScreen extends StatefulWidget {
@@ -115,9 +118,15 @@ class _CreditCardAccountDetailsScreenState
                 creditExposureLabel: t.creditExposure,
 creditExposureValue: projection.outstanding.toDouble(),                available: projection.available.toDouble(),
                 outstanding: (projection.profile.creditLimit.toDouble() - projection.available.toDouble()).clamp(0.0, double.infinity),
-                thisMonthDue: dueBreakdown.thisMonthTotal,
-                thisMonthExpenses: dueBreakdown.thisMonthExpenses,
-                thisMonthInstallments: dueBreakdown.thisMonthInstallments,
+                thisMonthDue: projection.statementDue.isConfigured
+                    ? projection.statementDue.amountDue.toDouble()
+                    : dueBreakdown.thisMonthTotal,
+                thisMonthExpenses: projection.statementDue.isConfigured
+                    ? projection.statementDue.chargeAmountDue.toDouble()
+                    : dueBreakdown.thisMonthExpenses,
+                thisMonthInstallments: projection.statementDue.isConfigured
+                    ? projection.statementDue.installmentAmountDue.toDouble()
+                    : dueBreakdown.thisMonthInstallments,
                 nextMonthDue: dueBreakdown.nextMonthTotal,
                 nextMonthExpenses: dueBreakdown.nextMonthExpenses,
                 nextMonthInstallments: dueBreakdown.nextMonthInstallments,
@@ -129,14 +138,23 @@ creditExposureValue: projection.outstanding.toDouble(),                available
                 onAddTransaction: () => _openEntry(projection.account, projection.profile, CreditCardEntryMode.expense),
                 onAddInstallment: () => _openEntry(projection.account, projection.profile, CreditCardEntryMode.installment),
                 onConvert: () => _openConvert(projection.account),
-                onPay: _showPaymentInfo,
+                onPay: () => _openPayment(
+                  projection.account,
+                  projection.profile,
+                  projection.outstanding,
+                  projection.statementDue,
+                ),
               ),
               SizedBox(height: m.space.sm),
               _StatementImportCard(onTap: _showStatementComingSoon),
               SizedBox(height: m.space.md),
               _SegmentTabs(selected: _tab, onChanged: (value) => setState(() => _tab = value)),
               SizedBox(height: m.space.sm),
-              if (_tab == 0) _TransactionsSection(transactions: transactions, currency: projection.account.currency)
+              if (_tab == 0) _TransactionsSection(
+                transactions: transactions,
+                payments: projection.payments,
+                currency: projection.account.currency,
+              )
               else if (_tab == 1) _InstallmentsSection(installments: installments, currency: projection.account.currency)
               else _StatementsSection(profile: projection.profile),
             ],
@@ -192,24 +210,23 @@ creditExposureValue: projection.outstanding.toDouble(),                available
     );
   }
 
-  void _showPaymentInfo() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF0A1C29),
-      showDragHandle: true,
-      builder: (_) => const Padding(
-        padding: EdgeInsets.fromLTRB(20, 12, 20, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Pay Card', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-            SizedBox(height: 8),
-            Text('Card payment entry will use the existing Financial Operation Engine and linked debit account settings.'),
-          ],
+  Future<void> _openPayment(
+    Account account,
+    CreditCardProfile profile,
+    Money outstanding,
+    CreditCardStatementDueSummary statementDue,
+  ) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => CreditCardPaymentScreen(
+          account: account,
+          profile: profile,
+          outstanding: outstanding,
+          statementDue: statementDue,
         ),
       ),
     );
+    if (result == true && mounted) setState(() {});
   }
 
   void _showCardMenu(Account account, CreditCardProfile profile) {
@@ -998,15 +1015,25 @@ class _SegmentTabs extends StatelessWidget {
 }
 
 class _TransactionsSection extends StatelessWidget {
-  const _TransactionsSection({required this.transactions, required this.currency});
+  const _TransactionsSection({
+    required this.transactions,
+    required this.payments,
+    required this.currency,
+  });
+
+  /// Charge transactions only; they drive statement and due calculations.
   final List<Transaction> transactions;
+  final List<Transaction> payments;
   final String currency;
 
   @override
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
+    final t = AppLocalizations.of(context)!;
+    final events = <Transaction>[...transactions, ...payments]
+      ..sort((a, b) => b.date.compareTo(a.date));
 
-    if (transactions.isEmpty) {
+    if (events.isEmpty) {
       return const _EmptySection(
         title: 'No transactions yet',
         subtitle: 'Credit card transactions will appear here.',
@@ -1014,7 +1041,8 @@ class _TransactionsSection extends StatelessWidget {
     }
 
     return Column(
-      children: transactions.take(12).map((tx) {
+      children: events.take(12).map((tx) {
+        final isPayment = tx.source == TransactionSource.creditCardPayment;
         return ListTile(
           dense: true,
           visualDensity: VisualDensity(
@@ -1030,13 +1058,13 @@ class _TransactionsSection extends StatelessWidget {
             radius: m.isCompactHeight ? m.size(14) : m.size(15),
             backgroundColor: const Color(0xFF182B45),
             child: Icon(
-              Icons.shopping_cart_outlined,
+              isPayment ? Icons.payments_outlined : Icons.shopping_cart_outlined,
               color: const Color(0xFF8CB3FF),
               size: m.isCompactHeight ? m.size(15) : m.size(16),
             ),
           ),
           title: Text(
-            tx.note?.split(' • ').first ?? 'Credit Card purchase',
+            isPayment ? t.creditCardPayment : (tx.note?.split(' • ').first ?? 'Credit Card purchase'),
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: m.isCompactHeight ? m.text(14) : m.text(15),
@@ -1052,9 +1080,10 @@ class _TransactionsSection extends StatelessWidget {
             ),
           ),
           trailing: Text(
-            '-${tx.amount.toStringAsFixed(2)} $currency',
+            '${isPayment ? '+' : '-'}${tx.amount.toStringAsFixed(2)} $currency',
             style: TextStyle(
               fontWeight: FontWeight.w800,
+              color: isPayment ? const Color(0xFF58D6A2) : Colors.white,
               fontSize: m.isCompactHeight ? m.text(12) : m.text(13),
             ),
           ),

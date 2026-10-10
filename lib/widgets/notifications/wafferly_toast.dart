@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../theme/responsive_metrics.dart';
 import '../../services/toast_service.dart';
 
 class WafferlyToast {

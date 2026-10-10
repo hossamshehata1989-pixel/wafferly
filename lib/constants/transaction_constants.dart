@@ -8,6 +8,7 @@ class TransactionSource {
   static const String balanceAdjustment = 'balance_adjustment';
   static const String balanceReconciliation = 'balance_reconciliation';
   static const String creditCardCharge = 'credit_card_charge';
+  static const String creditCardPayment = 'credit_card_payment';
   static const String tempDebt = 'temp_debt';
   static const String importedCsv = 'imported_csv';
   static const String bankSync = 'bank_sync';
@@ -22,6 +23,7 @@ class TransactionSource {
     balanceAdjustment,
     balanceReconciliation,
     creditCardCharge,
+    creditCardPayment,
     tempDebt,
     importedCsv,
     bankSync,
@@ -31,7 +33,9 @@ class TransactionSource {
 
   /// هل المصدر تلقائي أم يدوي؟
   static bool isManual(String source) =>
-      source == manual || source == fromExpense;
+      source == manual ||
+      source == fromExpense ||
+      source == creditCardPayment;
   static bool isAuto(String source) => !isManual(source);
 }
 
