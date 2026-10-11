@@ -21,12 +21,18 @@ class CreditCardPaymentScreen extends StatefulWidget {
     required this.profile,
     required this.outstanding,
     required this.statementDue,
+    required this.fallbackAmountDue,
+    required this.fallbackInstallmentAmountDue,
   });
 
   final Account account;
   final CreditCardProfile profile;
   final Money outstanding;
   final CreditCardStatementDueSummary statementDue;
+
+  /// Fallback due projection used when statement-cycle settings are absent.
+  final Money fallbackAmountDue;
+  final Money fallbackInstallmentAmountDue;
 
   @override
   State<CreditCardPaymentScreen> createState() => _CreditCardPaymentScreenState();
@@ -42,6 +48,21 @@ class _CreditCardPaymentScreenState extends State<CreditCardPaymentScreen> {
   bool _saving = false;
   _PaymentAmountMode _amountMode = _PaymentAmountMode.statementDue;
 
+  Money get _amountDue => widget.statementDue.isConfigured
+      ? widget.statementDue.amountDue
+      : widget.fallbackAmountDue;
+
+  Money get _installmentDue => widget.statementDue.isConfigured
+      ? widget.statementDue.installmentAmountDue
+      : widget.fallbackInstallmentAmountDue;
+
+  Money get _minimumPayment => widget.statementDue.isConfigured
+      ? widget.statementDue.estimatedMinimumPayment
+      : CreditCardStatementDueSummary.estimateMinimumPayment(
+          amountDue: _amountDue,
+          installmentAmountDue: _installmentDue,
+        );
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -54,13 +75,12 @@ class _CreditCardPaymentScreenState extends State<CreditCardPaymentScreen> {
       profile: widget.profile,
     );
     if (_sources.isNotEmpty) _selectedSourceId = _sources.first.id;
-    _amountMode = widget.statementDue.isConfigured &&
-            widget.statementDue.amountDue > Money.zero
+    _amountMode = _amountDue > Money.zero
         ? _PaymentAmountMode.statementDue
-        : _PaymentAmountMode.fullOutstanding;
+        : _PaymentAmountMode.custom;
     _amountController.text = _amountMode == _PaymentAmountMode.statementDue
-        ? widget.statementDue.amountDue.toString()
-        : widget.outstanding.toString();
+        ? _amountDue.toString()
+        : '';
     _initialized = true;
   }
 
@@ -121,19 +141,18 @@ class _CreditCardPaymentScreenState extends State<CreditCardPaymentScreen> {
               mode: _PaymentAmountMode.statementDue,
               title: t.payStatementDue,
               subtitle: widget.statementDue.isConfigured
-                  ? '${_formatMoney(widget.statementDue.amountDue)} • ${t.statementClosedOn}: ${_formatDate(widget.statementDue.statementCloseDate!)} • ${t.paymentDueOn}: ${_formatDate(widget.statementDue.paymentDueDate!)}'
-                  : t.statementDueUnavailable,
-              enabled: widget.statementDue.isConfigured &&
-                  widget.statementDue.amountDue > Money.zero &&
-                  !_saving &&
-                  hasOutstanding,
+                  ? '${_formatMoney(_amountDue)} • ${t.statementClosedOn}: ${_formatDate(widget.statementDue.statementCloseDate!)} • ${t.paymentDueOn}: ${_formatDate(widget.statementDue.paymentDueDate!)}'
+                  : _amountDue > Money.zero
+                      ? '${_formatMoney(_amountDue)} • ${t.statementDueCalculatedHint}'
+                      : t.statementDueUnavailable,
+              enabled: _amountDue > Money.zero && !_saving && hasOutstanding,
               metrics: m,
             ),
             _buildAmountModeTile(
-              mode: _PaymentAmountMode.fullOutstanding,
-              title: t.payFullOutstanding,
-              subtitle: _formatMoney(widget.outstanding),
-              enabled: !_saving && hasOutstanding,
+              mode: _PaymentAmountMode.minimumPayment,
+              title: t.payMinimumPayment,
+              subtitle: '${_formatMoney(_minimumPayment)} • ${t.minimumPaymentEstimateHint}',
+              enabled: _minimumPayment > Money.zero && !_saving && hasOutstanding,
               metrics: m,
             ),
             _buildAmountModeTile(
@@ -143,10 +162,10 @@ class _CreditCardPaymentScreenState extends State<CreditCardPaymentScreen> {
               enabled: !_saving && hasOutstanding,
               metrics: m,
             ),
-            if (widget.statementDue.isConfigured) ...[
+            if (widget.statementDue.isConfigured || _amountDue > Money.zero) ...[
               SizedBox(height: m.spacing(4)),
               Text(
-                widget.statementDue.amountDue.isZero
+                _amountDue.isZero
                     ? t.noStatementAmountDue
                     : t.statementDueCalculatedHint,
                 style: TextStyle(color: Colors.white54, fontSize: m.text(11), height: 1.35),
@@ -298,9 +317,9 @@ class _CreditCardPaymentScreenState extends State<CreditCardPaymentScreen> {
     setState(() {
       _amountMode = mode;
       if (mode == _PaymentAmountMode.statementDue) {
-        _amountController.text = widget.statementDue.amountDue.toString();
-      } else if (mode == _PaymentAmountMode.fullOutstanding) {
-        _amountController.text = widget.outstanding.toString();
+        _amountController.text = _amountDue.toString();
+      } else if (mode == _PaymentAmountMode.minimumPayment) {
+        _amountController.text = _minimumPayment.toString();
       }
     });
   }
@@ -335,7 +354,7 @@ class _CreditCardPaymentScreenState extends State<CreditCardPaymentScreen> {
     if (sourceId == null) return;
     final paymentModeLabel = switch (_amountMode) {
       _PaymentAmountMode.statementDue => t.payStatementDue,
-      _PaymentAmountMode.fullOutstanding => t.payFullOutstanding,
+      _PaymentAmountMode.minimumPayment => t.payMinimumPayment,
       _PaymentAmountMode.custom => t.payCustomAmount,
     };
 
@@ -384,4 +403,4 @@ class _CreditCardPaymentScreenState extends State<CreditCardPaymentScreen> {
 }
 
 
-enum _PaymentAmountMode { statementDue, fullOutstanding, custom }
+enum _PaymentAmountMode { statementDue, minimumPayment, custom }

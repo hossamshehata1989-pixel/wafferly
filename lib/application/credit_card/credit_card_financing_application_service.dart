@@ -42,6 +42,15 @@ final class CreditCardFinancingApplicationService {
   final Box<ScheduleRule> _scheduleRules;
 
 
+  /// Whether a charge already has a non-cancelled financing contract.
+  /// Used by the selection UI to avoid offering an existing conversion again.
+  bool isChargeAlreadyConverted(String chargeId) => _contracts.values.any((contract) {
+        final state = contract.lifecycleState.trim().toLowerCase();
+        return contract.originReference == chargeId &&
+            state != 'cancelled' &&
+            state != 'canceled';
+      });
+
   Future<CreditCardFinancingConversionResult> convertCharge({
     required Transaction charge,
     required int installmentCount,
@@ -117,7 +126,7 @@ final class CreditCardFinancingApplicationService {
           paymentFrequency: 'monthly',
           firstDueDate: firstDueDate,
           installments: drafts,
-          effectiveDate: charge.date,
+          effectiveDate: now,
           createdAt: now,
         ),
       );

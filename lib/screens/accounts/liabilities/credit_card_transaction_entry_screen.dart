@@ -40,7 +40,7 @@ class _CreditCardTransactionEntryScreenState
   DateTime _date = DateTime.now();
   String _categoryId = 'supermarket';
   int _installmentCount = 12;
-  DateTime _firstPaymentDate = DateTime.now().add(const Duration(days: 7));
+  DateTime _firstPaymentDate = DateTime.now();
   bool _saving = false;
 
   @override

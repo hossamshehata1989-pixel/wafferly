@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/transaction.dart';
 import '../../../services/transaction_query_service.dart';
+import '../../../application/credit_card/credit_card_expense_projection_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../helpers/analysis_helpers.dart';
 import '../registry/category_registry.dart';
@@ -10,6 +11,8 @@ import '../widgets/custom_donut_chart.dart';
 
 class AnalysisController {
   final TransactionQueryService _transactionQueryService = const TransactionQueryService();
+  final CreditCardExpenseProjectionService _creditCardExpenseProjectionService =
+      CreditCardExpenseProjectionService();
 
   // State
   bool isLoading = true;
@@ -52,10 +55,13 @@ class AnalysisController {
     onUpdate();
 
     try {
-      final transactions = _transactionQueryService.getByDateRange(
-        startDate,
-        endDate,
-      );
+      final transactions = <Transaction>[
+        ..._transactionQueryService.getByDateRange(startDate, endDate),
+        ..._creditCardExpenseProjectionService.projectForDateRange(
+          startDate: startDate,
+          endDate: endDate,
+        ),
+      ];
 
       // Total expenses
       totalExpenses = filterExpenses(transactions);
@@ -76,10 +82,16 @@ class AnalysisController {
       exceptionalDonutData = _buildDonutData(exceptionalByCategory, t);
 
       // Calculate changes
-      final prevTransactions = _transactionQueryService.getByDateRange(
-        previousStartDate,
-        previousEndDate,
-      );
+      final prevTransactions = <Transaction>[
+        ..._transactionQueryService.getByDateRange(
+          previousStartDate,
+          previousEndDate,
+        ),
+        ..._creditCardExpenseProjectionService.projectForDateRange(
+          startDate: previousStartDate,
+          endDate: previousEndDate,
+        ),
+      ];
       final prevTotal = sumAmounts(filterExpenses(prevTransactions));
       final prevReal = sumAmounts(filterRealExpenses(prevTransactions));
       final prevExceptional = sumAmounts(

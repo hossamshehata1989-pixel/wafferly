@@ -24,7 +24,7 @@ class _CreditCardInstallmentConversionScreenState
   Transaction? _selected;
   final _searchController = TextEditingController();
   int _count = 12;
-  DateTime _firstDueDate = DateTime.now().add(const Duration(days: 7));
+  DateTime _firstDueDate = DateTime.now();
   bool _saving = false;
 
   @override
@@ -36,10 +36,13 @@ class _CreditCardInstallmentConversionScreenState
   @override
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
+    final financing = context.read<CreditCardFinancingApplicationService>();
     final all = context
         .read<TransactionQueryService>()
         .getForAccount(widget.account.id)
-        .where((tx) => tx.type == TransactionType.creditCardCharge)
+        .where((tx) =>
+            tx.type == TransactionType.creditCardCharge &&
+            !financing.isChargeAlreadyConverted(tx.id))
         .toList();
     final query = _searchController.text.trim().toLowerCase();
     final transactions = query.isEmpty

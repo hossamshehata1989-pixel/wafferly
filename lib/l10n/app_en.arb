@@ -511,12 +511,13 @@
   "statementDueUnavailable": "Set the statement closing day and payment due day to calculate this amount.",
   "noStatementAmountDue": "There is no amount due on the current statement.",
   "statementDueCalculatedHint": "Calculated from recorded transactions; this is not an imported bank statement.",
-
   "noEligiblePaymentAccounts": "No active asset accounts are available in this card currency.",
   "confirmPayment": "Confirm payment",
   "noOutstandingPayment": "This card has no outstanding amount to pay.",
   "creditCardPaymentFailed": "The payment could not be completed.",
   "enterValidAmount": "Enter a valid amount greater than zero.",
   "paymentExceedsOutstanding": "Payment amount cannot exceed the current outstanding balance.",
-  "creditCardPaymentInsufficientBalance": "The selected payment account does not have enough available balance."
+  "creditCardPaymentInsufficientBalance": "The selected payment account does not have enough available balance.",
+  "payMinimumPayment": "Minimum payment",
+  "minimumPaymentEstimateHint": "Estimated using a common 5% + installment rule; check your bank statement."
 }

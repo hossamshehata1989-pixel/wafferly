@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/money/money.dart';
 import '../../../application/credit_card/credit_card_details_projection_service.dart';
+import '../../../application/credit_card/credit_card_monthly_due_projection_calculator.dart';
 import '../../../application/credit_card/credit_card_statement_due_calculator.dart';
 import '../../../credit_card/domain/credit_card_profile.dart';
 import '../../../models/account.dart';
@@ -60,12 +61,16 @@ class _CreditCardAccountDetailsScreenState
         final installments = projection.installments;
 
         final now = DateTime.now();
-        final dueBreakdown = _calculateDueBreakdown(
-          transactions: transactions,
+        final dueBreakdown =
+            const CreditCardMonthlyDueProjectionCalculator().calculate(
+          liabilityAccountId: projection.account.id,
+          charges: transactions,
+          payments: projection.payments,
+          contracts: projection.contracts,
           installments: installments,
-          convertedChargeIds: projection.convertedChargeIds,
           statementDay: projection.profile.statementDay,
           paymentDueDay: projection.profile.paymentDueDay,
+          currentOutstanding: projection.outstanding,
           now: now,
         );
 
@@ -120,16 +125,16 @@ creditExposureValue: projection.outstanding.toDouble(),                available
                 outstanding: (projection.profile.creditLimit.toDouble() - projection.available.toDouble()).clamp(0.0, double.infinity),
                 thisMonthDue: projection.statementDue.isConfigured
                     ? projection.statementDue.amountDue.toDouble()
-                    : dueBreakdown.thisMonthTotal,
+                    : dueBreakdown.thisMonthTotal.toDouble(),
                 thisMonthExpenses: projection.statementDue.isConfigured
                     ? projection.statementDue.chargeAmountDue.toDouble()
-                    : dueBreakdown.thisMonthExpenses,
+                    : dueBreakdown.thisMonthExpenses.toDouble(),
                 thisMonthInstallments: projection.statementDue.isConfigured
                     ? projection.statementDue.installmentAmountDue.toDouble()
-                    : dueBreakdown.thisMonthInstallments,
-                nextMonthDue: dueBreakdown.nextMonthTotal,
-                nextMonthExpenses: dueBreakdown.nextMonthExpenses,
-                nextMonthInstallments: dueBreakdown.nextMonthInstallments,
+                    : dueBreakdown.thisMonthInstallments.toDouble(),
+                nextMonthDue: dueBreakdown.nextMonthTotal.toDouble(),
+                nextMonthExpenses: dueBreakdown.nextMonthExpenses.toDouble(),
+                nextMonthInstallments: dueBreakdown.nextMonthInstallments.toDouble(),
                 utilization: projection.utilization,
                 overdueDays: _overdueDays(installments),
               ),
@@ -143,6 +148,8 @@ creditExposureValue: projection.outstanding.toDouble(),                available
                   projection.profile,
                   projection.outstanding,
                   projection.statementDue,
+                  dueBreakdown.thisMonthTotal,
+                  dueBreakdown.thisMonthInstallments,
                 ),
               ),
               SizedBox(height: m.space.sm),
@@ -215,6 +222,8 @@ creditExposureValue: projection.outstanding.toDouble(),                available
     CreditCardProfile profile,
     Money outstanding,
     CreditCardStatementDueSummary statementDue,
+    Money fallbackAmountDue,
+    Money fallbackInstallmentAmountDue,
   ) async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -223,6 +232,8 @@ creditExposureValue: projection.outstanding.toDouble(),                available
           profile: profile,
           outstanding: outstanding,
           statementDue: statementDue,
+          fallbackAmountDue: fallbackAmountDue,
+          fallbackInstallmentAmountDue: fallbackInstallmentAmountDue,
         ),
       ),
     );
@@ -1220,92 +1231,6 @@ class _Metric extends StatelessWidget {
   final Color color;
   @override
   Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.black.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white54, fontSize: 11)), const SizedBox(height: 5), FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 15)))]));
-}
-
-class _DueBreakdown {
-  const _DueBreakdown({
-    required this.thisMonthExpenses,
-    required this.thisMonthInstallments,
-    required this.nextMonthExpenses,
-    required this.nextMonthInstallments,
-  });
-
-  final double thisMonthExpenses;
-  final double thisMonthInstallments;
-  final double nextMonthExpenses;
-  final double nextMonthInstallments;
-
-  double get thisMonthTotal => thisMonthExpenses + thisMonthInstallments;
-  double get nextMonthTotal => nextMonthExpenses + nextMonthInstallments;
-}
-
-_DueBreakdown _calculateDueBreakdown({
-  required List<Transaction> transactions,
-  required List<FinancingInstallment> installments,
-  required Set<String> convertedChargeIds,
-  required int? statementDay,
-  required int? paymentDueDay,
-  required DateTime now,
-}) {
-  var thisExpenses = 0.0;
-  var nextExpenses = 0.0;
-
-  // ADR-069: converted charges are represented by their financing
-  // installments and must not also be counted as full statement expenses.
-  if (statementDay != null && paymentDueDay != null) {
-    for (final tx in transactions) {
-      if (convertedChargeIds.contains(tx.id)) continue;
-
-      final dueDate = _chargeDueDate(tx.date, statementDay, paymentDueDay);
-      if (_sameMonth(dueDate, now)) {
-        thisExpenses += tx.amount.abs();
-      } else if (_sameMonth(dueDate, _addMonths(now, 1))) {
-        nextExpenses += tx.amount.abs();
-      }
-    }
-  }
-
-  var thisInstallments = 0.0;
-  var nextInstallments = 0.0;
-  final nextMonth = _addMonths(now, 1);
-
-  for (final item in installments) {
-    if (item.status == 'settled') continue;
-    if (_sameMonth(item.dueDate, now)) {
-      thisInstallments += item.amount.toDouble();
-    } else if (_sameMonth(item.dueDate, nextMonth)) {
-      nextInstallments += item.amount.toDouble();
-    }
-  }
-
-  return _DueBreakdown(
-    thisMonthExpenses: thisExpenses,
-    thisMonthInstallments: thisInstallments,
-    nextMonthExpenses: nextExpenses,
-    nextMonthInstallments: nextInstallments,
-  );
-}
-
-DateTime _chargeDueDate(DateTime chargeDate, int statementDay, int paymentDueDay) {
-  final closeDay = _validDay(chargeDate.year, chargeDate.month, statementDay);
-  final closeMonth = chargeDate.day <= closeDay
-      ? DateTime(chargeDate.year, chargeDate.month, closeDay)
-      : DateTime(chargeDate.year, chargeDate.month + 1, _validDay(chargeDate.year, chargeDate.month + 1, statementDay));
-
-  final dueYear = closeMonth.month == 12 ? closeMonth.year + 1 : closeMonth.year;
-  final dueMonth = closeMonth.month == 12 ? 1 : closeMonth.month + 1;
-  return DateTime(dueYear, dueMonth, _validDay(dueYear, dueMonth, paymentDueDay));
-}
-
-DateTime _addMonths(DateTime date, int months) =>
-    DateTime(date.year, date.month + months, 1);
-
-bool _sameMonth(DateTime a, DateTime b) =>
-    a.year == b.year && a.month == b.month;
-
-int _validDay(int year, int month, int requestedDay) {
-  final lastDay = DateTime(year, month + 1, 0).day;
-  return requestedDay.clamp(1, lastDay);
 }
 
 int _overdueDays(List<FinancingInstallment> installments) {

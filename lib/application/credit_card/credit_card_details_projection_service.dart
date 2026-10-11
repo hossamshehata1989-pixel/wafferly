@@ -27,6 +27,7 @@ final class CreditCardDetailsProjection {
     required this.payments,
     required this.installments,
     required this.convertedChargeIds,
+    required this.contracts,
     required this.statementDue,
   });
 
@@ -46,6 +47,9 @@ final class CreditCardDetailsProjection {
 
   final List<FinancingInstallment> installments;
   final Set<String> convertedChargeIds;
+  /// Financing records, including terminated contracts retained for historical
+  /// statement-cycle decisions. Cancelled-before-activation contracts are omitted.
+  final List<FinancingContract> contracts;
   final CreditCardStatementDueSummary statementDue;
 }
 
@@ -113,21 +117,25 @@ final class CreditCardDetailsProjectionService {
             tx.toAccountId == accountId)
         .toList();
 
-    final contracts = _contractBox.values.where((contract) {
+    final allContracts = _contractBox.values.where((contract) {
       final state = contract.lifecycleState.trim().toLowerCase();
       return contract.liabilityAccountId == accountId &&
           state != 'cancelled' &&
-          state != 'terminated';
+          state != 'canceled';
+    }).toList()
+      ..sort((a, b) => a.effectiveDate.compareTo(b.effectiveDate));
+    final activeContracts = allContracts.where((contract) {
+      return contract.lifecycleState.trim().toLowerCase() != 'terminated';
     }).toList();
 
-    final contractIds = contracts.map((contract) => contract.contractId).toSet();
+    final contractIds = activeContracts.map((contract) => contract.contractId).toSet();
     final installments = _installmentBox.values
         .where((item) => contractIds.contains(item.contractId))
         .toList()
       ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
     final transactionIds = transactions.map((tx) => tx.id).toSet();
-    final convertedChargeIds = contracts
+    final convertedChargeIds = activeContracts
         .map((contract) => contract.originReference)
         .where(transactionIds.contains)
         .toSet();
@@ -139,7 +147,7 @@ final class CreditCardDetailsProjectionService {
       charges: transactions,
       payments: payments,
       installments: installments,
-      contracts: contracts,
+      contracts: activeContracts,
       now: DateTime.now(),
     );
 
@@ -153,6 +161,7 @@ final class CreditCardDetailsProjectionService {
       payments: payments,
       installments: installments,
       convertedChargeIds: convertedChargeIds,
+      contracts: allContracts,
       statementDue: statementDue,
     );
   }

@@ -226,4 +226,126 @@ void main() {
     expect(result.isConfigured, isFalse);
     expect(result.amountDue, Money.zero);
   });
+
+  test('payment above current due is carried to the next scheduled installment', () {
+    final result = calculator.calculate(
+      liabilityAccountId: 'card-1',
+      profile: profile(),
+      currentOutstanding: Money.parse('300'),
+      charges: [charge('purchase-1', 1000, DateTime(2026, 9, 4))],
+      payments: [payment('payment-1', 1200, DateTime(2026, 10, 10))],
+      installments: [
+        installment(
+          id: 'installment-next',
+          contractId: 'contract-next',
+          amount: 500,
+          dueDate: DateTime(2026, 11, 4),
+        ),
+      ],
+      contracts: [
+        contract(
+          id: 'contract-next',
+          originReference: 'different-purchase',
+          effectiveDate: DateTime(2026, 10, 1),
+        ),
+      ],
+      now: DateTime(2026, 12, 11),
+    );
+
+    // 1,000 pays the older charge; the remaining 200 is pre-applied to the
+    // next installment, leaving 300 due in its statement cycle.
+    expect(result.amountDue, Money.parse('300'));
+    expect(result.installmentAmountDue, Money.parse('300'));
+  });
+
+  test('estimated minimum payment includes full installment plus 5 percent', () {
+    final result = calculator.calculate(
+      liabilityAccountId: 'card-1',
+      profile: profile(),
+      currentOutstanding: Money.parse('1250'),
+      charges: [charge('purchase-1', 1000, DateTime(2026, 9, 4))],
+      payments: const [],
+      installments: [
+        installment(
+          id: 'installment-1',
+          contractId: 'contract-1',
+          amount: 250,
+          dueDate: DateTime(2026, 9, 4),
+        ),
+      ],
+      contracts: [
+        contract(
+          id: 'contract-1',
+          originReference: 'different-purchase',
+          effectiveDate: DateTime(2026, 9, 4),
+        ),
+      ],
+      now: DateTime(2026, 10, 11),
+    );
+
+    expect(result.amountDue, Money.parse('1250'));
+    expect(result.estimatedMinimumPayment, Money.parse('312.50'));
+  });
+  test('installment due today counts in this month without cycle shifting', () {
+    final result = calculator.calculate(
+      liabilityAccountId: 'card-1',
+      profile: profile(closingDay: 14, dueDay: 15),
+      currentOutstanding: Money.parse('3000'),
+      charges: [
+        charge('purchase-installment', 3000, DateTime(2026, 10, 12)),
+      ],
+      payments: const [],
+      installments: [
+        installment(
+          id: 'installment-today',
+          contractId: 'contract-today',
+          amount: 333.33,
+          dueDate: DateTime(2026, 10, 12),
+        ),
+      ],
+      contracts: [
+        contract(
+          id: 'contract-today',
+          originReference: 'purchase-installment',
+          effectiveDate: DateTime(2026, 10, 12),
+        ),
+      ],
+      now: DateTime(2026, 10, 12, 12),
+    );
+
+    expect(result.amountDue, Money.parse('333.33'));
+    expect(result.installmentAmountDue, Money.parse('333.33'));
+    expect(result.chargeAmountDue, Money.zero);
+  });
+
+  test('installment on next payment day is not deferred by another cycle', () {
+    final result = calculator.calculate(
+      liabilityAccountId: 'card-1',
+      profile: profile(closingDay: 14, dueDay: 15),
+      currentOutstanding: Money.parse('500'),
+      charges: [
+        charge('purchase-installment', 500, DateTime(2026, 10, 12)),
+      ],
+      payments: const [],
+      installments: [
+        installment(
+          id: 'installment-next-month',
+          contractId: 'contract-next-month',
+          amount: 250,
+          dueDate: DateTime(2026, 11, 15),
+        ),
+      ],
+      contracts: [
+        contract(
+          id: 'contract-next-month',
+          originReference: 'purchase-installment',
+          effectiveDate: DateTime(2026, 10, 12),
+        ),
+      ],
+      now: DateTime(2026, 10, 12, 12),
+    );
+
+    expect(result.amountDue, Money.zero);
+  });
+
 }

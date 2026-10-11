@@ -1,3 +1,5 @@
+import 'package:decimal/decimal.dart';
+
 import '../../constants/transaction_constants.dart';
 import '../../core/money/money.dart';
 import '../../credit_card/domain/credit_card_profile.dart';
@@ -25,6 +27,29 @@ final class CreditCardStatementDueSummary {
   final Money installmentAmountDue;
   final DateTime? statementCloseDate;
   final DateTime? paymentDueDate;
+
+  /// Indicative minimum due using a common Egyptian-card pattern:
+  /// 5% of current statement dues plus the full installment contribution,
+  /// capped at the total due. Issuer rules vary; this is not an official bank
+  /// calculation and must be checked against the actual statement.
+  Money get estimatedMinimumPayment => estimateMinimumPayment(
+        amountDue: amountDue,
+        installmentAmountDue: installmentAmountDue,
+      );
+
+  /// Shared estimate for both a configured statement and the fallback current
+  /// due projection used before statement settings have been entered.
+  static Money estimateMinimumPayment({
+    required Money amountDue,
+    required Money installmentAmountDue,
+  }) {
+    if (amountDue <= Money.zero) return Money.zero;
+    final percentagePart = Money.fromDecimal(
+      amountDue.decimal * Decimal.parse('0.05'),
+    );
+    final estimate = percentagePart + installmentAmountDue;
+    return estimate > amountDue ? amountDue : estimate;
+  }
 
   bool get isConfigured =>
       statementCloseDate != null && paymentDueDate != null;
@@ -123,17 +148,24 @@ final class CreditCardStatementDueCalculator {
           status == 'canceled' ||
           status == 'superseded' ||
           status == 'settled' ||
-          status == 'terminated' ||
-          _calendarDateAfter(installment.dueDate, now)) {
+          status == 'terminated') {
         continue;
       }
 
-      final closeDate = _closingDateForEvent(installment.dueDate, closingDay);
+      // FinancingInstallment.dueDate is already the contractual payment date.
+      // It is not a purchase/posting date and must not be mapped through a
+      // statement close again. Normalize to date-only to avoid a DateTime.now()
+      // time component accidentally making a same-day installment look future.
+      final installmentDueDate = DateTime(
+        installment.dueDate.year,
+        installment.dueDate.month,
+        installment.dueDate.day,
+      );
       lines.add(
         _StatementObligation(
           id: 'installment:${installment.installmentId}',
-          eventDate: installment.dueDate,
-          dueDate: _paymentDueDateForClose(closeDate, dueDay),
+          eventDate: installmentDueDate,
+          dueDate: installmentDueDate,
           remaining: installment.amount,
           isInstallment: true,
         ),
@@ -173,6 +205,32 @@ final class CreditCardStatementDueCalculator {
         final applied = line.remaining < unapplied ? line.remaining : unapplied;
         line.remaining = line.remaining - applied;
         unapplied = unapplied - applied;
+      }
+
+      // An intentional payment above currently due obligations is treated as
+      // prepayment available for the next scheduled installment(s). It is
+      // derived from the recorded payment and schedule, not stored as a second
+      // credit balance. Do not consume future non-installment purchases here.
+      if (unapplied > Money.zero) {
+        final futureInstallments = lines
+            .where((line) =>
+                line.isInstallment &&
+                line.eventDate.isAfter(payment.date) &&
+                line.remaining > Money.zero)
+            .toList()
+          ..sort((a, b) {
+            final byDue = a.dueDate.compareTo(b.dueDate);
+            if (byDue != 0) return byDue;
+            final byEvent = a.eventDate.compareTo(b.eventDate);
+            return byEvent != 0 ? byEvent : a.id.compareTo(b.id);
+          });
+
+        for (final line in futureInstallments) {
+          if (unapplied <= Money.zero) break;
+          final applied = line.remaining < unapplied ? line.remaining : unapplied;
+          line.remaining = line.remaining - applied;
+          unapplied = unapplied - applied;
+        }
       }
     }
 

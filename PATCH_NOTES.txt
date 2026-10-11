@@ -1,0 +1,13 @@
+Wafferly — Credit Card Payment Update (incremental patch)
+
+Apply this patch on top of the previously installed Wafferly_Credit_Card_Payment_Amount_Modes_PATCH.zip. It is not a full project archive.
+
+Changes:
+- Removes the one-tap “Pay full outstanding” option from the regular payment flow; early settlement remains deferred and separate.
+- Adds “Minimum payment” as an estimate based on a common Egyptian issuer rule: 5% of the calculated statement due plus the full installment contribution, capped at statement due. It is explicitly labelled as an estimate, not an official bank-calculated amount.
+- When a recorded payment exceeds currently due obligations, the read-side statement projection applies the remaining amount to the next scheduled installment(s) in due-date order. It does not create a separate persisted credit balance or terminate the financing contract.
+- Includes tests for excess payment carry-forward and minimum-payment calculation.
+
+Important:
+- Minimum-payment formulas vary by issuer/card and can include additional components. CIB's published FAQ describes 5% of total dues plus monthly installment amounts; HSBC's terms describe a more detailed formula. The estimate must not be presented as the official minimum due from a bank statement.
+- Flutter/Dart tests and flutter analyze were not run in the build environment. Run flutter gen-l10n, flutter analyze, and the statement calculator test locally before treating the quality gate as passed.

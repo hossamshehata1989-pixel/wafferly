@@ -511,12 +511,13 @@
   "statementDueUnavailable": "أضف يوم إغلاق كشف الحساب ويوم الاستحقاق لحساب هذا المبلغ.",
   "noStatementAmountDue": "لا يوجد مبلغ مستحق في كشف الحساب الحالي.",
   "statementDueCalculatedHint": "المبلغ محسوب من المعاملات المسجلة، وليس كشف حساب مستوردًا من البنك.",
-
   "noEligiblePaymentAccounts": "لا توجد حسابات أصول نشطة متاحة بعملة البطاقة.",
   "confirmPayment": "تأكيد السداد",
   "noOutstandingPayment": "لا توجد مديونية مستحقة على هذه البطاقة.",
   "creditCardPaymentFailed": "تعذر إتمام عملية السداد.",
   "enterValidAmount": "أدخل مبلغًا صحيحًا أكبر من صفر.",
   "paymentExceedsOutstanding": "لا يمكن أن يتجاوز مبلغ السداد المديونية الحالية.",
-  "creditCardPaymentInsufficientBalance": "الرصيد المتاح في حساب السداد المختار غير كافٍ."
+  "creditCardPaymentInsufficientBalance": "الرصيد المتاح في حساب السداد المختار غير كافٍ.",
+  "payMinimumPayment": "الحد الأدنى للسداد",
+  "minimumPaymentEstimateHint": "تقدير وفق قاعدة شائعة (٥٪ + القسط)؛ راجع كشف حساب البنك للتأكيد."
 }

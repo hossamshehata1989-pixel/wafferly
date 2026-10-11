@@ -14,11 +14,12 @@ The project does not yet persist a closed statement entity or import an issuer-p
 
 ## Decision
 
-The Pay Credit Card screen offers three choices:
+The Pay Credit Card screen offers three choices; the full-outstanding quick action is intentionally excluded because early settlement is a separate deferred workflow:
 
 1. **Statement Due** — the remaining recorded obligations billed into statement cycles whose payment due dates are on or before the payment-due date for the current calendar month. Prior unpaid obligations are carried into the amount due. The amount is estimated from effective Wafferly transactions and schedules, and is visibly described as calculated rather than imported.
 2. **Full Outstanding** — the authoritative current outstanding liability derived from the existing financial balance projection.
-3. **Custom Amount** — a user-entered amount, still subject to the existing engine constraints that it be positive and not exceed current outstanding.
+3. **Custom Amount** — a user-entered amount, still subject to the existing engine constraints that it be positive and not exceed current outstanding. If the payment exceeds currently due obligations, the derived statement projection applies the excess to the next scheduled installment(s) in due-date order; it does not create a shadow credit balance or close the financing contract.
+4. **Minimum Payment** — an estimate calculated as 5% of the calculated statement due plus the full installment contribution, capped at statement due. This follows a documented common Egyptian issuer pattern (for example, CIB) but is not universal and must be labelled as an estimate; issuer-specific configuration and official statement import remain future work.
 
 Statement Due is the default selection when both closing day and payment due day are configured and the calculated due amount is positive. If either setting is missing, or the calculation finds no amount due for the current payment cycle, Statement Due is unavailable for selection and Full Outstanding is selected by default.
 
@@ -31,7 +32,7 @@ All actual payment mutation continues to pass through the Financial Operation En
 ## Explicit Limitations
 
 - The calculated statement due is not an official issuer statement and may differ when bank-side fees, interest, adjustments, refunds, or unrecorded events have not been imported into Wafferly.
-- This ADR does not create or close a persisted statement, implement bank statement import, or define minimum-payment calculation.
+- This ADR does not create or close a persisted statement or implement bank statement import. Minimum Payment is a clearly labelled estimate only; issuer-specific rules are not inferred as a universal fixed amount.
 - A future implementation of the full ADR-050 statement lifecycle must add stable statement identity, immutable close snapshots, close idempotency, and reconciliation with issuer-provided statement data. It may replace this calculated read-side estimate without changing the three payment modes.
 
 ## Validation Requirements
