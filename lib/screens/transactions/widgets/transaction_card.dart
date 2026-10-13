@@ -29,6 +29,7 @@ class TransactionCard extends StatelessWidget {
   Color _getAmountColor() {
     switch (transaction.type) {
       case TransactionType.expense:
+      case TransactionType.creditCardCharge:
         return Colors.red;
       case TransactionType.income:
         return Colors.green;
@@ -42,6 +43,7 @@ class TransactionCard extends StatelessWidget {
   String _getAmountPrefix() {
     switch (transaction.type) {
       case TransactionType.expense:
+      case TransactionType.creditCardCharge:
         return '-';
 
       case TransactionType.income:
@@ -58,6 +60,7 @@ class TransactionCard extends StatelessWidget {
   String _getAmountSuffix() {
     switch (transaction.type) {
       case TransactionType.expense:
+      case TransactionType.creditCardCharge:
         return '↑';
 
       case TransactionType.income:

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:wafferly/controllers/transaction_entry_controller.dart';
+import 'package:wafferly/application/credit_card/credit_card_first_due_date_policy.dart';
 import 'package:wafferly/credit_card/domain/credit_card_profile.dart';
 import 'package:wafferly/credit_card/infrastructure/hive_credit_card_profile_repository.dart';
 import 'package:wafferly/core/planning/bootstrap/planning_engine_bootstrap.dart';
@@ -21,7 +22,7 @@ import 'package:wafferly/config/category_type.dart';
 import 'package:wafferly/l10n/app_localizations.dart';
 import 'package:wafferly/widgets/expense_entry/member/member_selector.dart';
 
-Future<void> showPaymentMethodSheet({
+Future<bool> showPaymentMethodSheet({
   required BuildContext context,
   required TransactionEntryController controller,
   ExpensePaymentMode? initialMode,
@@ -34,7 +35,7 @@ Future<void> showPaymentMethodSheet({
       (availableHeight > 0 ? availableHeight : media.size.height) *
       (compactScreen ? .92 : .86);
 
-  await WafferlyBottomSheet.show(
+  final completed = await WafferlyBottomSheet.show<bool>(
     context: context,
     // The sheet owns the scroll area so its height stays compact instead of
     // expanding with every account/card/financing row.
@@ -65,6 +66,7 @@ Future<void> showPaymentMethodSheet({
       ),
     ),
   );
+  return completed == true;
 }
 
 class _PaymentMethodSheet extends StatefulWidget {
@@ -107,15 +109,36 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         : ExpensePaymentMode.fullPayment;
     _future = _loadSources();
     _downPayment = 0;
+    _financingSourceId = controller.lockedCreditCardSourceAccountId;
     _firstDueDate = _addMonths(controller.selectedDate, 1);
     _future.then((sources) {
-      if (!mounted || _financingSourceId != null || sources.creditCards.isEmpty) {
-        return;
+      if (!mounted || sources.creditCards.isEmpty) return;
+
+      _CreditCardSource? selectedCard;
+      final fixedId = controller.lockedCreditCardSourceAccountId;
+      if (fixedId != null) {
+        for (final card in sources.creditCards) {
+          if (card.account.id == fixedId) {
+            selectedCard = card;
+            break;
+          }
+        }
+      } else if (_financingSourceId != null) {
+        for (final card in sources.creditCards) {
+          if (card.account.id == _financingSourceId) {
+            selectedCard = card;
+            break;
+          }
+        }
+      } else {
+        selectedCard = sources.creditCards.first;
       }
-      final card = sources.creditCards.first;
+      if (selectedCard == null) return;
       setState(() {
-        _financingSourceId = card.account.id;
-        _firstDueDate = _defaultFirstDueDate(card);
+        _financingSourceId = selectedCard!.account.id;
+        if (!_firstDueDateManuallySet) {
+          _firstDueDate = _defaultFirstDueDate(selectedCard!);
+        }
       });
     });
   }
@@ -134,20 +157,17 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   }
 
   DateTime _defaultFirstDueDate(_CreditCardSource card) {
-    // Use the card's saved payment due day as the default in the month
-    // following the purchase date. Issuer-specific posting rules can differ,
-    // so the user can still override this date.
-    final transactionDate = controller.selectedDate;
-    final nextMonth = DateTime(transactionDate.year, transactionDate.month + 1, 1);
-    final lastDay = DateTime(nextMonth.year, nextMonth.month + 1, 0).day;
-    final configuredDueDay = card.profile.paymentDueDay;
-    final day = (configuredDueDay ?? transactionDate.day)
-        .clamp(1, lastDay)
-        .toInt();
-    return DateTime(nextMonth.year, nextMonth.month, day);
+    // Share the same next-month default used when converting an existing
+    // charge; keep the chosen day aligned with this card's payment due day.
+    return CreditCardFirstDueDatePolicy.defaultFirstDueDate(
+      referenceDate: controller.selectedDate,
+      paymentDueDay: card.profile.paymentDueDay,
+    );
   }
 
   void _selectFinancingCard(_CreditCardSource card) {
+    final fixedId = controller.lockedCreditCardSourceAccountId;
+    if (fixedId != null && card.account.id != fixedId) return;
     setState(() {
       _financingSourceId = card.account.id;
       _firstDueDateManuallySet = false;
@@ -326,7 +346,11 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     if (_financingSourceId == null) {
       try {
         final sources = await _future;
-        if (sources.creditCards.isNotEmpty) {
+        final fixedId = controller.lockedCreditCardSourceAccountId;
+        if (fixedId != null &&
+            sources.creditCards.any((card) => card.account.id == fixedId)) {
+          _financingSourceId = fixedId;
+        } else if (fixedId == null && sources.creditCards.isNotEmpty) {
           _financingSourceId = sources.creditCards.first.account.id;
         }
       } catch (error) {
@@ -336,6 +360,13 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
 
     if (_financingSourceId == null) {
       _showInstallmentError('Choose a financing option first.');
+      return;
+    }
+    final fixedSourceId = controller.lockedCreditCardSourceAccountId;
+    if (fixedSourceId != null && _financingSourceId != fixedSourceId) {
+      _showInstallmentError(
+        'This installment must use the credit card that opened the screen.',
+      );
       return;
     }
 
@@ -496,14 +527,18 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         }
 
         final sources = snapshot.data!;
-        final canInstallment =
-            sources.creditCards.isNotEmpty ||
-            sources.financingProviders.isNotEmpty;
+        final fixedSourceId = controller.lockedCreditCardSourceAccountId;
+        final hasFixedCard = fixedSourceId != null &&
+            sources.creditCards.any((card) => card.account.id == fixedSourceId);
+        final canInstallment = fixedSourceId != null
+            ? hasFixedCard
+            : (sources.creditCards.isNotEmpty ||
+                sources.financingProviders.isNotEmpty);
 
         // Preselect the first executable Credit Card financing source.
         // This is only a UI default; the actual financial write remains in
         // TransactionEntryController.
-        if (_financingSourceId == null && sources.creditCards.isNotEmpty) {
+        if (_financingSourceId == null && sources.creditCards.isNotEmpty && fixedSourceId == null) {
           _financingSourceId = sources.creditCards.first.account.id;
           if (!_firstDueDateManuallySet) {
             _firstDueDate = _defaultFirstDueDate(sources.creditCards.first);
@@ -538,8 +573,10 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
               SizedBox(height: MediaQuery.sizeOf(context).width < 430 ? 5 : 10),
               _buildInstallment(
                 sources,
-                downPayment: _mode == ExpensePaymentMode.downPaymentInstallment,
-                showDownPaymentToggle: true,
+                downPayment: controller.isCreditCardEntrySourceLocked
+                    ? false
+                    : _mode == ExpensePaymentMode.downPaymentInstallment,
+                showDownPaymentToggle: !controller.isCreditCardEntrySourceLocked,
               ),
             ],
           );
@@ -748,7 +785,10 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         ),
         const SizedBox(height: 6),
         if (sources.creditCards.isNotEmpty)
-          ...sources.creditCards.map(
+          ...sources.creditCards.where((card) {
+            final fixedId = controller.lockedCreditCardSourceAccountId;
+            return fixedId == null || card.account.id == fixedId;
+          }).map(
             (card) => _CompactSourceCard(
               icon: Icons.credit_card_outlined,
               color: const Color(0xFFD36BFF),
@@ -759,7 +799,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
               onTap: () => _selectFinancingCard(card),
             ),
           ),
-        if (sources.financingProviders.isNotEmpty)
+        if (sources.financingProviders.isNotEmpty &&
+            controller.lockedCreditCardSourceAccountId == null)
           ...sources.financingProviders.map(
             (account) => _CompactSourceCard(
               icon: Icons.account_balance_outlined,

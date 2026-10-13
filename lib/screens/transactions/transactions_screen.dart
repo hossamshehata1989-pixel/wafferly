@@ -109,9 +109,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     double expense = 0;
     for (final tx in transactions) {
       if (tx.type == TransactionType.income) {
-        income += tx.amount;
-      } else if (tx.type == TransactionType.expense) {
-        expense += tx.amount;
+        income += tx.amount.abs();
+      } else if (tx.type == TransactionType.expense ||
+          tx.type == TransactionType.creditCardCharge) {
+        // Credit-card charges are authoritative transaction rows but still
+        // represent spending for the Transactions summary and Expenses tab.
+        expense += tx.amount.abs();
       }
     }
     _totalIncome = income;
@@ -123,7 +126,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     if (tabIndex == 0) return transactions;
     if (tabIndex == 1) {
       return transactions
-          .where((t) => t.type == TransactionType.expense)
+          .where((t) =>
+              t.type == TransactionType.expense ||
+              t.type == TransactionType.creditCardCharge)
           .toList();
     }
     if (tabIndex == 2) {
@@ -338,9 +343,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         );
       }
       groups[groupKey]!.transactions.add(tx);
-      groups[groupKey]!.totalAmount += tx.type == TransactionType.expense
-          ? -tx.amount
-          : tx.amount;
+      groups[groupKey]!.totalAmount +=
+          (tx.type == TransactionType.expense ||
+                  tx.type == TransactionType.creditCardCharge)
+              ? -tx.amount.abs()
+              : tx.amount;
     }
 
     final sortedGroups = groups.values.toList()

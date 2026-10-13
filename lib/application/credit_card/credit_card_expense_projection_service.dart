@@ -220,8 +220,10 @@ final class CreditCardExpenseProjectionService {
     return projected;
   }
 
-  /// Maps a non-financed card purchase to the month it becomes payable.
-  /// Without complete statement settings, use next calendar month as a safe,
+  /// Maps a non-financed card purchase to the month of its statement cycle.
+  /// This is deliberately separate from the payment-due month: a purchase can
+  /// be recognized in November's Analysis while its payment is due in December.
+  /// Without complete statement settings, use next calendar month as an
   /// explicit fallback instead of silently dropping the expense.
   static DateTime expenseDateForCharge(
     DateTime chargeDate,
@@ -232,9 +234,10 @@ final class CreditCardExpenseProjectionService {
       return _addMonthsClamped(chargeDate, 1);
     }
 
-    final closeDate = statementCloseDateForCharge(chargeDate, statementDay);
-    final nextMonth = DateTime(closeDate.year, closeDate.month + 1, 1);
-    return _dateForDay(nextMonth.year, nextMonth.month, paymentDueDay);
+    // Analysis follows the cycle the purchase belongs to, not the month the
+    // statement payment is due. The due-date preview on the card remains based
+    // on paymentDueDay and is calculated independently.
+    return statementCloseDateForCharge(chargeDate, statementDay);
   }
 
   /// Closing date of the cycle to which [chargeDate] belongs. Missing cycle

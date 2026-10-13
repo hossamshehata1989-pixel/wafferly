@@ -211,6 +211,35 @@ void main() {
     expect(result.amountDue, Money.parse('1000'));
   });
 
+  test('installment due date is not shifted through statement close rules', () {
+    final result = calculator.calculate(
+      liabilityAccountId: 'card-1',
+      profile: profile(closingDay: 9, dueDay: 25),
+      currentOutstanding: Money.parse('166.66'),
+      charges: const [],
+      payments: const [],
+      installments: [
+        installment(
+          id: 'installment-due-this-month',
+          contractId: 'contract-1',
+          amount: 166.66,
+          dueDate: DateTime(2026, 10, 12),
+        ),
+      ],
+      contracts: [
+        contract(
+          id: 'contract-1',
+          originReference: 'purchase-1',
+          effectiveDate: DateTime(2026, 10, 12),
+        ),
+      ],
+      now: DateTime(2026, 10, 13),
+    );
+
+    expect(result.amountDue, Money.parse('166.66'));
+    expect(result.installmentAmountDue, Money.parse('166.66'));
+  });
+
   test('requires statement closing and due-day configuration', () {
     final result = calculator.calculate(
       liabilityAccountId: 'card-1',

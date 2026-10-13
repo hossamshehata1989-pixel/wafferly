@@ -141,6 +141,9 @@ class TransactionEntryController extends ChangeNotifier {
   ExpensePaymentMode _expensePaymentMode = ExpensePaymentMode.fullPayment;
   String _selectedAccountId = "";
   String _selectedAccountName = "اختر حساب";
+  String? _lockedCreditCardSourceAccountId;
+  bool _isCreditCardEntryContext = false;
+  bool _creditCardInstallmentOnly = false;
   String _selectedCategoryId = "";
   String _selectedTransactionType = TransactionType.expense;
   SaveStatus _saveStatus = SaveStatus.idle;
@@ -187,6 +190,14 @@ class TransactionEntryController extends ChangeNotifier {
   ExpensePaymentMode get expensePaymentMode => _expensePaymentMode;
   String get selectedAccountId => _selectedAccountId;
   String get selectedAccountName => _selectedAccountName;
+  bool get isCreditCardEntryContext => _isCreditCardEntryContext;
+  bool get isCreditCardInstallmentOnly => _creditCardInstallmentOnly;
+  bool get isCreditCardEntrySourceLocked =>
+      _isCreditCardEntryContext && _lockedCreditCardSourceAccountId != null;
+  String? get lockedCreditCardSourceAccountId =>
+      _lockedCreditCardSourceAccountId;
+  String get creditCardEntrySourceLabel =>
+      _creditCardInstallmentOnly ? 'Installment' : 'Credit Card';
   String get selectedCategoryId => _selectedCategoryId;
   String? get selectedMemberId => _selectedMemberId;
   String get selectedTransactionType => _selectedTransactionType;
@@ -308,10 +319,54 @@ class TransactionEntryController extends ChangeNotifier {
   /// Preserve the old 1/2-account toggle, but switch to the richer payment
   /// method sheet once the expense has multiple source families.
   bool get shouldOpenPaymentMethodSheet =>
+      !isCreditCardEntrySourceLocked &&
       isExpense &&
       (availableAccounts.length > 2 || hasExtendedExpenseSources);
 
+  /// Pins the shared Expenses screen to the credit card that launched it.
+  /// The controller remains the entry workflow owner; UI controls are only a
+  /// presentation of this restriction and cannot change the financial source.
+  void configureCreditCardEntry({
+    required String creditCardAccountId,
+    required bool installmentOnly,
+  }) {
+    final account = Hive.box<Account>('accounts').get(creditCardAccountId);
+    if (account == null ||
+        account.isArchived ||
+        account.bookId != 'default' ||
+        account.type != 'creditCard') {
+      throw ArgumentError.value(
+        creditCardAccountId,
+        'creditCardAccountId',
+        'Must identify an active Credit Card account.',
+      );
+    }
+
+    _isCreditCardEntryContext = true;
+    _creditCardInstallmentOnly = installmentOnly;
+    _lockedCreditCardSourceAccountId = account.id;
+    _selectedAccountId = account.id;
+    _selectedAccountName = account.name;
+    _selectedTransactionType = TransactionType.creditCardCharge;
+    _paymentMethod = 'credit_card';
+    _expensePaymentMode = installmentOnly
+        ? ExpensePaymentMode.installment
+        : ExpensePaymentMode.fullPayment;
+    _selectedCategoryId = '';
+    _selectedDate = DateTime.now();
+    _amount = '0';
+    _syncCalculatorState();
+    _expression = '';
+    _note = '';
+    notifyListeners();
+  }
+
   void setExpensePaymentMode(ExpensePaymentMode mode) {
+    if (_creditCardInstallmentOnly && mode != ExpensePaymentMode.installment) {
+      _expensePaymentMode = ExpensePaymentMode.installment;
+      notifyListeners();
+      return;
+    }
     _expensePaymentMode = mode;
     if (mode == ExpensePaymentMode.fullPayment) {
       final account = _selectedAccountId.isEmpty
@@ -446,6 +501,10 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   void selectAccount(String id, String name) {
+    if (isCreditCardEntrySourceLocked &&
+        id != _lockedCreditCardSourceAccountId) {
+      return;
+    }
     _selectedAccountId = id;
     _selectedAccountName = name;
 
@@ -561,6 +620,16 @@ class TransactionEntryController extends ChangeNotifier {
 
   // =======================================================
   void setTransactionType(String type) {
+    if (isCreditCardEntrySourceLocked) {
+      _selectedTransactionType = TransactionType.creditCardCharge;
+      _selectedAccountId = _lockedCreditCardSourceAccountId!;
+      _selectedAccountName =
+          Hive.box<Account>('accounts').get(_lockedCreditCardSourceAccountId!)?.name ??
+          _selectedAccountName;
+      _paymentMethod = 'credit_card';
+      notifyListeners();
+      return;
+    }
     _selectedTransactionType = type;
     _selectedCategoryId = "";
     if (type == TransactionType.expense ||
@@ -912,6 +981,20 @@ class TransactionEntryController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      if (isCreditCardEntrySourceLocked &&
+          creditCardAccountId != _lockedCreditCardSourceAccountId) {
+        return const SaveResult(
+          success: false,
+          errorMessage: 'This purchase must use the credit card that opened the screen.',
+        );
+      }
+      if (_creditCardInstallmentOnly && downPayment > 0) {
+        return const SaveResult(
+          success: false,
+          errorMessage: 'Down payment is disabled for this credit-card installment entry.',
+        );
+      }
+
       final amountValue = double.tryParse(_amount) ?? 0;
       final categoryId = _getMainCategoryId(_selectedCategoryId);
 
@@ -1430,6 +1513,19 @@ class TransactionEntryController extends ChangeNotifier {
     _paymentMethod = "cash";
 
     _selectBestAccount();
+    if (isCreditCardEntrySourceLocked) {
+      final fixedAccount = Hive.box<Account>('accounts')
+          .get(_lockedCreditCardSourceAccountId);
+      if (fixedAccount != null) {
+        _selectedAccountId = fixedAccount.id;
+        _selectedAccountName = fixedAccount.name;
+      }
+      _selectedTransactionType = TransactionType.creditCardCharge;
+      _paymentMethod = 'credit_card';
+      _expensePaymentMode = _creditCardInstallmentOnly
+          ? ExpensePaymentMode.installment
+          : ExpensePaymentMode.fullPayment;
+    }
 
     try {
       final owner = Hive.box<MemberModel>(

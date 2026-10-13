@@ -66,6 +66,9 @@ class _AccountButtonState extends State<AccountButton> {
 
         final isLockedCreditCardEdit =
             widget.controller.isEditing && widget.controller.isCreditCardCharge;
+        final isLockedCreditCardSource =
+            widget.controller.isCreditCardEntrySourceLocked;
+        final lockedSourceLabel = widget.controller.creditCardEntrySourceLabel;
         final hasPaymentSources = widget.controller.hasExpensePaymentSources;
         final showPaymentPicker =
             widget.controller.isExpense && hasPaymentSources;
@@ -74,16 +77,21 @@ class _AccountButtonState extends State<AccountButton> {
           return EntryContextChip(
             key: _anchorKey,
             metrics: widget.metrics,
-            label: widget.showPaymentModeLabel
+            label: isLockedCreditCardSource
+                ? lockedSourceLabel
+                : widget.showPaymentModeLabel
                 ? 'Full Payment'
                 : (showPaymentPicker ? 'Select Payment' : 'No Account'),
             iconColor: Colors.white54,
-            onTap: showPaymentPicker ? _handleTap : _showNoAccountSheet,
+            onTap: isLockedCreditCardSource
+                ? null
+                : (showPaymentPicker ? _handleTap : _showNoAccountSheet),
           );
         }
 
         final display = selectedAccount.display;
-        final showChevron = !isLockedCreditCardEdit && hasPaymentSources;
+        final showChevron =
+            !isLockedCreditCardEdit && !isLockedCreditCardSource && hasPaymentSources;
 
         if (widget.showPaymentModeLabel) {
           return AnimatedScale(
@@ -95,7 +103,9 @@ class _AccountButtonState extends State<AccountButton> {
               borderRadius: BorderRadius.circular(10),
               child: InkWell(
                 key: _anchorKey,
-                onTap: isLockedCreditCardEdit ? null : _handleTap,
+                onTap: (isLockedCreditCardEdit || isLockedCreditCardSource)
+                    ? null
+                    : _handleTap,
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
                   height: widget.metrics.width < 360 || widget.metrics.isCompactHeight
@@ -120,10 +130,12 @@ class _AccountButtonState extends State<AccountButton> {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Full Payment',
+                              Text(
+                                isLockedCreditCardSource
+                                    ? lockedSourceLabel
+                                    : 'Full Payment',
                                 maxLines: 1,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -181,7 +193,9 @@ class _AccountButtonState extends State<AccountButton> {
                   )
                 : null,
             borderColor: display.color.withValues(alpha: 0.20),
-            onTap: isLockedCreditCardEdit ? null : _handleTap,
+            onTap: (isLockedCreditCardEdit || isLockedCreditCardSource)
+                ? null
+                : _handleTap,
           ),
         );
 

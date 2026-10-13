@@ -11,6 +11,7 @@ import '../widgets/expense_entry/transfer_form.dart';
 import '../l10n/app_localizations.dart';
 import '../constants/transaction_constants.dart';
 import '../models/transaction.dart';
+import '../models/account.dart';
 import '../theme/responsive_metrics.dart';
 import '../services/transaction_application_service.dart';
 import '../features/transactions/models/entry_mode.dart';
@@ -20,10 +21,20 @@ class ExpensesScreen extends StatelessWidget {
   final String initialType;
   final Transaction? transactionToEdit;
 
+  /// When provided, this screen is opened from a Credit Card and its payment
+  /// source is pinned to that card for the entire entry session.
+  final Account? creditCardAccount;
+
+  /// In this entry context an ordinary full-payment charge is not allowed;
+  /// the user must complete the installment flow from the shared expense UI.
+  final bool creditCardInstallmentOnly;
+
   const ExpensesScreen({
     super.key,
     this.initialType = TransactionType.expense,
     this.transactionToEdit,
+    this.creditCardAccount,
+    this.creditCardInstallmentOnly = false,
   });
 
   @override
@@ -39,7 +50,14 @@ class ExpensesScreen extends StatelessWidget {
           transactionService: transactionService,
         );
 
-        controller.setTransactionType(initialType);
+        if (creditCardAccount != null) {
+          controller.configureCreditCardEntry(
+            creditCardAccountId: creditCardAccount!.id,
+            installmentOnly: creditCardInstallmentOnly,
+          );
+        } else {
+          controller.setTransactionType(initialType);
+        }
 
         if (transactionToEdit != null) {
           controller.loadTransaction(transactionToEdit!);
@@ -55,6 +73,10 @@ class ExpensesScreen extends StatelessWidget {
             title: Text(
               transactionToEdit != null
                   ? 'Edit Transaction'
+                  : creditCardAccount != null
+                  ? (creditCardInstallmentOnly
+                        ? 'Installment Purchase'
+                        : AppLocalizations.of(context)!.expenses)
                   : initialType == TransactionType.income
                   ? AppLocalizations.of(context)!.income
                   : (initialType == TransactionType.transfer
@@ -80,10 +102,11 @@ class ExpensesScreen extends StatelessWidget {
                   Column(
                     children: [
                       // TABS
-                      if (!controller.isEditing) ...[
+                      if (!controller.isEditing &&
+                          !controller.isCreditCardEntryContext) ...[
                         ExpenseEntryTabs(controller: controller),
                         SizedBox(height: metrics.h(3)),
-                      ] else ...[
+                      ] else if (controller.isEditing) ...[
                         Padding(
                           padding: EdgeInsets.symmetric(
                             vertical: metrics.h(10),

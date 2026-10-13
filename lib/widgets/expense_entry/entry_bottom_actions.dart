@@ -7,7 +7,11 @@ import '../../theme/responsive_metrics.dart';
 import '../../financial_engine/resolution/resolution.dart';
 import '../../features/transactions/models/entry_mode.dart';
 import '../../features/transactions/models/entry_mode_extension.dart';
+import '../../features/transactions/models/entry_state.dart';
 import '../notifications/wafferly_toast.dart';
+import 'entry_done_handler.dart';
+import 'payment_method_sheet.dart';
+import '../../features/transactions/models/expense_payment_mode.dart';
 
 class EntryBottomActions extends StatelessWidget {
   final TransactionEntryController controller;
@@ -99,7 +103,8 @@ class EntryBottomActions extends StatelessWidget {
                             foregroundColor: const Color(0xFF065F46),
                             icon: Icons.check_rounded,
                             label: 'Done',
-                            onTap: () => _submitEntry(context),
+                            pulseOnTap: controller.isCreditCardEntryContext,
+                            onTap: () => _handleDone(context),
                           ),
                         ),
                         SizedBox(width: micSize + metrics.spacing(4)),
@@ -108,6 +113,7 @@ class EntryBottomActions extends StatelessWidget {
                           child: _NotchedAddButton(
                             height: height,
                             isExceptional: controller.isExceptional,
+                            enabled: !controller.isCreditCardInstallmentOnly,
                             onAddTap: () => _submitEntry(context),
                             onStarTap: controller.toggleExceptional,
                           ),
@@ -426,6 +432,37 @@ class EntryBottomActions extends StatelessWidget {
     );
   }
 
+  Future<void> _handleDone(BuildContext context) async {
+    if (controller.isCreditCardInstallmentOnly) {
+      // An empty installment-only entry should still be closable with Done.
+      // The user can use the Installment action once a purchase is entered.
+      if (controller.entryState == EntryState.empty) {
+        Navigator.of(context).pop(true);
+        return;
+      }
+
+      // Never let Done create an ordinary full-payment card charge from the
+      // installment-only entry. Done opens the same installment workflow.
+      final completed = await showPaymentMethodSheet(
+        context: context,
+        controller: controller,
+        initialMode: ExpensePaymentMode.installment,
+        installmentOnly: true,
+      );
+      if (completed && context.mounted) {
+        Navigator.of(context).pop(true);
+      }
+      return;
+    }
+
+    if (controller.isCreditCardEntryContext) {
+      await handleEntryDone(context, controller);
+      return;
+    }
+
+    await _submitEntry(context);
+  }
+
   Future<void> _submitEntry(BuildContext context) async {
     final result = await controller.submitEntry();
 
@@ -501,12 +538,14 @@ enum _NotchedSide { left, right }
 class _NotchedAddButton extends StatelessWidget {
   final double height;
   final bool isExceptional;
+  final bool enabled;
   final VoidCallback onAddTap;
   final VoidCallback onStarTap;
 
   const _NotchedAddButton({
     required this.height,
     required this.isExceptional,
+    this.enabled = true,
     required this.onAddTap,
     required this.onStarTap,
   });
@@ -516,12 +555,12 @@ class _NotchedAddButton extends StatelessWidget {
     return ClipPath(
       clipper: const _NotchedButtonClipper(_NotchedSide.left),
       child: Material(
-        color: const Color(0xFFFDE68A), // أصفر فاتح
+        color: enabled ? const Color(0xFFFDE68A) : Colors.white12,
         child: Row(
           children: [
             const SizedBox(width: 4),
             InkWell(
-              onTap: onStarTap,
+              onTap: enabled ? onStarTap : null,
               customBorder: const CircleBorder(),
               borderRadius: BorderRadius.circular(16),
               child: Padding(
@@ -530,19 +569,21 @@ class _NotchedAddButton extends StatelessWidget {
                   isExceptional
                       ? Icons.star_rounded
                       : Icons.star_border_rounded,
-                  color: isExceptional ? Colors.amber[800] : const Color(0xFF92400E),
+                  color: !enabled
+                      ? Colors.white30
+                      : (isExceptional ? Colors.amber[800] : const Color(0xFF92400E)),
                   size: 20,
                 ),
               ),
             ),
             Expanded(
               child: InkWell(
-                onTap: onAddTap,
-                child: const Center(
+                onTap: enabled ? onAddTap : null,
+                child: Center(
                   child: Text(
-                    'Add',
+                    enabled ? 'Add' : 'Locked',
                     style: TextStyle(
-                      color: Color(0xFF92400E), // نص بني غامق
+                      color: enabled ? const Color(0xFF92400E) : Colors.white38,
                       fontSize: 13,
                       fontWeight: FontWeight.w800,
                     ),
@@ -557,7 +598,7 @@ class _NotchedAddButton extends StatelessWidget {
   }
 }
 
-class _NotchedActionButton extends StatelessWidget {
+class _NotchedActionButton extends StatefulWidget {
   final double height;
   final _NotchedSide side;
   final Color backgroundColor;
@@ -566,6 +607,7 @@ class _NotchedActionButton extends StatelessWidget {
   final Color? iconColor;
   final String label;
   final VoidCallback onTap;
+  final bool pulseOnTap;
 
   const _NotchedActionButton({
     required this.height,
@@ -576,37 +618,75 @@ class _NotchedActionButton extends StatelessWidget {
     this.iconColor,
     required this.label,
     required this.onTap,
+    this.pulseOnTap = false,
   });
 
   @override
+  State<_NotchedActionButton> createState() => _NotchedActionButtonState();
+}
+
+class _NotchedActionButtonState extends State<_NotchedActionButton> {
+  bool _flash = false;
+  bool _handlingTap = false;
+
+  Future<void> _handleTap() async {
+    if (_handlingTap) return;
+    _handlingTap = true;
+    if (widget.pulseOnTap) {
+      setState(() => _flash = true);
+      await Future.delayed(const Duration(milliseconds: 110));
+      if (!mounted) return;
+      setState(() => _flash = false);
+      await Future.delayed(const Duration(milliseconds: 70));
+      if (!mounted) return;
+      setState(() => _flash = true);
+      await Future.delayed(const Duration(milliseconds: 110));
+      if (!mounted) return;
+      setState(() => _flash = false);
+    }
+    _handlingTap = false;
+    widget.onTap();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final color = _flash ? Colors.white : widget.backgroundColor;
     return ClipPath(
-      clipper: _NotchedButtonClipper(side),
-      child: Material(
-        color: backgroundColor,
-        child: InkWell(
-          onTap: onTap,
-          child: Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    size: 18,
-                    color: iconColor ?? foregroundColor,
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: foregroundColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
+      clipper: _NotchedButtonClipper(widget.side),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 90),
+        decoration: BoxDecoration(
+          color: color,
+          boxShadow: _flash
+              ? [BoxShadow(color: widget.foregroundColor.withOpacity(.75), blurRadius: 18)]
+              : const [],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: _handleTap,
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      widget.icon,
+                      size: 18,
+                      color: _flash ? widget.backgroundColor : (widget.iconColor ?? widget.foregroundColor),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 5),
+                    Text(
+                      widget.label,
+                      style: TextStyle(
+                        color: _flash ? widget.backgroundColor : widget.foregroundColor,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

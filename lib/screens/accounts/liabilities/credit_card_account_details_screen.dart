@@ -15,7 +15,7 @@ import '../../../widgets/shared/credit_card_visual.dart';
 import '../../../widgets/shared/wafferly_card_visual_layout.dart';
 import 'credit_card_installment_conversion_screen.dart';
 import 'credit_card_payment_screen.dart';
-import 'credit_card_transaction_entry_screen.dart';
+import '../../expenses_screen.dart';
 
 class CreditCardAccountDetailsScreen extends StatefulWidget {
   const CreditCardAccountDetailsScreen({super.key, required this.accountId});
@@ -140,9 +140,15 @@ creditExposureValue: projection.outstanding.toDouble(),                available
               ),
               SizedBox(height: m.space.md),
               _ActionGrid(
-                onAddTransaction: () => _openEntry(projection.account, projection.profile, CreditCardEntryMode.expense),
-                onAddInstallment: () => _openEntry(projection.account, projection.profile, CreditCardEntryMode.installment),
-                onConvert: () => _openConvert(projection.account),
+                onAddTransaction: () => _openEntry(
+                  projection.account,
+                  installmentOnly: false,
+                ),
+                onAddInstallment: () => _openEntry(
+                  projection.account,
+                  installmentOnly: true,
+                ),
+                onConvert: () => _openConvert(projection.account, projection.profile),
                 onPay: () => _openPayment(
                   projection.account,
                   projection.profile,
@@ -171,18 +177,34 @@ creditExposureValue: projection.outstanding.toDouble(),                available
     );
   }
 
-  Future<void> _openEntry(Account account, CreditCardProfile profile, CreditCardEntryMode mode) async {
+  Future<void> _openEntry(
+    Account account, {
+    required bool installmentOnly,
+  }) async {
     final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => CreditCardTransactionEntryScreen(account: account, profile: profile, initialMode: mode)),
+      MaterialPageRoute(
+        builder: (_) => ExpensesScreen(
+          creditCardAccount: account,
+          creditCardInstallmentOnly: installmentOnly,
+        ),
+      ),
     );
     if (result == true && mounted) setState(() {});
   }
 
-  Future<void> _openConvert(Account account) async {
+  Future<void> _openConvert(
+    Account account,
+    CreditCardProfile profile,
+  ) async {
     final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => CreditCardInstallmentConversionScreen(account: account)),
+      MaterialPageRoute(
+        builder: (_) => CreditCardInstallmentConversionScreen(
+          account: account,
+          profile: profile,
+        ),
+      ),
     );
     if (result == true && mounted) setState(() {});
   }

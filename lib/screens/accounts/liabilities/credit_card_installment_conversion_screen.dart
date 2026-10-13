@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../application/credit_card/credit_card_financing_application_service.dart';
+import '../../../application/credit_card/credit_card_first_due_date_policy.dart';
+import '../../../credit_card/domain/credit_card_profile.dart';
 import '../../../models/account.dart';
 import '../../../models/transaction.dart';
 import '../../../constants/transaction_constants.dart';
@@ -10,8 +12,13 @@ import '../../../theme/app_colors.dart';
 import '../../../theme/responsive_metrics.dart';
 
 class CreditCardInstallmentConversionScreen extends StatefulWidget {
-  const CreditCardInstallmentConversionScreen({super.key, required this.account});
+  const CreditCardInstallmentConversionScreen({
+    super.key,
+    required this.account,
+    required this.profile,
+  });
   final Account account;
+  final CreditCardProfile profile;
 
   @override
   State<CreditCardInstallmentConversionScreen> createState() =>
@@ -24,8 +31,17 @@ class _CreditCardInstallmentConversionScreenState
   Transaction? _selected;
   final _searchController = TextEditingController();
   int _count = 12;
-  DateTime _firstDueDate = DateTime.now();
+  late DateTime _firstDueDate;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _firstDueDate = CreditCardFirstDueDatePolicy.defaultFirstDueDate(
+      referenceDate: DateTime.now(),
+      paymentDueDay: widget.profile.paymentDueDay,
+    );
+  }
 
   @override
   void dispose() {

@@ -154,6 +154,9 @@ class EntryContextRow extends StatelessWidget {
   }
 
   Future<void> _openInstallment(BuildContext context) async {
+    // Completing an installment is an operation, not a request to leave the
+    // shared entry screen. The user can add another one, then use Done (flash)
+    // or the app-bar back arrow to leave.
     await showPaymentMethodSheet(
       context: context,
       controller: controller,
