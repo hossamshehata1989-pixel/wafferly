@@ -7,6 +7,7 @@ import '../../models/financing/financing_contract.dart';
 import '../../models/financing/financing_installment.dart';
 import '../../models/transaction.dart';
 import '../../services/transaction_query_service.dart';
+import 'credit_card_cycle_resolver.dart';
 
 /// Read-only projection of credit-card spending into the calendar month in
 /// which it should be reported as an expense.
@@ -231,13 +232,12 @@ final class CreditCardExpenseProjectionService {
     int? paymentDueDay,
   ) {
     if (statementDay == null || paymentDueDay == null) {
-      return _addMonthsClamped(chargeDate, 1);
+      return CreditCardCycleResolver.fallbackMonthFor(chargeDate);
     }
-
-    // Analysis follows the cycle the purchase belongs to, not the month the
-    // statement payment is due. The due-date preview on the card remains based
-    // on paymentDueDay and is calculated independently.
-    return statementCloseDateForCharge(chargeDate, statementDay);
+    return CreditCardCycleResolver.dueDateFor(
+      statementCloseDateForCharge(chargeDate, statementDay),
+      paymentDueDay,
+    );
   }
 
   /// Closing date of the cycle to which [chargeDate] belongs. Missing cycle
@@ -249,16 +249,7 @@ final class CreditCardExpenseProjectionService {
     if (statementDay == null) {
       return DateTime(chargeDate.year, chargeDate.month + 1, 0);
     }
-
-    final thisMonthClose = _dateForDay(
-      chargeDate.year,
-      chargeDate.month,
-      statementDay,
-    );
-    if (chargeDate.day <= thisMonthClose.day) return thisMonthClose;
-
-    final nextMonth = DateTime(chargeDate.year, chargeDate.month + 1, 1);
-    return _dateForDay(nextMonth.year, nextMonth.month, statementDay);
+    return CreditCardCycleResolver.closeDateFor(chargeDate, statementDay);
   }
 
   static bool _inDateRange(DateTime value, DateTime start, DateTime end) {
@@ -271,14 +262,4 @@ final class CreditCardExpenseProjectionService {
   static DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
 
-  static DateTime _addMonthsClamped(DateTime value, int months) {
-    final targetMonth = DateTime(value.year, value.month + months, 1);
-    return _dateForDay(targetMonth.year, targetMonth.month, value.day);
-  }
-
-  static DateTime _dateForDay(int year, int month, int day) {
-    final first = DateTime(year, month, 1);
-    final lastDay = DateTime(first.year, first.month + 1, 0).day;
-    return DateTime(first.year, first.month, day.clamp(1, lastDay));
-  }
 }

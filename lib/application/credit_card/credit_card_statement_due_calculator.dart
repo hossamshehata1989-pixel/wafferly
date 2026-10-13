@@ -305,14 +305,6 @@ final class CreditCardStatementDueCalculator {
     return DateTime(normalizedYear, normalizedMonth, 1);
   }
 
-  static DateTime _dayAfter(DateTime date) {
-    final lastDay = _daysInMonth(date.year, date.month);
-    if (date.day < lastDay) {
-      return DateTime(date.year, date.month, date.day + 1);
-    }
-    final nextMonth = _monthStart(date.year, date.month + 1);
-    return DateTime(nextMonth.year, nextMonth.month, 1);
-  }
 
   static DateTime _dateForDay(int year, int month, int requestedDay) {
     final normalizedMonthStart = _monthStart(year, month);

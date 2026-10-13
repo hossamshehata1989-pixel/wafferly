@@ -60,6 +60,13 @@ final class CreditCardChargeDomainGuard implements DomainGuard {
         reason: 'Credit Card charges require a liability account.',
       );
     }
+    final enteredCurrency = intent.currencyCode?.trim();
+    if (enteredCurrency != null && enteredCurrency.isNotEmpty &&
+        enteredCurrency.toUpperCase() != account.currency.toUpperCase()) {
+      return const DomainViolation(
+        reason: 'Credit Card charge currency must match the card currency. Foreign-currency charges are not supported yet.',
+      );
+    }
 
     final profile = await _profileRepository.findByAccountId(
       intent.sourceAccountId,

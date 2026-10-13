@@ -156,6 +156,7 @@ void main() {
   CreditCardChargeOperation operation({
     required double amount,
     required String idempotencyKey,
+    String currencyCode = 'EGP',
   }) {
     return CreditCardChargeOperation(
       intent: CreditCardChargeIntent(
@@ -166,7 +167,7 @@ void main() {
       metadata: TransactionMetadata(
         occurredAt: DateTime(2026, 9, 26, 10),
         paymentMethod: 'credit_card',
-        currencyCode: 'EGP',
+        currencyCode: currencyCode,
         note: 'Card purchase',
       ),
       context: ExecutionContext(idempotencyKey: idempotencyKey),
@@ -240,6 +241,20 @@ void main() {
 
     expect(result, isA<OperationSucceeded>());
     expect(BalanceService().getBalance('card'), -10000);
+  });
+
+  test('credit card charge rejects a currency different from the card', () async {
+    await seedCard(outstanding: 0);
+    final context = await buildContext();
+
+    final result = await context.engine.execute(
+      operation(amount: 100, idempotencyKey: 'charge-usd-on-egp', currencyCode: 'USD'),
+      const ExecutionContext(idempotencyKey: 'charge-usd-on-egp'),
+    );
+
+    expect(result, isA<DomainViolationResult>());
+    expect(transactionBox.values.where((tx) => tx.type == TransactionType.creditCardCharge), isEmpty);
+    expect(BalanceService().getBalance('card'), 0);
   });
 
   test('zero and negative credit card charges are rejected', () async {

@@ -138,28 +138,28 @@ void main() {
     expect(projected.single.date, DateTime(2026, 10, 11));
   });
 
-  test('configured billing cycle maps unconverted purchase to its statement-cycle month', () {
+  test('configured billing cycle maps unconverted purchase to its expected payment month', () {
     final projected = project(
       transactions: [charge(date: DateTime(2026, 10, 11))],
       profiles: [profile(statementDay: 5, paymentDueDay: 20)],
-      startDate: DateTime(2026, 11, 1),
-      endDate: DateTime(2026, 11, 30),
+      startDate: DateTime(2026, 12, 1),
+      endDate: DateTime(2026, 12, 31),
     );
 
     expect(projected, hasLength(1));
-    expect(projected.single.date, DateTime(2026, 11, 5));
+    expect(projected.single.date, DateTime(2026, 12, 20));
   });
 
-  test('purchase after close belongs to next cycle month even when payable later', () {
+  test('purchase after close appears in expected payment month, not close month', () {
     final projected = project(
       transactions: [charge(date: DateTime(2026, 10, 12))],
       profiles: [profile(statementDay: 9, paymentDueDay: 25)],
-      startDate: DateTime(2026, 11, 1),
-      endDate: DateTime(2026, 11, 30),
+      startDate: DateTime(2026, 12, 1),
+      endDate: DateTime(2026, 12, 31),
     );
 
     expect(projected, hasLength(1));
-    expect(projected.single.date, DateTime(2026, 11, 9));
+    expect(projected.single.date, DateTime(2026, 12, 25));
   });
 
   test('conversion after statement close keeps original purchase in its closed cycle', () {
@@ -170,13 +170,13 @@ void main() {
       installments: [
         installment(id: 'installment-next', dueDate: DateTime(2026, 11, 1), amount: 250),
       ],
-      startDate: DateTime(2026, 9, 1),
-      endDate: DateTime(2026, 9, 30),
+      startDate: DateTime(2026, 10, 1),
+      endDate: DateTime(2026, 10, 31),
     );
 
     expect(projected, hasLength(1));
     expect(projected.single.id, 'cc-expense-charge:charge-1');
     expect(projected.single.amount, 3500);
-    expect(projected.single.date, DateTime(2026, 9, 5));
+    expect(projected.single.date, DateTime(2026, 10, 20));
   });
 }

@@ -30,6 +30,7 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
           action: FinancialActionType.creditCardCharge,
           sourceAccountId: operation.intent.creditCardAccountId,
           amount: operation.intent.amount,
+          currencyCode: operation.metadata.currencyCode,
           categoryId: operation.intent.categoryId,
           actorMemberId: operation.intent.actorMemberId,
           isExceptional: operation.intent.isExceptional,
