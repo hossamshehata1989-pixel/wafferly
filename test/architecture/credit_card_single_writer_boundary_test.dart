@@ -23,17 +23,7 @@ void main() {
     ];
 
     final violations = <String>[];
-
-    for (final entity in featureRoot.listSync(recursive: true)) {
-      if (entity is! File || !entity.path.endsWith('.dart')) continue;
-
-      final content = entity.readAsStringSync();
-      for (final pattern in forbidden) {
-        if (pattern.hasMatch(content)) {
-          violations.add('${entity.path}: ${pattern.pattern}');
-        }
-      }
-    }
+    _collectViolations(featureRoot, forbidden, violations);
 
     expect(
       violations,
@@ -43,4 +33,53 @@ void main() {
           'Financial Engine. Violations: ${violations.join('; ')}',
     );
   });
+
+  test('Credit Cards screen does not access Hive directly', () {
+    final root = Directory.current;
+    final screenFile = File(
+      '${root.path}${Platform.pathSeparator}lib${Platform.pathSeparator}screens'
+      '${Platform.pathSeparator}manage${Platform.pathSeparator}credit_cards_screen.dart',
+    );
+    if (!screenFile.existsSync()) {
+      fail('Credit Cards screen is missing: ${screenFile.path}');
+    }
+
+    final content = screenFile.readAsStringSync();
+    final forbidden = <RegExp>[
+      RegExp(r"package:hive(_flutter)?/hive(_flutter)?\.dart"),
+      RegExp(r'\bHive\s*\.\s*(box|isBoxOpen)\s*(<[^>]+>)?\s*\('),
+      RegExp(r'\.(put|delete|deleteAll)\s*\('),
+    ];
+    final violations = <String>[];
+    for (final pattern in forbidden) {
+      if (pattern.hasMatch(content)) {
+        violations.add('${screenFile.path}: ${pattern.pattern}');
+      }
+    }
+
+    expect(
+      violations,
+      isEmpty,
+      reason:
+          'The Credit Cards screen must use an application projection '
+          'service for persistence access. Violations: ${violations.join('; ')}',
+    );
+  });
+}
+
+void _collectViolations(
+  Directory directory,
+  List<RegExp> forbidden,
+  List<String> violations,
+) {
+  for (final entity in directory.listSync(recursive: true)) {
+    if (entity is! File || !entity.path.endsWith('.dart')) continue;
+
+    final content = entity.readAsStringSync();
+    for (final pattern in forbidden) {
+      if (pattern.hasMatch(content)) {
+        violations.add('${entity.path}: ${pattern.pattern}');
+      }
+    }
+  }
 }

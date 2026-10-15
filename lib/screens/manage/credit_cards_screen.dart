@@ -1,16 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
-import '../../credit_card/domain/credit_card_profile.dart';
-import '../../models/financing/financing_installment.dart';
-import '../../models/financing/financing_contract.dart';
-import '../../models/account.dart';
+import '../../application/credit_card/credit_cards_list_projection_service.dart';
 import '../accounts/add_credit_card/credit_card_intro_screen.dart';
 import '../accounts/liabilities/credit_card_account_details_screen.dart';
-import '../../services/account_service.dart';
-import '../../services/balance_service.dart';
 import '../../theme/responsive_metrics.dart';
 import '../../widgets/shared/credit_card_visual.dart';
 
@@ -22,9 +16,9 @@ class CreditCardsScreen extends StatefulWidget {
 }
 
 class _CreditCardsScreenState extends State<CreditCardsScreen> {
-  final _accountService = AccountService();
-  final _balanceService = BalanceService();
+  final _projectionService = CreditCardsListProjectionService();
   List<_CreditCardData> _cards = const [];
+  _InstallmentOverview _installmentOverview = _InstallmentOverview.empty();
   bool _loading = true;
 
   @override
@@ -34,48 +28,42 @@ class _CreditCardsScreenState extends State<CreditCardsScreen> {
   }
 
   void _loadCards() {
-    final profiles = Hive.box<CreditCardProfile>('credit_card_profiles').values;
-    final accounts = _accountService
-        .getAllActiveAccounts()
-        .where((account) => account.type == 'creditCard')
-        .toList();
-
-    final loaded = <_CreditCardData>[];
-    for (final account in accounts) {
-      CreditCardProfile? profile;
-      for (final candidate in profiles) {
-        if (candidate.accountId == account.id) {
-          profile = candidate;
-          break;
-        }
-      }
-      if (profile == null) continue;
-
-      final balance = _balanceService.getBalance(account.id);
-      final used = math.max(0, -balance).toDouble();
-      final limit = profile.creditLimit.toDouble();
-      final daysUntilDue = _daysUntilDue(profile.paymentDueDay);
-
-      loaded.add(
-        _CreditCardData(
-          accountId: account.id,
-          name: account.name,
-          bank: account.provider ?? '',
-          lastFour: account.accountNumber ?? '',
-          limit: limit,
-          used: used,
+    final projection = _projectionService.project();
+    final loaded = projection.cards.map((card) => _CreditCardData(
+          accountId: card.accountId,
+          name: card.name,
+          bank: card.bank,
+          lastFour: card.lastFour,
+          limit: card.creditLimit.toDouble(),
+          used: card.used.toDouble(),
+          available: card.availableCredit.toDouble(),
+          utilization: card.utilization,
           dueThisMonth: 0,
-          daysUntilDue: daysUntilDue,
+          daysUntilDue: card.daysUntilDue,
           color: const Color(0xFFFF3D81),
-          currency: account.currency,
-          cardVisual: profile.cardVisual,
-        ),
-      );
-    }
+          currency: card.currency,
+          cardVisual: card.cardVisual,
+        )).toList(growable: false);
+
+    final overview = projection.installmentOverview;
+    final loadedOverview = _InstallmentOverview(
+      currentTotal: overview.currentTotal.toDouble(),
+      remainingTotal: overview.remainingTotal.toDouble(),
+      periods: overview.periods
+          .map((period) => _InstallmentPeriod(
+                label: period.label,
+                amount: period.amount.toDouble(),
+                isCurrent: period.isCurrent,
+              ))
+          .toList(growable: false),
+      currencyLabel: overview.currencyLabel,
+      hasMixedCurrencies: overview.hasMixedCurrencies,
+    );
 
     if (mounted) {
       setState(() {
         _cards = loaded;
+        _installmentOverview = loadedOverview;
         _loading = false;
       });
     }
@@ -85,10 +73,6 @@ class _CreditCardsScreenState extends State<CreditCardsScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final metrics = ResponsiveMetrics.of(context);
-
-    final installmentOverview = _InstallmentOverview.fromHive(
-      accountIds: _cards.map((card) => card.accountId).toSet(),
-    );
 
     return Scaffold(
       backgroundColor: scheme.surface,
@@ -172,7 +156,7 @@ class _CreditCardsScreenState extends State<CreditCardsScreen> {
                   ),
                 _SummaryCard(
                   metrics: metrics,
-                  overview: installmentOverview,
+                  overview: _installmentOverview,
                 ),
                 SizedBox(height: metrics.h(14)),
                 _FilterBar(
@@ -383,62 +367,76 @@ class _SummaryCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: metrics.h(13)),
-          Row(
-            children: [
-              Expanded(
-                child: _MainInstallmentMetric(
-                  metrics: metrics,
-                  title: 'This Month',
-                  subtitle: 'Installments',
-                  value: overview.currentTotal,
-                  currency: overview.currencyLabel,
-                  color: const Color(0xFFFFB21A),
-                ),
-              ),
-              SizedBox(width: metrics.spacing(8)),
-              Expanded(
-                child: _MainInstallmentMetric(
-                  metrics: metrics,
-                  title: 'Total',
-                  subtitle: 'Installments',
-                  value: overview.remainingTotal,
-                  currency: overview.currencyLabel,
-                  color: const Color(0xFF39E6B0),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: metrics.h(14)),
-          Row(
-            children: [
-              Text(
-                'Installment trend',
+          if (overview.hasMixedCurrencies)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: metrics.h(12)),
+              child: Text(
+                'Multiple currencies — totals are not combined.',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: .70),
-                  fontSize: metrics.text(9.5),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                '3 previous • current • 3 upcoming',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: .42),
-                  fontSize: metrics.text(8),
+                  color: Colors.white.withValues(alpha: .72),
+                  fontSize: metrics.text(11),
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
-          ),
-          SizedBox(height: metrics.h(8)),
-          SizedBox(
-            height: metrics.h(122),
-            child: _InstallmentBarChart(
-              metrics: metrics,
-              periods: overview.periods,
-              currency: overview.currencyLabel,
+            )
+          else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _MainInstallmentMetric(
+                    metrics: metrics,
+                    title: 'This Month',
+                    subtitle: 'Installments',
+                    value: overview.currentTotal,
+                    currency: overview.currencyLabel,
+                    color: const Color(0xFFFFB21A),
+                  ),
+                ),
+                SizedBox(width: metrics.spacing(8)),
+                Expanded(
+                  child: _MainInstallmentMetric(
+                    metrics: metrics,
+                    title: 'Total',
+                    subtitle: 'Installments',
+                    value: overview.remainingTotal,
+                    currency: overview.currencyLabel,
+                    color: const Color(0xFF39E6B0),
+                  ),
+                ),
+              ],
             ),
-          ),
+            SizedBox(height: metrics.h(14)),
+            Row(
+              children: [
+                Text(
+                  'Installment trend',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .70),
+                    fontSize: metrics.text(9.5),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '3 previous • current • 3 upcoming',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: .42),
+                    fontSize: metrics.text(8),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: metrics.h(8)),
+            SizedBox(
+              height: metrics.h(122),
+              child: _InstallmentBarChart(
+                metrics: metrics,
+                periods: overview.periods,
+                currency: overview.currencyLabel,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -627,127 +625,29 @@ class _InstallmentOverview {
     required this.remainingTotal,
     required this.periods,
     required this.currencyLabel,
+    this.hasMixedCurrencies = false,
   });
 
   final double currentTotal;
   final double remainingTotal;
   final List<_InstallmentPeriod> periods;
   final String? currencyLabel;
+  final bool hasMixedCurrencies;
 
-  factory _InstallmentOverview.fromHive({
-    required Set<String> accountIds,
-  }) {
-    if (!Hive.isBoxOpen('financing_installments') ||
-        !Hive.isBoxOpen('financing_contracts')) {
-      return _empty();
-    }
-
-    final installments = Hive.box<FinancingInstallment>('financing_installments');
-    final contracts = Hive.box<FinancingContract>('financing_contracts');
-    final now = DateTime.now();
-    final currentStart = DateTime(now.year, now.month);
-
-    final periodStarts = List.generate(
-      7,
-      (index) => DateTime(now.year, now.month - 3 + index),
-    );
-
-    final totals = <DateTime, double>{
-      for (final start in periodStarts) start: 0,
-    };
-    double remaining = 0;
-    final currencies = <String>{};
-
-    for (final installment in installments.values) {
-      final contract = contracts.get(installment.contractId);
-      if (contract == null ||
-          !accountIds.contains(contract.liabilityAccountId)) {
-        continue;
-      }
-
-      final status = installment.status.trim().toLowerCase();
-      final amount = installment.amount.toDouble();
-      if (amount <= 0) continue;
-
-      final due = DateTime(
-        installment.dueDate.year,
-        installment.dueDate.month,
+  factory _InstallmentOverview.empty() => _InstallmentOverview(
+        currentTotal: 0,
+        remainingTotal: 0,
+        periods: const [
+          _InstallmentPeriod(label: '-3', amount: 0),
+          _InstallmentPeriod(label: '-2', amount: 0),
+          _InstallmentPeriod(label: '-1', amount: 0),
+          _InstallmentPeriod(label: 'Now', amount: 0, isCurrent: true),
+          _InstallmentPeriod(label: '+1', amount: 0),
+          _InstallmentPeriod(label: '+2', amount: 0),
+          _InstallmentPeriod(label: '+3', amount: 0),
+        ],
+        currencyLabel: null,
       );
-      DateTime? bucket;
-      for (final start in periodStarts) {
-        if (start.year == due.year && start.month == due.month) {
-          bucket = start;
-          break;
-        }
-      }
-      if (bucket != null) {
-        totals[bucket] = (totals[bucket] ?? 0) + amount;
-      }
-
-      // Any non-settled installment is still an outstanding contractual
-      // installment, including overdue installments.
-      if (status != 'settled' &&
-          status != 'cancelled' &&
-          status != 'canceled' &&
-          status != 'terminated') {
-        remaining += amount;
-      }
-
-      // FinancingInstallment does not carry currency. Currency is therefore
-      // resolved at the credit-card/account layer. Keep the summary neutral
-      // when the portfolio contains multiple currencies.
-    }
-
-    final labels = <String>['-3', '-2', '-1', 'Now', '+1', '+2', '+3'];
-    final periods = List.generate(
-      7,
-      (index) => _InstallmentPeriod(
-        label: labels[index],
-        amount: totals[periodStarts[index]] ?? 0,
-        isCurrent: index == 3,
-      ),
-    );
-
-    final currentTotal = totals[currentStart] ?? 0;
-    final currencyLabel = _singlePortfolioCurrency(accountIds);
-
-    return _InstallmentOverview(
-      currentTotal: currentTotal,
-      remainingTotal: remaining,
-      periods: periods,
-      currencyLabel: currencyLabel,
-    );
-  }
-
-  static _InstallmentOverview _empty() {
-    return _InstallmentOverview(
-      currentTotal: 0,
-      remainingTotal: 0,
-      periods: const [
-        _InstallmentPeriod(label: '-3', amount: 0),
-        _InstallmentPeriod(label: '-2', amount: 0),
-        _InstallmentPeriod(label: '-1', amount: 0),
-        _InstallmentPeriod(label: 'Now', amount: 0, isCurrent: true),
-        _InstallmentPeriod(label: '+1', amount: 0),
-        _InstallmentPeriod(label: '+2', amount: 0),
-        _InstallmentPeriod(label: '+3', amount: 0),
-      ],
-      currencyLabel: null,
-    );
-  }
-
-  static String? _singlePortfolioCurrency(Set<String> accountIds) {
-    if (accountIds.isEmpty) return null;
-    final accounts = Hive.box<Account>('accounts').values;
-    final currencies = <String>{};
-    for (final account in accounts) {
-      if (accountIds.contains(account.id)) {
-        final currency = (account.currency as String?)?.trim();
-        if (currency != null && currency.isNotEmpty) currencies.add(currency);
-      }
-    }
-    return currencies.length == 1 ? currencies.first : null;
-  }
 }
 
 class _InstallmentPeriod {
@@ -871,10 +771,8 @@ class _CreditCardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final available = math.max(0, card.limit - card.used).toDouble();
-    final usage = card.limit == 0
-        ? 0.0
-        : (card.used / card.limit).clamp(0.0, 1.0);
+    final available = card.available;
+    final usage = card.utilization;
 
     final status = _statusFor(card.daysUntilDue);
     final statusColor = _statusColor(status);
@@ -1422,6 +1320,8 @@ class _CreditCardData {
     required this.lastFour,
     required this.limit,
     required this.used,
+    required this.available,
+    required this.utilization,
     required this.dueThisMonth,
     required this.daysUntilDue,
     required this.color,
@@ -1435,6 +1335,8 @@ class _CreditCardData {
   final String lastFour;
   final double limit;
   final double used;
+  final double available;
+  final double utilization;
   final double dueThisMonth;
   final int daysUntilDue;
   final Color color;
@@ -1448,16 +1350,6 @@ class _CreditCardData {
     if (words.length == 1) return words.first.length <= 4 ? words.first.toUpperCase() : words.first.substring(0, 4).toUpperCase();
     return words.take(3).map((e) => e[0]).join().toUpperCase();
   }
-}
-
-int _daysUntilDue(int? paymentDueDay) {
-  if (paymentDueDay == null) return 999;
-  final now = DateTime.now();
-  var due = DateTime(now.year, now.month, paymentDueDay);
-  if (!due.isAfter(now)) {
-    due = DateTime(now.year, now.month + 1, paymentDueDay);
-  }
-  return due.difference(now).inDays;
 }
 
 String _statusFor(int days) {
