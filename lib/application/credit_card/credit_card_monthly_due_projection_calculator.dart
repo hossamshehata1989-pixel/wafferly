@@ -14,12 +14,36 @@ final class CreditCardMonthlyDueBreakdown {
     required this.thisMonthInstallments,
     required this.nextMonthExpenses,
     required this.nextMonthInstallments,
+    required this.currentOutstanding,
+    required this.projectedOutstanding,
+    required this.reconciliationDelta,
+    required this.projectedWithinWindowBeforeCap,
+    required this.capSuppressedAmount,
   });
 
   final Money thisMonthExpenses;
   final Money thisMonthInstallments;
   final Money nextMonthExpenses;
   final Money nextMonthInstallments;
+
+  /// Authoritative liability amount supplied by the caller.
+  final Money currentOutstanding;
+
+  /// Sum of all remaining charge/installment lines after payment allocation,
+  /// before the display cap is applied.
+  final Money projectedOutstanding;
+
+  /// Positive means the authoritative liability exceeds the projected lines;
+  /// negative means projected lines exceed the authoritative liability.
+  final Money reconciliationDelta;
+
+  /// Sum of remaining lines due through the end of next month, before capping.
+  final Money projectedWithinWindowBeforeCap;
+
+  /// Amount removed from the two-month display by the outstanding cap.
+  final Money capSuppressedAmount;
+
+  bool get isReconciled => reconciliationDelta.isZero;
 
   Money get thisMonthTotal => thisMonthExpenses + thisMonthInstallments;
   Money get nextMonthTotal => nextMonthExpenses + nextMonthInstallments;
@@ -176,6 +200,19 @@ final class CreditCardMonthlyDueProjectionCalculator {
       }
     }
 
+    // Diagnostics are computed before the display cap, so the cap cannot hide
+    // a mismatch between modeled obligations and the authoritative liability.
+    var projectedOutstanding = Money.zero;
+    var projectedWithinWindowBeforeCap = Money.zero;
+    for (final line in lines) {
+      if (line.remaining <= Money.zero) continue;
+      projectedOutstanding += line.remaining;
+      if (!_dateOnly(line.dueDate).isAfter(_dateOnly(nextMonthEnd))) {
+        projectedWithinWindowBeforeCap += line.remaining;
+      }
+    }
+    final reconciliationDelta = currentOutstanding - projectedOutstanding;
+
     // Keep the two displayed month totals consistent with the authoritative
     // liability balance. Oldest due lines consume the cap first.
     lines.sort(_compareLines);
@@ -207,11 +244,19 @@ final class CreditCardMonthlyDueProjectionCalculator {
       }
     }
 
+    final cappedWindowTotal =
+        thisExpenses + thisInstallments + nextExpenses + nextInstallments;
+
     return CreditCardMonthlyDueBreakdown(
       thisMonthExpenses: thisExpenses,
       thisMonthInstallments: thisInstallments,
       nextMonthExpenses: nextExpenses,
       nextMonthInstallments: nextInstallments,
+      currentOutstanding: currentOutstanding,
+      projectedOutstanding: projectedOutstanding,
+      reconciliationDelta: reconciliationDelta,
+      projectedWithinWindowBeforeCap: projectedWithinWindowBeforeCap,
+      capSuppressedAmount: projectedWithinWindowBeforeCap - cappedWindowTotal,
     );
   }
 

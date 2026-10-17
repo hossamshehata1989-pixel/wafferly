@@ -246,4 +246,42 @@ void main() {
     expect(result.nextMonthExpenses, Money.fromDouble(500));
   });
 
+
+  test('reconciliation diagnostics report liability minus projected obligations', () {
+    final result = calculator.calculate(
+      liabilityAccountId: 'card-1',
+      charges: [charge(id: 'charge-1', amount: 200)],
+      payments: const [],
+      contracts: const [],
+      installments: const [],
+      statementDay: null,
+      paymentDueDay: null,
+      currentOutstanding: Money.fromDouble(250),
+      now: now,
+    );
+
+    expect(result.projectedOutstanding, Money.fromDouble(200));
+    expect(result.reconciliationDelta, Money.fromDouble(50));
+    expect(result.isReconciled, isFalse);
+  });
+
+  test('outstanding cap remains in force and its suppression is diagnosable', () {
+    final result = calculator.calculate(
+      liabilityAccountId: 'card-1',
+      charges: [charge(id: 'charge-1', amount: 350)],
+      payments: const [],
+      contracts: const [],
+      installments: const [],
+      statementDay: null,
+      paymentDueDay: null,
+      currentOutstanding: Money.fromDouble(200),
+      now: now,
+    );
+
+    expect(result.projectedOutstanding, Money.fromDouble(350));
+    expect(result.reconciliationDelta, Money.fromDouble(-150));
+    expect(result.nextMonthTotal, Money.fromDouble(200));
+    expect(result.capSuppressedAmount, Money.fromDouble(150));
+  });
+
 }
