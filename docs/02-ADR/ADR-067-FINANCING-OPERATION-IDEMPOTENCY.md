@@ -2,7 +2,7 @@
 
 **Status:** Proposed → Implementation  
 **Date:** 2026-09-27  
-**Related:** ADR-041, ADR-047, ADR-047, ADR-051, ADR-059, ADR-063, ADR-066
+**Related:** ADR-041, ADR-047, ADR-051, ADR-059, ADR-063, ADR-066
 
 ## Decision
 Every financing operation capable of producing a financial effect has a stable idempotency identity.

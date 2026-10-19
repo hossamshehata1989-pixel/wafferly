@@ -1,3 +1,5 @@
+> **ARCHIVED DUPLICATE — NOT THE ACTIVE ADR.** Preserved for historical traceability. The active credit-card charge decision is [ADR-047 — Credit Card Charge Operation](../ADR-047-CREDIT-CARD-CHARGE-OPERATION.md).
+
 # ADR-047 — Credit Card Charge Operation
 
 **Status:** Proposed → Implementation

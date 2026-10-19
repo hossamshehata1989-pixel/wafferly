@@ -67,3 +67,13 @@ Candidates:
 ## Evidence limitation
 
 This audit inspected filenames, file lengths, internal titles/statuses, and textual differences in the supplied ZIP. It did not run Flutter tests, verify the live Git working tree, or prove which ADR text is implemented in code. No source ADR has been changed by this patch.
+
+## Resolution Update (2026-10-17)
+
+The scheduled-execution numbering collision has been resolved in the current working tree:
+
+- ADR-046 remains Monthly Due-Date Rollover Policy.
+- ADR-047 remains Credit Card Charge Operation.
+- Scheduled Execution Atomicity and Recovery now uses the filename and internal title ADR-076.
+- The duplicate scheduled-execution document and duplicate ADR-048 credit-card document were preserved under `docs/02-ADR/_archive/`.
+- The original ADR-076 decision status remains **Accepted**. This update records the file/reference cleanup and does not constitute a new decision approval.

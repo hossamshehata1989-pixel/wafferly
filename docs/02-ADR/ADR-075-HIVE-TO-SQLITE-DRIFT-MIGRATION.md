@@ -15,7 +15,7 @@
 - `docs/02-ADR/ADR-004 — Domain Mutation Execution.md` — mutation execution and all-or-nothing behavior.
 - `docs/02-ADR/ADR-007 Financial Engine is the only writer of Financial Truth..md` — single financial writer boundary.
 - `docs/02-ADR/ADR-034-Exact-Money-Representation.md` — `Money`/`Decimal` is authoritative in the domain.
-- `docs/02-ADR/ADR-047-SCHEDULED-EXECUTION-ATOMICITY-AND-RECOVERY.md` — current Hive multi-box atomicity limitation.
+- `docs/02-ADR/ADR-076-SCHEDULED-EXECUTION-ATOMICITY-AND-RECOVERY.md` — current Hive multi-box atomicity limitation.
 - `docs/02-ADR/ADR-067-FINANCING-OPERATION-IDEMPOTENCY.md` — stable operation identity and retry-safe effects.
 - `docs/02-ADR/ADR-074-SMS-IFUP-V1-INTEGRATION.md` — SMS/IFUP production-save gate and draft persistence boundary.
 

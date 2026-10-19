@@ -1,3 +1,5 @@
+> **ARCHIVED DUPLICATE — NOT THE ACTIVE ADR.** Preserved for historical traceability. The active scheduled-execution decision is [ADR-076 — Scheduled Execution Atomicity and Recovery](../ADR-076-SCHEDULED-EXECUTION-ATOMICITY-AND-RECOVERY.md).
+
 # ADR-046 — Scheduled Execution Atomicity and Recovery
 
 **Status:** Accepted

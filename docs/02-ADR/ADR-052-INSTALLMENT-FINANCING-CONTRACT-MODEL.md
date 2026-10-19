@@ -2,7 +2,7 @@
 
 **Status:** Proposed → Implementation  
 **Date:** 2026-09-27  
-**Related:** ADR-032 (Debt Domain Architecture), ADR-035 (Credit Card Domain), ADR-048 (Credit Card Charge Operation), ADR-050 (Credit Card Statement Lifecycle & Due-Date Generation), ADR-051 (Credit Card Payment / Settlement Operation)
+**Related:** ADR-032 (Debt Domain Architecture), ADR-035 (Credit Card Domain), ADR-047 (Credit Card Charge Operation), ADR-050 (Credit Card Statement Lifecycle & Due-Date Generation), ADR-051 (Credit Card Payment / Settlement Operation)
 
 ## 1. Context
 

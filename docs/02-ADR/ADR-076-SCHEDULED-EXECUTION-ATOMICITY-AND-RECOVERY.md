@@ -1,4 +1,4 @@
-# ADR-046 — Scheduled Execution Atomicity and Recovery
+# ADR-076 — Scheduled Execution Atomicity and Recovery
 
 **Status:** Accepted
 **Date:** 2026-09-25

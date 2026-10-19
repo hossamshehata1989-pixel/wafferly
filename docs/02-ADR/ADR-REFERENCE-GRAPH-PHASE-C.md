@@ -5,7 +5,7 @@
 ## Key outcomes
 
 1. `ADR-047-CREDIT-CARD-CHARGE-OPERATION.md` is explicitly mapped as ADR-047 in `docs/ADR-047-070-REFERENCE-GRAPH-AUDIT.md` (13 textual mentions of ADR-047 in that audit). Do not renumber it.
-2. `ADR-047-SCHEDULED-EXECUTION-ATOMICITY-AND-RECOVERY.md` has internal title ADR-046 and an exact-content duplicate at `docs/ADR-046-SCHEDULED-EXECUTION-ATOMICITY-AND-RECOVERY.md`. It is the clear numbering collision candidate, but a new number still requires owner approval and repository-wide reference migration.
+2. Historical snapshot finding: `ADR-047-SCHEDULED-EXECUTION-ATOMICITY-AND-RECOVERY.md` had internal title ADR-046 and an exact-content duplicate. The collision was resolved on 2026-10-17 by renaming the active document to ADR-076 and archiving the duplicate; see the Resolution Update below.
 3. ADR-004 and ADR-028 each have six filename variants with identical SHA-256 hashes within their respective groups. These are byte-identical duplicates in this snapshot; still do not remove them until link/path references and the Git baseline are secured.
 4. ADR-050 revised is the leading candidate, not yet canonical; ADR-052 revised is the leading candidate, not yet canonical; ADR-053 needs consolidation because a short Accepted file coexists with two longer implementation-stage files; ADR-062 Accepted short file governs strict overpayment rejection.
 5. `ADR-071-CREDIT-CARD-PAYMENT-METHOD-CHANGE-BOUNDARY (1).md` is the only ADR-071 file found in `docs/02-ADR` in this snapshot, but the `(1)` suffix alone is insufficient reason to rename it.
@@ -67,11 +67,11 @@ Counts below are textual mentions across markdown, text, Dart, YAML, JSON and di
   - `docs/02-ADR/ADR-028 ╬ô├ç├╢ Allocation Contract.md`
   - `docs/02-ADR/ADR-028 ╬ô├▓┬╝Γö£Γöñ╬ô├╢┬úΓö£┬║╬ô├╢┬ú╬ô├▓├│ Allocation Contract.md`
 
-## Proposed canonicalization mapping (approval required)
+## Canonicalization mapping and remaining proposals
 
 | ADR / concern | Proposed target | Source files to preserve until migration | Approval status |
 |---|---|---|---|
-| 046 scheduled execution | Assign a new unused ADR number only after owner approval and full reference search | `docs/02-ADR/ADR-047-SCHEDULED-EXECUTION-ATOMICITY-AND-RECOVERY.md`; `docs/ADR-046-SCHEDULED-EXECUTION-ATOMICITY-AND-RECOVERY.md` | Pending; do not rename yet |
+| Scheduled execution atomicity/recovery | ADR-076: `docs/02-ADR/ADR-076-SCHEDULED-EXECUTION-ATOMICITY-AND-RECOVERY.md` | `docs/02-ADR/_archive/ADR-046-DUPLICATE-SCHEDULED-EXECUTION-ATOMICITY-AND-RECOVERY.md` | Resolved 2026-10-17; duplicate preserved in archive |
 | 047 credit-card charge | Keep ADR-047 | `docs/02-ADR/ADR-047-CREDIT-CARD-CHARGE-OPERATION.md` and `.diff` | Strong evidence; verify code/docs references |
 | 050 statement lifecycle | Prefer revised file for consolidation | Both 050 files | Provisional |
 | 052 financing contract | Prefer revised file for consolidation | Both 052 files | Provisional |
@@ -94,3 +94,11 @@ Counts below are textual mentions across markdown, text, Dart, YAML, JSON and di
 - Counts are textual references, not semantic link validation.
 - No Flutter tests were run.
 - No source ADR was modified by this patch.
+
+## Resolution Update (2026-10-17)
+
+The scheduled-execution ADR has been renumbered to ADR-076 in the current working tree. References that identify the active scheduled-execution document must use `ADR-076-SCHEDULED-EXECUTION-ATOMICITY-AND-RECOVERY.md`.
+
+The former duplicate was preserved in `docs/02-ADR/_archive/`. Historical reference counts and findings above describe the original evidence snapshot and have not been retroactively rewritten.
+
+This update does not resolve the separate ADR-004, ADR-028, ADR-050, ADR-052, ADR-053, ADR-062, or ADR-071 findings.
