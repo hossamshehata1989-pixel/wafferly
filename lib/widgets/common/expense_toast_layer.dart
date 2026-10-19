@@ -60,7 +60,9 @@ class _ExpenseToastLayerState extends State<ExpenseToastLayer> {
         }
 
         if (toast.type == ToastType.success) {
-          return const _SuccessBanner();
+          // key: a second success while the first is on screen restarts the
+          // banner instead of inheriting the first one's timers.
+          return _SuccessBanner(key: ValueKey(toast), toast: toast);
         }
 
         return Positioned(
@@ -86,79 +88,124 @@ class _ExpenseToastLayerState extends State<ExpenseToastLayer> {
 }
 
 class _SuccessBanner extends StatefulWidget {
-  const _SuccessBanner();
+  final ToastData toast;
+
+  const _SuccessBanner({super.key, required this.toast});
 
   @override
   State<_SuccessBanner> createState() => _SuccessBannerState();
 }
 
 class _SuccessBannerState extends State<_SuccessBanner> {
+  static const _slide = Duration(milliseconds: 280);
+  static const _visibleFor = Duration(milliseconds: 1800);
+  static const _green = Color(0xFF2DBE74);
+
   bool _visible = false;
+  Timer? _hideTimer;
+  Timer? _removeTimer;
 
   @override
   void initState() {
     super.initState();
 
-    Future.microtask(() {
-      if (mounted) {
-        setState(() => _visible = true);
-      }
+    // Start off-screen, then slide in on the next frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _visible = true);
     });
 
-    Future.delayed(const Duration(milliseconds: 2000), () async {
+    _hideTimer = Timer(_visibleFor, () {
       if (!mounted) return;
-
       setState(() => _visible = false);
 
-      await Future.delayed(const Duration(milliseconds: 2000));
-
-      if (mounted) {
-        ToastService.hide();
-      }
+      // Remove the toast only after the slide-out has finished.
+      _removeTimer = Timer(_slide, () {
+        if (ToastService.toast.value == widget.toast) {
+          ToastService.hide();
+        }
+      });
     });
   }
 
   @override
+  void dispose() {
+    _hideTimer?.cancel();
+    _removeTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final toast = ToastService.toast.value!;
-
-    return AnimatedSlide(
-      duration: const Duration(milliseconds: 0), // Not error
-      curve: Curves.easeOut,
-      offset: _visible ? Offset.zero : const Offset(0, -1.3),
-
+    return SafeArea(
+      bottom: false,
       child: Align(
         alignment: Alignment.topCenter,
-
-        child: Material(
-          color: Colors.transparent,
-
-          child: Container(
-            width: double.infinity,
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top,
-              bottom: 14,
-              left: 0,
-              right: 0,
-            ),
-            color: const Color(0xFF2DBE74),
-
-            child: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-                  child: Text(
-                    toast.message,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: AnimatedSlide(
+            duration: _slide,
+            curve: _visible ? Curves.easeOutCubic : Curves.easeInCubic,
+            offset: _visible ? Offset.zero : const Offset(0, -1.6),
+            child: AnimatedOpacity(
+              duration: _slide,
+              opacity: _visible ? 1 : 0,
+              child: Semantics(
+                liveRegion: true,
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10261F),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _green.withValues(alpha: .55),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: .35),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: _green.withValues(alpha: .18),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.check_rounded,
+                            color: _green,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            widget.toast.message,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ),

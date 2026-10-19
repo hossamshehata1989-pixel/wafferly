@@ -62,8 +62,14 @@ class EntryBottomActions extends StatelessWidget {
 
   Widget _buildExpenseBottomRow(BuildContext context) {
     final isSmallScreen = metrics.width < 360;
-    final height = isSmallScreen ? metrics.h(42) : metrics.h(50);
-    final micSize = isSmallScreen ? metrics.size(36) : metrics.size(42);
+    final height = isSmallScreen ? metrics.h(42) : metrics.h(48);
+    final micSize = isSmallScreen ? metrics.size(32) : metrics.size(36);
+    // Done and Add sit almost edge to edge; the mic floats on the seam and
+    // both buttons are cut by a circle slightly bigger than the mic, so the
+    // halo around it has the same width everywhere.
+    const seam = 4.0;
+    const haloWidth = 4.0;
+    final cutoutRadius = micSize / 2 + haloWidth;
 
     return SizedBox(
       height: height,
@@ -71,7 +77,7 @@ class EntryBottomActions extends StatelessWidget {
         children: [
           // Scan Button (Left)
           Expanded(
-            flex: 9,
+            flex: 8,
             child: _compactActionButton(
               height: height,
               icon: Icons.document_scanner_outlined,
@@ -84,7 +90,7 @@ class EntryBottomActions extends StatelessWidget {
 
           // Center Area: Done + Mic + Add
           Expanded(
-            flex: 32,
+            flex: 34,
             child: SizedBox(
               height: height,
               child: Stack(
@@ -99,6 +105,8 @@ class EntryBottomActions extends StatelessWidget {
                           child: _NotchedActionButton(
                             height: height,
                             side: _NotchedSide.right,
+                            cutoutRadius: cutoutRadius,
+                            seam: seam,
                             backgroundColor: const Color(0xFFA7F3D0),
                             foregroundColor: const Color(0xFF065F46),
                             icon: Icons.check_rounded,
@@ -107,11 +115,13 @@ class EntryBottomActions extends StatelessWidget {
                             onTap: () => _handleDone(context),
                           ),
                         ),
-                        SizedBox(width: micSize + metrics.spacing(4)),
+                        const SizedBox(width: seam),
                         // Add Button (Yellow Light)
                         Expanded(
                           child: _NotchedAddButton(
                             height: height,
+                            cutoutRadius: cutoutRadius,
+                            seam: seam,
                             isExceptional: controller.isExceptional,
                             enabled: !controller.isCreditCardInstallmentOnly,
                             onAddTap: () => _submitEntry(context),
@@ -121,25 +131,12 @@ class EntryBottomActions extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Mic Button (Center Overlay)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: (height - micSize) / 2,
-                    child: Center(
-                      child: Container(
-                        width: micSize + metrics.spacing(4),
-                        height: micSize + metrics.spacing(4),
-                        decoration: const BoxDecoration(
-                          color: AppColors.background,
-                          shape: BoxShape.circle,
-                        ),
-                        alignment: Alignment.center,
-                        child: _MicButton(
-                          size: micSize,
-                          onTap: () {},
-                        ),
-                      ),
+                  // Mic Button (centered on the seam)
+                  Align(
+                    alignment: Alignment.center,
+                    child: _MicButton(
+                      size: micSize,
+                      onTap: () {},
                     ),
                   ),
                 ],
@@ -150,7 +147,7 @@ class EntryBottomActions extends StatelessWidget {
 
           // Note Button (Right)
           Expanded(
-            flex: 9,
+            flex: 8,
             child: _compactActionButton(
               height: height,
               icon: Icons.note_alt_outlined,
@@ -174,26 +171,25 @@ class EntryBottomActions extends StatelessWidget {
       height: height,
       child: Material(
         color: AppColors.cardSecondary,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 5),
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: subtitle == null
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  ? Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(icon, color: Colors.white70, size: 18),
-                        const SizedBox(height: 2),
+                        Icon(icon, color: Colors.white70, size: 17),
+                        const SizedBox(width: 4),
                         Text(
                           label,
                           style: const TextStyle(
                             color: Colors.white70,
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -203,7 +199,7 @@ class EntryBottomActions extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(icon, color: Colors.white70, size: 16),
+                        Icon(icon, color: Colors.white70, size: 15),
                         const SizedBox(height: 1),
                         Text(
                           label,
@@ -216,8 +212,8 @@ class EntryBottomActions extends StatelessWidget {
                         Text(
                           subtitle,
                           style: const TextStyle(
-                            color: Colors.white38,
-                            fontSize: 8,
+                            color: Colors.white54,
+                            fontSize: 10,
                           ),
                         ),
                       ],
@@ -455,12 +451,9 @@ class EntryBottomActions extends StatelessWidget {
       return;
     }
 
-    if (controller.isCreditCardEntryContext) {
-      await handleEntryDone(context, controller);
-      return;
-    }
-
-    await _submitEntry(context);
+    // Done must use the close-after-save flow, not Add's save-and-reset flow.
+    // This also closes the screen when Add has already saved and reset the form.
+    await handleEntryDone(context, controller);
   }
 
   Future<void> _submitEntry(BuildContext context) async {
@@ -537,6 +530,8 @@ enum _NotchedSide { left, right }
 
 class _NotchedAddButton extends StatelessWidget {
   final double height;
+  final double cutoutRadius;
+  final double seam;
   final bool isExceptional;
   final bool enabled;
   final VoidCallback onAddTap;
@@ -544,6 +539,8 @@ class _NotchedAddButton extends StatelessWidget {
 
   const _NotchedAddButton({
     required this.height,
+    required this.cutoutRadius,
+    required this.seam,
     required this.isExceptional,
     this.enabled = true,
     required this.onAddTap,
@@ -553,26 +550,36 @@ class _NotchedAddButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipPath(
-      clipper: const _NotchedButtonClipper(_NotchedSide.left),
+      clipper: _NotchedButtonClipper(
+        side: _NotchedSide.left,
+        cutoutRadius: cutoutRadius,
+        seam: seam,
+      ),
       child: Material(
         color: enabled ? const Color(0xFFFDE68A) : Colors.white12,
         child: Row(
           children: [
-            const SizedBox(width: 4),
-            InkWell(
-              onTap: enabled ? onStarTap : null,
-              customBorder: const CircleBorder(),
-              borderRadius: BorderRadius.circular(16),
+            // left padding keeps the star clear of the mic cut-out
+            SizedBox(
+              width: 54,
+              height: height,
               child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(
-                  isExceptional
-                      ? Icons.star_rounded
-                      : Icons.star_border_rounded,
-                  color: !enabled
-                      ? Colors.white30
-                      : (isExceptional ? Colors.amber[800] : const Color(0xFF92400E)),
-                  size: 20,
+                padding: const EdgeInsets.only(left: 16),
+                child: InkWell(
+                  onTap: enabled ? onStarTap : null,
+                  child: Center(
+                    child: Icon(
+                      isExceptional
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      color: !enabled
+                          ? Colors.white30
+                          : (isExceptional
+                              ? Colors.amber[800]
+                              : const Color(0xFF92400E)),
+                      size: 21,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -580,12 +587,17 @@ class _NotchedAddButton extends StatelessWidget {
               child: InkWell(
                 onTap: enabled ? onAddTap : null,
                 child: Center(
-                  child: Text(
-                    enabled ? 'Add' : 'Locked',
-                    style: TextStyle(
-                      color: enabled ? const Color(0xFF92400E) : Colors.white38,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      enabled ? 'Add' : 'Locked',
+                      style: TextStyle(
+                        color: enabled
+                            ? const Color(0xFF92400E)
+                            : Colors.white38,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ),
@@ -601,6 +613,8 @@ class _NotchedAddButton extends StatelessWidget {
 class _NotchedActionButton extends StatefulWidget {
   final double height;
   final _NotchedSide side;
+  final double cutoutRadius;
+  final double seam;
   final Color backgroundColor;
   final Color foregroundColor;
   final IconData icon;
@@ -612,6 +626,8 @@ class _NotchedActionButton extends StatefulWidget {
   const _NotchedActionButton({
     required this.height,
     required this.side,
+    required this.cutoutRadius,
+    required this.seam,
     required this.backgroundColor,
     required this.foregroundColor,
     required this.icon,
@@ -652,7 +668,11 @@ class _NotchedActionButtonState extends State<_NotchedActionButton> {
   Widget build(BuildContext context) {
     final color = _flash ? Colors.white : widget.backgroundColor;
     return ClipPath(
-      clipper: _NotchedButtonClipper(widget.side),
+      clipper: _NotchedButtonClipper(
+        side: widget.side,
+        cutoutRadius: widget.cutoutRadius,
+        seam: widget.seam,
+      ),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 90),
         decoration: BoxDecoration(
@@ -728,70 +748,49 @@ class _MicButton extends StatelessWidget {
   }
 }
 
+/// Rounded rectangle with a circular bite taken out of the edge that faces
+/// the mic. The circle is centred on the seam between the two buttons, so
+/// Done and Add are cut symmetrically.
 class _NotchedButtonClipper extends CustomClipper<Path> {
   final _NotchedSide side;
+  final double cutoutRadius;
+  final double seam;
 
-  const _NotchedButtonClipper(this.side);
+  const _NotchedButtonClipper({
+    required this.side,
+    required this.cutoutRadius,
+    required this.seam,
+  });
 
   @override
   Path getClip(Size size) {
-    const radius = 18.0;
-    final notchDepth = radius * .75;
-
-    final path = Path();
-    const rectRadius = 10.0;
-
-    path.moveTo(rectRadius, 0);
-    path.lineTo(size.width - rectRadius, 0);
-    path.quadraticBezierTo(size.width, 0, size.width, rectRadius);
-
-    if (side == _NotchedSide.right) {
-      path.lineTo(size.width, size.height / 2 - radius);
-      path.quadraticBezierTo(
-        size.width - notchDepth,
-        size.height / 2,
-        size.width,
-        size.height / 2 + radius,
+    final body = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Offset.zero & size,
+          const Radius.circular(10),
+        ),
       );
-    } else {
-      path.lineTo(size.width, size.height - rectRadius);
-      path.quadraticBezierTo(
-        size.width,
-        size.height,
-        size.width - rectRadius,
-        size.height,
-      );
-      path.lineTo(rectRadius, size.height);
-      path.quadraticBezierTo(
-        0,
-        size.height,
-        0,
-        size.height - rectRadius,
-      );
-      path.lineTo(0, size.height / 2 + radius);
-      path.quadraticBezierTo(
-        notchDepth,
-        size.height / 2,
-        0,
-        size.height / 2 - radius,
-      );
-    }
 
-    if (side == _NotchedSide.right) {
-      path.lineTo(0, size.height);
-      path.quadraticBezierTo(0, size.height, rectRadius, size.height);
-      path.close();
-      return path;
-    }
+    final centerX = side == _NotchedSide.right
+        ? size.width + seam / 2
+        : -seam / 2;
 
-    path.lineTo(0, rectRadius);
-    path.quadraticBezierTo(0, 0, rectRadius, 0);
-    path.close();
-    return path;
+    final hole = Path()
+      ..addOval(
+        Rect.fromCircle(
+          center: Offset(centerX, size.height / 2),
+          radius: cutoutRadius,
+        ),
+      );
+
+    return Path.combine(PathOperation.difference, body, hole);
   }
 
   @override
   bool shouldReclip(covariant _NotchedButtonClipper oldClipper) {
-    return oldClipper.side != side;
+    return oldClipper.side != side ||
+        oldClipper.cutoutRadius != cutoutRadius ||
+        oldClipper.seam != seam;
   }
 }
