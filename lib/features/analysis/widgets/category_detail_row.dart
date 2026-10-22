@@ -12,6 +12,7 @@ class CategoryDetailRow extends StatelessWidget {
   final String categoryId;
   final double amount;
   final double total;
+  final String currencyCode;
   final VoidCallback onTap;
 
   const CategoryDetailRow({
@@ -19,6 +20,7 @@ class CategoryDetailRow extends StatelessWidget {
     required this.categoryId,
     required this.amount,
     required this.total,
+    this.currencyCode = 'EGP',
     required this.onTap,
   });
 
@@ -61,7 +63,7 @@ class CategoryDetailRow extends StatelessWidget {
             ),
           ),
           Text(
-            CurrencyFormatter.format(amount, 'EGP'),
+            CurrencyFormatter.formatPrecise(amount, currencyCode),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 14,

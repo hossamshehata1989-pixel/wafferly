@@ -1,7 +1,8 @@
 // lib/features/analysis/widgets/category_section.dart
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../../utils/currency_formatter.dart';
+import '../../../core/money/money.dart';
 import 'categories_list.dart';
 import 'custom_donut_chart.dart';
 import '../../../l10n/app_localizations.dart';
@@ -12,6 +13,7 @@ class CategorySection extends StatelessWidget {
   final Map<String, double> categories;
   final List<DonutData> donutData;
   final Color baseColor;
+  final String currencyCode;
   final Function(String) onCategoryTap;
 
   const CategorySection({
@@ -19,13 +21,17 @@ class CategorySection extends StatelessWidget {
     required this.categories,
     required this.donutData,
     required this.baseColor,
+    this.currencyCode = 'EGP',
     required this.onCategoryTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    final total = categories.values.fold(0.0, (s, v) => s + v);
+    final total = categories.values.fold<Money>(
+      Money.zero,
+      (sum, value) => sum + Money.fromDouble(value),
+    ).toDouble();
     final sortedEntries = _sortCategories(categories);
 
     if (categories.isEmpty) {
@@ -48,6 +54,7 @@ class CategorySection extends StatelessWidget {
               child: CustomDonutChart(
                 data: donutData,
                 baseColor: baseColor,
+                currencyCode: currencyCode,
                 size: 160,
               ),
             ),
@@ -55,6 +62,7 @@ class CategorySection extends StatelessWidget {
           CategoriesList(
             categories: sortedEntries,
             total: total,
+            currencyCode: currencyCode,
             onCategoryTap: onCategoryTap,
           ),
         ],
@@ -76,8 +84,7 @@ class CategorySection extends StatelessWidget {
   }
 
   Widget _buildHeader(AppLocalizations t, double total) {
-    final formatter = NumberFormat("#,###");
-    final formattedTotal = "${formatter.format(total.toInt())} EGP";
+    final formattedTotal = CurrencyFormatter.formatPrecise(total, currencyCode);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -2,6 +2,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../core/money/money.dart';
 
 class DonutData {
   final String name;
@@ -15,12 +16,14 @@ class CustomDonutChart extends StatefulWidget {
   final List<DonutData> data;
   final Color baseColor;
   final double size;
+  final String currencyCode;
 
   const CustomDonutChart({
     super.key,
     required this.data,
     required this.baseColor,
     this.size = 160,
+    this.currencyCode = 'EGP',
   });
 
   @override
@@ -54,8 +57,11 @@ class _CustomDonutChartState extends State<CustomDonutChart>
 
   @override
   Widget build(BuildContext context) {
-    final total = widget.data.fold(0.0, (sum, e) => sum + e.value);
-    final formatter = NumberFormat("#,###");
+    final total = widget.data.fold<Money>(
+      Money.zero,
+      (sum, item) => sum + Money.fromDouble(item.value),
+    ).toDouble();
+    final formatter = NumberFormat('#,##0.##');
 
     // ✅ ترتيب البيانات تنازلياً (من الأكبر للأصغر)
     final sortedData = [...widget.data]
@@ -128,7 +134,7 @@ class _CustomDonutChartState extends State<CustomDonutChart>
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                formatter.format(total.toInt()),
+                formatter.format(total),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -142,9 +148,9 @@ class _CustomDonutChartState extends State<CustomDonutChart>
                   ],
                 ),
               ),
-              const Text(
-                "EGP",
-                style: TextStyle(
+              Text(
+                widget.currencyCode,
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 10,
                   fontWeight: FontWeight.w500,

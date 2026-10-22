@@ -14,6 +14,7 @@ class MainCategoryDetailsScreen extends StatelessWidget {
   final List<Transaction> expenses;
   final DateTime startDate;
   final DateTime endDate;
+  final String currencyCode;
 
   const MainCategoryDetailsScreen({
     super.key,
@@ -21,12 +22,12 @@ class MainCategoryDetailsScreen extends StatelessWidget {
     required this.expenses,
     required this.startDate,
     required this.endDate,
+    this.currencyCode = 'EGP',
   });
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    final currencyCode = 'EGP';
 
     final categoryName = CategoryRegistry.getMainCategoryName(
       mainCategoryId,
@@ -100,7 +101,7 @@ class MainCategoryDetailsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            CurrencyFormatter.format(totalAmount, currencyCode),
+            CurrencyFormatter.formatPrecise(totalAmount, currencyCode),
             style: TextStyle(
               color: color,
               fontSize: 32,
@@ -141,6 +142,7 @@ class MainCategoryDetailsScreen extends StatelessWidget {
           CustomDonutChart(
             data: donutData,
             baseColor: CategoryRegistry.getColor(mainCategoryId),
+            currencyCode: currencyCode,
             size: 180,
           ),
         ],

@@ -3,16 +3,23 @@
 import 'package:flutter/material.dart';
 import '../../../models/transaction.dart';
 import '../../../services/transaction_query_service.dart';
-import '../../../application/credit_card/credit_card_expense_projection_service.dart';
 import '../../../l10n/app_localizations.dart';
 import '../helpers/analysis_helpers.dart';
 import '../registry/category_registry.dart';
 import '../widgets/custom_donut_chart.dart';
 
 class AnalysisController {
-  final TransactionQueryService _transactionQueryService = const TransactionQueryService();
-  final CreditCardExpenseProjectionService _creditCardExpenseProjectionService =
-      CreditCardExpenseProjectionService();
+  AnalysisController({
+    required this.onUpdate,
+    required TransactionQueryService transactionQueryService,
+  }) : _transactionQueryService = transactionQueryService;
+
+  final TransactionQueryService _transactionQueryService;
+
+  /// Transactions carry currency but this version has no common/base amount.
+  /// Report one currency at a time instead of adding unlike currencies.
+  String selectedCurrencyCode = 'EGP';
+  List<String> availableCurrencyCodes = <String>['EGP'];
 
   // State
   bool isLoading = true;
@@ -42,7 +49,14 @@ class AnalysisController {
   // Simple callback for UI updates
   final VoidCallback onUpdate;
 
-  AnalysisController({required this.onUpdate});
+  void selectCurrency(String currencyCode) {
+    selectedCurrencyCode = _normalizeCurrencyCode(currencyCode);
+  }
+
+  String _normalizeCurrencyCode(String code) {
+    final normalized = code.trim().toUpperCase();
+    return normalized.isEmpty ? 'EGP' : normalized;
+  }
 
   Future<void> loadData({
     required DateTime startDate,
@@ -55,13 +69,32 @@ class AnalysisController {
     onUpdate();
 
     try {
-      final transactions = <Transaction>[
-        ..._transactionQueryService.getByDateRange(startDate, endDate),
-        ..._creditCardExpenseProjectionService.projectForDateRange(
-          startDate: startDate,
-          endDate: endDate,
-        ),
-      ];
+      // Purchase analytics reports authoritative purchase rows on their
+      // original dates. Statement/installment projections are separate views
+      // for due-cycle/commitment reporting and must not be merged here.
+      final currentRange =
+          _transactionQueryService.getByDateRange(startDate, endDate);
+      final previousRange = _transactionQueryService.getByDateRange(
+        previousStartDate,
+        previousEndDate,
+      );
+
+      final currencies = <String>{
+        for (final tx in <Transaction>[...currentRange, ...previousRange])
+          if (isSpendingTransaction(tx)) _normalizeCurrencyCode(tx.currencyCode),
+      }.toList()
+        ..sort();
+      availableCurrencyCodes = currencies.isEmpty ? <String>['EGP'] : currencies;
+      if (!availableCurrencyCodes.contains(selectedCurrencyCode)) {
+        selectedCurrencyCode = availableCurrencyCodes.contains('EGP')
+            ? 'EGP'
+            : availableCurrencyCodes.first;
+      }
+
+      final transactions = currentRange
+          .where((tx) =>
+              _normalizeCurrencyCode(tx.currencyCode) == selectedCurrencyCode)
+          .toList(growable: false);
 
       // Total expenses
       totalExpenses = filterExpenses(transactions);
@@ -82,16 +115,10 @@ class AnalysisController {
       exceptionalDonutData = _buildDonutData(exceptionalByCategory, t);
 
       // Calculate changes
-      final prevTransactions = <Transaction>[
-        ..._transactionQueryService.getByDateRange(
-          previousStartDate,
-          previousEndDate,
-        ),
-        ..._creditCardExpenseProjectionService.projectForDateRange(
-          startDate: previousStartDate,
-          endDate: previousEndDate,
-        ),
-      ];
+      final prevTransactions = previousRange
+          .where((tx) =>
+              _normalizeCurrencyCode(tx.currencyCode) == selectedCurrencyCode)
+          .toList(growable: false);
       final prevTotal = sumAmounts(filterExpenses(prevTransactions));
       final prevReal = sumAmounts(filterRealExpenses(prevTransactions));
       final prevExceptional = sumAmounts(

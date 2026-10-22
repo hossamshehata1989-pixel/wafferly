@@ -2,6 +2,7 @@
 
 import '../../../models/transaction.dart';
 import '../../../constants/transaction_constants.dart';
+import '../../../core/money/money.dart';
 
 /// ==========================================
 /// 📊 GROUPING
@@ -10,15 +11,16 @@ import '../../../constants/transaction_constants.dart';
 /// Group transactions by main category (categoryId)
 /// categoryId is ALWAYS the main category - no fallback
 Map<String, double> groupByMainCategory(List<Transaction> transactions) {
-  final result = <String, double>{};
-
+  // Exact accumulation; convert only at the existing chart/UI boundary.
+  // Callers must first isolate transactions to one currency.
+  final totals = <String, Money>{};
   for (final tx in transactions) {
-    if (tx.categoryId == null) continue;
-
-    result[tx.categoryId!] = (result[tx.categoryId!] ?? 0) + tx.amount;
+    final categoryId = tx.categoryId;
+    if (categoryId == null) continue;
+    totals[categoryId] =
+        (totals[categoryId] ?? Money.zero) + Money.fromDouble(tx.amount);
   }
-
-  return result;
+  return totals.map((key, value) => MapEntry(key, value.toDouble()));
 }
 
 /// Group transactions by sub category within a specific main category
@@ -28,35 +30,41 @@ Map<String, double> groupBySubCategory(
   List<Transaction> transactions,
   String mainCategoryId,
 ) {
-  final result = <String, double>{};
+  final totals = <String, Money>{};
   for (final tx in transactions) {
-    if (tx.categoryId == null) continue;
     if (tx.categoryId != mainCategoryId) continue;
     final subId = tx.subCategoryId;
     if (subId != null) {
-      result[subId] = (result[subId] ?? 0) + tx.amount;
+      totals[subId] =
+          (totals[subId] ?? Money.zero) + Money.fromDouble(tx.amount);
     }
   }
-  return result;
+  return totals.map((key, value) => MapEntry(key, value.toDouble()));
 }
 
 /// ==========================================
 /// 🧹 FILTERING
 /// ==========================================
 
+/// Cash purchases and credit-card charges both represent spending.
+/// Card payments are transfers and intentionally are not included here.
+bool isSpendingTransaction(Transaction transaction) =>
+    transaction.type == TransactionType.expense ||
+    transaction.type == TransactionType.creditCardCharge;
+
 List<Transaction> filterExpenses(List<Transaction> transactions) {
-  return transactions.where((t) => t.type == TransactionType.expense).toList();
+  return transactions.where(isSpendingTransaction).toList();
 }
 
 List<Transaction> filterRealExpenses(List<Transaction> transactions) {
   return transactions
-      .where((t) => t.type == TransactionType.expense && !t.isExceptional)
+      .where((t) => isSpendingTransaction(t) && !t.isExceptional)
       .toList();
 }
 
 List<Transaction> filterExceptionalExpenses(List<Transaction> transactions) {
   return transactions
-      .where((t) => t.type == TransactionType.expense && t.isExceptional)
+      .where((t) => isSpendingTransaction(t) && t.isExceptional)
       .toList();
 }
 
@@ -65,7 +73,12 @@ List<Transaction> filterExceptionalExpenses(List<Transaction> transactions) {
 /// ==========================================
 
 double sumAmounts(List<Transaction> transactions) {
-  return transactions.fold(0.0, (sum, t) => sum + t.amount);
+  // Keep monetary addition decimal-exact; this legacy-facing helper returns
+  // double because the existing chart widgets are double-based.
+  return transactions.fold<Money>(
+    Money.zero,
+    (sum, tx) => sum + Money.fromDouble(tx.amount),
+  ).toDouble();
 }
 
 /// Returns null when previous == 0 (ambiguous change)

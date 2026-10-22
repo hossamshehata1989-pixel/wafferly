@@ -8,12 +8,14 @@ import 'category_detail_row.dart';
 class CategoriesList extends StatelessWidget {
   final List<MapEntry<String, double>> categories;
   final double total;
+  final String currencyCode;
   final Function(String) onCategoryTap;
 
   const CategoriesList({
     super.key,
     required this.categories,
     required this.total,
+    this.currencyCode = 'EGP',
     required this.onCategoryTap,
   });
 
@@ -37,6 +39,7 @@ class CategoriesList extends StatelessWidget {
           categoryId: entry.key,
           amount: entry.value,
           total: total,
+          currencyCode: currencyCode,
           onTap: () => onCategoryTap(entry.key),
         );
       }).toList(),

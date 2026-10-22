@@ -1,8 +1,10 @@
 // lib/features/analysis/screens/analysis_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/transaction.dart';
+import '../../../services/transaction_query_service.dart';
 import '../models/time_period.dart';
 import '../controllers/analysis_controller.dart';
 import '../widgets/analysis_summary_card.dart';
@@ -35,6 +37,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _controller = AnalysisController(
+      transactionQueryService: context.read<TransactionQueryService>(),
       onUpdate: () {
         if (mounted) setState(() {});
       },
@@ -86,9 +89,36 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   }
 
   Future<void> _loadData() async {
-    final periodDays = _endDate.difference(_startDate).inDays + 1;
-    final previousStart = _startDate.subtract(Duration(days: periodDays));
-    final previousEnd = _endDate.subtract(Duration(days: periodDays));
+    late final DateTime previousStart;
+    late final DateTime previousEnd;
+
+    switch (_selectedPeriod) {
+      case TimePeriod.daily:
+        previousStart = DateTime(
+          _startDate.year,
+          _startDate.month,
+          _startDate.day - 1,
+        );
+        previousEnd = previousStart;
+        break;
+      case TimePeriod.weekly:
+        previousStart = _startDate.subtract(const Duration(days: 7));
+        previousEnd = _endDate.subtract(const Duration(days: 7));
+        break;
+      case TimePeriod.monthly:
+        previousStart = DateTime(_startDate.year, _startDate.month - 1, 1);
+        previousEnd = DateTime(_startDate.year, _startDate.month, 0);
+        break;
+      case TimePeriod.yearly:
+        previousStart = DateTime(_startDate.year - 1, 1, 1);
+        previousEnd = DateTime(_startDate.year, 1, 0);
+        break;
+      case TimePeriod.custom:
+        final periodDays = _endDate.difference(_startDate).inDays + 1;
+        previousStart = _startDate.subtract(Duration(days: periodDays));
+        previousEnd = _endDate.subtract(Duration(days: periodDays));
+        break;
+    }
 
     await _controller.loadData(
       startDate: _startDate,
@@ -102,6 +132,11 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   void _onPeriodChanged(TimePeriod period) {
     _selectedPeriod = period;
     _updateDateRange();
+  }
+
+  void _onCurrencyChanged(String currencyCode) {
+    _controller.selectCurrency(currencyCode);
+    _loadData();
   }
 
   void _onDateRangeChanged(DateTime start, DateTime end) {
@@ -120,6 +155,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
         builder: (context) => MainCategoryDetailsScreen(
           mainCategoryId: categoryId,
           expenses: expenses.where((e) => e.categoryId == categoryId).toList(),
+          currencyCode: _controller.selectedCurrencyCode,
           startDate: _startDate,
           endDate: _endDate,
         ),
@@ -145,7 +181,9 @@ class _AnalysisScreenState extends State<AnalysisScreen>
         elevation: 0,
         centerTitle: true,
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(100),
+          preferredSize: Size.fromHeight(
+            _controller.availableCurrencyCodes.length > 1 ? 132 : 100,
+          ),
           child: Column(
             children: [
               DateRangeSelector(
@@ -155,6 +193,30 @@ class _AnalysisScreenState extends State<AnalysisScreen>
                 onPeriodChanged: _onPeriodChanged,
                 onDateRangeChanged: _onDateRangeChanged,
               ),
+              if (_controller.availableCurrencyCodes.length > 1)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      const Text('Currency', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      const SizedBox(width: 8),
+                      DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _controller.selectedCurrencyCode,
+                          dropdownColor: const Color(0xFF20242C),
+                          style: const TextStyle(color: Colors.white),
+                          items: _controller.availableCurrencyCodes
+                              .map((code) => DropdownMenuItem<String>(value: code, child: Text(code)))
+                              .toList(),
+                          onChanged: (code) {
+                            if (code != null) _onCurrencyChanged(code);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 8),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -190,6 +252,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
                 _buildTabContent(
                   title: t.total,
                   amount: _controller.totalAmount,
+                  currencyCode: _controller.selectedCurrencyCode,
                   change: _controller.totalChange,
                   color: Colors.blue,
                   categories: _controller.totalByCategory,
@@ -199,6 +262,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
                 _buildTabContent(
                   title: t.normal,
                   amount: _controller.realAmount,
+                  currencyCode: _controller.selectedCurrencyCode,
                   change: _controller.realChange,
                   color: Colors.green,
                   categories: _controller.realByCategory,
@@ -208,6 +272,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
                 _buildTabContent(
                   title: t.exceptional,
                   amount: _controller.exceptionalAmount,
+                  currencyCode: _controller.selectedCurrencyCode,
                   change: _controller.exceptionalChange,
                   color: Colors.orange,
                   categories: _controller.exceptionalByCategory,
@@ -222,6 +287,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
   Widget _buildTabContent({
     required String title,
     required double amount,
+    required String currencyCode,
     required double? change,
     required Color color,
     required Map<String, double> categories,
@@ -234,7 +300,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
         children: [
           AnalysisSummaryCard(
             title: title,
-            formattedAmount: CurrencyFormatter.format(amount, 'EGP'),
+            formattedAmount: CurrencyFormatter.formatPrecise(amount, currencyCode),
             change: change,
             color: color,
           ),
@@ -243,6 +309,7 @@ class _AnalysisScreenState extends State<AnalysisScreen>
             categories: categories,
             donutData: donutData,
             baseColor: color,
+            currencyCode: currencyCode,
             onCategoryTap: (categoryId) => _onCategoryTap(categoryId, expenses),
           ),
         ],

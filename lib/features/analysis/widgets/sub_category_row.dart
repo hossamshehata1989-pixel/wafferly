@@ -59,7 +59,7 @@ class SubCategoryRow extends StatelessWidget {
             ),
           ),
           Text(
-            CurrencyFormatter.format(amount, currencyCode),
+            CurrencyFormatter.formatPrecise(amount, currencyCode),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 14,

@@ -3,6 +3,8 @@
 import 'package:hive/hive.dart';
 import '../models/budget.dart';
 import '../models/transaction.dart';
+import '../core/money/money.dart';
+import 'transaction_query_service.dart';
 import '../models/date_range.dart';
 import '../models/enums/budget_period.dart';
 import '../constants/transaction_constants.dart';
@@ -11,9 +13,13 @@ import '../features/analysis/registry/category_registry.dart';
 class BudgetService {
   static const String _boxName = 'budgets';
 
-  Box<Budget> get _box => Hive.box<Budget>(_boxName);
+  BudgetService({TransactionQueryService? transactionQueryService})
+      : _transactionQueryService =
+            transactionQueryService ?? const TransactionQueryService();
 
-  final Box<Transaction> _txBox = Hive.box<Transaction>('transactions');
+  final TransactionQueryService _transactionQueryService;
+
+  Box<Budget> get _box => Hive.box<Budget>(_boxName);
 
   // ==========================================
   // 📥 CRUD Operations
@@ -49,7 +55,7 @@ class BudgetService {
 
   /// حساب المبلغ المنفق لفئة معينة في نطاق زمني محدد
   double getSpentAmount(String categoryId, DateTime start, DateTime end) {
-    double spent = 0;
+    var spent = Money.zero;
 
     // نهاية اليوم (تشمل اليوم بالكامل)
     final endOfDay = DateTime(end.year, end.month, end.day, 23, 59, 59, 999);
@@ -59,14 +65,17 @@ class BudgetService {
       categoryId,
     ).map((e) => e.id).toSet();
 
-    for (final tx in _txBox.values) {
+    // Use the effective transaction read model so superseded/invalidated
+    // history does not consume the same budget twice.
+    for (final tx in _transactionQueryService.getAllTransactions()) {
       // تخطي المعاملات خارج النطاق الزمني
       if (tx.date.isBefore(start) || tx.date.isAfter(endOfDay)) {
         continue;
       }
 
       // تخطي المعاملات التي ليست مصروفات
-      if (tx.type != TransactionType.expense) {
+      if (tx.type != TransactionType.expense &&
+          tx.type != TransactionType.creditCardCharge) {
         continue;
       }
 
@@ -79,10 +88,12 @@ class BudgetService {
         continue;
       }
 
-      spent += tx.amount;
+      // Budget currently has no currencyCode field; mixed-currency budget
+      // support must wait for a currency/base-amount field on Budget.
+      spent = spent + Money.fromDouble(tx.amount);
     }
 
-    return spent;
+    return spent.toDouble();
   }
 
   /// حساب المبلغ المتبقي لفئة معينة في نطاق زمني محدد
@@ -103,7 +114,7 @@ class BudgetService {
     }
 
     final spent = getSpentAmount(categoryId, start, end);
-    return budget.amount - spent;
+    return (Money.fromDouble(budget.amount) - Money.fromDouble(spent)).toDouble();
   }
 
   /// الحصول على الميزانية الخاصة بفئة معينة (أول ميزانية تم العثور عليها)

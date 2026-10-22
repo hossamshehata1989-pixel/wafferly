@@ -59,13 +59,15 @@ final class TransactionQueryService {
     return transactions;
   }
 
+  /// Returns transactions from calendar day [start] through [end], inclusive.
+  /// Normalize boundaries so the neighboring day cannot leak into a report.
   List<Transaction> getByDateRange(DateTime start, DateTime end) {
+    final startInclusive = DateTime(start.year, start.month, start.day);
+    final endExclusive = DateTime(end.year, end.month, end.day + 1);
     final transactions = _effectiveQuery
         .getEffectiveTransactions()
-        .where((tx) {
-          return tx.date.isAfter(start.subtract(const Duration(days: 1))) &&
-              tx.date.isBefore(end.add(const Duration(days: 1)));
-        })
+        .where((tx) =>
+            !tx.date.isBefore(startInclusive) && tx.date.isBefore(endExclusive))
         .toList();
     transactions.sort((a, b) => b.date.compareTo(a.date));
     return transactions;
