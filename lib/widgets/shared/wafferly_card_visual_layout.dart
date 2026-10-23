@@ -329,7 +329,7 @@ const Map<CardTextSlot, CardVisualSlot> _standardSlots =
   ),
   CardTextSlot.nextMonthDue: CardVisualSlot(
     zone: CardZone.financialPrimary,
-    area: CardVisualZone(x: .69, y: .48, width: .26, height: .27),
+    area: CardVisualZone(x: .69, y: .48, width: .20, height: .27),
     maxLines: 4,
     minFontScale: .52,
   ),

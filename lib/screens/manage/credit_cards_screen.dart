@@ -16,9 +16,10 @@ class CreditCardsScreen extends StatefulWidget {
 }
 
 class _CreditCardsScreenState extends State<CreditCardsScreen> {
-  final _projectionService = CreditCardsListProjectionService();
+  final CreditCardsListProjectionService _projectionService =
+      CreditCardsListProjectionService();
   List<_CreditCardData> _cards = const [];
-  _InstallmentOverview _installmentOverview = _InstallmentOverview.empty();
+  _InstallmentOverview _installmentOverview = _InstallmentOverview._empty();
   bool _loading = true;
 
   @override
@@ -29,41 +30,30 @@ class _CreditCardsScreenState extends State<CreditCardsScreen> {
 
   void _loadCards() {
     final projection = _projectionService.project();
-    final loaded = projection.cards.map((card) => _CreditCardData(
-          accountId: card.accountId,
-          name: card.name,
-          bank: card.bank,
-          lastFour: card.lastFour,
-          limit: card.creditLimit.toDouble(),
-          used: card.used.toDouble(),
-          available: card.availableCredit.toDouble(),
-          utilization: card.utilization,
-          dueThisMonth: 0,
-          daysUntilDue: card.daysUntilDue,
-          color: const Color(0xFFFF3D81),
-          currency: card.currency,
-          cardVisual: card.cardVisual,
-        )).toList(growable: false);
-
-    final overview = projection.installmentOverview;
-    final loadedOverview = _InstallmentOverview(
-      currentTotal: overview.currentTotal.toDouble(),
-      remainingTotal: overview.remainingTotal.toDouble(),
-      periods: overview.periods
-          .map((period) => _InstallmentPeriod(
-                label: period.label,
-                amount: period.amount.toDouble(),
-                isCurrent: period.isCurrent,
-              ))
-          .toList(growable: false),
-      currencyLabel: overview.currencyLabel,
-      hasMixedCurrencies: overview.hasMixedCurrencies,
-    );
+    final loaded = projection.cards
+        .map(
+          (card) => _CreditCardData(
+            accountId: card.accountId,
+            name: card.name,
+            bank: card.bank,
+            lastFour: card.lastFour,
+            limit: card.creditLimit.toDouble(),
+            used: card.used.toDouble(),
+            dueThisMonth: 0,
+            daysUntilDue: card.daysUntilDue,
+            color: const Color(0xFFFF3D81),
+            currency: card.currency,
+            cardVisual: card.cardVisual,
+          ),
+        )
+        .toList(growable: false);
+    final installmentOverview =
+        _InstallmentOverview.fromProjection(projection.installmentOverview);
 
     if (mounted) {
       setState(() {
         _cards = loaded;
-        _installmentOverview = loadedOverview;
+        _installmentOverview = installmentOverview;
         _loading = false;
       });
     }
@@ -73,6 +63,8 @@ class _CreditCardsScreenState extends State<CreditCardsScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final metrics = ResponsiveMetrics.of(context);
+
+    final installmentOverview = _installmentOverview;
 
     return Scaffold(
       backgroundColor: scheme.surface,
@@ -156,7 +148,7 @@ class _CreditCardsScreenState extends State<CreditCardsScreen> {
                   ),
                 _SummaryCard(
                   metrics: metrics,
-                  overview: _installmentOverview,
+                  overview: installmentOverview,
                 ),
                 SizedBox(height: metrics.h(14)),
                 _FilterBar(
@@ -367,76 +359,62 @@ class _SummaryCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: metrics.h(13)),
-          if (overview.hasMixedCurrencies)
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: metrics.h(12)),
-              child: Text(
-                'Multiple currencies — totals are not combined.',
+          Row(
+            children: [
+              Expanded(
+                child: _MainInstallmentMetric(
+                  metrics: metrics,
+                  title: 'This Month',
+                  subtitle: 'Installments',
+                  value: overview.currentTotal,
+                  currency: overview.currencyLabel,
+                  color: const Color(0xFFFFB21A),
+                ),
+              ),
+              SizedBox(width: metrics.spacing(8)),
+              Expanded(
+                child: _MainInstallmentMetric(
+                  metrics: metrics,
+                  title: 'Total',
+                  subtitle: 'Installments',
+                  value: overview.remainingTotal,
+                  currency: overview.currencyLabel,
+                  color: const Color(0xFF39E6B0),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: metrics.h(14)),
+          Row(
+            children: [
+              Text(
+                'Installment trend',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: .72),
-                  fontSize: metrics.text(11),
+                  color: Colors.white.withValues(alpha: .70),
+                  fontSize: metrics.text(9.5),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '3 previous • current • 3 upcoming',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: .42),
+                  fontSize: metrics.text(8),
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            )
-          else ...[
-            Row(
-              children: [
-                Expanded(
-                  child: _MainInstallmentMetric(
-                    metrics: metrics,
-                    title: 'This Month',
-                    subtitle: 'Installments',
-                    value: overview.currentTotal,
-                    currency: overview.currencyLabel,
-                    color: const Color(0xFFFFB21A),
-                  ),
-                ),
-                SizedBox(width: metrics.spacing(8)),
-                Expanded(
-                  child: _MainInstallmentMetric(
-                    metrics: metrics,
-                    title: 'Total',
-                    subtitle: 'Installments',
-                    value: overview.remainingTotal,
-                    currency: overview.currencyLabel,
-                    color: const Color(0xFF39E6B0),
-                  ),
-                ),
-              ],
+            ],
+          ),
+          SizedBox(height: metrics.h(8)),
+          SizedBox(
+            height: metrics.h(122),
+            child: _InstallmentBarChart(
+              metrics: metrics,
+              periods: overview.periods,
+              currency: overview.currencyLabel,
             ),
-            SizedBox(height: metrics.h(14)),
-            Row(
-              children: [
-                Text(
-                  'Installment trend',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: .70),
-                    fontSize: metrics.text(9.5),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '3 previous • current • 3 upcoming',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: .42),
-                    fontSize: metrics.text(8),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: metrics.h(8)),
-            SizedBox(
-              height: metrics.h(122),
-              child: _InstallmentBarChart(
-                metrics: metrics,
-                periods: overview.periods,
-                currency: overview.currencyLabel,
-              ),
-            ),
-          ],
+          ),
         ],
       ),
     );
@@ -625,29 +603,48 @@ class _InstallmentOverview {
     required this.remainingTotal,
     required this.periods,
     required this.currencyLabel,
-    this.hasMixedCurrencies = false,
   });
 
   final double currentTotal;
   final double remainingTotal;
   final List<_InstallmentPeriod> periods;
   final String? currencyLabel;
-  final bool hasMixedCurrencies;
 
-  factory _InstallmentOverview.empty() => _InstallmentOverview(
-        currentTotal: 0,
-        remainingTotal: 0,
-        periods: const [
-          _InstallmentPeriod(label: '-3', amount: 0),
-          _InstallmentPeriod(label: '-2', amount: 0),
-          _InstallmentPeriod(label: '-1', amount: 0),
-          _InstallmentPeriod(label: 'Now', amount: 0, isCurrent: true),
-          _InstallmentPeriod(label: '+1', amount: 0),
-          _InstallmentPeriod(label: '+2', amount: 0),
-          _InstallmentPeriod(label: '+3', amount: 0),
-        ],
-        currencyLabel: null,
-      );
+  factory _InstallmentOverview.fromProjection(
+    CreditCardInstallmentOverviewProjection projection,
+  ) {
+    return _InstallmentOverview(
+      currentTotal: projection.currentTotal.toDouble(),
+      remainingTotal: projection.remainingTotal.toDouble(),
+      periods: projection.periods
+          .map(
+            (period) => _InstallmentPeriod(
+              label: period.label,
+              amount: period.amount.toDouble(),
+              isCurrent: period.isCurrent,
+            ),
+          )
+          .toList(growable: false),
+      currencyLabel: projection.currencyLabel,
+    );
+  }
+
+  static _InstallmentOverview _empty() {
+    return const _InstallmentOverview(
+      currentTotal: 0,
+      remainingTotal: 0,
+      periods: [
+        _InstallmentPeriod(label: '-3', amount: 0),
+        _InstallmentPeriod(label: '-2', amount: 0),
+        _InstallmentPeriod(label: '-1', amount: 0),
+        _InstallmentPeriod(label: 'Now', amount: 0, isCurrent: true),
+        _InstallmentPeriod(label: '+1', amount: 0),
+        _InstallmentPeriod(label: '+2', amount: 0),
+        _InstallmentPeriod(label: '+3', amount: 0),
+      ],
+      currencyLabel: null,
+    );
+  }
 }
 
 class _InstallmentPeriod {
@@ -771,8 +768,10 @@ class _CreditCardTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final available = card.available;
-    final usage = card.utilization;
+    final available = math.max(0, card.limit - card.used).toDouble();
+    final usage = card.limit == 0
+        ? 0.0
+        : (card.used / card.limit).clamp(0.0, 1.0);
 
     final status = _statusFor(card.daysUntilDue);
     final statusColor = _statusColor(status);
@@ -1320,8 +1319,6 @@ class _CreditCardData {
     required this.lastFour,
     required this.limit,
     required this.used,
-    required this.available,
-    required this.utilization,
     required this.dueThisMonth,
     required this.daysUntilDue,
     required this.color,
@@ -1335,8 +1332,6 @@ class _CreditCardData {
   final String lastFour;
   final double limit;
   final double used;
-  final double available;
-  final double utilization;
   final double dueThisMonth;
   final int daysUntilDue;
   final Color color;

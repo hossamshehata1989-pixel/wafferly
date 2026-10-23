@@ -2,7 +2,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../core/money/money.dart';
 import '../../credit_card/domain/credit_card_profile.dart';
-import '../../models/account.dart';
 import '../../models/financing/financing_contract.dart';
 import '../../models/financing/financing_installment.dart';
 import '../../services/account_service.dart';

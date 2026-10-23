@@ -7,7 +7,7 @@ import '../../models/financing/financing_contract.dart';
 import '../../models/financing/financing_installment.dart';
 import '../../models/transaction.dart';
 import '../../services/transaction_query_service.dart';
-import 'credit_card_cycle_resolver.dart';
+import 'credit_card_due_date_policy.dart';
 
 /// Read-only projection of credit-card spending into the calendar month in
 /// which it should be reported as an expense.
@@ -145,6 +145,11 @@ final class CreditCardExpenseProjectionService {
         charge.date,
         profile?.statementDay,
         profile?.paymentDueDay,
+        dueDateCalculationMethod: profile?.dueDateCalculationMethod ??
+            CreditCardDueDatePolicy.fixedCalendarDay,
+        dueDaysAfterStatement: profile?.dueDaysAfterStatement,
+        weekendHolidayPolicy: profile?.weekendHolidayPolicy ??
+            CreditCardDueDatePolicy.noAdjustment,
       );
       if (!_inDateRange(expenseDate, startDate, endDate)) continue;
 
@@ -221,22 +226,31 @@ final class CreditCardExpenseProjectionService {
     return projected;
   }
 
-  /// Maps a non-financed card purchase to the month of its statement cycle.
-  /// This is deliberately separate from the payment-due month: a purchase can
-  /// be recognized in November's Analysis while its payment is due in December.
-  /// Without complete statement settings, use next calendar month as an
+  /// Maps a non-financed card purchase to the month it becomes payable.
+  /// Without complete statement settings, use next calendar month as a safe,
   /// explicit fallback instead of silently dropping the expense.
   static DateTime expenseDateForCharge(
     DateTime chargeDate,
     int? statementDay,
-    int? paymentDueDay,
-  ) {
-    if (statementDay == null || paymentDueDay == null) {
-      return CreditCardCycleResolver.fallbackMonthFor(chargeDate);
+    int? paymentDueDay, {
+    String dueDateCalculationMethod = CreditCardDueDatePolicy.fixedCalendarDay,
+    int? dueDaysAfterStatement,
+    String weekendHolidayPolicy = CreditCardDueDatePolicy.noAdjustment,
+  }) {
+    if (statementDay == null ||
+        (dueDateCalculationMethod == CreditCardDueDatePolicy.fixedOffsetDays
+            ? dueDaysAfterStatement == null
+            : paymentDueDay == null)) {
+      return _addMonthsClamped(chargeDate, 1);
     }
-    return CreditCardCycleResolver.dueDateFor(
-      statementCloseDateForCharge(chargeDate, statementDay),
-      paymentDueDay,
+
+    final closeDate = statementCloseDateForCharge(chargeDate, statementDay);
+    return CreditCardDueDatePolicy.forStatementClose(
+      statementCloseDate: closeDate,
+      calculationMethod: dueDateCalculationMethod,
+      paymentDueDay: paymentDueDay,
+      dueDaysAfterStatement: dueDaysAfterStatement,
+      weekendHolidayPolicy: weekendHolidayPolicy,
     );
   }
 
@@ -249,7 +263,16 @@ final class CreditCardExpenseProjectionService {
     if (statementDay == null) {
       return DateTime(chargeDate.year, chargeDate.month + 1, 0);
     }
-    return CreditCardCycleResolver.closeDateFor(chargeDate, statementDay);
+
+    final thisMonthClose = _dateForDay(
+      chargeDate.year,
+      chargeDate.month,
+      statementDay,
+    );
+    if (chargeDate.day <= thisMonthClose.day) return thisMonthClose;
+
+    final nextMonth = DateTime(chargeDate.year, chargeDate.month + 1, 1);
+    return _dateForDay(nextMonth.year, nextMonth.month, statementDay);
   }
 
   static bool _inDateRange(DateTime value, DateTime start, DateTime end) {
@@ -262,4 +285,14 @@ final class CreditCardExpenseProjectionService {
   static DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);
 
+  static DateTime _addMonthsClamped(DateTime value, int months) {
+    final targetMonth = DateTime(value.year, value.month + months, 1);
+    return _dateForDay(targetMonth.year, targetMonth.month, value.day);
+  }
+
+  static DateTime _dateForDay(int year, int month, int day) {
+    final first = DateTime(year, month, 1);
+    final lastDay = DateTime(first.year, first.month + 1, 0).day;
+    return DateTime(first.year, first.month, day.clamp(1, lastDay));
+  }
 }

@@ -3,52 +3,47 @@ import '../../core/money/money.dart';
 import '../../models/financing/financing_contract.dart';
 import '../../models/financing/financing_installment.dart';
 import '../../models/transaction.dart';
+import 'credit_card_due_date_policy.dart';
 import 'credit_card_expense_projection_service.dart';
 
-/// Projects current- and next-month card obligations. Missing statement-cycle
-/// settings fall back to calendar-month due dates. This is read-side only and
-/// never mutates installment status or financial transactions.
+/// One month's projected credit-card dues, split by purchase expenses and
+/// contractual installments.
+final class CreditCardMonthDueProjection {
+  const CreditCardMonthDueProjection({
+    required this.monthStart,
+    required this.expenses,
+    required this.installments,
+  });
+
+  final DateTime monthStart;
+  final Money expenses;
+  final Money installments;
+
+  Money get total => expenses + installments;
+}
+
+/// Read-side projection across a rolling window of months.
 final class CreditCardMonthlyDueBreakdown {
   const CreditCardMonthlyDueBreakdown({
     required this.thisMonthExpenses,
     required this.thisMonthInstallments,
     required this.nextMonthExpenses,
     required this.nextMonthInstallments,
-    required this.currentOutstanding,
-    required this.projectedOutstanding,
-    required this.reconciliationDelta,
-    required this.projectedWithinWindowBeforeCap,
-    required this.capSuppressedAmount,
+    this.months = const <CreditCardMonthDueProjection>[],
   });
 
   final Money thisMonthExpenses;
   final Money thisMonthInstallments;
   final Money nextMonthExpenses;
   final Money nextMonthInstallments;
-
-  /// Authoritative liability amount supplied by the caller.
-  final Money currentOutstanding;
-
-  /// Sum of all remaining charge/installment lines after payment allocation,
-  /// before the display cap is applied.
-  final Money projectedOutstanding;
-
-  /// Positive means the authoritative liability exceeds the projected lines;
-  /// negative means projected lines exceed the authoritative liability.
-  final Money reconciliationDelta;
-
-  /// Sum of remaining lines due through the end of next month, before capping.
-  final Money projectedWithinWindowBeforeCap;
-
-  /// Amount removed from the two-month display by the outstanding cap.
-  final Money capSuppressedAmount;
-
-  bool get isReconciled => reconciliationDelta.isZero;
+  final List<CreditCardMonthDueProjection> months;
 
   Money get thisMonthTotal => thisMonthExpenses + thisMonthInstallments;
   Money get nextMonthTotal => nextMonthExpenses + nextMonthInstallments;
 }
 
+/// Projects credit-card obligations by due month. It never mutates statement,
+/// transaction or installment records.
 final class CreditCardMonthlyDueProjectionCalculator {
   const CreditCardMonthlyDueProjectionCalculator();
 
@@ -62,10 +57,15 @@ final class CreditCardMonthlyDueProjectionCalculator {
     required int? paymentDueDay,
     required Money currentOutstanding,
     required DateTime now,
+    String dueDateCalculationMethod = CreditCardDueDatePolicy.fixedCalendarDay,
+    int? dueDaysAfterStatement,
+    String weekendHolidayPolicy = CreditCardDueDatePolicy.noAdjustment,
+    int monthsToProject = 12,
   }) {
     final today = _dateOnly(now);
-    final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
-    final nextMonthEnd = DateTime(now.year, now.month + 2, 0);
+    final monthCount = monthsToProject.clamp(2, 24).toInt();
+    final firstMonth = DateTime(now.year, now.month, 1);
+    final lastMonthEnd = DateTime(now.year, now.month + monthCount, 0);
 
     final cardContracts = contracts.where((contract) {
       final state = contract.lifecycleState.trim().toLowerCase();
@@ -90,8 +90,7 @@ final class CreditCardMonthlyDueProjectionCalculator {
         continue;
       }
 
-      final closeDate =
-          CreditCardExpenseProjectionService.statementCloseDateForCharge(
+      final closeDate = CreditCardExpenseProjectionService.statementCloseDateForCharge(
         charge.date,
         statementDay,
       );
@@ -104,15 +103,20 @@ final class CreditCardMonthlyDueProjectionCalculator {
         continue;
       }
 
+      final dueDate = CreditCardExpenseProjectionService.expenseDateForCharge(
+        charge.date,
+        statementDay,
+        paymentDueDay,
+        dueDateCalculationMethod: dueDateCalculationMethod,
+        dueDaysAfterStatement: dueDaysAfterStatement,
+        weekendHolidayPolicy: weekendHolidayPolicy,
+      );
+
       lines.add(
         _DueLine(
           id: 'charge:${charge.id}',
           eventDate: charge.date,
-          dueDate: CreditCardExpenseProjectionService.expenseDateForCharge(
-            charge.date,
-            statementDay,
-            paymentDueDay,
-          ),
+          dueDate: dueDate,
           remaining: Money.fromDouble(charge.amount).abs(),
           isInstallment: false,
         ),
@@ -133,11 +137,8 @@ final class CreditCardMonthlyDueProjectionCalculator {
         continue;
       }
 
-      // Unlike a purchase charge, an installment already has a contractual
-      // due date. Do not run it through the card's statement-cycle mapper a
-      // second time: doing so shifts installments that fall on/after the close
-      // day into a later billing cycle (for example Nov 15 -> Jan 15 when the
-      // statement closes on the 14th and payment is due on the 15th).
+      // Contractual installment due dates are already authoritative schedule
+      // dates. Do not map them through the statement cycle again.
       final installmentDueDate = _dateOnly(installment.dueDate);
       lines.add(
         _DueLine(
@@ -176,12 +177,11 @@ final class CreditCardMonthlyDueProjectionCalculator {
       for (final line in eligible) {
         if (unapplied <= Money.zero) break;
         final applied = line.remaining < unapplied ? line.remaining : unapplied;
-        line.remaining -= applied;
-        unapplied -= applied;
+        line.remaining = line.remaining - applied;
+        unapplied = unapplied - applied;
       }
 
-      // Any excess is a prepayment for the earliest future installment, not a
-      // second liability credit and not an early-settlement of the contract.
+      // An excess payment is applied to the earliest future installment.
       if (unapplied > Money.zero) {
         final futureInstallments = lines
             .where((line) =>
@@ -194,69 +194,60 @@ final class CreditCardMonthlyDueProjectionCalculator {
         for (final line in futureInstallments) {
           if (unapplied <= Money.zero) break;
           final applied = line.remaining < unapplied ? line.remaining : unapplied;
-          line.remaining -= applied;
-          unapplied -= applied;
+          line.remaining = line.remaining - applied;
+          unapplied = unapplied - applied;
         }
       }
     }
 
-    // Diagnostics are computed before the display cap, so the cap cannot hide
-    // a mismatch between modeled obligations and the authoritative liability.
-    var projectedOutstanding = Money.zero;
-    var projectedWithinWindowBeforeCap = Money.zero;
-    for (final line in lines) {
-      if (line.remaining <= Money.zero) continue;
-      projectedOutstanding += line.remaining;
-      if (!_dateOnly(line.dueDate).isAfter(_dateOnly(nextMonthEnd))) {
-        projectedWithinWindowBeforeCap += line.remaining;
-      }
-    }
-    final reconciliationDelta = currentOutstanding - projectedOutstanding;
-
-    // Keep the two displayed month totals consistent with the authoritative
-    // liability balance. Oldest due lines consume the cap first.
+    // Reconcile all projected obligations to the current liability balance,
+    // oldest due month first. This avoids a future projection exceeding what
+    // the ledger says is still outstanding.
     lines.sort(_compareLines);
     var remainingCap = currentOutstanding;
-    var thisExpenses = Money.zero;
-    var thisInstallments = Money.zero;
-    var nextExpenses = Money.zero;
-    var nextInstallments = Money.zero;
-
+    final expenseByMonth = <int, Money>{};
+    final installmentByMonth = <int, Money>{};
     for (final line in lines) {
       if (remainingCap <= Money.zero) break;
       if (line.remaining <= Money.zero ||
-          _dateOnly(line.dueDate).isAfter(_dateOnly(nextMonthEnd))) {
+          _dateOnly(line.dueDate).isAfter(_dateOnly(lastMonthEnd))) {
         continue;
       }
 
       final counted = line.remaining < remainingCap ? line.remaining : remainingCap;
-      remainingCap -= counted;
-      if (!_dateOnly(line.dueDate).isAfter(_dateOnly(currentMonthEnd))) {
-        if (line.isInstallment) {
-          thisInstallments += counted;
-        } else {
-          thisExpenses += counted;
-        }
-      } else if (line.isInstallment) {
-        nextInstallments += counted;
+      remainingCap = remainingCap - counted;
+      final dueDate = _dateOnly(line.dueDate);
+      final key = dueDate.isBefore(firstMonth)
+          ? _monthKey(firstMonth)
+          : _monthKey(dueDate);
+      if (line.isInstallment) {
+        installmentByMonth[key] = (installmentByMonth[key] ?? Money.zero) + counted;
       } else {
-        nextExpenses += counted;
+        expenseByMonth[key] = (expenseByMonth[key] ?? Money.zero) + counted;
       }
     }
 
-    final cappedWindowTotal =
-        thisExpenses + thisInstallments + nextExpenses + nextInstallments;
+    final months = <CreditCardMonthDueProjection>[];
+    for (var index = 0; index < monthCount; index++) {
+      final monthStart = DateTime(firstMonth.year, firstMonth.month + index, 1);
+      final key = _monthKey(monthStart);
+      months.add(
+        CreditCardMonthDueProjection(
+          monthStart: monthStart,
+          expenses: expenseByMonth[key] ?? Money.zero,
+          installments: installmentByMonth[key] ?? Money.zero,
+        ),
+      );
+    }
 
+    final current = months.isNotEmpty ? months[0] : null;
+    final next = months.length > 1 ? months[1] : null;
     return CreditCardMonthlyDueBreakdown(
-      thisMonthExpenses: thisExpenses,
-      thisMonthInstallments: thisInstallments,
-      nextMonthExpenses: nextExpenses,
-      nextMonthInstallments: nextInstallments,
-      currentOutstanding: currentOutstanding,
-      projectedOutstanding: projectedOutstanding,
-      reconciliationDelta: reconciliationDelta,
-      projectedWithinWindowBeforeCap: projectedWithinWindowBeforeCap,
-      capSuppressedAmount: projectedWithinWindowBeforeCap - cappedWindowTotal,
+      thisMonthExpenses: current?.expenses ?? Money.zero,
+      thisMonthInstallments: current?.installments ?? Money.zero,
+      nextMonthExpenses: next?.expenses ?? Money.zero,
+      nextMonthInstallments: next?.installments ?? Money.zero,
+      months: List.unmodifiable(months),
     );
   }
 
@@ -266,6 +257,8 @@ final class CreditCardMonthlyDueProjectionCalculator {
     final byEvent = a.eventDate.compareTo(b.eventDate);
     return byEvent != 0 ? byEvent : a.id.compareTo(b.id);
   }
+
+  static int _monthKey(DateTime date) => date.year * 100 + date.month;
 
   static DateTime _dateOnly(DateTime value) =>
       DateTime(value.year, value.month, value.day);

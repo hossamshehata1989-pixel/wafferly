@@ -95,8 +95,8 @@ void main() async {
   // ====================================================
 
   const bool resetDb =
-      true; // Set to true to clear alldata on app start (for testing)
-  const bool runFinancialActionEngineTest = true;
+      false; // Set to true to clear alldata on app start (for testing)
+  const bool runFinancialActionEngineTest = false;
 
   // ====================================================
   // Optional DB Reset

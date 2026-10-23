@@ -305,11 +305,11 @@ class _WafferlyCardPainter extends CustomPainter {
     }
 
     // Wafferly's neutral card chip. It is artwork, not card data.
-    final chip = RRect.fromRectAndRadius(Rect.fromLTWH(size.width * .075, size.height * .32, size.width * .16, size.height * .23), const Radius.circular(7));
+    final chip = RRect.fromRectAndRadius(Rect.fromLTWH(size.width * .055, size.height * .32, size.width * .16, size.height * .23), const Radius.circular(7));
     canvas.drawRRect(chip, Paint()..color = const Color(0xFFE8C35B));
     final chipLine = Paint()..color = const Color(0xFF9A7924)..strokeWidth = 2;
-    canvas.drawLine(Offset(size.width * .155, size.height * .32), Offset(size.width * .155, size.height * .55), chipLine);
-    canvas.drawLine(Offset(size.width * .075, size.height * .435), Offset(size.width * .235, size.height * .435), chipLine);
+    canvas.drawLine(Offset(size.width * .135, size.height * .32), Offset(size.width * .135, size.height * .55), chipLine);
+    canvas.drawLine(Offset(size.width * .055, size.height * .435), Offset(size.width * .215, size.height * .435), chipLine);
 
     // Abstract network mark: intentionally brand-neutral.
     final r = size.height * .15;

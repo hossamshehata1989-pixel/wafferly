@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/money/money.dart';
+import 'credit_card_due_date_policy.dart';
 
 import '../../credit_card/domain/credit_card_profile.dart';
 import '../../models/account.dart';
@@ -52,9 +53,13 @@ final class CreditCardAccountApplicationService {
     int? statementDay,
     int? paymentDueDay,
     int? statementStartDay,
-    List<int> graceDays = const <int>[],
+    List<int>? paymentReminderDays,
+    List<int>? graceDays,
     String? annualFeeValue,
     String cardVisual = 'credit_midnight',
+    String dueDateCalculationMethod = CreditCardDueDatePolicy.fixedCalendarDay,
+    int? dueDaysAfterStatement,
+    String weekendHolidayPolicy = CreditCardDueDatePolicy.noAdjustment,
   }) async {
     final activeBankAccounts = getActiveBankAccounts();
     Account? linkedBankAccount;
@@ -89,9 +94,25 @@ final class CreditCardAccountApplicationService {
       throw ArgumentError('Credit limit must be greater than zero.');
     }
 
-    final effectiveStatementDay = statementStartDay == null
-        ? statementDay
-        : (statementStartDay == 1 ? 31 : statementStartDay - 1);
+    if (dueDateCalculationMethod == CreditCardDueDatePolicy.fixedOffsetDays) {
+      if (dueDaysAfterStatement == null ||
+          dueDaysAfterStatement < 1 ||
+          dueDaysAfterStatement > 90) {
+        throw ArgumentError('Due date offset must be between 1 and 90 days.');
+      }
+    } else if (paymentDueDay == null || paymentDueDay < 1 || paymentDueDay > 31) {
+      throw ArgumentError('Payment due day must be between 1 and 31.');
+    }
+
+    final effectiveStatementDay = statementDay ??
+        (statementStartDay == null
+            ? null
+            : (statementStartDay == 1 ? 31 : statementStartDay - 1));
+    if (effectiveStatementDay == null ||
+        effectiveStatementDay < 1 ||
+        effectiveStatementDay > 31) {
+      throw ArgumentError('Statement closing day must be between 1 and 31.');
+    }
 
     final account = await _accountService.createAccount(
       name: name.trim(),
@@ -111,15 +132,23 @@ final class CreditCardAccountApplicationService {
         creditLimit: creditLimit,
         cardKind: cardKind,
         cardNetwork: cardNetwork,
-        // The domain still stores statementDay as the cycle closing day.
-        // For the new create-card UX, derive it from the selected cycle start.
+        // statementDay is the actual statement closing day; legacy callers may
+        // still pass statementStartDay and receive the old conversion below.
         statementDay: effectiveStatementDay,
-        paymentDueDay: paymentDueDay,
+        paymentDueDay: dueDateCalculationMethod == CreditCardDueDatePolicy.fixedCalendarDay
+            ? paymentDueDay
+            : null,
         statementStartDay: statementStartDay,
+        paymentReminderDays: paymentReminderDays,
         graceDays: graceDays,
         annualFee: annualFee,
         cardVisual: cardVisual,
         linkedBankAccountId: linkedBankAccount.id,
+        dueDateCalculationMethod: dueDateCalculationMethod,
+        dueDaysAfterStatement: dueDateCalculationMethod == CreditCardDueDatePolicy.fixedOffsetDays
+            ? dueDaysAfterStatement
+            : null,
+        weekendHolidayPolicy: weekendHolidayPolicy,
       );
       await _profileBox.put(profile.id, profile);
       return account;

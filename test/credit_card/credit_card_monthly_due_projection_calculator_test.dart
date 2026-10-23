@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wafferly/application/credit_card/credit_card_monthly_due_projection_calculator.dart';
+import 'package:wafferly/application/credit_card/credit_card_due_date_policy.dart';
 import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/core/money/money.dart';
 import 'package:wafferly/models/financing/financing_contract.dart';
@@ -247,41 +248,34 @@ void main() {
   });
 
 
-  test('reconciliation diagnostics report liability minus projected obligations', () {
+  test('offset due date keeps October purchase visible in December forecast', () {
     final result = calculator.calculate(
       liabilityAccountId: 'card-1',
-      charges: [charge(id: 'charge-1', amount: 200)],
+      charges: [
+        charge(
+          id: 'october-purchase',
+          amount: 250,
+          date: DateTime(2026, 10, 22),
+        ),
+      ],
       payments: const [],
       contracts: const [],
       installments: const [],
-      statementDay: null,
+      statementDay: 7,
       paymentDueDay: null,
+      dueDateCalculationMethod: CreditCardDueDatePolicy.fixedOffsetDays,
+      dueDaysAfterStatement: 25,
+      weekendHolidayPolicy: CreditCardDueDatePolicy.noAdjustment,
       currentOutstanding: Money.fromDouble(250),
-      now: now,
+      now: DateTime(2026, 10, 23, 12),
+      monthsToProject: 12,
     );
 
-    expect(result.projectedOutstanding, Money.fromDouble(200));
-    expect(result.reconciliationDelta, Money.fromDouble(50));
-    expect(result.isReconciled, isFalse);
-  });
-
-  test('outstanding cap remains in force and its suppression is diagnosable', () {
-    final result = calculator.calculate(
-      liabilityAccountId: 'card-1',
-      charges: [charge(id: 'charge-1', amount: 350)],
-      payments: const [],
-      contracts: const [],
-      installments: const [],
-      statementDay: null,
-      paymentDueDay: null,
-      currentOutstanding: Money.fromDouble(200),
-      now: now,
-    );
-
-    expect(result.projectedOutstanding, Money.fromDouble(350));
-    expect(result.reconciliationDelta, Money.fromDouble(-150));
-    expect(result.nextMonthTotal, Money.fromDouble(200));
-    expect(result.capSuppressedAmount, Money.fromDouble(150));
+    expect(result.thisMonthTotal, Money.zero);
+    expect(result.nextMonthTotal, Money.zero);
+    expect(result.months[2].monthStart, DateTime(2026, 12, 1));
+    expect(result.months[2].expenses, Money.fromDouble(250));
+    expect(result.months[2].total, Money.fromDouble(250));
   });
 
 }

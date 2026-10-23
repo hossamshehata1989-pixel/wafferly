@@ -23,20 +23,23 @@ class CreditCardProfileAdapter extends TypeAdapter<CreditCardProfile> {
       statementDay: fields[5] as int?,
       paymentDueDay: fields[6] as int?,
       statementStartDay: fields[10] as int?,
-      graceDays: fields[11] == null
+      paymentReminderDays: fields[11] == null
           ? const <int>[]
           : List<int>.from(fields[11] as List),
       linkedDebitCardAccountId: fields[7] as String?,
       annualFeeValue: fields[8] as String?,
       cardVisual: fields[9] as String? ?? 'credit_midnight',
       linkedBankAccountId: fields[12] as String?,
+      dueDateCalculationMethod: fields[13] as String? ?? 'fixed_calendar_day',
+      dueDaysAfterStatement: fields[14] as int?,
+      weekendHolidayPolicy: fields[15] as String? ?? 'no_adjustment',
     );
   }
 
   @override
   void write(BinaryWriter writer, CreditCardProfile obj) {
     writer
-      ..writeByte(13)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,12 +59,18 @@ class CreditCardProfileAdapter extends TypeAdapter<CreditCardProfile> {
       ..writeByte(10)
       ..write(obj.statementStartDay)
       ..writeByte(11)
-      ..write(obj.graceDays)
+      ..write(obj.paymentReminderDays)
       ..writeByte(8)
       ..write(obj.annualFeeValue)
       ..writeByte(9)
       ..write(obj.cardVisual)
       ..writeByte(12)
-      ..write(obj.linkedBankAccountId);
+      ..write(obj.linkedBankAccountId)
+      ..writeByte(13)
+      ..write(obj.dueDateCalculationMethod)
+      ..writeByte(14)
+      ..write(obj.dueDaysAfterStatement)
+      ..writeByte(15)
+      ..write(obj.weekendHolidayPolicy);
   }
 }

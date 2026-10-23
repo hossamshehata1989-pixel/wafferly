@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../application/credit_card/credit_card_account_application_service.dart';
+import '../../../application/credit_card/credit_card_due_date_policy.dart';
 import '../../../core/money/money.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../models/account.dart';
@@ -13,6 +14,7 @@ import '../../../theme/input/wafferly_input_decoration.dart';
 import '../../../theme/responsive_metrics.dart';
 import '../../../widgets/shared/wafferly_financial_card.dart';
 import 'credit_card_bank_account_selection_screen.dart';
+import 'credit_card_due_date_settings_screen.dart';
 
 class AddCreditCardScreen extends StatefulWidget {
   const AddCreditCardScreen({super.key, required this.bankAccount});
@@ -27,16 +29,17 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _limitController = TextEditingController();
-  final _annualFeeController = TextEditingController();
-  final _last4Controller = TextEditingController();
 
   final _applicationService = CreditCardAccountApplicationService();
   late Account _linkedBankAccount;
 
   String _currency = 'EGP';
-  int? _statementStartDay;
+  int? _statementClosingDay;
   int? _paymentDueDay;
-  final Set<int> _graceDays = <int>{};
+  int _daysAfterStatement = 25;
+  String _dueDateCalculationMethod = CreditCardDueDatePolicy.fixedCalendarDay;
+  String _weekendHolidayPolicy = CreditCardDueDatePolicy.noAdjustment;
+  final Set<int> _paymentReminderDays = <int>{3};
   String _cardVisual = 'credit_midnight';
   bool _saving = false;
 
@@ -51,8 +54,6 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
   void dispose() {
     _nameController.dispose();
     _limitController.dispose();
-    _annualFeeController.dispose();
-    _last4Controller.dispose();
     super.dispose();
   }
 
@@ -67,8 +68,7 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
     if (selected == null || !mounted) return;
 
     final changesCurrency = selected.currency != _currency;
-    final hasEnteredAmounts = _limitController.text.trim().isNotEmpty ||
-        _annualFeeController.text.trim().isNotEmpty;
+    final hasEnteredAmounts = _limitController.text.trim().isNotEmpty;
     if (changesCurrency && hasEnteredAmounts) {
       final t = AppLocalizations.of(context)!;
       final confirmed = await showDialog<bool>(
@@ -91,7 +91,6 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
       );
       if (confirmed != true || !mounted) return;
       _limitController.clear();
-      _annualFeeController.clear();
     }
 
     setState(() {
@@ -102,20 +101,33 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
     });
   }
 
+  Future<void> _openDueDateSettings() async {
+    final result = await Navigator.of(context).push<CreditCardDueDateSettings>(
+      MaterialPageRoute<CreditCardDueDateSettings>(
+        builder: (_) => CreditCardDueDateSettingsScreen(
+          initialSettings: CreditCardDueDateSettings(
+            calculationMethod: _dueDateCalculationMethod,
+            daysAfterStatement: _daysAfterStatement,
+            weekendHolidayPolicy: _weekendHolidayPolicy,
+          ),
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() {
+      _dueDateCalculationMethod = result.calculationMethod;
+      _daysAfterStatement = result.daysAfterStatement;
+      _weekendHolidayPolicy = result.weekendHolidayPolicy;
+    });
+  }
+
   Widget _buildLinkedBankAccountCard(
     ResponsiveMetrics m,
     AppLocalizations t,
   ) {
     final provider = _linkedBankAccount.provider?.trim();
-    final number = _linkedBankAccount.accountNumber?.trim();
-    final lastDigits = number == null || number.isEmpty
-        ? null
-        : (number.length <= 4 ? number : number.substring(number.length - 4));
     final subtitleParts = <String>[];
     if (provider != null && provider.isNotEmpty) subtitleParts.add(provider);
-    if (lastDigits != null && lastDigits.isNotEmpty) {
-      subtitleParts.add('•••• $lastDigits');
-    }
 
     return Container(
       padding: EdgeInsets.all(m.space.md),
@@ -204,14 +216,19 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
         currency: _currency,
         creditLimitValue: _limitController.text,
         linkedBankAccountId: _linkedBankAccount.id,
-        last4Digits: _last4Controller.text.trim().isEmpty ? null : _last4Controller.text.trim(),
         cardVisual: _cardVisual,
-        annualFeeValue: _annualFeeController.text.trim().isEmpty
-            ? null
-            : _annualFeeController.text.trim(),
-        statementStartDay: _statementStartDay,
-        paymentDueDay: _paymentDueDay,
-        graceDays: _graceDays.toList()..sort(),
+        statementDay: _statementClosingDay,
+        paymentDueDay: _dueDateCalculationMethod ==
+                CreditCardDueDatePolicy.fixedCalendarDay
+            ? _paymentDueDay
+            : null,
+        dueDateCalculationMethod: _dueDateCalculationMethod,
+        dueDaysAfterStatement: _dueDateCalculationMethod ==
+                CreditCardDueDatePolicy.fixedOffsetDays
+            ? _daysAfterStatement
+            : null,
+        weekendHolidayPolicy: _weekendHolidayPolicy,
+        paymentReminderDays: _paymentReminderDays.toList()..sort(),
       );
 
       if (!mounted) return;
@@ -284,21 +301,6 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                               value == null || value.trim().isEmpty
                                   ? t.enterCardName
                                   : null,
-                        ),
-                        WafferlyTextField(
-                          spacingAfter: m.isCompactHeight ? 12 : 14,
-                          controller: _last4Controller,
-                          label: t.last4Optional,
-                          hint: '4582',
-                          keyboardType: TextInputType.number,
-                          maxLength: 4,
-                          validator: (value) {
-                            final text = value?.trim() ?? '';
-                            if (text.isEmpty) return null;
-                            return RegExp(r'^\d{4}$').hasMatch(text)
-                                ? null
-                                : t.enterExactlyFourDigits;
-                          },
                         ),
                         Container(
                           padding: EdgeInsets.all(m.spacing(6)),
@@ -413,46 +415,102 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                       children: [
                         SizedBox(height: m.space.md),
                         LayoutBuilder(
-                          builder: (context, constraints) {
-                            final compact = constraints.maxWidth < m.size(390);
-                            final cycleStart = _DayOfMonthSelector(
-                              label: t.statementStartDay,
-                              value: _statementStartDay,
+                          builder: (context, _) {
+                            final offsetMode = _dueDateCalculationMethod ==
+                                CreditCardDueDatePolicy.fixedOffsetDays;
+                            final statementDayField = _DayOfMonthSelector(
+                              label: t.statementClosingDay,
+                              value: _statementClosingDay,
                               hint: t.selectDayOfMonth,
-                              onChanged: (value) =>
-                                  setState(() => _statementStartDay = value),
+                              validator: (value) => value == null
+                                  ? t.selectDayOfMonth
+                                  : null,
+                              onChanged: (value) => setState(
+                                () => _statementClosingDay = value,
+                              ),
                             );
-                            final paymentDue = _DayOfMonthSelector(
-                              label: t.paymentDueDay,
-                              value: _paymentDueDay,
-                              hint: t.selectDayOfMonth,
-                              onChanged: (value) =>
-                                  setState(() => _paymentDueDay = value),
-                            );
-
-                            if (compact) {
-                              return Column(
-                                children: [
-                                  cycleStart,
-                                  SizedBox(height: m.space.sm),
-                                  paymentDue,
-                                ],
-                              );
-                            }
-
-                            return Row(
+                            final Widget dueDateField = offsetMode
+                                ? InputDecorator(
+                                    decoration: WafferlyInputDecoration.build(
+                                      context,
+                                      label: t.dueDate,
+                                    ),
+                                    child: Text(
+                                      '$_daysAfterStatement ${t.daysAfterClosingShort}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: m.typography.body,
+                                      ),
+                                    ),
+                                  )
+                                : _DayOfMonthSelector(
+                                    label: t.dueDate,
+                                    value: _paymentDueDay,
+                                    hint: t.selectDayOfMonth,
+                                    validator: (value) => value == null
+                                        ? t.selectDayOfMonth
+                                        : null,
+                                    onChanged: (value) => setState(
+                                      () => _paymentDueDay = value,
+                                    ),
+                                  );
+                            final dueDateRow = Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(child: cycleStart),
-                                SizedBox(width: m.space.sm),
-                                Expanded(child: paymentDue),
+                                Expanded(child: dueDateField),
+                                SizedBox(width: m.space.xs),
+                                Padding(
+                                  padding: EdgeInsets.only(top: m.spacing(2)),
+                                  child: Material(
+                                    color: const Color(0xFF25152F),
+                                    borderRadius: BorderRadius.circular(m.radius.md),
+                                    child: InkWell(
+                                      onTap: _openDueDateSettings,
+                                      borderRadius: BorderRadius.circular(m.radius.md),
+                                      child: Container(
+                                        width: m.size(48),
+                                        height: m.size(54),
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(m.radius.md),
+                                          border: Border.all(color: const Color(0xFFFF1684)),
+                                        ),
+                                        child: const Icon(
+                                          Icons.settings_outlined,
+                                          color: Color(0xFFFF1684),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+
+                            return Column(
+                              children: [
+                                statementDayField,
+                                SizedBox(height: m.space.sm),
+                                dueDateRow,
+                                SizedBox(height: m.space.xs),
+                                Align(
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: Text(
+                                    t.dueDateExplanation,
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: m.typography.caption,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ),
                               ],
                             );
                           },
                         ),
-                        SizedBox(height: m.space.md),
+                        SizedBox(height: m.space.lg),
                         Text(
-                          t.graceDays,
+                          t.paymentReminders,
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary,
@@ -461,7 +519,7 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                         ),
                         SizedBox(height: m.space.xs),
                         Text(
-                          t.graceDaysHelper,
+                          t.paymentRemindersHelper,
                           style: TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: m.typography.caption,
@@ -469,60 +527,15 @@ class _AddCreditCardScreenState extends State<AddCreditCardScreen> {
                           ),
                         ),
                         SizedBox(height: m.space.sm),
-                        _GraceDaysCalendar(
-                          selectedDays: _graceDays,
+                        _ReminderDaysSelector(
+                          selectedDays: _paymentReminderDays,
                           onToggle: (day) {
                             setState(() {
-                              if (!_graceDays.add(day)) {
-                                _graceDays.remove(day);
+                              if (!_paymentReminderDays.add(day)) {
+                                _paymentReminderDays.remove(day);
                               }
                             });
                           },
-                        ),
-                        if (_graceDays.isNotEmpty) ...[
-                          SizedBox(height: m.space.xs),
-                          Text(
-                            '${t.selectedDays}: ${_graceDays.toList()..sort()}',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: m.typography.caption,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    WafferlyFormSection(
-                      title: t.feesOptional,
-                      children: [
-                        WafferlyTextField(
-                          spacingAfter: m.isCompactHeight ? 10 : 12,
-                          controller: _annualFeeController,
-                          label: t.annualFeeOptional,
-                          hint: t.annualFeeHint,
-                          keyboardType:
-                              const TextInputType.numberWithOptions(decimal: true),
-                          validator: (value) {
-                            final text = value?.trim() ?? '';
-                            if (text.isEmpty) return null;
-                            try {
-                              final amount = Money.parse(text);
-                              if (amount < Money.zero) {
-                                return t.enterValidAnnualFee;
-                              }
-                              return null;
-                            } catch (_) {
-                              return t.enterValidAnnualFee;
-                            }
-                          },
-                        ),
-                        SizedBox(height: m.space.xs),
-                        Text(
-                          t.annualFeeHelper,
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: m.typography.caption,
-                            height: 1.3,
-                          ),
                         ),
                       ],
                     ),
@@ -569,12 +582,18 @@ class _DayOfMonthSelector extends StatelessWidget {
     required this.value,
     required this.onChanged,
     required this.hint,
+    required this.validator,
+    this.days = 31,
+    this.itemLabel,
   });
 
   final String label;
   final int? value;
   final String hint;
   final ValueChanged<int?> onChanged;
+  final FormFieldValidator<int> validator;
+  final int days;
+  final String Function(int day)? itemLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -582,19 +601,21 @@ class _DayOfMonthSelector extends StatelessWidget {
       label: label,
       value: value,
       items: [
-        for (var day = 1; day <= 31; day++)
+        for (var day = 1; day <= days; day++)
           DropdownMenuItem<int>(
             value: day,
-            child: Text('$day'),
+            child: Text(itemLabel?.call(day) ?? '$day'),
           ),
       ],
       onChanged: onChanged,
+      hint: hint,
+      validator: validator,
     );
   }
 }
 
-class _GraceDaysCalendar extends StatelessWidget {
-  const _GraceDaysCalendar({
+class _ReminderDaysSelector extends StatelessWidget {
+  const _ReminderDaysSelector({
     required this.selectedDays,
     required this.onToggle,
   });
@@ -602,58 +623,36 @@ class _GraceDaysCalendar extends StatelessWidget {
   final Set<int> selectedDays;
   final ValueChanged<int> onToggle;
 
+  static const _days = <int>[1, 3, 5, 7, 10, 14];
+
   @override
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
-    return Container(
-      padding: EdgeInsets.all(m.space.sm),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(m.radius.lg),
-        border: Border.all(color: Colors.white.withValues(alpha: .06)),
-      ),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 31,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 7,
-          crossAxisSpacing: m.space.xs,
-          mainAxisSpacing: m.space.xs,
-          childAspectRatio: 1,
-        ),
-        itemBuilder: (context, index) {
-          final day = index + 1;
-          final selected = selectedDays.contains(day);
-          return InkWell(
-            onTap: () => onToggle(day),
-            borderRadius: BorderRadius.circular(m.radius.sm),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 120),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: selected
-                    ? const Color(0xFF35E0B5)
-                    : Colors.white.withValues(alpha: .045),
-                borderRadius: BorderRadius.circular(m.radius.sm),
-                border: Border.all(
-                  color: selected
-                      ? const Color(0xFF35E0B5)
-                      : Colors.white.withValues(alpha: .06),
-                ),
-              ),
-              child: Text(
-                '$day',
-                style: TextStyle(
-                  color: selected ? Colors.black : AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: m.typography.caption,
-                ),
-              ),
+    return Wrap(
+      spacing: m.space.xs,
+      runSpacing: m.space.xs,
+      children: [
+        for (final day in _days)
+          ChoiceChip(
+            label: Text('$day'),
+            selected: selectedDays.contains(day),
+            onSelected: (_) => onToggle(day),
+            selectedColor: const Color(0xFFFF1684),
+            backgroundColor: AppColors.card,
+            labelStyle: TextStyle(
+              color: selectedDays.contains(day)
+                  ? Colors.white
+                  : AppColors.textSecondary,
+              fontWeight: FontWeight.w800,
             ),
-          );
-        },
-      ),
+            side: BorderSide(
+              color: selectedDays.contains(day)
+                  ? const Color(0xFFFF1684)
+                  : AppColors.border,
+            ),
+          ),
+      ],
     );
   }
 }
+

@@ -997,7 +997,10 @@ class _CreditCardInfoStrip extends StatelessWidget {
     final items = <MapEntry<String, String>>[
       if (profile.statementDay != null)
         MapEntry('Statement Day', '${profile.statementDay}'),
-      if (profile.paymentDueDay != null)
+      if (profile.dueDateCalculationMethod == 'fixed_offset_days' &&
+          profile.dueDaysAfterStatement != null)
+        MapEntry('Payment Due Rule', '${profile.dueDaysAfterStatement} days after close')
+      else if (profile.paymentDueDay != null)
         MapEntry('Payment Due Day', '${profile.paymentDueDay}'),
       if (profile.cardKind.isNotEmpty)
         MapEntry('Card Type', _prettyCardKind(profile.cardKind)),

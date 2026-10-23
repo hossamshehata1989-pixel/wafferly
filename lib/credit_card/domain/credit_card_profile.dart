@@ -41,10 +41,15 @@ final class CreditCardProfile {
   @HiveField(10)
   final int? statementStartDay;
 
-  /// Optional allowed/grace days of the month (1-31).
-  /// These are day-of-month selections, not a duration.
+  /// Notification offsets in days before payment due date.
+  /// Field 11 previously stored a legacy grace-day calendar; the persisted
+  /// field number is retained to keep Hive data compatible.
   @HiveField(11)
-  final List<int> graceDays;
+  final List<int> paymentReminderDays;
+
+  /// Backward-compatible alias for old call sites / saved profile readers.
+  @Deprecated('Use paymentReminderDays instead.')
+  List<int> get graceDays => paymentReminderDays;
 
   /// Optional linked debit-card Account id used for payment setup.
   @HiveField(7)
@@ -65,6 +70,18 @@ final class CreditCardProfile {
   @HiveField(12)
   final String? linkedBankAccountId;
 
+  /// How the issuer determines the due date: calendar day or offset from close.
+  @HiveField(13)
+  final String dueDateCalculationMethod;
+
+  /// Used only when dueDateCalculationMethod is fixed_offset_days.
+  @HiveField(14)
+  final int? dueDaysAfterStatement;
+
+  /// Weekend behavior for calculated due dates. Public-holiday rules are issuer-specific.
+  @HiveField(15)
+  final String weekendHolidayPolicy;
+
   CreditCardProfile({
     required this.id,
     required this.accountId,
@@ -74,12 +91,18 @@ final class CreditCardProfile {
     this.statementDay,
     this.paymentDueDay,
     this.statementStartDay,
-    List<int> graceDays = const <int>[],
+    List<int>? paymentReminderDays,
+    List<int>? graceDays,
     this.linkedDebitCardAccountId,
     this.annualFeeValue,
     this.cardVisual = 'credit_midnight',
     this.linkedBankAccountId,
-  }) : graceDays = _normalizeGraceDays(graceDays);
+    this.dueDateCalculationMethod = 'fixed_calendar_day',
+    this.dueDaysAfterStatement,
+    this.weekendHolidayPolicy = 'no_adjustment',
+  }) : paymentReminderDays = _normalizeReminderDays(
+          paymentReminderDays ?? graceDays ?? const <int>[],
+        );
 
   factory CreditCardProfile.fromMoney({
     required String id,
@@ -90,11 +113,15 @@ final class CreditCardProfile {
     int? statementDay,
     int? paymentDueDay,
     int? statementStartDay,
-    List<int> graceDays = const <int>[],
+    List<int>? paymentReminderDays,
+    List<int>? graceDays,
     String? linkedDebitCardAccountId,
     Money? annualFee,
     String cardVisual = 'credit_midnight',
     String? linkedBankAccountId,
+    String dueDateCalculationMethod = 'fixed_calendar_day',
+    int? dueDaysAfterStatement,
+    String weekendHolidayPolicy = 'no_adjustment',
   }) {
     if (creditLimit < Money.zero) {
       throw ArgumentError.value(
@@ -121,23 +148,27 @@ final class CreditCardProfile {
       statementDay: statementDay,
       paymentDueDay: paymentDueDay,
       statementStartDay: statementStartDay,
+      paymentReminderDays: paymentReminderDays,
       graceDays: graceDays,
       linkedDebitCardAccountId: linkedDebitCardAccountId,
       annualFeeValue: annualFee?.toString(),
       cardVisual: cardVisual,
       linkedBankAccountId: linkedBankAccountId,
+      dueDateCalculationMethod: dueDateCalculationMethod,
+      dueDaysAfterStatement: dueDaysAfterStatement,
+      weekendHolidayPolicy: weekendHolidayPolicy,
     );
   }
 
 
-  static List<int> _normalizeGraceDays(Iterable<int> days) {
+  static List<int> _normalizeReminderDays(Iterable<int> days) {
     final normalized = days.toSet().toList()..sort();
     for (final day in normalized) {
       if (day < 1 || day > 31) {
         throw ArgumentError.value(
           day,
-          'graceDays',
-          'Grace days must be between 1 and 31.',
+          'paymentReminderDays',
+          'Reminder offsets must be between 1 and 31 days.',
         );
       }
     }

@@ -3,8 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:wafferly/controllers/transaction_entry_controller.dart';
-import 'package:wafferly/application/credit_card/credit_card_first_due_date_policy.dart';
 import 'package:wafferly/credit_card/domain/credit_card_profile.dart';
+import 'package:wafferly/application/credit_card/credit_card_due_date_policy.dart';
+import 'package:wafferly/application/credit_card/credit_card_expense_projection_service.dart';
 import 'package:wafferly/credit_card/infrastructure/hive_credit_card_profile_repository.dart';
 import 'package:wafferly/core/planning/bootstrap/planning_engine_bootstrap.dart';
 import 'package:wafferly/core/planning/services/available_balance_projection_service.dart';
@@ -35,7 +36,7 @@ Future<bool> showPaymentMethodSheet({
       (availableHeight > 0 ? availableHeight : media.size.height) *
       (compactScreen ? .92 : .86);
 
-  final completed = await WafferlyBottomSheet.show<bool>(
+  final result = await WafferlyBottomSheet.show<bool>(
     context: context,
     // The sheet owns the scroll area so its height stays compact instead of
     // expanding with every account/card/financing row.
@@ -49,10 +50,7 @@ Future<bool> showPaymentMethodSheet({
     child: Align(
       alignment: Alignment.bottomCenter,
       child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: 430,
-          maxHeight: maxSheetHeight,
-        ),
+        constraints: BoxConstraints(maxWidth: 430, maxHeight: maxSheetHeight),
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -66,7 +64,7 @@ Future<bool> showPaymentMethodSheet({
       ),
     ),
   );
-  return completed == true;
+  return result ?? false;
 }
 
 class _PaymentMethodSheet extends StatefulWidget {
@@ -109,36 +107,17 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         : ExpensePaymentMode.fullPayment;
     _future = _loadSources();
     _downPayment = 0;
-    _financingSourceId = controller.lockedCreditCardSourceAccountId;
     _firstDueDate = _addMonths(controller.selectedDate, 1);
     _future.then((sources) {
-      if (!mounted || sources.creditCards.isEmpty) return;
-
-      _CreditCardSource? selectedCard;
-      final fixedId = controller.lockedCreditCardSourceAccountId;
-      if (fixedId != null) {
-        for (final card in sources.creditCards) {
-          if (card.account.id == fixedId) {
-            selectedCard = card;
-            break;
-          }
-        }
-      } else if (_financingSourceId != null) {
-        for (final card in sources.creditCards) {
-          if (card.account.id == _financingSourceId) {
-            selectedCard = card;
-            break;
-          }
-        }
-      } else {
-        selectedCard = sources.creditCards.first;
+      if (!mounted ||
+          _financingSourceId != null ||
+          sources.creditCards.isEmpty) {
+        return;
       }
-      if (selectedCard == null) return;
+      final card = sources.creditCards.first;
       setState(() {
-        _financingSourceId = selectedCard!.account.id;
-        if (!_firstDueDateManuallySet) {
-          _firstDueDate = _defaultFirstDueDate(selectedCard!);
-        }
+        _financingSourceId = card.account.id;
+        _firstDueDate = _defaultFirstDueDate(card);
       });
     });
   }
@@ -157,17 +136,39 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   }
 
   DateTime _defaultFirstDueDate(_CreditCardSource card) {
-    // Share the same next-month default used when converting an existing
-    // charge; keep the chosen day aligned with this card's payment due day.
-    return CreditCardFirstDueDatePolicy.defaultFirstDueDate(
-      referenceDate: controller.selectedDate,
-      paymentDueDay: card.profile.paymentDueDay,
+    // Pre-fill the financing schedule using the card's saved issuer rule.
+    // This remains an estimate and the user can override the first date.
+    final transactionDate = controller.selectedDate;
+    final profile = card.profile;
+    if (profile.statementDay != null &&
+        (profile.dueDateCalculationMethod ==
+                CreditCardDueDatePolicy.fixedOffsetDays
+            ? profile.dueDaysAfterStatement != null
+            : profile.paymentDueDay != null)) {
+      final closeDate =
+          CreditCardExpenseProjectionService.statementCloseDateForCharge(
+            transactionDate,
+            profile.statementDay,
+          );
+      return CreditCardDueDatePolicy.forStatementClose(
+        statementCloseDate: closeDate,
+        calculationMethod: profile.dueDateCalculationMethod,
+        paymentDueDay: profile.paymentDueDay,
+        dueDaysAfterStatement: profile.dueDaysAfterStatement,
+        weekendHolidayPolicy: profile.weekendHolidayPolicy,
+      );
+    }
+    final nextMonth = DateTime(
+      transactionDate.year,
+      transactionDate.month + 1,
+      1,
     );
+    final lastDay = DateTime(nextMonth.year, nextMonth.month + 1, 0).day;
+    final day = transactionDate.day.clamp(1, lastDay).toInt();
+    return DateTime(nextMonth.year, nextMonth.month, day);
   }
 
   void _selectFinancingCard(_CreditCardSource card) {
-    final fixedId = controller.lockedCreditCardSourceAccountId;
-    if (fixedId != null && card.account.id != fixedId) return;
     setState(() {
       _financingSourceId = card.account.id;
       _firstDueDateManuallySet = false;
@@ -213,7 +214,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
       context: context,
       members: controller.availableMembers,
       selectedMemberId: controller.selectedMemberId,
-      onSelected: (memberId) => setState(() => controller.selectMember(memberId)),
+      onSelected: (memberId) =>
+          setState(() => controller.selectMember(memberId)),
       anchorKey: _memberAnchorKey,
     );
   }
@@ -226,7 +228,6 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     if (savedNote == null || !mounted) return;
     setState(() => controller.setNote(savedNote));
   }
-
 
   Future<_PaymentSources> _loadSources() async {
     // Read directly from the canonical Hive Account box. This keeps the
@@ -247,9 +248,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     final savings = accounts
         .where((a) => a.group == AccountGroup.savings)
         .toList();
-    final prepaid = accounts
-        .where((a) => a.type == 'prepaid')
-        .toList();
+    final prepaid = accounts.where((a) => a.type == 'prepaid').toList();
     // Credit cards are identified by their canonical technical type.
     // Do not depend on the liability group here, so old/migrated cards still
     // appear in the Expense payment source list.
@@ -258,9 +257,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         .toList();
     final financingProviders = accounts
         .where(
-          (a) =>
-              a.group == AccountGroup.liabilities &&
-              a.type == 'installment',
+          (a) => a.group == AccountGroup.liabilities && a.type == 'installment',
         )
         .toList();
 
@@ -275,8 +272,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
 
     final balances = <String, double>{};
     for (final account in [...liquidity, ...savings, ...prepaid]) {
-      balances[account.id] =
-          await balanceService.getAvailableBalanceFromPlanning(account.id);
+      balances[account.id] = await balanceService
+          .getAvailableBalanceFromPlanning(account.id);
     }
 
     final profileRepository = HiveCreditCardProfileRepository(
@@ -313,8 +310,6 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     );
   }
 
-
-
   void _selectFullAccount(Account account) {
     controller.setExpensePaymentMode(ExpensePaymentMode.fullPayment);
     controller.selectAccount(account.id, account.name);
@@ -346,11 +341,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     if (_financingSourceId == null) {
       try {
         final sources = await _future;
-        final fixedId = controller.lockedCreditCardSourceAccountId;
-        if (fixedId != null &&
-            sources.creditCards.any((card) => card.account.id == fixedId)) {
-          _financingSourceId = fixedId;
-        } else if (fixedId == null && sources.creditCards.isNotEmpty) {
+        if (sources.creditCards.isNotEmpty) {
           _financingSourceId = sources.creditCards.first.account.id;
         }
       } catch (error) {
@@ -360,13 +351,6 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
 
     if (_financingSourceId == null) {
       _showInstallmentError('Choose a financing option first.');
-      return;
-    }
-    final fixedSourceId = controller.lockedCreditCardSourceAccountId;
-    if (fixedSourceId != null && _financingSourceId != fixedSourceId) {
-      _showInstallmentError(
-        'This installment must use the credit card that opened the screen.',
-      );
       return;
     }
 
@@ -388,13 +372,10 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
       }
     }
 
-    final sourceAccount =
-        Hive.box<Account>('accounts').get(_financingSourceId);
+    final sourceAccount = Hive.box<Account>('accounts').get(_financingSourceId);
 
     if (sourceAccount == null) {
-      _showInstallmentError(
-        'The selected financing source is unavailable.',
-      );
+      _showInstallmentError('The selected financing source is unavailable.');
       return;
     }
 
@@ -407,11 +388,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     }
 
     if (_mode == ExpensePaymentMode.downPaymentInstallment &&
-        (_downPaymentAccountId == null ||
-            _downPaymentAccountId!.isEmpty)) {
-      _showInstallmentError(
-        'Select a valid source for the down payment.',
-      );
+        (_downPaymentAccountId == null || _downPaymentAccountId!.isEmpty)) {
+      _showInstallmentError('Select a valid source for the down payment.');
       return;
     }
 
@@ -442,8 +420,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         downPayment: _mode == ExpensePaymentMode.downPaymentInstallment
             ? _downPayment
             : 0,
-        downPaymentAccountId:
-            _mode == ExpensePaymentMode.downPaymentInstallment
+        downPaymentAccountId: _mode == ExpensePaymentMode.downPaymentInstallment
             ? _downPaymentAccountId
             : null,
       );
@@ -473,9 +450,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
 
       if (!mounted) return;
 
-      _showInstallmentError(
-        'Installment could not be saved: $error',
-      );
+      _showInstallmentError('Installment could not be saved: $error');
     } finally {
       if (mounted) {
         setState(() => _savingPlan = false);
@@ -489,10 +464,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 5),
-        ),
+        SnackBar(content: Text(message), duration: const Duration(seconds: 5)),
       );
   }
 
@@ -502,7 +474,6 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     final day = date.day > lastDay ? lastDay : date.day;
     return DateTime(target.year, target.month, day);
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -527,18 +498,14 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         }
 
         final sources = snapshot.data!;
-        final fixedSourceId = controller.lockedCreditCardSourceAccountId;
-        final hasFixedCard = fixedSourceId != null &&
-            sources.creditCards.any((card) => card.account.id == fixedSourceId);
-        final canInstallment = fixedSourceId != null
-            ? hasFixedCard
-            : (sources.creditCards.isNotEmpty ||
-                sources.financingProviders.isNotEmpty);
+        final canInstallment =
+            sources.creditCards.isNotEmpty ||
+            sources.financingProviders.isNotEmpty;
 
         // Preselect the first executable Credit Card financing source.
         // This is only a UI default; the actual financial write remains in
         // TransactionEntryController.
-        if (_financingSourceId == null && sources.creditCards.isNotEmpty && fixedSourceId == null) {
+        if (_financingSourceId == null && sources.creditCards.isNotEmpty) {
           _financingSourceId = sources.creditCards.first.account.id;
           if (!_firstDueDateManuallySet) {
             _firstDueDate = _defaultFirstDueDate(sources.creditCards.first);
@@ -573,10 +540,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
               SizedBox(height: MediaQuery.sizeOf(context).width < 430 ? 5 : 10),
               _buildInstallment(
                 sources,
-                downPayment: controller.isCreditCardEntrySourceLocked
-                    ? false
-                    : _mode == ExpensePaymentMode.downPaymentInstallment,
-                showDownPaymentToggle: !controller.isCreditCardEntrySourceLocked,
+                downPayment: _mode == ExpensePaymentMode.downPaymentInstallment,
+                showDownPaymentToggle: true,
               ),
             ],
           );
@@ -735,15 +700,18 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
 
     final eligibleDownPaymentAccounts = [
       ...sources.liquidity.where(
-        (account) => account.currency == currencyCode &&
+        (account) =>
+            account.currency == currencyCode &&
             (sources.balances[account.id] ?? 0) >= _downPayment,
       ),
       ...sources.savings.where(
-        (account) => account.currency == currencyCode &&
+        (account) =>
+            account.currency == currencyCode &&
             (sources.balances[account.id] ?? 0) >= _downPayment,
       ),
       ...sources.prepaid.where(
-        (account) => account.currency == currencyCode &&
+        (account) =>
+            account.currency == currencyCode &&
             (sources.balances[account.id] ?? 0) >= _downPayment,
       ),
     ];
@@ -757,8 +725,12 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
 
     if (downPayment && _downPaymentAccountId != null) {
       final stillEligible =
-          eligibleDownPaymentAccounts.any((a) => a.id == _downPaymentAccountId) ||
-          eligibleDownPaymentCards.any((c) => c.account.id == _downPaymentAccountId);
+          eligibleDownPaymentAccounts.any(
+            (a) => a.id == _downPaymentAccountId,
+          ) ||
+          eligibleDownPaymentCards.any(
+            (c) => c.account.id == _downPaymentAccountId,
+          );
       if (!stillEligible) _downPaymentAccountId = null;
     }
 
@@ -785,10 +757,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         ),
         const SizedBox(height: 6),
         if (sources.creditCards.isNotEmpty)
-          ...sources.creditCards.where((card) {
-            final fixedId = controller.lockedCreditCardSourceAccountId;
-            return fixedId == null || card.account.id == fixedId;
-          }).map(
+          ...sources.creditCards.map(
             (card) => _CompactSourceCard(
               icon: Icons.credit_card_outlined,
               color: const Color(0xFFD36BFF),
@@ -799,8 +768,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
               onTap: () => _selectFinancingCard(card),
             ),
           ),
-        if (sources.financingProviders.isNotEmpty &&
-            controller.lockedCreditCardSourceAccountId == null)
+        if (sources.financingProviders.isNotEmpty)
           ...sources.financingProviders.map(
             (account) => _CompactSourceCard(
               icon: Icons.account_balance_outlined,
@@ -845,7 +813,14 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         SizedBox(height: compact ? 4 : 6),
         Padding(
           padding: const EdgeInsets.only(bottom: 4, left: 2),
-          child: Text('Installment Plan', style: TextStyle(color: Colors.white60, fontSize: compact ? 10 : 10.5, fontWeight: FontWeight.w700)),
+          child: Text(
+            'Installment Plan',
+            style: TextStyle(
+              color: Colors.white60,
+              fontSize: compact ? 10 : 10.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ),
         Row(
           children: [
@@ -893,11 +868,12 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: _quickInstallmentPeriods.contains(_installmentMonths)
-                      ? AppColors.cardSecondary
-                      : AppColors.primary,
+                        ? AppColors.cardSecondary
+                        : AppColors.primary,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: _quickInstallmentPeriods.contains(_installmentMonths)
+                      color:
+                          _quickInstallmentPeriods.contains(_installmentMonths)
                           ? Colors.white10
                           : AppColors.primary,
                     ),
@@ -935,22 +911,26 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                     Expanded(
                       child: Text(
                         'Down Payment',
-                        style: TextStyle(color: Colors.white, fontSize: compact ? 11.5 : 12, fontWeight: FontWeight.w800),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: compact ? 11.5 : 12,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                     Transform.scale(
                       scale: compact ? 0.84 : 1,
                       child: Switch.adaptive(
-                      value: downPayment,
-                      onChanged: (enabled) {
-                        setState(() {
-                          _mode = enabled
-                              ? ExpensePaymentMode.downPaymentInstallment
-                              : ExpensePaymentMode.installment;
-                        });
-                      },
-                      activeColor: AppColors.primary,
-                    ),
+                        value: downPayment,
+                        onChanged: (enabled) {
+                          setState(() {
+                            _mode = enabled
+                                ? ExpensePaymentMode.downPaymentInstallment
+                                : ExpensePaymentMode.installment;
+                          });
+                        },
+                        activeColor: AppColors.primary,
+                      ),
                     ),
                   ],
                 ),
@@ -964,15 +944,23 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                           label: 'Down Payment',
                           value: _downPayment,
                           currency: currencyCode,
-                          onChanged: (value) => setState(() => _downPayment = value),
+                          onChanged: (value) =>
+                              setState(() => _downPayment = value),
                         ),
                       ),
                       SizedBox(width: compact ? 5 : 8),
                       Expanded(
                         child: _CompactSourcePicker(
                           title: 'Pay From',
-                          selectedTitle: _selectedDownPaymentSourceTitle(sources, _downPaymentAccountId),
-                          onTap: () => _showDownPaymentSourcePicker(sources, eligibleDownPaymentAccounts, eligibleDownPaymentCards),
+                          selectedTitle: _selectedDownPaymentSourceTitle(
+                            sources,
+                            _downPaymentAccountId,
+                          ),
+                          onTap: () => _showDownPaymentSourcePicker(
+                            sources,
+                            eligibleDownPaymentAccounts,
+                            eligibleDownPaymentCards,
+                          ),
                         ),
                       ),
                     ],
@@ -1114,7 +1102,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                 valueLabel: _isRecurringEnabled ? 'On' : 'Off',
                 value: _isRecurringEnabled,
                 accent: AppColors.primary,
-                onChanged: (value) => setState(() => _isRecurringEnabled = value),
+                onChanged: (value) =>
+                    setState(() => _isRecurringEnabled = value),
               ),
               const SizedBox(height: 6),
               _ContextToggleCard(
@@ -1123,7 +1112,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                 valueLabel: controller.isExceptional ? 'On' : 'Off',
                 value: controller.isExceptional,
                 accent: const Color(0xFFFFD166),
-                onChanged: (_) => setState(() => controller.toggleExceptional()),
+                onChanged: (_) =>
+                    setState(() => controller.toggleExceptional()),
               ),
             ] else
               Row(
@@ -1135,7 +1125,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                       valueLabel: _isRecurringEnabled ? 'On' : 'Off',
                       value: _isRecurringEnabled,
                       accent: AppColors.primary,
-                      onChanged: (value) => setState(() => _isRecurringEnabled = value),
+                      onChanged: (value) =>
+                          setState(() => _isRecurringEnabled = value),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -1146,7 +1137,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                       valueLabel: controller.isExceptional ? 'On' : 'Off',
                       value: controller.isExceptional,
                       accent: const Color(0xFFFFD166),
-                      onChanged: (_) => setState(() => controller.toggleExceptional()),
+                      onChanged: (_) =>
+                          setState(() => controller.toggleExceptional()),
                     ),
                   ),
                 ],
@@ -1172,10 +1164,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     return id;
   }
 
-  String _selectedDownPaymentSourceTitle(
-    _PaymentSources sources,
-    String? id,
-  ) {
+  String _selectedDownPaymentSourceTitle(_PaymentSources sources, String? id) {
     if (id == null || id.isEmpty) return 'Select source';
     for (final account in [
       ...sources.liquidity,
@@ -1192,7 +1181,15 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
 
   static const List<int> _quickInstallmentPeriods = [3, 6, 9, 12, 18, 24];
   static const List<int> _commonInstallmentPeriods = [
-    3, 6, 9, 12, 18, 24, 36, 48, 60,
+    3,
+    6,
+    9,
+    12,
+    18,
+    24,
+    36,
+    48,
+    60,
   ];
   static const int _maxCustomInstallmentMonths = 60;
 
@@ -1252,7 +1249,11 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                 padding: EdgeInsets.only(left: 4, top: 4, bottom: 8),
                 child: Text(
                   'Pay Down Payment From',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               ...accounts.map(
@@ -1307,21 +1308,20 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   }
 }
 
-
 class _CompactSheetHandle extends StatelessWidget {
   const _CompactSheetHandle();
   @override
   Widget build(BuildContext context) => Center(
-        child: Container(
-          width: 38,
-          height: 4,
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: Colors.white24,
-            borderRadius: BorderRadius.circular(99),
-          ),
-        ),
-      );
+    child: Container(
+      width: 38,
+      height: 4,
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white24,
+        borderRadius: BorderRadius.circular(99),
+      ),
+    ),
+  );
 }
 
 class _CompactInfoCard extends StatelessWidget {
@@ -1358,7 +1358,10 @@ class _CompactInfoCard extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.white54, fontSize: compact ? 8.5 : 9.5),
+                  style: TextStyle(
+                    color: Colors.white54,
+                    fontSize: compact ? 8.5 : 9.5,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 FittedBox(
@@ -1391,31 +1394,35 @@ class _CompactNoteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Container(
+      height: MediaQuery.sizeOf(context).width < 430 ? 48 : 52,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: AppColors.cardSecondary,
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          height: MediaQuery.sizeOf(context).width < 430 ? 48 : 52,
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(
-            color: AppColors.cardSecondary,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white10),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.note_alt_outlined, color: Colors.white70, size: 16),
+          const SizedBox(height: 1),
+          Text(
+            note.trim().isEmpty ? 'Note' : 'Note ✓',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.note_alt_outlined, color: Colors.white70, size: 16),
-              const SizedBox(height: 1),
-              Text(
-                note.trim().isEmpty ? 'Note' : 'Note ✓',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
 
 class _ContextToggleCard extends StatelessWidget {
@@ -1527,7 +1534,9 @@ class _CompactContextChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? accent.withOpacity(.14) : AppColors.cardSecondary,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: selected ? accent.withOpacity(.65) : Colors.white10),
+          border: Border.all(
+            color: selected ? accent.withOpacity(.65) : Colors.white10,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1538,7 +1547,11 @@ class _CompactContextChip extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: muted ? Colors.white54 : Colors.white70, fontSize: 10, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: muted ? Colors.white54 : Colors.white70,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
@@ -1564,12 +1577,32 @@ class _InlineMoneySummary extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: Colors.white60, fontSize: compact ? 9.5 : 10.5))),
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white60,
+                fontSize: compact ? 9.5 : 10.5,
+              ),
+            ),
+          ),
           const SizedBox(width: 6),
-          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerRight,
-            child: Text(value, maxLines: 1, softWrap: false,
-              style: TextStyle(color: Colors.white, fontSize: compact ? 10.5 : 12, fontWeight: FontWeight.w800))),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(
+              value,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: compact ? 10.5 : 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1577,18 +1610,29 @@ class _InlineMoneySummary extends StatelessWidget {
 }
 
 class _CompactSectionTitle extends StatelessWidget {
-  const _CompactSectionTitle({required this.icon, required this.title, required this.color});
+  const _CompactSectionTitle({
+    required this.icon,
+    required this.title,
+    required this.color,
+  });
   final IconData icon;
   final String title;
   final Color color;
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 7),
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
-        ],
-      );
+    children: [
+      Icon(icon, color: color, size: 18),
+      const SizedBox(width: 7),
+      Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ],
+  );
 }
 
 class _CompactSourceCard extends StatelessWidget {
@@ -1632,7 +1676,10 @@ class _CompactSourceCard extends StatelessWidget {
               Container(
                 width: compact ? 28 : 32,
                 height: compact ? 28 : 32,
-                decoration: BoxDecoration(color: color.withOpacity(.13), shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(.13),
+                  shape: BoxShape.circle,
+                ),
                 child: Icon(icon, color: color, size: compact ? 15 : 17),
               ),
               SizedBox(width: compact ? 7 : 9),
@@ -1641,17 +1688,37 @@ class _CompactSourceCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.white, fontSize: compact ? 12 : 12.5, fontWeight: FontWeight.w800)),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: compact ? 12 : 12.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(height: 2),
-                    Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: Colors.white54, fontSize: compact ? 8.8 : 9.5)),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white54,
+                        fontSize: compact ? 8.8 : 9.5,
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 5),
-              Icon(selected ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
-                color: selected ? color : Colors.white30, size: compact ? 17 : 18),
+              Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.chevron_right_rounded,
+                color: selected ? color : Colors.white30,
+                size: compact ? 17 : 18,
+              ),
             ],
           ),
         ),
@@ -1661,26 +1728,43 @@ class _CompactSourceCard extends StatelessWidget {
 }
 
 class _CompactToggle extends StatelessWidget {
-  const _CompactToggle({required this.title, required this.value, required this.onChanged});
+  const _CompactToggle({
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
   final String title;
   final bool value;
   final ValueChanged<bool> onChanged;
   @override
   Widget build(BuildContext context) => Container(
-        height: 50,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: AppColors.cardSecondary,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white10),
+    height: 50,
+    padding: const EdgeInsets.symmetric(horizontal: 10),
+    decoration: BoxDecoration(
+      color: AppColors.cardSecondary,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Colors.white10),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
-        child: Row(
-          children: [
-            Expanded(child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800))),
-            Switch.adaptive(value: value, onChanged: onChanged, activeColor: AppColors.primary),
-          ],
+        Switch.adaptive(
+          value: value,
+          onChanged: onChanged,
+          activeColor: AppColors.primary,
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _CompactDateButton extends StatelessWidget {
@@ -1704,10 +1788,20 @@ class _CompactDateButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.event_outlined, color: AppColors.primary, size: compact ? 13 : 15),
+            Icon(
+              Icons.event_outlined,
+              color: AppColors.primary,
+              size: compact ? 13 : 15,
+            ),
             const SizedBox(width: 4),
-            Text('${date.day}/${date.month}/${date.year}',
-              style: TextStyle(color: Colors.white70, fontSize: compact ? 9.5 : 10.5, fontWeight: FontWeight.w700)),
+            Text(
+              '${date.day}/${date.month}/${date.year}',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: compact ? 9.5 : 10.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
@@ -1716,7 +1810,11 @@ class _CompactDateButton extends StatelessWidget {
 }
 
 class _CompactSourcePicker extends StatelessWidget {
-  const _CompactSourcePicker({required this.title, required this.selectedTitle, required this.onTap});
+  const _CompactSourcePicker({
+    required this.title,
+    required this.selectedTitle,
+    required this.onTap,
+  });
   final String title;
   final String selectedTitle;
   final VoidCallback onTap;
@@ -1736,22 +1834,45 @@ class _CompactSourcePicker extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.payments_outlined, color: AppColors.primary, size: compact ? 14 : 17),
+            Icon(
+              Icons.payments_outlined,
+              color: AppColors.primary,
+              size: compact ? 14 : 17,
+            ),
             SizedBox(width: compact ? 5 : 7),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.white54, fontSize: compact ? 8.5 : 9.5)),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: compact ? 8.5 : 9.5,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(selectedTitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.white, fontSize: compact ? 10 : 11, fontWeight: FontWeight.w800)),
+                  Text(
+                    selectedTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: compact ? 10 : 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Icon(Icons.expand_more, color: Colors.white38, size: compact ? 16 : 18),
+            Icon(
+              Icons.expand_more,
+              color: Colors.white38,
+              size: compact ? 16 : 18,
+            ),
           ],
         ),
       ),
@@ -1888,7 +2009,7 @@ class _SectionLabel extends StatelessWidget {
             children: [
               Text(
                 title,
-                style:  TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: compact ? 13 : 15,
                   fontWeight: FontWeight.w800,
@@ -1897,7 +2018,10 @@ class _SectionLabel extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: TextStyle(color: Colors.white54, fontSize: compact ? 10 : 12),
+                style: TextStyle(
+                  color: Colors.white54,
+                  fontSize: compact ? 10 : 12,
+                ),
               ),
             ],
           ),
@@ -2000,7 +2124,8 @@ class _CreditCardSourceCard extends StatelessWidget {
                 minHeight: 5,
                 value: source.profile.creditLimit.isZero
                     ? 0
-                    : (source.outstanding / source.profile.creditLimit.toDouble())
+                    : (source.outstanding /
+                              source.profile.creditLimit.toDouble())
                           .clamp(0.0, 1.0),
                 backgroundColor: Colors.white10,
                 valueColor: const AlwaysStoppedAnimation(accent),
@@ -2057,9 +2182,7 @@ class _ChoiceCard extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           padding: EdgeInsets.all(compact ? 6 : 8),
           decoration: BoxDecoration(
-            color: selected
-                ? color.withOpacity(.16)
-                : AppColors.cardSecondary,
+            color: selected ? color.withOpacity(.16) : AppColors.cardSecondary,
             borderRadius: BorderRadius.circular(compact ? 12 : 18),
             border: Border.all(
               color: selected ? color : Colors.white.withOpacity(.08),
@@ -2159,7 +2282,10 @@ class _ReadOnlyMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 430;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12, vertical: compact ? 7 : 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 12,
+        vertical: compact ? 7 : 10,
+      ),
       decoration: BoxDecoration(
         color: AppColors.cardSecondary,
         borderRadius: BorderRadius.circular(12),
@@ -2168,12 +2294,30 @@ class _ReadOnlyMetric extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: TextStyle(color: Colors.white54, fontSize: compact ? 9.5 : 11)),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: compact ? 9.5 : 11,
+            ),
+          ),
           SizedBox(height: compact ? 2 : 4),
-          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft,
-            child: Text(value, maxLines: 1, softWrap: false,
-              style: TextStyle(color: Colors.white, fontSize: compact ? 13 : 16, fontWeight: FontWeight.w800))),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: compact ? 13 : 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -2216,7 +2360,10 @@ class _AmountFieldState extends State<_AmountField> {
   Widget build(BuildContext context) {
     final compact = MediaQuery.sizeOf(context).width < 430;
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12, vertical: compact ? 5 : 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 12,
+        vertical: compact ? 5 : 8,
+      ),
       decoration: BoxDecoration(
         color: AppColors.cardSecondary,
         borderRadius: BorderRadius.circular(12),
@@ -2226,21 +2373,31 @@ class _AmountFieldState extends State<_AmountField> {
         controller: _controller,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         onChanged: (value) => widget.onChanged(double.tryParse(value) ?? 0),
-        style: TextStyle(color: Colors.white, fontSize: compact ? 16 : 18, fontWeight: FontWeight.w800),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: compact ? 16 : 18,
+          fontWeight: FontWeight.w800,
+        ),
         decoration: InputDecoration(
           border: InputBorder.none,
           isDense: true,
           labelText: widget.label,
-          labelStyle: TextStyle(color: Colors.white54, fontSize: compact ? 9.5 : 12),
+          labelStyle: TextStyle(
+            color: Colors.white54,
+            fontSize: compact ? 9.5 : 12,
+          ),
           suffixText: widget.currency,
-          suffixStyle: TextStyle(color: Colors.white70, fontSize: compact ? 11 : 14, fontWeight: FontWeight.w700),
+          suffixStyle: TextStyle(
+            color: Colors.white70,
+            fontSize: compact ? 11 : 14,
+            fontWeight: FontWeight.w700,
+          ),
           contentPadding: EdgeInsets.zero,
         ),
       ),
     );
   }
 }
-
 
 class _ResponsivePaymentSheetHeader extends StatelessWidget {
   const _ResponsivePaymentSheetHeader({
@@ -2269,11 +2426,26 @@ class _ResponsivePaymentSheetHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.white, fontSize: compact ? 16 : 19, fontWeight: FontWeight.w800)),
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: compact ? 16 : 19,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(compact ? compactSubtitle : subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.white60, fontSize: compact ? 10.5 : 12)),
+              Text(
+                compact ? compactSubtitle : subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: compact ? 10.5 : 12,
+                ),
+              ),
             ],
           ),
         ),
@@ -2285,7 +2457,11 @@ class _ResponsivePaymentSheetHeader extends StatelessWidget {
             visualDensity: VisualDensity.compact,
             tooltip: 'Close',
             onPressed: onClose,
-            icon: Icon(Icons.close_rounded, color: Colors.white60, size: compact ? 19 : 22),
+            icon: Icon(
+              Icons.close_rounded,
+              color: Colors.white60,
+              size: compact ? 19 : 22,
+            ),
           ),
         ),
       ],
@@ -2320,7 +2496,10 @@ class _TransactionNoteDialogState extends State<_TransactionNoteDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: AppColors.cardSecondary,
-      title: const Text('Transaction Note', style: TextStyle(color: Colors.white)),
+      title: const Text(
+        'Transaction Note',
+        style: TextStyle(color: Colors.white),
+      ),
       content: TextField(
         controller: _noteController,
         autofocus: true,
@@ -2332,8 +2511,15 @@ class _TransactionNoteDialogState extends State<_TransactionNoteDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-        FilledButton(onPressed: () => Navigator.of(context).pop(_noteController.text.trim()), child: const Text('Save')),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () =>
+              Navigator.of(context).pop(_noteController.text.trim()),
+          child: const Text('Save'),
+        ),
       ],
     );
   }
@@ -2408,15 +2594,23 @@ class _InstallmentPlanPickerSheetState
           const _CompactSheetHandle(),
           Row(
             children: [
-              Icon(Icons.timelapse_outlined, color: AppColors.primary,
-                size: compact ? 19 : 21),
+              Icon(
+                Icons.timelapse_outlined,
+                color: AppColors.primary,
+                size: compact ? 19 : 21,
+              ),
               SizedBox(width: compact ? 7 : 9),
               Expanded(
-                child: Text('Select Installment Plan', maxLines: 1,
+                child: Text(
+                  'Select Installment Plan',
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.white,
+                  style: TextStyle(
+                    color: Colors.white,
                     fontSize: compact ? 15 : 17,
-                    fontWeight: FontWeight.w800)),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
               IconButton(
                 tooltip: 'Close',
@@ -2430,15 +2624,21 @@ class _InstallmentPlanPickerSheetState
           ),
           SizedBox(height: compact ? 2 : 4),
           Text(
-            compact ? 'Choose or enter months.' : 'Choose a preset or enter a custom number of months.',
-            style: TextStyle(color: Colors.white60, fontSize: compact ? 10.5 : 12),
+            compact
+                ? 'Choose or enter months.'
+                : 'Choose a preset or enter a custom number of months.',
+            style: TextStyle(
+              color: Colors.white60,
+              fontSize: compact ? 10.5 : 12,
+            ),
           ),
           SizedBox(height: compact ? 9 : 14),
           Wrap(
             spacing: compact ? 5 : 8,
             runSpacing: compact ? 5 : 8,
             children: widget.periods.map((months) {
-              final selected = _monthsController.text.trim().isEmpty &&
+              final selected =
+                  _monthsController.text.trim().isEmpty &&
                   _draftMonths == months;
               return ChoiceChip(
                 label: Text('$months mo'),
@@ -2466,9 +2666,14 @@ class _InstallmentPlanPickerSheetState
             }).toList(),
           ),
           SizedBox(height: compact ? 10 : 16),
-          Text('Custom Number of Months', style: TextStyle(
-            color: Colors.white, fontSize: compact ? 12 : 13,
-            fontWeight: FontWeight.w800)),
+          Text(
+            'Custom Number of Months',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: compact ? 12 : 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           SizedBox(height: compact ? 5 : 7),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2482,13 +2687,18 @@ class _InstallmentPlanPickerSheetState
                     LengthLimitingTextInputFormatter(2),
                   ],
                   onChanged: (_) => setState(() => _validationMessage = null),
-                  style: TextStyle(color: Colors.white,
-                    fontSize: compact ? 13 : 15, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: compact ? 13 : 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                   decoration: InputDecoration(
                     isDense: true,
                     hintText: 'Enter months (1–${widget.maxMonths})',
-                    hintStyle: TextStyle(color: Colors.white38,
-                      fontSize: compact ? 10.5 : 13),
+                    hintStyle: TextStyle(
+                      color: Colors.white38,
+                      fontSize: compact ? 10.5 : 13,
+                    ),
                     suffixText: 'months',
                     filled: true,
                     fillColor: AppColors.cardSecondary,
@@ -2515,20 +2725,27 @@ class _InstallmentPlanPickerSheetState
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 18),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 12 : 18,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(11),
                     ),
                   ),
-                  child: const Text('Apply', style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: const Text(
+                    'Apply',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
               ),
             ],
           ),
           if (_validationMessage != null) ...[
             const SizedBox(height: 5),
-            Text(_validationMessage!, style: const TextStyle(
-              color: Color(0xFFFF8A80), fontSize: 11)),
+            Text(
+              _validationMessage!,
+              style: const TextStyle(color: Color(0xFFFF8A80), fontSize: 11),
+            ),
           ],
           SizedBox(height: compact ? 7 : 12),
           Container(
@@ -2541,13 +2758,20 @@ class _InstallmentPlanPickerSheetState
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline, color: Colors.white54, size: compact ? 15 : 17),
+                Icon(
+                  Icons.info_outline,
+                  color: Colors.white54,
+                  size: compact ? 15 : 17,
+                ),
                 SizedBox(width: compact ? 6 : 8),
                 Expanded(
                   child: Text(
                     'Confirm that the selected duration is supported by your bank or financing agreement.',
-                    style: TextStyle(color: Colors.white60,
-                      fontSize: compact ? 9.5 : 11, height: 1.3),
+                    style: TextStyle(
+                      color: Colors.white60,
+                      fontSize: compact ? 9.5 : 11,
+                      height: 1.3,
+                    ),
                   ),
                 ),
               ],

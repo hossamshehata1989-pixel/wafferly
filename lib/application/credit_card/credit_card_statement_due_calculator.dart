@@ -6,6 +6,7 @@ import '../../credit_card/domain/credit_card_profile.dart';
 import '../../models/financing/financing_contract.dart';
 import '../../models/financing/financing_installment.dart';
 import '../../models/transaction.dart';
+import 'credit_card_due_date_policy.dart';
 
 /// Read-side estimate of the unpaid statement amount whose payment due date
 /// falls in the current calendar month.
@@ -76,7 +77,10 @@ final class CreditCardStatementDueCalculator {
   }) {
     final closingDay = profile.statementDay;
     final dueDay = profile.paymentDueDay;
-    if (closingDay == null || dueDay == null) {
+    final usesOffset = profile.dueDateCalculationMethod ==
+        CreditCardDueDatePolicy.fixedOffsetDays;
+    if (closingDay == null ||
+        (usesOffset ? profile.dueDaysAfterStatement == null : dueDay == null)) {
       return CreditCardStatementDueSummary(
         amountDue: Money.zero,
         chargeAmountDue: Money.zero,
@@ -87,7 +91,16 @@ final class CreditCardStatementDueCalculator {
     }
 
     _validateDay(closingDay, 'statementDay');
-    _validateDay(dueDay, 'paymentDueDay');
+    if (!usesOffset) {
+      _validateDay(dueDay!, 'paymentDueDay');
+    } else if (profile.dueDaysAfterStatement! < 1 ||
+        profile.dueDaysAfterStatement! > 90) {
+      throw ArgumentError.value(
+        profile.dueDaysAfterStatement,
+        'dueDaysAfterStatement',
+        'Due-date offset must be between 1 and 90 days.',
+      );
+    }
 
     final previousMonth = _monthStart(now.year, now.month - 1);
     final statementCloseDate = _dateForDay(
@@ -95,7 +108,13 @@ final class CreditCardStatementDueCalculator {
       previousMonth.month,
       closingDay,
     );
-    final paymentDueDate = _dateForDay(now.year, now.month, dueDay);
+    final paymentDueDate = CreditCardDueDatePolicy.forStatementClose(
+      statementCloseDate: statementCloseDate,
+      calculationMethod: profile.dueDateCalculationMethod,
+      paymentDueDay: dueDay,
+      dueDaysAfterStatement: profile.dueDaysAfterStatement,
+      weekendHolidayPolicy: profile.weekendHolidayPolicy,
+    );
 
     final activeContracts = contracts.where((contract) {
       final state = contract.lifecycleState.trim().toLowerCase();
@@ -133,7 +152,13 @@ final class CreditCardStatementDueCalculator {
         _StatementObligation(
           id: 'charge:${charge.id}',
           eventDate: charge.date,
-          dueDate: _paymentDueDateForClose(closeDate, dueDay),
+          dueDate: CreditCardDueDatePolicy.forStatementClose(
+            statementCloseDate: closeDate,
+            calculationMethod: profile.dueDateCalculationMethod,
+            paymentDueDay: dueDay,
+            dueDaysAfterStatement: profile.dueDaysAfterStatement,
+            weekendHolidayPolicy: profile.weekendHolidayPolicy,
+          ),
           remaining: Money.fromDouble(charge.amount).abs(),
           isInstallment: false,
         ),
@@ -286,11 +311,6 @@ final class CreditCardStatementDueCalculator {
     return _dateForDay(nextMonth.year, nextMonth.month, requestedDay);
   }
 
-  static DateTime _paymentDueDateForClose(DateTime closeDate, int dueDay) {
-    final nextMonth = _monthStart(closeDate.year, closeDate.month + 1);
-    return _dateForDay(nextMonth.year, nextMonth.month, dueDay);
-  }
-
   static DateTime _monthStart(int year, int month) {
     var normalizedYear = year;
     var normalizedMonth = month;
@@ -304,7 +324,6 @@ final class CreditCardStatementDueCalculator {
     }
     return DateTime(normalizedYear, normalizedMonth, 1);
   }
-
 
   static DateTime _dateForDay(int year, int month, int requestedDay) {
     final normalizedMonthStart = _monthStart(year, month);

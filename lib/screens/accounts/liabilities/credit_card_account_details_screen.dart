@@ -142,6 +142,12 @@ class _CreditCardAccountDetailsScreenState
                 nextMonthDue: dueBreakdown.nextMonthTotal.toDouble(),
                 nextMonthExpenses: dueBreakdown.nextMonthExpenses.toDouble(),
                 nextMonthInstallments: dueBreakdown.nextMonthInstallments.toDouble(),
+                onMoreDue: () => _showFutureInstallmentMonths(
+                  projection.account.currency,
+                  installments,
+                  projection.contracts,
+                  transactions,
+                ),
               ),
               SizedBox(height: m.space.md),
               _ActionGrid(
@@ -196,6 +202,82 @@ class _CreditCardAccountDetailsScreenState
           ),
         );
       },
+    );
+  }
+
+  void _showFutureInstallmentMonths(
+    String currency,
+    List<FinancingInstallment> installments,
+    List<FinancingContract> contracts,
+    List<Transaction> transactions,
+  ) {
+    final now = DateTime.now();
+    final firstFutureMonth = DateTime(now.year, now.month + 2, 1);
+    final future = installments.where((item) {
+      final status = item.status.trim().toLowerCase();
+      final due = DateTime(item.dueDate.year, item.dueDate.month, 1);
+      return !due.isBefore(firstFutureMonth) &&
+          status != 'settled' && status != 'cancelled' &&
+          status != 'canceled' && status != 'superseded' &&
+          status != 'terminated';
+    }).toList()..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+
+    final groups = <DateTime, List<FinancingInstallment>>{};
+    for (final item in future) {
+      final month = DateTime(item.dueDate.year, item.dueDate.month, 1);
+      (groups[month] ??= <FinancingInstallment>[]).add(item);
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0A1C29),
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(sheetContext).height * .65,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Future Due Months', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: Colors.white)),
+                ),
+              ),
+              Expanded(
+                child: groups.isEmpty
+                    ? const Center(child: Text('No future installments scheduled', style: TextStyle(color: Colors.white70)))
+                    : ListView(
+                        children: groups.entries.map((entry) {
+                          final month = entry.key;
+                          final items = entry.value;
+                          final total = items.fold<double>(0, (sum, item) => sum + item.amount.toDouble());
+                          return ListTile(
+                            title: Text(DateFormat.yMMMM().format(month), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                            subtitle: Text('${items.length} installments', style: const TextStyle(color: Colors.white60)),
+                            trailing: Text(_money(total, currency), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                            onTap: () {
+                              Navigator.of(sheetContext).pop();
+                              Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => CreditCardInstallmentMonthScreen(
+                                  month: month,
+                                  monthInstallments: items,
+                                  allInstallments: installments,
+                                  contracts: contracts,
+                                  transactions: transactions,
+                                  currency: currency,
+                                ),
+                              ));
+                            },
+                          );
+                        }).toList(),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -337,7 +419,7 @@ class _CardScrim extends StatelessWidget {
 CardVisualLayout _creditCardDashboardLayout(String visualId) =>
     CardVisualLayout(
       visualId: visualId,
-      aspectRatio: 320 / 200,
+      aspectRatio: 1.55,
       slots: <CardTextSlot, CardVisualSlot>{
         CardTextSlot.cardName: CardVisualSlot(
           zone: CardZone.identity,
@@ -366,19 +448,21 @@ CardVisualLayout _creditCardDashboardLayout(String visualId) =>
         // them. Footer starts at .795, so there is no overlap.
         CardTextSlot.thisMonthDue: CardVisualSlot(
           zone: CardZone.financialPrimary,
-          area: CardVisualZone(x: .27, y: .35, width: .69, height: .20),
+          // Stop the due panel before the independent More control.
+          area: CardVisualZone(x: .27, y: .34, width: .60, height: .22),
           maxLines: 2,
           minFontScale: .60,
         ),
         CardTextSlot.nextMonthDue: CardVisualSlot(
           zone: CardZone.financialPrimary,
-          area: CardVisualZone(x: .27, y: .575, width: .69, height: .20),
+          // Stop the due panel before the independent More control.
+          area: CardVisualZone(x: .27, y: .57, width: .60, height: .22),
           maxLines: 2,
           minFontScale: .60,
         ),
         CardTextSlot.statementCycle: CardVisualSlot(
           zone: CardZone.footer,
-          area: CardVisualZone(x: .05, y: .795, width: .90, height: .20),
+          area: CardVisualZone(x: .05, y: .80, width: .90, height: .18),
           maxLines: 2,
           minFontScale: .62,
         ),
@@ -398,6 +482,7 @@ class _CardSummaryVisual extends StatelessWidget {
     required this.nextMonthDue,
     required this.nextMonthExpenses,
     required this.nextMonthInstallments,
+    required this.onMoreDue,
   });
 
   final Account account;
@@ -411,6 +496,7 @@ class _CardSummaryVisual extends StatelessWidget {
   final double nextMonthDue;
   final double nextMonthExpenses;
   final double nextMonthInstallments;
+  final VoidCallback onMoreDue;
 
   @override
   Widget build(BuildContext context) {
@@ -543,6 +629,51 @@ class _CardSummaryVisual extends StatelessWidget {
                     expenses: _money(nextMonthExpenses, account.currency),
                     installments: _money(nextMonthInstallments, account.currency),
                     color: _kCardInk,
+                  ),
+                ),
+                Positioned(
+                  // The More control has its own column. It begins after the
+                  // two due panels, so it never overlays either panel.
+                  left: 330,
+                  top: size.height * .34,
+                  width: 39,
+                  height: size.height * .45,
+                  child: Material(
+                    color: const Color(0x66020B1A),
+                    borderRadius: BorderRadius.circular(10),
+                    child: InkWell(
+                      onTap: onMoreDue,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: const Color(0xFFFF2D8D),
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: Color(0xFFFF2D8D),
+                              size: 23,
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'More',
+                              style: TextStyle(
+                                color: Color(0xFFFF2D8D),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
 
@@ -776,31 +907,79 @@ class _CardDueStat extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 5),
+        Container(
+          width: 1,
+          height: 34,
+          color: Colors.white.withValues(alpha: .42),
+        ),
+        const SizedBox(width: 7),
         Expanded(
           flex: 6,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Expenses  $expenses',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _kCardInk,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  const Icon(Icons.circle, color: Color(0xFFFF2D8D), size: 7),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Expenses',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _kCardInk,
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 11),
+                child: Text(
+                  expenses,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _kCardInk,
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 1),
-              Text(
-                'Installments  $installments',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _kCardInk,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  const Icon(Icons.circle, color: Color(0xFF42C9FF), size: 7),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Installments',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF42C9FF),
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 11),
+                child: Text(
+                  installments,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _kCardInk,
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
