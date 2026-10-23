@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 
 class RecentTransactionsPreview extends StatelessWidget {
   const RecentTransactionsPreview({super.key});
@@ -12,9 +13,9 @@ class RecentTransactionsPreview extends StatelessWidget {
         color: const Color(0xFF1B2A6B),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.history, color: Colors.white70, size: 16),
+          const Icon(Icons.history, color: Colors.white70, size: 16),
           SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -24,7 +25,7 @@ class RecentTransactionsPreview extends StatelessWidget {
               style: TextStyle(color: Colors.white, fontSize: 12),
             ),
           ),
-          Text('Today', style: TextStyle(color: Colors.white54, fontSize: 11)),
+          Text(AppLocalizations.of(context)!.today, style: const TextStyle(color: Colors.white54, fontSize: 11)),
         ],
       ),
     );

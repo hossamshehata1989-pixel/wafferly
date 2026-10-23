@@ -22,6 +22,7 @@ class EntryContextChip extends StatelessWidget {
   final Color? borderColor;
   final Color? backgroundColor;
   final EdgeInsetsGeometry? padding;
+  final bool centeredContent;
 
   const EntryContextChip({
     super.key,
@@ -35,6 +36,7 @@ class EntryContextChip extends StatelessWidget {
     this.borderColor,
     this.backgroundColor,
     this.padding,
+    this.centeredContent = false,
   });
 
   Widget _textContent(
@@ -133,17 +135,34 @@ class EntryContextChip extends StatelessWidget {
         padding: effectivePadding,
         child: Row(
           textDirection: ui.TextDirection.ltr,
+          mainAxisAlignment: centeredContent
+              ? MainAxisAlignment.center
+              : MainAxisAlignment.start,
           children: [
-            if (leading != null) ...[
-              leading!,
-              SizedBox(width: metrics.spacing(5)),
-            ],
-            Expanded(
-              child: _textContent(labelStyle, subtitleStyle),
-            ),
-            if (trailing != null) ...[
-              SizedBox(width: metrics.spacing(4)),
-              trailing!,
+            if (centeredContent) ...[
+              if (leading != null) leading!,
+              if (leading != null) SizedBox(width: metrics.spacing(5)),
+              Flexible(
+                child: _textContent(
+                  labelStyle,
+                  subtitleStyle,
+                  alignment: Alignment.center,
+                ),
+              ),
+              if (trailing != null) ...[
+                SizedBox(width: metrics.spacing(4)),
+                trailing!,
+              ],
+            ] else ...[
+              if (leading != null) ...[
+                leading!,
+                SizedBox(width: metrics.spacing(5)),
+              ],
+              Expanded(child: _textContent(labelStyle, subtitleStyle)),
+              if (trailing != null) ...[
+                SizedBox(width: metrics.spacing(4)),
+                trailing!,
+              ],
             ],
           ],
         ),

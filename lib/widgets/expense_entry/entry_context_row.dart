@@ -16,6 +16,7 @@ import 'entry_context_chip.dart';
 import 'member/member_button.dart';
 import '../notifications/wafferly_toast.dart';
 import 'payment_method_sheet.dart';
+import '../../l10n/app_localizations.dart';
 
 class EntryContextRow extends StatelessWidget {
   final TransactionEntryController controller;
@@ -79,7 +80,7 @@ class EntryContextRow extends StatelessWidget {
               size: 17,
             ),
             iconColor: Colors.white70,
-            label: 'Done',
+            label: AppLocalizations.of(context)!.done,
             onTap: () => _handleDone(context),
           ),
         ),
@@ -88,7 +89,9 @@ class EntryContextRow extends StatelessWidget {
   }
 
   Widget _buildExpenseContextRow(BuildContext context) {
-    final canOpenInstallment = controller.canOpenExpenseInstallment;
+    final t = AppLocalizations.of(context)!;
+    final canOpenInstallment = controller.canOpenExpenseInstallment &&
+        !(controller.isCreditCardEntryContext && !controller.isCreditCardInstallmentOnly);
     const installmentColor = Color(0xFFD36BFF);
 
     return Row(
@@ -125,34 +128,28 @@ class EntryContextRow extends StatelessWidget {
           ),
         ),
         SizedBox(width: metrics.spacing(5)),
-        if (!controller.isCreditCardEntryContext) ...[
-          Expanded(
-            flex: 13,
-            child: EntryContextChip(
-              metrics: metrics,
-              leading: const Icon(
-                Icons.bar_chart_rounded,
-                color: installmentColor,
-                size: 18,
-              ),
-              iconColor: installmentColor,
-              label: 'Installment',
-              backgroundColor: canOpenInstallment
-                  ? AppColors.cardSecondary
-                  : AppColors.background,
-              borderColor: canOpenInstallment
-                  ? installmentColor.withValues(alpha: .28)
-                  : Colors.white10,
-              onTap: canOpenInstallment
-                  ? () => _openInstallment(context)
-                  : () => WafferlyToast.showError(
-                      context,
-                      message: 'Please select a category first',
-                    ),
+        Expanded(
+          flex: 13,
+          child: EntryContextChip(
+            metrics: metrics,
+            leading: const Icon(
+              Icons.bar_chart_rounded,
+              color: installmentColor,
+              size: 18,
             ),
+            iconColor: installmentColor,
+            label: t.installment,
+            centeredContent: true,
+            backgroundColor: canOpenInstallment
+                ? AppColors.cardSecondary
+                : AppColors.background.withValues(alpha: .55),
+            borderColor: canOpenInstallment
+                ? installmentColor.withValues(alpha: .28)
+                : Colors.white10,
+            onTap: canOpenInstallment ? () => _openInstallment(context) : null,
           ),
-          SizedBox(width: metrics.spacing(5)),
-        ],
+        ),
+        SizedBox(width: metrics.spacing(5)),
         Expanded(
           flex: 10,
           child: MemberButton(controller: controller, metrics: metrics),
@@ -162,15 +159,27 @@ class EntryContextRow extends StatelessWidget {
   }
 
   Future<void> _openInstallment(BuildContext context) async {
-    // Completing an installment is an operation, not a request to leave the
-    // shared entry screen. The user can add another one, then use Done (flash)
-    // or the app-bar back arrow to leave.
-    await showPaymentMethodSheet(
+    final t = AppLocalizations.of(context)!;
+    if (!controller.hasCategory) {
+      WafferlyToast.showError(context, message: t.pleaseSelectCategory);
+      return;
+    }
+    if (!controller.hasAmount) {
+      WafferlyToast.showError(context, message: t.pleaseEnterValidAmount);
+      return;
+    }
+
+    // The Installment control is the only action that opens the installment
+    // details sheet. On success, close the entry screen and refresh its caller.
+    final completed = await showPaymentMethodSheet(
       context: context,
       controller: controller,
       initialMode: ExpensePaymentMode.installment,
       installmentOnly: true,
     );
+    if (completed && context.mounted && controller.isCreditCardInstallmentOnly) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   Future<void> _handleDone(BuildContext context) =>

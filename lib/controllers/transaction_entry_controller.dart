@@ -988,13 +988,6 @@ class TransactionEntryController extends ChangeNotifier {
           errorMessage: 'This purchase must use the credit card that opened the screen.',
         );
       }
-      if (_creditCardInstallmentOnly && downPayment > 0) {
-        return const SaveResult(
-          success: false,
-          errorMessage: 'Down payment is disabled for this credit-card installment entry.',
-        );
-      }
-
       final amountValue = double.tryParse(_amount) ?? 0;
       final categoryId = _getMainCategoryId(_selectedCategoryId);
 
@@ -1206,8 +1199,10 @@ class TransactionEntryController extends ChangeNotifier {
       }
 
       // 3) Optional Down Payment. It may come from liquidity/savings/prepaid
-      // (normal Expense) or from a DIFFERENT Credit Card (card charge). Both
-      // mutations use the same stable workflow-derived idempotency key.
+      // (normal Expense) or from a Credit Card (card charge), including the
+      // same card used to finance the remainder when its available credit
+      // covers the full purchase amount. Both mutations use stable,
+      // workflow-derived idempotency keys.
       if (downPayment > 0) {
         final downPaymentSource =
             Hive.box<Account>('accounts').get(downPaymentAccountId);

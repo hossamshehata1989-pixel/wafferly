@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import '../../controllers/transaction_entry_controller.dart';
+import '../../l10n/app_localizations.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
 import '../../l10n/app_localizations.dart';
@@ -91,8 +92,8 @@ class EntryBottomActions extends StatelessWidget {
             child: _compactActionButton(
               height: height,
               icon: Icons.document_scanner_outlined,
-              label: 'Scan',
-              subtitle: 'Import',
+              label: AppLocalizations.of(context)!.scanReceipt,
+              subtitle: AppLocalizations.of(context)!.importLabel,
               onTap: () {},
             ),
           ),
@@ -120,7 +121,7 @@ class EntryBottomActions extends StatelessWidget {
                             backgroundColor: const Color(0xFFA7F3D0),
                             foregroundColor: const Color(0xFF065F46),
                             icon: Icons.check_rounded,
-                            label: 'Done',
+                            label: AppLocalizations.of(context)!.done,
                             pulseOnTap: controller.isCreditCardEntryContext,
                             onTap: () => _handleDone(context),
                           ),
@@ -166,7 +167,7 @@ class EntryBottomActions extends StatelessWidget {
             child: _compactActionButton(
               height: height,
               icon: Icons.note_alt_outlined,
-              label: 'Note',
+              label: AppLocalizations.of(context)!.note,
               onTap: () {},
             ),
           ),
@@ -446,48 +447,13 @@ class EntryBottomActions extends StatelessWidget {
 
   Future<void> _handleDone(BuildContext context) async {
     if (controller.isCreditCardInstallmentOnly) {
-      // An empty installment-only entry should still be closable with Done.
-      // The user can use the Installment action once a purchase is entered.
-      if (controller.entryState == EntryState.empty) {
-        Navigator.of(context).pop(true);
-        return;
-      }
-
-      // Never open the installment workflow with an incomplete draft.
-      // Empty Done above still exits normally; a partial draft gets a precise
-      // validation message and remains on the entry screen.
-      final l10n = AppLocalizations.of(context)!;
-      if (!controller.hasCategory) {
-        WafferlyToast.showError(
-          context,
-          message: l10n.pleaseSelectCategory,
-        );
-        return;
-      }
-      if (!controller.hasAmount) {
-        WafferlyToast.showError(
-          context,
-          message: l10n.pleaseEnterValidAmount,
-        );
-        return;
-      }
-
-      // Never let Done create an ordinary full-payment card charge from the
-      // installment-only entry. Done opens the same installment workflow.
-      final completed = await showPaymentMethodSheet(
-        context: context,
-        controller: controller,
-        initialMode: ExpensePaymentMode.installment,
-        installmentOnly: true,
-      );
-      if (completed && context.mounted) {
-        Navigator.of(context).pop(true);
-      }
+      // Done is navigation-only in installment entry. It must never save,
+      // execute, or open the installment workflow; use the Installment chip.
+      Navigator.of(context).pop(false);
       return;
     }
 
-    // Done must use the close-after-save flow, not Add's save-and-reset flow.
-    // This also closes the screen when Add has already saved and reset the form.
+    // Ordinary entry retains the established close-after-save behavior.
     await handleEntryDone(context, controller);
   }
 

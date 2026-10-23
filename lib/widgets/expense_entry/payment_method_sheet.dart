@@ -93,6 +93,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   bool _firstDueDateManuallySet = false;
   final GlobalKey _memberAnchorKey = GlobalKey();
   bool _savingPlan = false;
+  String? _installmentErrorMessage;
   // Recurring execution is not wired into this workflow yet; this state currently
   // drives the control only and is intentionally not persisted as a schedule.
   bool _isRecurringEnabled = false;
@@ -171,6 +172,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   void _selectFinancingCard(_CreditCardSource card) {
     setState(() {
       _financingSourceId = card.account.id;
+      _installmentErrorMessage = null;
       _firstDueDateManuallySet = false;
       _firstDueDate = _defaultFirstDueDate(card);
     });
@@ -179,6 +181,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   void _selectFinancingProvider(Account account) {
     setState(() {
       _financingSourceId = account.id;
+      _installmentErrorMessage = null;
       _firstDueDateManuallySet = false;
       _firstDueDate = _addMonths(controller.selectedDate, 1);
     });
@@ -252,14 +255,25 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
     // Credit cards are identified by their canonical technical type.
     // Do not depend on the liability group here, so old/migrated cards still
     // appear in the Expense payment source list.
-    final creditCardAccounts = accounts
+    var creditCardAccounts = accounts
         .where((a) => a.type == 'creditCard')
         .toList();
-    final financingProviders = accounts
-        .where(
-          (a) => a.group == AccountGroup.liabilities && a.type == 'installment',
-        )
-        .toList();
+    final financingProviders = widget.installmentOnly &&
+            controller.isCreditCardInstallmentOnly
+        ? <Account>[]
+        : accounts
+            .where(
+              (a) => a.group == AccountGroup.liabilities && a.type == 'installment',
+            )
+            .toList();
+
+    // In a credit-card-origin installment flow, only the card that launched
+    // this screen is a valid financing source. Never show other cards here.
+    if (widget.installmentOnly && controller.lockedCreditCardSourceAccountId != null) {
+      creditCardAccounts = creditCardAccounts
+          .where((a) => a.id == controller.lockedCreditCardSourceAccountId)
+          .toList();
+    }
 
     final allocationRepository =
         PlanningEngineBootstrap.createProductionAllocationRepository();
@@ -300,19 +314,11 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
       );
     }
 
-    final visibleCreditCards = widget.installmentOnly &&
-            controller.isCreditCardEntrySourceLocked
-        ? creditCards
-            .where((card) =>
-                card.account.id == controller.lockedCreditCardSourceAccountId)
-            .toList()
-        : creditCards;
-
     return _PaymentSources(
       liquidity: liquidity,
       savings: savings,
       prepaid: prepaid,
-      creditCards: visibleCreditCards,
+      creditCards: creditCards,
       financingProviders: financingProviders,
       balances: balances,
     );
@@ -374,7 +380,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
       }
       if (_downPayment >= amount) {
         _showInstallmentError(
-          'Down payment must be less than the purchase amount.',
+          AppLocalizations.of(context)!
+              .downPaymentMustBeLessThanPurchaseAmount,
         );
         return;
       }
@@ -469,11 +476,9 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   void _showInstallmentError(String message) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text(message), duration: const Duration(seconds: 5)),
-      );
+    // Keep the validation feedback inside the modal sheet so it cannot be
+    // hidden behind the bottom sheet by the page's ScaffoldMessenger.
+    setState(() => _installmentErrorMessage = message);
   }
 
   DateTime _addMonths(DateTime date, int months) {
@@ -506,9 +511,9 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         }
 
         final sources = snapshot.data!;
-        final canInstallment = sources.creditCards.isNotEmpty ||
-            (!widget.installmentOnly &&
-                sources.financingProviders.isNotEmpty);
+        final canInstallment =
+            sources.creditCards.isNotEmpty ||
+            sources.financingProviders.isNotEmpty;
 
         // Preselect the first executable Credit Card financing source.
         // This is only a UI default; the actual financial write remains in
@@ -529,7 +534,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
             return Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                'No installment financing source is available.',
+                AppLocalizations.of(context)!.noInstallmentSourceAvailable,
                 style: const TextStyle(color: Colors.white70),
               ),
             );
@@ -540,8 +545,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
             children: [
               _ResponsivePaymentSheetHeader(
                 title: AppLocalizations.of(context)!.installmentDetails,
-                subtitle: 'Configure how this purchase will be financed',
-                compactSubtitle: 'Configure financing',
+                subtitle: AppLocalizations.of(context)!.configureInstallmentDetails,
+                compactSubtitle: AppLocalizations.of(context)!.configureFinancing,
                 icon: Icons.bar_chart_rounded,
                 onClose: () => Navigator.pop(context),
               ),
@@ -559,9 +564,9 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _ResponsivePaymentSheetHeader(
-              title: 'Payment Method',
-              subtitle: 'How do you want to pay for this purchase?',
-              compactSubtitle: 'Choose how to pay',
+              title: AppLocalizations.of(context)!.paymentMethod,
+              subtitle: AppLocalizations.of(context)!.howDoYouWantToPay,
+              compactSubtitle: AppLocalizations.of(context)!.chooseHowToPay,
               icon: Icons.account_balance_wallet_outlined,
               onClose: () => Navigator.pop(context),
             ),
@@ -935,6 +940,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                             _mode = enabled
                                 ? ExpensePaymentMode.downPaymentInstallment
                                 : ExpensePaymentMode.installment;
+                            _installmentErrorMessage = null;
                           });
                         },
                         activeColor: AppColors.primary,
@@ -949,11 +955,13 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                     children: [
                       Expanded(
                         child: _AmountField(
-                          label: 'Down Payment',
+                          label: AppLocalizations.of(context)!.downPayment,
                           value: _downPayment,
                           currency: currencyCode,
-                          onChanged: (value) =>
-                              setState(() => _downPayment = value),
+                          onChanged: (value) => setState(() {
+                          _downPayment = value;
+                          _installmentErrorMessage = null;
+                        }),
                         ),
                       ),
                       SizedBox(width: compact ? 5 : 8),
@@ -975,12 +983,12 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                   ),
                   SizedBox(height: compact ? 5 : 8),
                   _InlineMoneySummary(
-                    label: 'Amount to Finance',
+                    label: AppLocalizations.of(context)!.amountToFinance,
                     value: '$currencyCode ${financed.toStringAsFixed(2)}',
                   ),
                   SizedBox(height: compact ? 3 : 5),
                   _InlineMoneySummary(
-                    label: 'Monthly Installment',
+                    label: AppLocalizations.of(context)!.monthlyInstallment,
                     value: '$currencyCode ${monthly.toStringAsFixed(2)}',
                   ),
                 ],
@@ -994,19 +1002,55 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
             children: [
               Expanded(
                 child: _ReadOnlyMetric(
-                  label: 'Amount to Finance',
+                  label: AppLocalizations.of(context)!.amountToFinance,
                   value: '$currencyCode ${financed.toStringAsFixed(2)}',
                 ),
               ),
               SizedBox(width: compact ? 5 : 8),
               Expanded(
                 child: _ReadOnlyMetric(
-                  label: 'Monthly Installment',
+                  label: AppLocalizations.of(context)!.monthlyInstallment,
                   value: '$currencyCode ${monthly.toStringAsFixed(2)}',
                 ),
               ),
             ],
           ),
+        if (_installmentErrorMessage != null) ...[
+          SizedBox(height: compact ? 5 : 8),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 9 : 12,
+              vertical: compact ? 7 : 9,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0x22FF5252),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0x88FF6B6B)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.error_outline_rounded,
+                  color: Color(0xFFFF7777),
+                  size: 17,
+                ),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    _installmentErrorMessage!,
+                    style: TextStyle(
+                      color: const Color(0xFFFFB4B4),
+                      fontSize: compact ? 10.5 : 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         SizedBox(height: compact ? 5 : 8),
         SizedBox(
           width: double.infinity,
@@ -1021,7 +1065,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
               ),
             ),
             child: Text(
-              _savingPlan ? 'Saving…' : 'Continue',
+              _savingPlan ? AppLocalizations.of(context)!.saving : AppLocalizations.of(context)!.continueLabel,
               style: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
@@ -1106,8 +1150,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
             if (narrow) ...[
               _ContextToggleCard(
                 icon: Icons.repeat_rounded,
-                label: 'Recurring',
-                valueLabel: _isRecurringEnabled ? 'On' : 'Off',
+                label: AppLocalizations.of(context)!.recurring,
+                valueLabel: _isRecurringEnabled ? AppLocalizations.of(context)!.onLabel : AppLocalizations.of(context)!.offLabel,
                 value: _isRecurringEnabled,
                 accent: AppColors.primary,
                 onChanged: (value) =>
@@ -1116,8 +1160,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
               const SizedBox(height: 6),
               _ContextToggleCard(
                 icon: Icons.star_rounded,
-                label: 'Exceptional',
-                valueLabel: controller.isExceptional ? 'On' : 'Off',
+                label: AppLocalizations.of(context)!.exceptional,
+                valueLabel: controller.isExceptional ? AppLocalizations.of(context)!.onLabel : AppLocalizations.of(context)!.offLabel,
                 value: controller.isExceptional,
                 accent: const Color(0xFFFFD166),
                 onChanged: (_) =>
@@ -1129,8 +1173,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                   Expanded(
                     child: _ContextToggleCard(
                       icon: Icons.repeat_rounded,
-                      label: 'Recurring',
-                      valueLabel: _isRecurringEnabled ? 'On' : 'Off',
+                      label: AppLocalizations.of(context)!.recurring,
+                      valueLabel: _isRecurringEnabled ? AppLocalizations.of(context)!.onLabel : AppLocalizations.of(context)!.offLabel,
                       value: _isRecurringEnabled,
                       accent: AppColors.primary,
                       onChanged: (value) =>
@@ -1141,8 +1185,8 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
                   Expanded(
                     child: _ContextToggleCard(
                       icon: Icons.star_rounded,
-                      label: 'Exceptional',
-                      valueLabel: controller.isExceptional ? 'On' : 'Off',
+                      label: AppLocalizations.of(context)!.exceptional,
+                      valueLabel: controller.isExceptional ? AppLocalizations.of(context)!.onLabel : AppLocalizations.of(context)!.offLabel,
                       value: controller.isExceptional,
                       accent: const Color(0xFFFFD166),
                       onChanged: (_) =>
@@ -1418,7 +1462,7 @@ class _CompactNoteCard extends StatelessWidget {
           const Icon(Icons.note_alt_outlined, color: Colors.white70, size: 16),
           const SizedBox(height: 1),
           Text(
-            note.trim().isEmpty ? 'Note' : 'Note ✓',
+            note.trim().isEmpty ? AppLocalizations.of(context)!.note : '${AppLocalizations.of(context)!.note} ✓',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
@@ -1950,8 +1994,8 @@ class _ModeTabs extends StatelessWidget {
         children: modes.map((mode) {
           final isSelected = selected == mode;
           final label = switch (mode) {
-            ExpensePaymentMode.fullPayment => 'Full Payment',
-            ExpensePaymentMode.installment => 'Installment',
+            ExpensePaymentMode.fullPayment => AppLocalizations.of(context)!.fullPayment,
+            ExpensePaymentMode.installment => AppLocalizations.of(context)!.installment,
             ExpensePaymentMode.downPaymentInstallment =>
               'Down Payment + Installment',
           };
@@ -2504,8 +2548,8 @@ class _TransactionNoteDialogState extends State<_TransactionNoteDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: AppColors.cardSecondary,
-      title: const Text(
-        'Transaction Note',
+      title: Text(
+        AppLocalizations.of(context)!.transactionNote,
         style: TextStyle(color: Colors.white),
       ),
       content: TextField(
@@ -2513,20 +2557,20 @@ class _TransactionNoteDialogState extends State<_TransactionNoteDialog> {
         autofocus: true,
         maxLines: 3,
         style: const TextStyle(color: Colors.white),
-        decoration: const InputDecoration(
-          hintText: 'Add a note',
+        decoration: InputDecoration(
+          hintText: AppLocalizations.of(context)!.addNoteHint,
           hintStyle: TextStyle(color: Colors.white38),
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(AppLocalizations.of(context)!.cancel),
         ),
         FilledButton(
           onPressed: () =>
               Navigator.of(context).pop(_noteController.text.trim()),
-          child: const Text('Save'),
+          child: Text(AppLocalizations.of(context)!.save),
         ),
       ],
     );

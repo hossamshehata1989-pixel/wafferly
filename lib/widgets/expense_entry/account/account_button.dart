@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:wafferly/controllers/transaction_entry_controller.dart';
+import 'package:wafferly/l10n/app_localizations.dart';
 import 'package:wafferly/theme/responsive_metrics.dart';
 import 'package:wafferly/theme/app_colors.dart';
 import 'package:wafferly/features/transactions/models/entry_mode.dart';
@@ -70,6 +71,9 @@ class _AccountButtonState extends State<AccountButton> {
             widget.controller.isEditing && widget.controller.isCreditCardCharge;
         final isLockedCreditCardSource =
             widget.controller.isCreditCardEntrySourceLocked;
+        final isInstallmentOnlyEntry =
+            widget.controller.isCreditCardEntryContext &&
+            widget.controller.isCreditCardInstallmentOnly;
         final lockedSourceLabel = widget.controller.creditCardEntrySourceLabel;
         final hasPaymentSources = widget.controller.hasExpensePaymentSources;
         final showPaymentPicker =
@@ -82,7 +86,7 @@ class _AccountButtonState extends State<AccountButton> {
             label: isLockedCreditCardSource
                 ? lockedSourceLabel
                 : widget.showPaymentModeLabel
-                ? 'Full Payment'
+                ? AppLocalizations.of(context)!.fullPayment
                 : (showPaymentPicker ? 'Select Payment' : 'No Account'),
             iconColor: Colors.white54,
             onTap: isLockedCreditCardSource
@@ -115,15 +119,26 @@ class _AccountButtonState extends State<AccountButton> {
                       : widget.metrics.h(48),
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   decoration: BoxDecoration(
+                    color: isInstallmentOnlyEntry
+                        ? AppColors.background.withValues(alpha: .55)
+                        : null,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: display.color.withValues(alpha: 0.20),
+                      color: isInstallmentOnlyEntry
+                          ? Colors.white10
+                          : display.color.withValues(alpha: 0.20),
                     ),
                   ),
                   child: Row(
                     textDirection: ui.TextDirection.ltr,
                     children: [
-                      Icon(display.icon, color: display.color, size: 16),
+                      Icon(
+                        display.icon,
+                        color: isInstallmentOnlyEntry
+                            ? display.color.withValues(alpha: .45)
+                            : display.color,
+                        size: 16,
+                      ),
                       SizedBox(width: widget.metrics.spacing(4)),
                       Expanded(
                         child: FittedBox(
@@ -134,12 +149,12 @@ class _AccountButtonState extends State<AccountButton> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                isLockedCreditCardSource
-                                    ? lockedSourceLabel
-                                    : 'Full Payment',
+                                AppLocalizations.of(context)!.fullPayment,
                                 maxLines: 1,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style:  TextStyle(
+                                  color: isInstallmentOnlyEntry
+                                      ? Colors.white54
+                                      : Colors.white,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -150,8 +165,10 @@ class _AccountButtonState extends State<AccountButton> {
                                   Text(
                                     selectedAccount.name,
                                     maxLines: 1,
-                                    style: const TextStyle(
-                                      color: Colors.white54,
+                                    style:  TextStyle(
+                                      color: isInstallmentOnlyEntry
+                                          ? Colors.white30
+                                          : Colors.white54,
                                       fontSize: 9,
                                       fontWeight: FontWeight.w600,
                                     ),
