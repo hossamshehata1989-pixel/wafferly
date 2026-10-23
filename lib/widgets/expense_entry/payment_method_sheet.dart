@@ -300,11 +300,19 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
       );
     }
 
+    final visibleCreditCards = widget.installmentOnly &&
+            controller.isCreditCardEntrySourceLocked
+        ? creditCards
+            .where((card) =>
+                card.account.id == controller.lockedCreditCardSourceAccountId)
+            .toList()
+        : creditCards;
+
     return _PaymentSources(
       liquidity: liquidity,
       savings: savings,
       prepaid: prepaid,
-      creditCards: creditCards,
+      creditCards: visibleCreditCards,
       financingProviders: financingProviders,
       balances: balances,
     );
@@ -498,9 +506,9 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
         }
 
         final sources = snapshot.data!;
-        final canInstallment =
-            sources.creditCards.isNotEmpty ||
-            sources.financingProviders.isNotEmpty;
+        final canInstallment = sources.creditCards.isNotEmpty ||
+            (!widget.installmentOnly &&
+                sources.financingProviders.isNotEmpty);
 
         // Preselect the first executable Credit Card financing source.
         // This is only a UI default; the actual financial write remains in
@@ -531,7 +539,7 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _ResponsivePaymentSheetHeader(
-                title: 'Installment Details',
+                title: AppLocalizations.of(context)!.installmentDetails,
                 subtitle: 'Configure how this purchase will be financed',
                 compactSubtitle: 'Configure financing',
                 icon: Icons.bar_chart_rounded,

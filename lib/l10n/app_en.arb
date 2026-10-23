@@ -543,5 +543,8 @@
   "estimated": "Estimated",
   "forecastNote": "These amounts are projections based on your card settings. Your bank statement may show different dates or amounts.",
   "paymentMonth": "Payment month",
-  "reminderOffsets": "Reminder days"
+  "reminderOffsets": "Reminder days",
+  "installmentDetails": "Installment Details",
+  "editTransaction": "Edit Transaction",
+  "installmentPurchase": "Installment Purchase"
 }

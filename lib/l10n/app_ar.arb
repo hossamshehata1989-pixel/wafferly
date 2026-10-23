@@ -543,5 +543,8 @@
   "estimated": "تقديري",
   "forecastNote": "المبالغ دي توقعات بناءً على إعدادات الكارت، وممكن تختلف التواريخ أو المبالغ في كشف البنك.",
   "paymentMonth": "شهر الاستحقاق",
-  "reminderOffsets": "أيام التنبيه"
+  "reminderOffsets": "أيام التنبيه",
+  "installmentDetails": "تفاصيل التقسيط",
+  "editTransaction": "تعديل المعاملة",
+  "installmentPurchase": "عملية شراء بالتقسيط"
 }

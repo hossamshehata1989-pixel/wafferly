@@ -72,10 +72,10 @@ class ExpensesScreen extends StatelessWidget {
           child: AppBar(
             title: Text(
               transactionToEdit != null
-                  ? 'Edit Transaction'
+                  ? AppLocalizations.of(context)!.editTransaction
                   : creditCardAccount != null
                   ? (creditCardInstallmentOnly
-                        ? 'Installment Purchase'
+                        ? AppLocalizations.of(context)!.installmentPurchase
                         : AppLocalizations.of(context)!.expenses)
                   : initialType == TransactionType.income
                   ? AppLocalizations.of(context)!.income

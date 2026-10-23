@@ -125,32 +125,34 @@ class EntryContextRow extends StatelessWidget {
           ),
         ),
         SizedBox(width: metrics.spacing(5)),
-        Expanded(
-          flex: 13,
-          child: EntryContextChip(
-            metrics: metrics,
-            leading: const Icon(
-              Icons.bar_chart_rounded,
-              color: installmentColor,
-              size: 18,
+        if (!controller.isCreditCardEntryContext) ...[
+          Expanded(
+            flex: 13,
+            child: EntryContextChip(
+              metrics: metrics,
+              leading: const Icon(
+                Icons.bar_chart_rounded,
+                color: installmentColor,
+                size: 18,
+              ),
+              iconColor: installmentColor,
+              label: 'Installment',
+              backgroundColor: canOpenInstallment
+                  ? AppColors.cardSecondary
+                  : AppColors.background,
+              borderColor: canOpenInstallment
+                  ? installmentColor.withValues(alpha: .28)
+                  : Colors.white10,
+              onTap: canOpenInstallment
+                  ? () => _openInstallment(context)
+                  : () => WafferlyToast.showError(
+                      context,
+                      message: 'Please select a category first',
+                    ),
             ),
-            iconColor: installmentColor,
-            label: 'Installment',
-            backgroundColor: canOpenInstallment
-                ? AppColors.cardSecondary
-                : AppColors.background,
-            borderColor: canOpenInstallment
-                ? installmentColor.withValues(alpha: .28)
-                : Colors.white10,
-            onTap: canOpenInstallment
-                ? () => _openInstallment(context)
-                : () => WafferlyToast.showError(
-                    context,
-                    message: 'Please select a category first',
-                  ),
           ),
-        ),
-        SizedBox(width: metrics.spacing(5)),
+          SizedBox(width: metrics.spacing(5)),
+        ],
         Expanded(
           flex: 10,
           child: MemberButton(controller: controller, metrics: metrics),
