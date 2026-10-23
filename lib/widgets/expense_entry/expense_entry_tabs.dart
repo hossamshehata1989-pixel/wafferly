@@ -1,8 +1,11 @@
 // lib/widgets/expense_entry/expenses_income_tabs.dart
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
+import '../../l10n/app_localizations.dart';
 
 class ExpenseEntryTabs extends StatelessWidget {
   final dynamic controller; // TransactionEntryController
@@ -20,7 +23,8 @@ class ExpenseEntryTabs extends StatelessWidget {
     final double fontSize = metrics.text(14);
     final double borderRadius = 24;
 
-    final tabs = ['Expenses', 'Income', 'Transfer'];
+    final l10n = AppLocalizations.of(context)!;
+    final tabs = [l10n.expenses, l10n.income, l10n.transfer];
     final selectedIndex = _selectedIndex(controller);
 
     return Container(
@@ -31,8 +35,11 @@ class ExpenseEntryTabs extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(color: Colors.grey.shade300),
       ),
-      child: Stack(
-        children: [
+      child: Directionality(
+        // Keep tab order and selector positions stable across Arabic/English.
+        textDirection: ui.TextDirection.ltr,
+        child: Stack(
+          children: [
           // Animated selector
           AnimatedAlign(
             duration: const Duration(milliseconds: 250),
@@ -71,6 +78,7 @@ class ExpenseEntryTabs extends StatelessWidget {
             }),
           ),
         ],
+        ),
       ),
     );
   }

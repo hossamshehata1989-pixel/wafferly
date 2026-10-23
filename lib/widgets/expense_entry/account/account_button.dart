@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -119,6 +121,7 @@ class _AccountButtonState extends State<AccountButton> {
                     ),
                   ),
                   child: Row(
+                    textDirection: ui.TextDirection.ltr,
                     children: [
                       Icon(display.icon, color: display.color, size: 16),
                       SizedBox(width: widget.metrics.spacing(4)),

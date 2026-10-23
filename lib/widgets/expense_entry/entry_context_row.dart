@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../controllers/transaction_entry_controller.dart';
@@ -34,6 +36,8 @@ class EntryContextRow extends StatelessWidget {
     }
 
     return Row(
+      // Stable physical order, independent of the selected locale.
+      textDirection: ui.TextDirection.ltr,
       children: [
         Expanded(
           child: EntryContextChip(
@@ -88,6 +92,8 @@ class EntryContextRow extends StatelessWidget {
     const installmentColor = Color(0xFFD36BFF);
 
     return Row(
+      // Stable physical order, independent of the selected locale.
+      textDirection: ui.TextDirection.ltr,
       children: [
         Expanded(
           flex: 10,

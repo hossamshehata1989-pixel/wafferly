@@ -1,5 +1,7 @@
 // lib/widgets/expense_entry/entry_context_chip.dart
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
@@ -130,6 +132,7 @@ class EntryContextChip extends StatelessWidget {
         ),
         padding: effectivePadding,
         child: Row(
+          textDirection: ui.TextDirection.ltr,
           children: [
             if (leading != null) ...[
               leading!,

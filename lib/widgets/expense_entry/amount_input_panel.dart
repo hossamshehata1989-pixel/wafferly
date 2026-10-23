@@ -1,5 +1,7 @@
 // lib/widgets/expense_entry/amount_input_panel.dart
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../controllers/transaction_entry_controller.dart';
@@ -72,6 +74,8 @@ class AmountInputPanel extends StatelessWidget {
                 border: Border.all(color: Colors.white12),
               ),
               child: Row(
+                // Fixed physical order: reverse the previous RTL layout.
+                textDirection: ui.TextDirection.ltr,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
@@ -86,6 +90,7 @@ class AmountInputPanel extends StatelessWidget {
                         border: Border.all(color: Colors.white12),
                       ),
                       child: Row(
+                        textDirection: ui.TextDirection.ltr,
                         children: [
                           Expanded(
                             child: FittedBox(
@@ -117,6 +122,7 @@ class AmountInputPanel extends StatelessWidget {
                   ),
                   SizedBox(width: metrics.spacing(4)),
                   Row(
+                    textDirection: ui.TextDirection.ltr,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _topActionButton(metrics, Icons.note_alt_outlined),
@@ -178,6 +184,8 @@ class AmountInputPanel extends StatelessWidget {
     const operators = {"C", "⌫", "+", "x", ".", "="};
     const primary = {"="};
     return Row(
+      // Keep keypad order fixed in both locales, using the agreed reversed layout.
+      textDirection: ui.TextDirection.ltr,
       children: keys.map((key) {
         return _calcButton(
           context,

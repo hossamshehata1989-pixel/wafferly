@@ -1,9 +1,12 @@
 // lib/widgets/expense_entry/entry_bottom_actions.dart
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import '../../controllers/transaction_entry_controller.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/responsive_metrics.dart';
+import '../../l10n/app_localizations.dart';
 import '../../financial_engine/resolution/resolution.dart';
 import '../../features/transactions/models/entry_mode.dart';
 import '../../features/transactions/models/entry_mode_extension.dart';
@@ -34,8 +37,11 @@ class EntryBottomActions extends StatelessWidget {
       );
     }
 
-    return Row(
-      children: [
+    return Directionality(
+      // Button order is a deliberate interaction pattern, not locale-dependent.
+      textDirection: ui.TextDirection.ltr,
+      child: Row(
+        children: [
         Expanded(
           child: _bottomActionButton(
             metrics,
@@ -56,7 +62,8 @@ class EntryBottomActions extends StatelessWidget {
             Icons.mic,
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -73,8 +80,11 @@ class EntryBottomActions extends StatelessWidget {
 
     return SizedBox(
       height: height,
-      child: Row(
-        children: [
+      child: Directionality(
+        // Scan, Done, microphone and Add retain their intended order in RTL locales.
+        textDirection: ui.TextDirection.ltr,
+        child: Row(
+          children: [
           // Scan Button (Left)
           Expanded(
             flex: 8,
@@ -123,7 +133,12 @@ class EntryBottomActions extends StatelessWidget {
                             cutoutRadius: cutoutRadius,
                             seam: seam,
                             isExceptional: controller.isExceptional,
-                            enabled: !controller.isCreditCardInstallmentOnly,
+                            // A normal card charge cannot be added until the
+                            // amount and category are selected. Installment-only
+                            // mode must never save through the ordinary Add path.
+                            enabled: !controller.isCreditCardInstallmentOnly &&
+                                (!controller.isCreditCardEntryContext ||
+                                    (controller.hasAmount && controller.hasCategory)),
                             onAddTap: () => _submitEntry(context),
                             onStarTap: controller.toggleExceptional,
                           ),
@@ -155,7 +170,8 @@ class EntryBottomActions extends StatelessWidget {
               onTap: () {},
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -434,6 +450,25 @@ class EntryBottomActions extends StatelessWidget {
       // The user can use the Installment action once a purchase is entered.
       if (controller.entryState == EntryState.empty) {
         Navigator.of(context).pop(true);
+        return;
+      }
+
+      // Never open the installment workflow with an incomplete draft.
+      // Empty Done above still exits normally; a partial draft gets a precise
+      // validation message and remains on the entry screen.
+      final l10n = AppLocalizations.of(context)!;
+      if (!controller.hasCategory) {
+        WafferlyToast.showError(
+          context,
+          message: l10n.pleaseSelectCategory,
+        );
+        return;
+      }
+      if (!controller.hasAmount) {
+        WafferlyToast.showError(
+          context,
+          message: l10n.pleaseEnterValidAmount,
+        );
         return;
       }
 

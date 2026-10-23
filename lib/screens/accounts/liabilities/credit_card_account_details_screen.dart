@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/money/money.dart';
@@ -66,18 +67,18 @@ class _CreditCardAccountDetailsScreenState
         final installments = projection.installments;
 
         final now = DateTime.now();
-        final dueBreakdown =
-            const CreditCardMonthlyDueProjectionCalculator().calculate(
-          liabilityAccountId: projection.account.id,
-          charges: transactions,
-          payments: projection.payments,
-          contracts: projection.contracts,
-          installments: installments,
-          statementDay: projection.profile.statementDay,
-          paymentDueDay: projection.profile.paymentDueDay,
-          currentOutstanding: projection.outstanding,
-          now: now,
-        );
+        final dueBreakdown = const CreditCardMonthlyDueProjectionCalculator()
+            .calculate(
+              liabilityAccountId: projection.account.id,
+              charges: transactions,
+              payments: projection.payments,
+              contracts: projection.contracts,
+              installments: installments,
+              statementDay: projection.profile.statementDay,
+              paymentDueDay: projection.profile.paymentDueDay,
+              currentOutstanding: projection.outstanding,
+              now: now,
+            );
 
         return Scaffold(
           backgroundColor: AppColors.background,
@@ -110,7 +111,8 @@ class _CreditCardAccountDetailsScreenState
                   minWidth: m.isCompactHeight ? m.size(40) : m.size(44),
                   minHeight: m.isCompactHeight ? m.size(40) : m.size(44),
                 ),
-                onPressed: () => _showCardMenu(projection.account, projection.profile),
+                onPressed: () =>
+                    _showCardMenu(projection.account, projection.profile),
                 icon: Icon(
                   Icons.more_vert_rounded,
                   size: m.isCompactHeight ? m.size(22) : m.size(24),
@@ -127,9 +129,10 @@ class _CreditCardAccountDetailsScreenState
                 profile: projection.profile,
                 creditExposureLabel: t.creditExposure,
                 creditExposureValue: projection.outstanding.toDouble(),
-                outstanding: (projection.profile.creditLimit.toDouble() -
-                        projection.available.toDouble())
-                    .clamp(0.0, double.infinity),
+                outstanding:
+                    (projection.profile.creditLimit.toDouble() -
+                            projection.available.toDouble())
+                        .clamp(0.0, double.infinity),
                 thisMonthDue: projection.statementDue.isConfigured
                     ? projection.statementDue.amountDue.toDouble()
                     : dueBreakdown.thisMonthTotal.toDouble(),
@@ -141,7 +144,8 @@ class _CreditCardAccountDetailsScreenState
                     : dueBreakdown.thisMonthInstallments.toDouble(),
                 nextMonthDue: dueBreakdown.nextMonthTotal.toDouble(),
                 nextMonthExpenses: dueBreakdown.nextMonthExpenses.toDouble(),
-                nextMonthInstallments: dueBreakdown.nextMonthInstallments.toDouble(),
+                nextMonthInstallments: dueBreakdown.nextMonthInstallments
+                    .toDouble(),
                 onMoreDue: () => _showFutureInstallmentMonths(
                   projection.account.currency,
                   installments,
@@ -151,15 +155,12 @@ class _CreditCardAccountDetailsScreenState
               ),
               SizedBox(height: m.space.md),
               _ActionGrid(
-                onAddTransaction: () => _openEntry(
-                  projection.account,
-                  installmentOnly: false,
-                ),
-                onAddInstallment: () => _openEntry(
-                  projection.account,
-                  installmentOnly: true,
-                ),
-                onConvert: () => _openConvert(projection.account, projection.profile),
+                onAddTransaction: () =>
+                    _openEntry(projection.account, installmentOnly: false),
+                onAddInstallment: () =>
+                    _openEntry(projection.account, installmentOnly: true),
+                onConvert: () =>
+                    _openConvert(projection.account, projection.profile),
                 onPay: () => _openPayment(
                   projection.account,
                   projection.profile,
@@ -172,32 +173,39 @@ class _CreditCardAccountDetailsScreenState
               SizedBox(height: m.space.sm),
               _StatementImportCard(onTap: _showStatementComingSoon),
               SizedBox(height: m.space.md),
-              _SegmentTabs(selected: _tab, onChanged: (value) => setState(() => _tab = value)),
+              _SegmentTabs(
+                selected: _tab,
+                onChanged: (value) => setState(() => _tab = value),
+              ),
               SizedBox(height: m.space.sm),
-              if (_tab == 0) _TransactionsSection(
-                transactions: transactions,
-                payments: projection.payments,
-                currency: projection.account.currency,
-              )
-              else if (_tab == 1) _InstallmentsSection(
-                installments: installments,
-                contracts: projection.contracts,
-                transactions: transactions,
-                currency: projection.account.currency,
-                onMonthTap: (month, monthInstallments) => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => CreditCardInstallmentMonthScreen(
-                      month: month,
-                      monthInstallments: monthInstallments,
-                      allInstallments: installments,
-                      contracts: projection.contracts,
-                      transactions: transactions,
-                      currency: projection.account.currency,
-                    ),
-                  ),
-                ),
-              )
-              else _StatementsSection(profile: projection.profile),
+              if (_tab == 0)
+                _TransactionsSection(
+                  transactions: transactions,
+                  payments: projection.payments,
+                  currency: projection.account.currency,
+                )
+              else if (_tab == 1)
+                _InstallmentsSection(
+                  installments: installments,
+                  contracts: projection.contracts,
+                  transactions: transactions,
+                  currency: projection.account.currency,
+                  onMonthTap: (month, monthInstallments) =>
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => CreditCardInstallmentMonthScreen(
+                            month: month,
+                            monthInstallments: monthInstallments,
+                            allInstallments: installments,
+                            contracts: projection.contracts,
+                            transactions: transactions,
+                            currency: projection.account.currency,
+                          ),
+                        ),
+                      ),
+                )
+              else
+                _StatementsSection(profile: projection.profile),
             ],
           ),
         );
@@ -217,8 +225,10 @@ class _CreditCardAccountDetailsScreenState
       final status = item.status.trim().toLowerCase();
       final due = DateTime(item.dueDate.year, item.dueDate.month, 1);
       return !due.isBefore(firstFutureMonth) &&
-          status != 'settled' && status != 'cancelled' &&
-          status != 'canceled' && status != 'superseded' &&
+          status != 'settled' &&
+          status != 'cancelled' &&
+          status != 'canceled' &&
+          status != 'superseded' &&
           status != 'terminated';
     }).toList()..sort((a, b) => a.dueDate.compareTo(b.dueDate));
 
@@ -242,33 +252,66 @@ class _CreditCardAccountDetailsScreenState
                 padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Future Due Months', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: Colors.white)),
+                  child: Text(
+                    'Future Due Months',
+                    style: TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
               Expanded(
                 child: groups.isEmpty
-                    ? const Center(child: Text('No future installments scheduled', style: TextStyle(color: Colors.white70)))
+                    ? const Center(
+                        child: Text(
+                          'No future installments scheduled',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      )
                     : ListView(
                         children: groups.entries.map((entry) {
                           final month = entry.key;
                           final items = entry.value;
-                          final total = items.fold<double>(0, (sum, item) => sum + item.amount.toDouble());
+                          final total = items.fold<double>(
+                            0,
+                            (sum, item) => sum + item.amount.toDouble(),
+                          );
                           return ListTile(
-                            title: Text(DateFormat.yMMMM().format(month), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                            subtitle: Text('${items.length} installments', style: const TextStyle(color: Colors.white60)),
-                            trailing: Text(_money(total, currency), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                            title: Text(
+                              DateFormat.yMMMM().format(month),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${items.length} installments',
+                              style: const TextStyle(color: Colors.white60),
+                            ),
+                            trailing: Text(
+                              _money(total, currency),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                             onTap: () {
                               Navigator.of(sheetContext).pop();
-                              Navigator.of(context).push(MaterialPageRoute(
-                                builder: (_) => CreditCardInstallmentMonthScreen(
-                                  month: month,
-                                  monthInstallments: items,
-                                  allInstallments: installments,
-                                  contracts: contracts,
-                                  transactions: transactions,
-                                  currency: currency,
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      CreditCardInstallmentMonthScreen(
+                                        month: month,
+                                        monthInstallments: items,
+                                        allInstallments: installments,
+                                        contracts: contracts,
+                                        transactions: transactions,
+                                        currency: currency,
+                                      ),
                                 ),
-                              ));
+                              );
                             },
                           );
                         }).toList(),
@@ -297,10 +340,7 @@ class _CreditCardAccountDetailsScreenState
     if (result == true && mounted) setState(() {});
   }
 
-  Future<void> _openConvert(
-    Account account,
-    CreditCardProfile profile,
-  ) async {
+  Future<void> _openConvert(Account account, CreditCardProfile profile) async {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -318,25 +358,52 @@ class _CreditCardAccountDetailsScreenState
       context: context,
       backgroundColor: Colors.white,
       showDragHandle: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
       builder: (_) => const Padding(
         padding: EdgeInsets.fromLTRB(24, 8, 24, 30),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(height: 12),
-            Icon(Icons.document_scanner_rounded, size: 72, color: Color(0xFF4D7CFF)),
+            Icon(
+              Icons.document_scanner_rounded,
+              size: 72,
+              color: Color(0xFF4D7CFF),
+            ),
             SizedBox(height: 14),
-            Text('Monthly Statement Import', style: TextStyle(color: Colors.black, fontSize: 21, fontWeight: FontWeight.w900)),
+            Text(
+              'Monthly Statement Import',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 21,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
             SizedBox(height: 8),
-            Text('Automatically read your credit card statement and help you import and reconcile transactions.', textAlign: TextAlign.center, style: TextStyle(color: Colors.black54, height: 1.4)),
+            Text(
+              'Automatically read your credit card statement and help you import and reconcile transactions.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.black54, height: 1.4),
+            ),
             SizedBox(height: 18),
             _ComingSoonLine(text: 'Supports PDF and images'),
             _ComingSoonLine(text: 'Detects transactions automatically'),
             _ComingSoonLine(text: 'Matches existing transactions'),
             _ComingSoonLine(text: 'Helps with installment detection'),
             SizedBox(height: 18),
-            SizedBox(width: double.infinity, height: 52, child: FilledButton(onPressed: null, child: Text('COMING SOON • PRO', style: TextStyle(fontWeight: FontWeight.w800)))),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: FilledButton(
+                onPressed: null,
+                child: Text(
+                  'COMING SOON • PRO',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -372,10 +439,25 @@ class _CreditCardAccountDetailsScreenState
       backgroundColor: const Color(0xFF0A1C29),
       showDragHandle: true,
       builder: (_) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(leading: const Icon(Icons.settings_outlined), title: const Text('Card Settings'), onTap: () => Navigator.pop(context)),
-          ListTile(leading: const Icon(Icons.document_scanner_outlined), title: const Text('Import Monthly Statement'), subtitle: const Text('PRO • Coming Soon'), onTap: () { Navigator.pop(context); _showStatementComingSoon(); }),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text('Card Settings'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.document_scanner_outlined),
+              title: const Text('Import Monthly Statement'),
+              subtitle: const Text('PRO • Coming Soon'),
+              onTap: () {
+                Navigator.pop(context);
+                _showStatementComingSoon();
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -525,176 +607,208 @@ class _CardSummaryVisual extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(m.size(22)),
                   child: LayoutBuilder(
-          builder: (context, constraints) {
-            // The card overlay is laid out on a fixed design canvas and then
-            // scaled to the real card size. Without this, fonts keep their
-            // pixel size while the slots shrink on small phones (iPhone SE),
-            // which caused the "bottom overflowed" errors.
-            const designWidth = 376.0;
-            final size = Size(designWidth, designWidth / layout.aspectRatio);
+                    builder: (context, constraints) {
+                      // The card overlay is laid out on a fixed design canvas and then
+                      // scaled to the real card size. Without this, fonts keep their
+                      // pixel size while the slots shrink on small phones (iPhone SE),
+                      // which caused the "bottom overflowed" errors.
+                      const designWidth = 376.0;
+                      final size = Size(
+                        designWidth,
+                        designWidth / layout.aspectRatio,
+                      );
 
-            Widget slot(CardTextSlot field, Widget child) {
-              final definition = layout.slot(field);
-              if (definition == null) return const SizedBox.shrink();
+                      Widget slot(CardTextSlot field, Widget child) {
+                        final definition = layout.slot(field);
+                        if (definition == null) return const SizedBox.shrink();
 
-              final rect = definition.area.resolve(size);
-              return Positioned.fromRect(
-                rect: rect,
-                child: Padding(
-                  padding: definition.area.padding,
-                  // Keep the slot's real bounded constraints. Wrapping composite
-                  // Rows in FittedBox makes their Expanded children unbounded, so
-                  // the due rows can fail layout and disappear from the card.
-                  child: SizedBox(
-                    width: rect.width,
-                    height: rect.height,
-                    child: child,
-                  ),
-                ),
-              );
-            }
-
-            return FittedBox(
-              fit: BoxFit.fill,
-              child: SizedBox(
-                width: size.width,
-                height: size.height,
-                // Artwork text must not follow the system font scale: the
-                // slots are fixed-size, so a large font setting would overflow.
-                child: MediaQuery(
-                  data: MediaQuery.of(context)
-                      .copyWith(textScaler: TextScaler.noScaling),
-                  child: Stack(
-              fit: StackFit.expand,
-              children: [
-                CreditCardVisual(
-                  key: ValueKey(profile.cardVisual),
-                  visual: profile.cardVisual,
-                  fit: BoxFit.fill,
-                ),
-
-                // Identity: these occupy the safe area above the chip.
-                slot(
-                  CardTextSlot.cardName,
-                  _CardOverlayText(
-                    account.name.trim().isEmpty ? 'Credit Card' : account.name.trim(),
-                    size: 20,
-                    weight: FontWeight.w900,
-                  ),
-                ),
-                slot(
-                  CardTextSlot.issuer,
-                  _CardOverlayText(
-                    '${account.provider ?? 'Credit Card'} • ${profile.cardNetwork ?? 'Network not set'}',
-                    size: 9,
-                    color: _kCardInk,
-                    maxLines: 1,
-                  ),
-                ),
-
-                // Total outstanding replaces Available / Credit Limit.
-                slot(
-                  CardTextSlot.outstanding,
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Semantics(
-                      label: '$creditExposureLabel: $creditExposureValue',
-                      child: _CardScrim(
-                        child: _CardOverlayMoneyStat(
-                          label: 'Total Outstanding',
-                          value: _money(outstanding, account.currency),
-                          color: _kCardInk,
-                          alignRight: true,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                slot(
-                  CardTextSlot.thisMonthDue,
-                  _CardDueStat(
-                    label: 'This Month Due',
-                    total: _money(thisMonthDue, account.currency),
-                    expenses: _money(thisMonthExpenses, account.currency),
-                    installments: _money(thisMonthInstallments, account.currency),
-                    color: _kCardInk,
-                  ),
-                ),
-                slot(
-                  CardTextSlot.nextMonthDue,
-                  _CardDueStat(
-                    label: 'Next Month Due',
-                    total: _money(nextMonthDue, account.currency),
-                    expenses: _money(nextMonthExpenses, account.currency),
-                    installments: _money(nextMonthInstallments, account.currency),
-                    color: _kCardInk,
-                  ),
-                ),
-                Positioned(
-                  // The More control has its own column. It begins after the
-                  // two due panels, so it never overlays either panel.
-                  left: 330,
-                  top: size.height * .34,
-                  width: 39,
-                  height: size.height * .45,
-                  child: Material(
-                    color: const Color(0x66020B1A),
-                    borderRadius: BorderRadius.circular(10),
-                    child: InkWell(
-                      onTap: onMoreDue,
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: const Color(0xFFFF2D8D),
-                            width: 1.5,
+                        final rect = definition.area.resolve(size);
+                        return Positioned.fromRect(
+                          rect: rect,
+                          child: Padding(
+                            padding: definition.area.padding,
+                            // Keep the slot's real bounded constraints. Wrapping composite
+                            // Rows in FittedBox makes their Expanded children unbounded, so
+                            // the due rows can fail layout and disappear from the card.
+                            child: SizedBox(
+                              width: rect.width,
+                              height: rect.height,
+                              child: child,
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              color: Color(0xFFFF2D8D),
-                              size: 23,
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'More',
-                              style: TextStyle(
-                                color: Color(0xFFFF2D8D),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                        );
+                      }
 
-                slot(
-                  CardTextSlot.statementCycle,
-                  _CardCycleInfo(
-                    statementDay: profile.statementDay,
-                    dueDay: profile.paymentDueDay,
-                  ),
-                ),
+                      return FittedBox(
+                        fit: BoxFit.fill,
+                        child: SizedBox(
+                          width: size.width,
+                          height: size.height,
+                          // Artwork text must not follow the system font scale: the
+                          // slots are fixed-size, so a large font setting would overflow.
+                          child: MediaQuery(
+                            data: MediaQuery.of(
+                              context,
+                            ).copyWith(textScaler: TextScaler.noScaling),
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                CreditCardVisual(
+                                  key: ValueKey(profile.cardVisual),
+                                  visual: profile.cardVisual,
+                                  fit: BoxFit.fill,
+                                ),
 
-              ],
+                                // Identity: these occupy the safe area above the chip.
+                                slot(
+                                  CardTextSlot.cardName,
+                                  _CardOverlayText(
+                                    account.name.trim().isEmpty
+                                        ? 'Credit Card'
+                                        : account.name.trim(),
+                                    size: 20,
+                                    weight: FontWeight.w900,
+                                  ),
+                                ),
+                                slot(
+                                  CardTextSlot.issuer,
+                                  _CardOverlayText(
+                                    '${account.provider ?? 'Credit Card'} • ${profile.cardNetwork ?? 'Network not set'}',
+                                    size: 9,
+                                    color: _kCardInk,
+                                    maxLines: 1,
+                                  ),
+                                ),
+
+                                // Total outstanding replaces Available / Credit Limit.
+                                slot(
+                                  CardTextSlot.outstanding,
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerRight,
+                                    child: Semantics(
+                                      label:
+                                          '$creditExposureLabel: $creditExposureValue',
+                                      child: _CardScrim(
+                                        child: _CardOverlayMoneyStat(
+                                          label: 'Total Outstanding',
+                                          value: _money(
+                                            outstanding,
+                                            account.currency,
+                                          ),
+                                          color: _kCardInk,
+                                          alignRight: true,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                slot(
+                                  CardTextSlot.thisMonthDue,
+                                  _CardDueStat(
+                                    label: 'This Month Due',
+                                    total: _money(
+                                      thisMonthDue,
+                                      account.currency,
+                                    ),
+                                    expenses: _money(
+                                      thisMonthExpenses,
+                                      account.currency,
+                                    ),
+                                    installments: _money(
+                                      thisMonthInstallments,
+                                      account.currency,
+                                    ),
+                                    color: _kCardInk,
+                                  ),
+                                ),
+                                slot(
+                                  CardTextSlot.nextMonthDue,
+                                  _CardDueStat(
+                                    label: 'Next Month Due',
+                                    total: _money(
+                                      nextMonthDue,
+                                      account.currency,
+                                    ),
+                                    expenses: _money(
+                                      nextMonthExpenses,
+                                      account.currency,
+                                    ),
+                                    installments: _money(
+                                      nextMonthInstallments,
+                                      account.currency,
+                                    ),
+                                    color: _kCardInk,
+                                  ),
+                                ),
+                                Positioned(
+                                  // The More control has its own column. It begins after the
+                                  // two due panels, so it never overlays either panel.
+                                  left: 330,
+                                  top: size.height * .34,
+                                  width: 39,
+                                  height: size.height * .45,
+                                  child: Material(
+                                    color: const Color(0x66020B1A),
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: InkWell(
+                                      onTap: onMoreDue,
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          border: Border.all(
+                                            color: const Color(0xFFFF2D8D),
+                                            width: 1.5,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 6,
+                                        ),
+                                        child: const Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.chevron_right_rounded,
+                                              color: Color(0xFFFF2D8D),
+                                              size: 23,
+                                            ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              'More',
+                                              style: TextStyle(
+                                                color: Color(0xFFFF2D8D),
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                slot(
+                                  CardTextSlot.statementCycle,
+                                  _CardCycleInfo(
+                                    statementDay: profile.statementDay,
+                                    dueDay: profile.paymentDueDay,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-              ),
-            );
-                  },
                 ),
               ),
             ),
-          ),
           ),
         );
       },
@@ -800,8 +914,9 @@ class _CardOverlayMoneyStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment:
-          alignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignRight
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
@@ -868,124 +983,124 @@ class _CardDueStat extends StatelessWidget {
     return _CardScrim(
       alignment: Alignment.center,
       child: Row(
-      // Card labels are authored in English; keep their order stable even if
-      // the surrounding app is running in an RTL locale.
-      textDirection: ui.TextDirection.ltr,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          flex: 5,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: _kCardInk,
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 1),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  total,
-                  maxLines: 1,
-                  style: TextStyle(
-                    color: _kCardInk,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 5),
-        Container(
-          width: 1,
-          height: 34,
-          color: Colors.white.withValues(alpha: .42),
-        ),
-        const SizedBox(width: 7),
-        Expanded(
-          flex: 6,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.circle, color: Color(0xFFFF2D8D), size: 7),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'Expenses',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _kCardInk,
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 11),
-                child: Text(
-                  expenses,
+        // Card labels are authored in English; keep their order stable even if
+        // the surrounding app is running in an RTL locale.
+        textDirection: ui.TextDirection.ltr,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: _kCardInk,
-                    fontSize: 8.5,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-              const SizedBox(height: 1),
-              Row(
-                children: [
-                  const Icon(Icons.circle, color: Color(0xFF42C9FF), size: 7),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      'Installments',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF42C9FF),
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w600,
-                      ),
+                const SizedBox(height: 1),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    total,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: _kCardInk,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.only(left: 11),
-                child: Text(
-                  installments,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _kCardInk,
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w700,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 5),
+          Container(
+            width: 1,
+            height: 34,
+            color: Colors.white.withValues(alpha: .42),
+          ),
+          const SizedBox(width: 7),
+          Expanded(
+            flex: 6,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.circle, color: Color(0xFFFF2D8D), size: 7),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Expenses',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _kCardInk,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 11),
+                  child: Text(
+                    expenses,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _kCardInk,
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 1),
+                Row(
+                  children: [
+                    const Icon(Icons.circle, color: Color(0xFF42C9FF), size: 7),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Installments',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF42C9FF),
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 11),
+                  child: Text(
+                    installments,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: _kCardInk,
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
       ),
     );
   }
@@ -1006,54 +1121,53 @@ class _CardCycleInfo extends StatelessWidget {
       required String label,
       required int? day,
       required String hint,
-    }) =>
-        IntrinsicWidth(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    }) => IntrinsicWidth(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            textDirection: ui.TextDirection.ltr,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                textDirection: ui.TextDirection.ltr,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    label,
-                    maxLines: 1,
-                    style: const TextStyle(
-                      color: _kCardInk,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      shadows: _kCardShadow,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    day == null ? '—' : 'Day $day',
-                    maxLines: 1,
-                    style: const TextStyle(
-                      color: _kCardInk,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w800,
-                      shadows: _kCardShadow,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 2),
               Text(
-                hint,
+                label,
                 maxLines: 1,
-                softWrap: false,
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 8.5,
-                  fontWeight: FontWeight.w500,
+                  color: _kCardInk,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  shadows: _kCardShadow,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                day == null ? '—' : 'Day $day',
+                maxLines: 1,
+                style: const TextStyle(
+                  color: _kCardInk,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
                   shadows: _kCardShadow,
                 ),
               ),
             ],
           ),
-        );
+          const SizedBox(height: 2),
+          Text(
+            hint,
+            maxLines: 1,
+            softWrap: false,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 8.5,
+              fontWeight: FontWeight.w500,
+              shadows: _kCardShadow,
+            ),
+          ),
+        ],
+      ),
+    );
 
     return Row(
       // Card labels are authored in English; keep their order stable in RTL.
@@ -1095,16 +1209,45 @@ class _ActionGrid extends StatelessWidget {
     final m = ResponsiveMetrics.of(context);
     final gap = m.spacing(8);
 
-    return Row(
-      children: [
-        Expanded(child: _Action(icon: Icons.add_rounded, label: 'Add\nTransaction', onTap: onAddTransaction)),
-        SizedBox(width: gap),
-        Expanded(child: _Action(icon: Icons.calendar_month_rounded, label: 'Add\nInstallment', onTap: onAddInstallment)),
-        SizedBox(width: gap),
-        Expanded(child: _Action(icon: Icons.autorenew_rounded, label: 'Convert to\nInstallment', onTap: onConvert)),
-        SizedBox(width: gap),
-        Expanded(child: _Action(icon: Icons.credit_card_rounded, label: 'Pay\nCard', onTap: onPay)),
-      ],
+    return Directionality(
+      // Keep each action and its callback in the same visual slot in Arabic
+      // and English; only the text itself follows the selected locale.
+      textDirection: ui.TextDirection.ltr,
+      child: Row(
+        children: [
+          Expanded(
+            child: _Action(
+              icon: Icons.add_rounded,
+              label: 'Add\nTransaction',
+              onTap: onAddTransaction,
+            ),
+          ),
+          SizedBox(width: gap),
+          Expanded(
+            child: _Action(
+              icon: Icons.calendar_month_rounded,
+              label: 'Add\nInstallment',
+              onTap: onAddInstallment,
+            ),
+          ),
+          SizedBox(width: gap),
+          Expanded(
+            child: _Action(
+              icon: Icons.autorenew_rounded,
+              label: 'Convert to\nInstallment',
+              onTap: onConvert,
+            ),
+          ),
+          SizedBox(width: gap),
+          Expanded(
+            child: _Action(
+              icon: Icons.credit_card_rounded,
+              label: 'Pay\nCard',
+              onTap: onPay,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1175,7 +1318,11 @@ class _StatementImportCard extends StatelessWidget {
                   color: const Color(0xFF6B2B55),
                   borderRadius: BorderRadius.circular(m.radius.sm),
                 ),
-                child: Icon(Icons.document_scanner_outlined, color: const Color(0xFF7DA4FF), size: m.size(22)),
+                child: Icon(
+                  Icons.document_scanner_outlined,
+                  color: const Color(0xFF7DA4FF),
+                  size: m.size(22),
+                ),
               ),
               SizedBox(width: m.spacing(10)),
               Expanded(
@@ -1185,28 +1332,45 @@ class _StatementImportCard extends StatelessWidget {
                   children: [
                     Text(
                       'Import Monthly Statement',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: m.text(16)),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: m.text(16),
+                      ),
                     ),
                     SizedBox(height: m.spacing(2)),
                     Text(
                       'Coming Soon',
-                      style: TextStyle(color: const Color(0xFFFF6D9D), fontSize: m.text(10)),
+                      style: TextStyle(
+                        color: const Color(0xFFFF6D9D),
+                        fontSize: m.text(10),
+                      ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: m.spacing(8), vertical: m.spacing(4)),
+                padding: EdgeInsets.symmetric(
+                  horizontal: m.spacing(8),
+                  vertical: m.spacing(4),
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFB21A),
                   borderRadius: BorderRadius.circular(m.radius.sm),
                 ),
                 child: Text(
                   'PRO',
-                  style: TextStyle(color: Colors.black, fontSize: m.text(9), fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: m.text(9),
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
-              Icon(Icons.chevron_right_rounded, color: Colors.white54, size: m.size(22)),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white54,
+                size: m.size(22),
+              ),
             ],
           ),
         ),
@@ -1309,13 +1473,17 @@ class _TransactionsSection extends StatelessWidget {
             radius: m.isCompactHeight ? m.size(14) : m.size(15),
             backgroundColor: const Color(0xFF182B45),
             child: Icon(
-              isPayment ? Icons.payments_outlined : Icons.shopping_cart_outlined,
+              isPayment
+                  ? Icons.payments_outlined
+                  : Icons.shopping_cart_outlined,
               color: const Color(0xFF8CB3FF),
               size: m.isCompactHeight ? m.size(15) : m.size(16),
             ),
           ),
           title: Text(
-            isPayment ? t.creditCardPayment : (tx.note?.split(' • ').first ?? 'Credit Card purchase'),
+            isPayment
+                ? t.creditCardPayment
+                : (tx.note?.split(' • ').first ?? 'Credit Card purchase'),
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: m.isCompactHeight ? m.text(14) : m.text(15),
@@ -1357,7 +1525,8 @@ class _InstallmentsSection extends StatelessWidget {
   final List<FinancingContract> contracts;
   final List<Transaction> transactions;
   final String currency;
-  final void Function(DateTime month, List<FinancingInstallment> items) onMonthTap;
+  final void Function(DateTime month, List<FinancingInstallment> items)
+  onMonthTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1382,15 +1551,27 @@ class _InstallmentsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(m.spacing(2), m.spacing(8), m.spacing(2), m.spacing(8)),
+          padding: EdgeInsets.fromLTRB(
+            m.spacing(2),
+            m.spacing(8),
+            m.spacing(2),
+            m.spacing(8),
+          ),
           child: Row(
             children: [
-              Icon(Icons.calendar_month_rounded, color: const Color(0xFFFF3D81), size: m.size(20)),
+              Icon(
+                Icons.calendar_month_rounded,
+                color: const Color(0xFFFF3D81),
+                size: m.size(20),
+              ),
               SizedBox(width: m.spacing(8)),
               Expanded(
                 child: Text(
                   'Installments by Month',
-                  style: TextStyle(fontSize: m.text(15), fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    fontSize: m.text(15),
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               Container(
@@ -1401,7 +1582,9 @@ class _InstallmentsSection extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFF0A1C29),
                   borderRadius: BorderRadius.circular(m.radius.sm),
-                  border: Border.all(color: Colors.white.withValues(alpha: .08)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: .08),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1427,8 +1610,12 @@ class _InstallmentsSection extends StatelessWidget {
           ),
         ),
         ...months.map((month) {
-          final items = grouped[month]!..sort((a, b) => a.dueDate.compareTo(b.dueDate));
-          final total = items.fold<Money>(Money.zero, (sum, item) => sum + item.amount);
+          final items = grouped[month]!
+            ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+          final total = items.fold<Money>(
+            Money.zero,
+            (sum, item) => sum + item.amount,
+          );
           final locale = Localizations.localeOf(context).toLanguageTag();
           final monthLabel = DateFormat('MMM yyyy', locale).format(month);
           return Padding(
@@ -1438,19 +1625,35 @@ class _InstallmentsSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(m.radius.md),
               child: InkWell(
                 borderRadius: BorderRadius.circular(m.radius.md),
-                onTap: () => onMonthTap(month, List<FinancingInstallment>.unmodifiable(items)),
+                onTap: () => onMonthTap(
+                  month,
+                  List<FinancingInstallment>.unmodifiable(items),
+                ),
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: m.spacing(12), vertical: m.spacing(12)),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: m.spacing(12),
+                    vertical: m.spacing(12),
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(m.radius.md),
-                    border: Border.all(color: Colors.white.withValues(alpha: .07)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: .07),
+                    ),
                   ),
                   child: Row(
                     children: [
                       Container(
-                        width: m.size(42), height: m.size(42),
-                        decoration: const BoxDecoration(color: Color(0x1FFF3D81), shape: BoxShape.circle),
-                        child: Icon(Icons.calendar_month_rounded, color: const Color(0xFFFF3D81), size: m.size(21)),
+                        width: m.size(42),
+                        height: m.size(42),
+                        decoration: const BoxDecoration(
+                          color: Color(0x1FFF3D81),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.calendar_month_rounded,
+                          color: const Color(0xFFFF3D81),
+                          size: m.size(21),
+                        ),
                       ),
                       SizedBox(width: m.spacing(10)),
                       Expanded(
@@ -1471,13 +1674,29 @@ class _InstallmentsSection extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(_money(total.toDouble(), currency), style: TextStyle(fontSize: m.text(13), fontWeight: FontWeight.w800)),
+                          Text(
+                            _money(total.toDouble(), currency),
+                            style: TextStyle(
+                              fontSize: m.text(13),
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                           SizedBox(height: m.spacing(4)),
-                          Text('${items.length} ${items.length == 1 ? 'installment' : 'installments'}', style: TextStyle(color: Colors.white54, fontSize: m.text(10))),
+                          Text(
+                            '${items.length} ${items.length == 1 ? 'installment' : 'installments'}',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: m.text(10),
+                            ),
+                          ),
                         ],
                       ),
                       SizedBox(width: m.spacing(4)),
-                      Icon(Icons.chevron_right_rounded, color: Colors.white60, size: m.size(22)),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: Colors.white60,
+                        size: m.size(22),
+                      ),
                     ],
                   ),
                 ),
@@ -1542,16 +1761,60 @@ class _ComingSoonLine extends StatelessWidget {
   const _ComingSoonLine({required this.text});
   final String text;
   @override
-  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Row(children: [const Icon(Icons.check_circle, color: Color(0xFFFF3D81), size: 18), const SizedBox(width: 8), Expanded(child: Text(text, style: const TextStyle(color: Colors.black87)))]));
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        const Icon(Icons.check_circle, color: Color(0xFFFF3D81), size: 18),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text, style: const TextStyle(color: Colors.black87)),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Metric extends StatelessWidget {
-  const _Metric({required this.title, required this.value, required this.color});
+  const _Metric({
+    required this.title,
+    required this.value,
+    required this.color,
+  });
   final String title;
   final String value;
   final Color color;
   @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.black.withValues(alpha: .12), borderRadius: BorderRadius.circular(14)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.white54, fontSize: 11)), const SizedBox(height: 5), FittedBox(fit: BoxFit.scaleDown, alignment: AlignmentDirectional.centerStart, child: Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 15)))]));
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(color: Colors.white54, fontSize: 11),
+        ),
+        const SizedBox(height: 5),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 15,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
-String _money(double value, String currency) => '${value.toStringAsFixed(2)} $currency';
+String _money(double value, String currency) =>
+    '${value.toStringAsFixed(2)} $currency';
