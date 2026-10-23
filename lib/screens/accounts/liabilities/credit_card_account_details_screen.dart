@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
 import '../../../core/money/money.dart';
 import '../../../application/credit_card/credit_card_details_projection_service.dart';
@@ -12,6 +13,8 @@ import '../../../models/financing/financing_installment.dart';
 import '../../../models/financing/financing_contract.dart';
 import '../../../models/transaction.dart';
 import '../../../constants/transaction_constants.dart';
+import '../../../config/category_config.dart';
+import '../../../config/category_type.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/responsive_metrics.dart';
@@ -80,133 +83,138 @@ class _CreditCardAccountDetailsScreenState
               now: now,
             );
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            toolbarHeight: m.isCompactHeight ? m.h(48) : m.h(54),
-            leadingWidth: m.isCompactHeight ? m.size(48) : m.size(52),
-            leading: IconButton(
-              padding: EdgeInsets.zero,
-              onPressed: () => Navigator.of(context).maybePop(),
-              icon: Icon(
-                Icons.arrow_back_rounded,
-                color: Colors.white,
-                size: m.isCompactHeight ? m.size(22) : m.size(24),
-              ),
-            ),
-            titleSpacing: 0,
-            title: Text(
-              'Credit Card',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: m.isCompactHeight ? m.text(20) : m.text(22),
-              ),
-            ),
-            actions: [
-              IconButton(
+        return Directionality(
+          textDirection: Localizations.localeOf(context).languageCode == 'ar'
+              ? ui.TextDirection.rtl
+              : ui.TextDirection.ltr,
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              toolbarHeight: m.isCompactHeight ? m.h(48) : m.h(54),
+              leadingWidth: m.isCompactHeight ? m.size(48) : m.size(52),
+              leading: IconButton(
                 padding: EdgeInsets.zero,
-                constraints: BoxConstraints(
-                  minWidth: m.isCompactHeight ? m.size(40) : m.size(44),
-                  minHeight: m.isCompactHeight ? m.size(40) : m.size(44),
-                ),
-                onPressed: () =>
-                    _showCardMenu(projection.account, projection.profile),
+                onPressed: () => Navigator.of(context).maybePop(),
                 icon: Icon(
-                  Icons.more_vert_rounded,
+                  Icons.arrow_back_rounded,
+                  color: Colors.white,
                   size: m.isCompactHeight ? m.size(22) : m.size(24),
                 ),
               ),
-              SizedBox(width: m.spacing(4)),
-            ],
-          ),
-          body: ListView(
-            padding: EdgeInsets.fromLTRB(m.spacing(16), 6, m.spacing(16), 28),
-            children: [
-              _CardSummaryVisual(
-                account: projection.account,
-                profile: projection.profile,
-                creditExposureLabel: t.creditExposure,
-                creditExposureValue: projection.outstanding.toDouble(),
-                outstanding:
-                    (projection.profile.creditLimit.toDouble() -
-                            projection.available.toDouble())
-                        .clamp(0.0, double.infinity),
-                thisMonthDue: projection.statementDue.isConfigured
-                    ? projection.statementDue.amountDue.toDouble()
-                    : dueBreakdown.thisMonthTotal.toDouble(),
-                thisMonthExpenses: projection.statementDue.isConfigured
-                    ? projection.statementDue.chargeAmountDue.toDouble()
-                    : dueBreakdown.thisMonthExpenses.toDouble(),
-                thisMonthInstallments: projection.statementDue.isConfigured
-                    ? projection.statementDue.installmentAmountDue.toDouble()
-                    : dueBreakdown.thisMonthInstallments.toDouble(),
-                nextMonthDue: dueBreakdown.nextMonthTotal.toDouble(),
-                nextMonthExpenses: dueBreakdown.nextMonthExpenses.toDouble(),
-                nextMonthInstallments: dueBreakdown.nextMonthInstallments
-                    .toDouble(),
-                onMoreDue: () => _showFutureInstallmentMonths(
-                  projection.account.currency,
-                  installments,
-                  projection.contracts,
-                  transactions,
+              titleSpacing: 0,
+              title: Text(
+                t.creditCardTitle,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: m.isCompactHeight ? m.text(20) : m.text(22),
                 ),
               ),
-              SizedBox(height: m.space.md),
-              _ActionGrid(
-                onAddTransaction: () =>
-                    _openEntry(projection.account, installmentOnly: false),
-                onAddInstallment: () =>
-                    _openEntry(projection.account, installmentOnly: true),
-                onConvert: () =>
-                    _openConvert(projection.account, projection.profile),
-                onPay: () => _openPayment(
-                  projection.account,
-                  projection.profile,
-                  projection.outstanding,
-                  projection.statementDue,
-                  dueBreakdown.thisMonthTotal,
-                  dueBreakdown.thisMonthInstallments,
+              actions: [
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(
+                    minWidth: m.isCompactHeight ? m.size(40) : m.size(44),
+                    minHeight: m.isCompactHeight ? m.size(40) : m.size(44),
+                  ),
+                  onPressed: () =>
+                      _showCardMenu(projection.account, projection.profile),
+                  icon: Icon(
+                    Icons.more_vert_rounded,
+                    size: m.isCompactHeight ? m.size(22) : m.size(24),
+                  ),
                 ),
-              ),
-              SizedBox(height: m.space.sm),
-              _StatementImportCard(onTap: _showStatementComingSoon),
-              SizedBox(height: m.space.md),
-              _SegmentTabs(
-                selected: _tab,
-                onChanged: (value) => setState(() => _tab = value),
-              ),
-              SizedBox(height: m.space.sm),
-              if (_tab == 0)
-                _TransactionsSection(
-                  transactions: transactions,
-                  payments: projection.payments,
-                  currency: projection.account.currency,
-                )
-              else if (_tab == 1)
-                _InstallmentsSection(
-                  installments: installments,
-                  contracts: projection.contracts,
-                  transactions: transactions,
-                  currency: projection.account.currency,
-                  onMonthTap: (month, monthInstallments) =>
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => CreditCardInstallmentMonthScreen(
-                            month: month,
-                            monthInstallments: monthInstallments,
-                            allInstallments: installments,
-                            contracts: projection.contracts,
-                            transactions: transactions,
-                            currency: projection.account.currency,
+                SizedBox(width: m.spacing(4)),
+              ],
+            ),
+            body: ListView(
+              padding: EdgeInsets.fromLTRB(m.spacing(16), 6, m.spacing(16), 28),
+              children: [
+                _CardSummaryVisual(
+                  account: projection.account,
+                  profile: projection.profile,
+                  creditExposureLabel: t.creditExposure,
+                  creditExposureValue: projection.outstanding.toDouble(),
+                  outstanding:
+                      (projection.profile.creditLimit.toDouble() -
+                              projection.available.toDouble())
+                          .clamp(0.0, double.infinity),
+                  thisMonthDue: projection.statementDue.isConfigured
+                      ? projection.statementDue.amountDue.toDouble()
+                      : dueBreakdown.thisMonthTotal.toDouble(),
+                  thisMonthExpenses: projection.statementDue.isConfigured
+                      ? projection.statementDue.chargeAmountDue.toDouble()
+                      : dueBreakdown.thisMonthExpenses.toDouble(),
+                  thisMonthInstallments: projection.statementDue.isConfigured
+                      ? projection.statementDue.installmentAmountDue.toDouble()
+                      : dueBreakdown.thisMonthInstallments.toDouble(),
+                  nextMonthDue: dueBreakdown.nextMonthTotal.toDouble(),
+                  nextMonthExpenses: dueBreakdown.nextMonthExpenses.toDouble(),
+                  nextMonthInstallments: dueBreakdown.nextMonthInstallments
+                      .toDouble(),
+                  onMoreDue: () => _showFutureInstallmentMonths(
+                    projection.account.currency,
+                    installments,
+                    projection.contracts,
+                    transactions,
+                  ),
+                ),
+                SizedBox(height: m.space.md),
+                _ActionGrid(
+                  onAddTransaction: () =>
+                      _openEntry(projection.account, installmentOnly: false),
+                  onAddInstallment: () =>
+                      _openEntry(projection.account, installmentOnly: true),
+                  onConvert: () =>
+                      _openConvert(projection.account, projection.profile),
+                  onPay: () => _openPayment(
+                    projection.account,
+                    projection.profile,
+                    projection.outstanding,
+                    projection.statementDue,
+                    dueBreakdown.thisMonthTotal,
+                    dueBreakdown.thisMonthInstallments,
+                  ),
+                ),
+                SizedBox(height: m.space.sm),
+                _StatementImportCard(onTap: _showStatementComingSoon),
+                SizedBox(height: m.space.md),
+                _SegmentTabs(
+                  selected: _tab,
+                  onChanged: (value) => setState(() => _tab = value),
+                ),
+                SizedBox(height: m.space.sm),
+                if (_tab == 0)
+                  _TransactionsSection(
+                    transactions: transactions,
+                    payments: projection.payments,
+                    currency: projection.account.currency,
+                  )
+                else if (_tab == 1)
+                  _InstallmentsSection(
+                    installments: installments,
+                    contracts: projection.contracts,
+                    transactions: transactions,
+                    currency: projection.account.currency,
+                    onMonthTap: (month, monthInstallments) =>
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => CreditCardInstallmentMonthScreen(
+                              month: month,
+                              monthInstallments: monthInstallments,
+                              allInstallments: installments,
+                              contracts: projection.contracts,
+                              transactions: transactions,
+                              currency: projection.account.currency,
+                            ),
                           ),
                         ),
-                      ),
-                )
-              else
-                _StatementsSection(profile: projection.profile),
-            ],
+                  )
+                else
+                  _StatementsSection(profile: projection.profile),
+              ],
+            ),
           ),
         );
       },
@@ -248,13 +256,15 @@ class _CreditCardAccountDetailsScreenState
           height: MediaQuery.sizeOf(sheetContext).height * .65,
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 8, 20, 12),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Future Due Months',
-                    style: TextStyle(
+                    Localizations.localeOf(sheetContext).languageCode == 'ar'
+                        ? 'الاستحقاقات القادمة'
+                        : 'Future Due Months',
+                    style: const TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
@@ -264,10 +274,13 @@ class _CreditCardAccountDetailsScreenState
               ),
               Expanded(
                 child: groups.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text(
-                          'No future installments scheduled',
-                          style: TextStyle(color: Colors.white70),
+                          Localizations.localeOf(sheetContext).languageCode ==
+                                  'ar'
+                              ? 'لا توجد أقساط مستقبلية مجدولة'
+                              : 'No future installments scheduled',
+                          style: const TextStyle(color: Colors.white70),
                         ),
                       )
                     : ListView(
@@ -287,7 +300,10 @@ class _CreditCardAccountDetailsScreenState
                               ),
                             ),
                             subtitle: Text(
-                              '${items.length} installments',
+                              Localizations.localeOf(context).languageCode ==
+                                      'ar'
+                                  ? '${items.length} أقساط'
+                                  : '${items.length} installments',
                               style: const TextStyle(color: Colors.white60),
                             ),
                             trailing: Text(
@@ -361,8 +377,8 @@ class _CreditCardAccountDetailsScreenState
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (_) => const Padding(
-        padding: EdgeInsets.fromLTRB(24, 8, 24, 30),
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 30),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -374,7 +390,7 @@ class _CreditCardAccountDetailsScreenState
             ),
             SizedBox(height: 14),
             Text(
-              'Monthly Statement Import',
+              AppLocalizations.of(sheetContext)!.importMonthlyStatement,
               style: TextStyle(
                 color: Colors.black,
                 fontSize: 21,
@@ -383,15 +399,33 @@ class _CreditCardAccountDetailsScreenState
             ),
             SizedBox(height: 8),
             Text(
-              'Automatically read your credit card statement and help you import and reconcile transactions.',
+              Localizations.localeOf(sheetContext).languageCode == 'ar'
+                  ? 'اقرأ كشف حساب بطاقتك الائتمانية واستورد العمليات وطابقها بسهولة.'
+                  : 'Automatically read your credit card statement and help you import and reconcile transactions.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.black54, height: 1.4),
             ),
             SizedBox(height: 18),
-            _ComingSoonLine(text: 'Supports PDF and images'),
-            _ComingSoonLine(text: 'Detects transactions automatically'),
-            _ComingSoonLine(text: 'Matches existing transactions'),
-            _ComingSoonLine(text: 'Helps with installment detection'),
+            _ComingSoonLine(
+              text: Localizations.localeOf(sheetContext).languageCode == 'ar'
+                  ? 'يدعم ملفات PDF والصور'
+                  : 'Supports PDF and images',
+            ),
+            _ComingSoonLine(
+              text: Localizations.localeOf(sheetContext).languageCode == 'ar'
+                  ? 'يكتشف العمليات تلقائيًا'
+                  : 'Detects transactions automatically',
+            ),
+            _ComingSoonLine(
+              text: Localizations.localeOf(sheetContext).languageCode == 'ar'
+                  ? 'يطابق العمليات المسجلة بالفعل'
+                  : 'Matches existing transactions',
+            ),
+            _ComingSoonLine(
+              text: Localizations.localeOf(sheetContext).languageCode == 'ar'
+                  ? 'يساعد على اكتشاف عمليات التقسيط'
+                  : 'Helps with installment detection',
+            ),
             SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
@@ -399,7 +433,9 @@ class _CreditCardAccountDetailsScreenState
               child: FilledButton(
                 onPressed: null,
                 child: Text(
-                  'COMING SOON • PRO',
+                  Localizations.localeOf(sheetContext).languageCode == 'ar'
+                      ? 'قريبًا • PRO'
+                      : 'COMING SOON • PRO',
                   style: TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
@@ -444,12 +480,12 @@ class _CreditCardAccountDetailsScreenState
           children: [
             ListTile(
               leading: const Icon(Icons.settings_outlined),
-              title: const Text('Card Settings'),
+              title: Text(AppLocalizations.of(context)!.cardSettings),
               onTap: () => Navigator.pop(context),
             ),
             ListTile(
               leading: const Icon(Icons.document_scanner_outlined),
-              title: const Text('Import Monthly Statement'),
+              title: Text(AppLocalizations.of(context)!.importMonthlyStatement),
               subtitle: const Text('PRO • Coming Soon'),
               onTap: () {
                 Navigator.pop(context);
@@ -498,58 +534,71 @@ class _CardScrim extends StatelessWidget {
 /// Credit-card dashboard artwork layout. This intentionally differs from the
 /// generic card-management layout: the main card prioritizes the two due
 /// summaries and statement/payment days, without the extra Used/Available bar.
-CardVisualLayout _creditCardDashboardLayout(String visualId) =>
-    CardVisualLayout(
-      visualId: visualId,
-      aspectRatio: 1.55,
-      slots: <CardTextSlot, CardVisualSlot>{
-        CardTextSlot.cardName: CardVisualSlot(
-          zone: CardZone.identity,
-          area: CardVisualZone(x: .05, y: .075, width: .48, height: .105),
-        ),
-        CardTextSlot.issuer: CardVisualSlot(
-          zone: CardZone.identity,
-          area: CardVisualZone(x: .05, y: .175, width: .49, height: .075),
-          minFontScale: .65,
-        ),
-        CardTextSlot.outstanding: CardVisualSlot(
-          zone: CardZone.financialSecondary,
-          area: CardVisualZone(
-            // Reserve enough room for the complete label and amount while
-            // keeping the outstanding block in the card's upper-right corner.
-            x: .62,
-            y: .035,
-            width: .35,
-            height: .24,
-            alignment: Alignment.centerRight,
-          ),
-          maxLines: 2,
-          minFontScale: .55,
-        ),
-        // Due-period rows: lower on the card, with a small gap (.025) between
-        // them. Footer starts at .795, so there is no overlap.
-        CardTextSlot.thisMonthDue: CardVisualSlot(
-          zone: CardZone.financialPrimary,
-          // Stop the due panel before the independent More control.
-          area: CardVisualZone(x: .27, y: .34, width: .60, height: .22),
-          maxLines: 2,
-          minFontScale: .60,
-        ),
-        CardTextSlot.nextMonthDue: CardVisualSlot(
-          zone: CardZone.financialPrimary,
-          // Stop the due panel before the independent More control.
-          area: CardVisualZone(x: .27, y: .57, width: .60, height: .22),
-          maxLines: 2,
-          minFontScale: .60,
-        ),
-        CardTextSlot.statementCycle: CardVisualSlot(
-          zone: CardZone.footer,
-          area: CardVisualZone(x: .05, y: .80, width: .90, height: .18),
-          maxLines: 2,
-          minFontScale: .62,
-        ),
-      },
-    );
+CardVisualLayout _creditCardDashboardLayout(
+  String visualId,
+) => CardVisualLayout(
+  visualId: visualId,
+  aspectRatio: 1.55,
+  slots: <CardTextSlot, CardVisualSlot>{
+    CardTextSlot.cardName: CardVisualSlot(
+      zone: CardZone.identity,
+      area: CardVisualZone(
+        x: .50,
+        y: .075,
+        width: .45,
+        height: .105,
+        alignment: Alignment.centerRight,
+      ),
+    ),
+    CardTextSlot.issuer: CardVisualSlot(
+      zone: CardZone.identity,
+      area: CardVisualZone(
+        x: .50,
+        y: .175,
+        width: .45,
+        height: .075,
+        alignment: Alignment.centerRight,
+      ),
+      minFontScale: .65,
+    ),
+    CardTextSlot.outstanding: CardVisualSlot(
+      zone: CardZone.financialSecondary,
+      area: CardVisualZone(
+        // Reserve enough room for the complete label and amount while
+        // Place the outstanding block on the upper-left, opposite the card identity.
+        x: .05,
+        y: .035,
+        width: .39,
+        height: .24,
+        alignment: Alignment.centerLeft,
+      ),
+      maxLines: 2,
+      minFontScale: .55,
+    ),
+    // Due-period rows: lower on the card, with a small gap (.025) between
+    // them. Footer starts at .795, so there is no overlap.
+    CardTextSlot.thisMonthDue: CardVisualSlot(
+      zone: CardZone.financialPrimary,
+      // Stop the due panel before the independent More control.
+      area: CardVisualZone(x: .35, y: .34, width: .48, height: .22),
+      maxLines: 2,
+      minFontScale: .60,
+    ),
+    CardTextSlot.nextMonthDue: CardVisualSlot(
+      zone: CardZone.financialPrimary,
+      // Stop the due panel before the independent More control.
+      area: CardVisualZone(x: .35, y: .57, width: .48, height: .22),
+      maxLines: 2,
+      minFontScale: .60,
+    ),
+    CardTextSlot.statementCycle: CardVisualSlot(
+      zone: CardZone.footer,
+      area: CardVisualZone(x: .05, y: .80, width: .90, height: .18),
+      maxLines: 2,
+      minFontScale: .62,
+    ),
+  },
+);
 
 class _CardSummaryVisual extends StatelessWidget {
   const _CardSummaryVisual({
@@ -685,19 +734,25 @@ class _CardSummaryVisual extends StatelessWidget {
                                   CardTextSlot.outstanding,
                                   FittedBox(
                                     fit: BoxFit.scaleDown,
-                                    alignment: Alignment.centerRight,
+                                    alignment: Alignment.centerLeft,
                                     child: Semantics(
                                       label:
                                           '$creditExposureLabel: $creditExposureValue',
                                       child: _CardScrim(
                                         child: _CardOverlayMoneyStat(
-                                          label: 'Total Outstanding',
+                                          label:
+                                              Localizations.localeOf(
+                                                    context,
+                                                  ).languageCode ==
+                                                  'ar'
+                                              ? 'إجمالي المستحق'
+                                              : 'Total Outstanding',
                                           value: _money(
                                             outstanding,
                                             account.currency,
                                           ),
                                           color: _kCardInk,
-                                          alignRight: true,
+                                          alignRight: false,
                                         ),
                                       ),
                                     ),
@@ -706,7 +761,9 @@ class _CardSummaryVisual extends StatelessWidget {
                                 slot(
                                   CardTextSlot.thisMonthDue,
                                   _CardDueStat(
-                                    label: 'This Month Due',
+                                    label: AppLocalizations.of(
+                                      context,
+                                    )!.thisMonthDue,
                                     total: _money(
                                       thisMonthDue,
                                       account.currency,
@@ -725,7 +782,9 @@ class _CardSummaryVisual extends StatelessWidget {
                                 slot(
                                   CardTextSlot.nextMonthDue,
                                   _CardDueStat(
-                                    label: 'Next Month Due',
+                                    label: AppLocalizations.of(
+                                      context,
+                                    )!.nextMonthDue,
                                     total: _money(
                                       nextMonthDue,
                                       account.currency,
@@ -744,9 +803,9 @@ class _CardSummaryVisual extends StatelessWidget {
                                 Positioned(
                                   // The More control has its own column. It begins after the
                                   // two due panels, so it never overlays either panel.
-                                  left: 330,
+                                  left: 324,
                                   top: size.height * .34,
-                                  width: 39,
+                                  width: 45,
                                   height: size.height * .45,
                                   child: Material(
                                     color: const Color(0x66020B1A),
@@ -767,18 +826,20 @@ class _CardSummaryVisual extends StatelessWidget {
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 6,
                                         ),
-                                        child: const Column(
+                                        child: Column(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
                                             Icon(
-                                              Icons.chevron_right_rounded,
+                                              Icons.chevron_left_rounded,
                                               color: Color(0xFFFF2D8D),
                                               size: 23,
                                             ),
                                             SizedBox(height: 4),
                                             Text(
-                                              'More',
+                                              AppLocalizations.of(
+                                                context,
+                                              )!.more,
                                               style: TextStyle(
                                                 color: Color(0xFFFF2D8D),
                                                 fontSize: 10,
@@ -978,6 +1039,8 @@ class _CardDueStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+
     // One compact horizontal row per due period: label + total at the start,
     // and the expense/installment breakdown beside them.
     return _CardScrim(
@@ -985,7 +1048,9 @@ class _CardDueStat extends StatelessWidget {
       child: Row(
         // Card labels are authored in English; keep their order stable even if
         // the surrounding app is running in an RTL locale.
-        textDirection: ui.TextDirection.ltr,
+        textDirection: Localizations.localeOf(context).languageCode == 'ar'
+            ? ui.TextDirection.rtl
+            : ui.TextDirection.ltr,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
@@ -1040,7 +1105,7 @@ class _CardDueStat extends StatelessWidget {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        'Expenses',
+                        t.expensesLabel,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -1072,7 +1137,7 @@ class _CardDueStat extends StatelessWidget {
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        'Installments',
+                        t.installmentsLabel,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -1117,6 +1182,10 @@ class _CardCycleInfo extends StatelessWidget {
     // Each block is as wide as its explanation line (IntrinsicWidth), so the
     // label starts exactly where the explanation starts and the day number
     // ends exactly where the explanation ends.
+
+    // One compact horizontal row per due period: label + total at the start,
+    // and the expense/installment breakdown beside them.
+
     Widget dayBlock({
       required String label,
       required int? day,
@@ -1142,7 +1211,11 @@ class _CardCycleInfo extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                day == null ? '—' : 'Day $day',
+                day == null
+                    ? '—'
+                    : Localizations.localeOf(context).languageCode == 'ar'
+                    ? 'يوم $day'
+                    : 'Day $day',
                 maxLines: 1,
                 style: const TextStyle(
                   color: _kCardInk,
@@ -1176,14 +1249,22 @@ class _CardCycleInfo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         dayBlock(
-          label: 'Statement Day',
+          label: Localizations.localeOf(context).languageCode == 'ar'
+              ? 'يوم كشف الحساب'
+              : 'Statement Day',
           day: statementDay,
-          hint: 'New bill cycle starts after this day',
+          hint: Localizations.localeOf(context).languageCode == 'ar'
+              ? 'تبدأ دورة الفاتورة الجديدة بعد هذا اليوم'
+              : 'New bill cycle starts after this day',
         ),
         dayBlock(
-          label: 'Due Day',
+          label: Localizations.localeOf(context).languageCode == 'ar'
+              ? 'يوم الاستحقاق'
+              : 'Due Day',
           day: dueDay,
-          hint: 'Pay the bill by this day',
+          hint: Localizations.localeOf(context).languageCode == 'ar'
+              ? 'يجب سداد الفاتورة في هذا اليوم'
+              : 'Pay the bill by this day',
         ),
       ],
     );
@@ -1218,7 +1299,7 @@ class _ActionGrid extends StatelessWidget {
           Expanded(
             child: _Action(
               icon: Icons.add_rounded,
-              label: 'Add\nTransaction',
+              label: '${AppLocalizations.of(context)!.addTransaction}',
               onTap: onAddTransaction,
             ),
           ),
@@ -1226,7 +1307,7 @@ class _ActionGrid extends StatelessWidget {
           Expanded(
             child: _Action(
               icon: Icons.calendar_month_rounded,
-              label: 'Add\nInstallment',
+              label: '${AppLocalizations.of(context)!.addInstallment}',
               onTap: onAddInstallment,
             ),
           ),
@@ -1234,7 +1315,7 @@ class _ActionGrid extends StatelessWidget {
           Expanded(
             child: _Action(
               icon: Icons.autorenew_rounded,
-              label: 'Convert to\nInstallment',
+              label: '${AppLocalizations.of(context)!.convertToInstallment}',
               onTap: onConvert,
             ),
           ),
@@ -1242,7 +1323,7 @@ class _ActionGrid extends StatelessWidget {
           Expanded(
             child: _Action(
               icon: Icons.credit_card_rounded,
-              label: 'Pay\nCard',
+              label: '${AppLocalizations.of(context)!.payCard}',
               onTap: onPay,
             ),
           ),
@@ -1390,9 +1471,9 @@ class _SegmentTabs extends StatelessWidget {
 
     return Row(
       children: [
-        _seg(m, 'Transactions', 0),
-        _seg(m, 'Installments', 1),
-        _seg(m, 'Statements', 2),
+        _seg(m, AppLocalizations.of(context)!.transactionsTab, 0),
+        _seg(m, AppLocalizations.of(context)!.installments, 1),
+        _seg(m, AppLocalizations.of(context)!.statements, 2),
       ],
     );
   }
@@ -1429,6 +1510,67 @@ class _SegmentTabs extends StatelessWidget {
   }
 }
 
+String? _transactionCategoryTitle(BuildContext context, String? categoryId) {
+  if (categoryId == null || categoryId.isEmpty) return null;
+  final t = AppLocalizations.of(context)!;
+  for (final type in CategoryType.values) {
+    for (final category in getCategories(type)) {
+      if (category.id == categoryId) return category.resolveTitle(t);
+    }
+  }
+  return null;
+}
+
+class _TransactionCategoryIcon extends StatelessWidget {
+  const _TransactionCategoryIcon({
+    required this.categoryId,
+    required this.size,
+  });
+  final String? categoryId;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    if (categoryId == null || categoryId!.isEmpty) {
+      return Icon(
+        Icons.shopping_cart_outlined,
+        color: const Color(0xFF8CB3FF),
+        size: size,
+      );
+    }
+    CategoryConfig? found;
+    for (final type in CategoryType.values) {
+      for (final category in getCategories(type)) {
+        if (category.id == categoryId) {
+          found = category;
+          break;
+        }
+      }
+      if (found != null) break;
+    }
+    if (found == null)
+      return Icon(
+        Icons.shopping_cart_outlined,
+        color: const Color(0xFF8CB3FF),
+        size: size,
+      );
+    return Padding(
+      padding: const EdgeInsets.all(3),
+      child: SvgPicture.asset(
+        found.icon,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        placeholderBuilder: (_) => Icon(
+          Icons.category_outlined,
+          color: const Color(0xFF8CB3FF),
+          size: size,
+        ),
+      ),
+    );
+  }
+}
+
 class _TransactionsSection extends StatelessWidget {
   const _TransactionsSection({
     required this.transactions,
@@ -1449,9 +1591,9 @@ class _TransactionsSection extends StatelessWidget {
       ..sort((a, b) => b.date.compareTo(a.date));
 
     if (events.isEmpty) {
-      return const _EmptySection(
-        title: 'No transactions yet',
-        subtitle: 'Credit card transactions will appear here.',
+      return _EmptySection(
+        title: t.noTransactionsYet,
+        subtitle: t.creditCardTransactionsAppearHere,
       );
     }
 
@@ -1472,18 +1614,22 @@ class _TransactionsSection extends StatelessWidget {
           leading: CircleAvatar(
             radius: m.isCompactHeight ? m.size(14) : m.size(15),
             backgroundColor: const Color(0xFF182B45),
-            child: Icon(
-              isPayment
-                  ? Icons.payments_outlined
-                  : Icons.shopping_cart_outlined,
-              color: const Color(0xFF8CB3FF),
-              size: m.isCompactHeight ? m.size(15) : m.size(16),
-            ),
+            child: isPayment
+                ? Icon(
+                    Icons.payments_outlined,
+                    color: const Color(0xFF8CB3FF),
+                    size: m.isCompactHeight ? m.size(15) : m.size(16),
+                  )
+                : _TransactionCategoryIcon(
+                    categoryId: tx.categoryId,
+                    size: m.isCompactHeight ? m.size(17) : m.size(18),
+                  ),
           ),
           title: Text(
             isPayment
                 ? t.creditCardPayment
-                : (tx.note?.split(' • ').first ?? 'Credit Card purchase'),
+                : _transactionCategoryTitle(context, tx.categoryId) ??
+                      (tx.note?.split(' • ').first ?? t.creditCardPurchase),
             style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: m.isCompactHeight ? m.text(14) : m.text(15),
@@ -1567,7 +1713,7 @@ class _InstallmentsSection extends StatelessWidget {
               SizedBox(width: m.spacing(8)),
               Expanded(
                 child: Text(
-                  'Installments by Month',
+                  AppLocalizations.of(context)!.installmentsByMonth,
                   style: TextStyle(
                     fontSize: m.text(15),
                     fontWeight: FontWeight.w800,
@@ -1590,7 +1736,7 @@ class _InstallmentsSection extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${months.length} months left',
+                      '${months.length} ${AppLocalizations.of(context)!.monthsLeft}',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: m.text(10),
@@ -1716,10 +1862,16 @@ class _StatementsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _EmptySection(
-      title: 'Statements',
+      title: Localizations.localeOf(context).languageCode == 'ar'
+          ? 'كشوف الحساب'
+          : 'Statements',
       subtitle: profile.statementDay == null
-          ? 'Statement day is not configured.'
-          : 'Statement closes on day ${profile.statementDay}. Monthly statement import is coming soon.',
+          ? (Localizations.localeOf(context).languageCode == 'ar'
+                ? 'لم يتم تحديد يوم كشف الحساب.'
+                : 'Statement day is not configured.')
+          : (Localizations.localeOf(context).languageCode == 'ar'
+                ? 'يُغلق كشف الحساب يوم ${profile.statementDay}. استيراد كشف الحساب الشهري قريبًا.'
+                : 'Statement closes on day ${profile.statementDay}. Monthly statement import is coming soon.'),
     );
   }
 }
