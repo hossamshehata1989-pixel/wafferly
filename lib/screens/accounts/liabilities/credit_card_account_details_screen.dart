@@ -579,15 +579,15 @@ CardVisualLayout _creditCardDashboardLayout(
     // them. Footer starts at .795, so there is no overlap.
     CardTextSlot.thisMonthDue: CardVisualSlot(
       zone: CardZone.financialPrimary,
-      // Stop the due panel before the independent More control.
-      area: CardVisualZone(x: .35, y: .34, width: .48, height: .22),
+      // Widen due panels to the left while preserving their right edge and keeping a small gap after More.
+      area: CardVisualZone(x: .404, y: .325, width: .548, height: .225),
       maxLines: 2,
       minFontScale: .60,
     ),
     CardTextSlot.nextMonthDue: CardVisualSlot(
       zone: CardZone.financialPrimary,
-      // Stop the due panel before the independent More control.
-      area: CardVisualZone(x: .35, y: .57, width: .48, height: .22),
+      // Widen due panels to the left while preserving their right edge and keeping a small gap after More.
+      area: CardVisualZone(x: .404, y: .565, width: .548, height: .225),
       maxLines: 2,
       minFontScale: .60,
     ),
@@ -758,6 +758,24 @@ class _CardSummaryVisual extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                                // Shared visual frame behind the due panels and More control.
+                                Positioned(
+                                  // Frame follows the adjusted due group, between the chip and card edge.
+                                  left: 88,
+                                  right: 14,
+                                  top: size.height * .30,
+                                  height: size.height * .50,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0x22020B1A),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: .20),
+                                        width: 1,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                                 slot(
                                   CardTextSlot.thisMonthDue,
                                   _CardDueStat(
@@ -801,22 +819,20 @@ class _CardSummaryVisual extends StatelessWidget {
                                   ),
                                 ),
                                 Positioned(
-                                  // The More control has its own column. It begins after the
-                                  // two due panels, so it never overlays either panel.
-                                  left: 324,
-                                  top: size.height * .34,
-                                  width: 45,
-                                  height: size.height * .45,
-                                  child: Material(
-                                    color: const Color(0x66020B1A),
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: InkWell(
+  left: 94,
+  top: size.height * .325,
+  width: 52,
+  height: size.height * .465,
+  child: Material(
+    color: const Color(0x66020B1A),
+    borderRadius: BorderRadius.circular(10),
+    child: InkWell(
                                       onTap: onMoreDue,
                                       borderRadius: BorderRadius.circular(10),
                                       child: Container(
                                         decoration: BoxDecoration(
                                           border: Border.all(
-                                            color: const Color(0xFFFF2D8D),
+                                            color: const ui.Color.fromARGB(255, 241, 253, 80),
                                             width: 1.5,
                                           ),
                                           borderRadius: BorderRadius.circular(
@@ -1040,6 +1056,7 @@ class _CardDueStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
 
     // One compact horizontal row per due period: label + total at the start,
     // and the expense/installment breakdown beside them.
@@ -1048,13 +1065,12 @@ class _CardDueStat extends StatelessWidget {
       child: Row(
         // Card labels are authored in English; keep their order stable even if
         // the surrounding app is running in an RTL locale.
-        textDirection: Localizations.localeOf(context).languageCode == 'ar'
-            ? ui.TextDirection.rtl
-            : ui.TextDirection.ltr,
+        textDirection: isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            flex: 5,
+            // Arabic due labels are longer, so reserve extra width for them.
+            flex: isArabic ? 7 : 6,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -1094,7 +1110,7 @@ class _CardDueStat extends StatelessWidget {
           ),
           const SizedBox(width: 7),
           Expanded(
-            flex: 6,
+            flex: isArabic ? 5 : 5,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -1124,7 +1140,7 @@ class _CardDueStat extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: _kCardInk,
+                      color: ui.Color.fromARGB(255, 240, 239, 237),
                       fontSize: 8.5,
                       fontWeight: FontWeight.w700,
                     ),
