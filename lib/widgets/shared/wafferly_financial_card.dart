@@ -283,12 +283,6 @@ class _WafferlyCardPainter extends CustomPainter {
     final paint = Paint()..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: spec.colors).createShader(rect);
     canvas.drawRect(rect, paint);
 
-    final accent = Paint()..color = (spec.accent ?? Colors.white).withValues(alpha: .22);
-    final seed = spec.id.hashCode.abs();
-    final shift = (seed % 80).toDouble();
-    canvas.drawCircle(Offset(size.width * .82 + shift * .02, size.height * .30), size.height * .28, accent);
-    canvas.drawCircle(Offset(size.width * .93 - shift * .01, size.height * .38), size.height * .24, Paint()..color = (spec.accent ?? Colors.white).withValues(alpha: .14));
-
     final linePaint = Paint()
       ..color = Colors.white.withValues(alpha: compactPreview ? .035 : .07)
       ..strokeWidth = compactPreview ? .55 : 1.5;
@@ -310,13 +304,6 @@ class _WafferlyCardPainter extends CustomPainter {
     final chipLine = Paint()..color = const Color(0xFF9A7924)..strokeWidth = 2;
     canvas.drawLine(Offset(size.width * .135, size.height * .32), Offset(size.width * .135, size.height * .55), chipLine);
     canvas.drawLine(Offset(size.width * .055, size.height * .435), Offset(size.width * .215, size.height * .435), chipLine);
-
-    // Abstract network mark: intentionally brand-neutral.
-    final r = size.height * .15;
-    final c1 = Offset(size.width * .82, size.height * .34);
-    final c2 = Offset(size.width * .89, size.height * .34);
-    canvas.drawCircle(c1, r, Paint()..color = (spec.accent ?? Colors.white).withValues(alpha: .80));
-    canvas.drawCircle(c2, r, Paint()..color = Colors.white.withValues(alpha: .34));
   }
 
   @override

@@ -19,7 +19,9 @@ import '../../../l10n/app_localizations.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/responsive_metrics.dart';
 import '../../../widgets/shared/credit_card_visual.dart';
-import '../../../widgets/shared/wafferly_card_visual_layout.dart';
+import '../../../widgets/shared/wafferly_financial_card.dart'
+    show WafferlyCardVisuals, WafferlyCardKind;
+import '../../../widgets/shared/wafferly_card_visual_layout.dart' hide WafferlyCardKind;
 import 'credit_card_installment_conversion_screen.dart';
 import 'credit_card_payment_screen.dart';
 import 'credit_card_installment_month_screen.dart';
@@ -632,6 +634,11 @@ class _CardSummaryVisual extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final layout = _creditCardDashboardLayout(profile.cardVisual);
+    // Use the same palette and accent as the selected card artwork.
+    final cardVisualSpec = WafferlyCardVisuals.resolve(
+      profile.cardVisual,
+      WafferlyCardKind.credit,
+    );
 
     final m = ResponsiveMetrics.of(context);
     // Small/compact screens: enlarge the complete card + all of its contents
@@ -824,20 +831,34 @@ class _CardSummaryVisual extends StatelessWidget {
   width: 52,
   height: size.height * .465,
   child: Material(
-    color: const Color(0x66020B1A),
-    borderRadius: BorderRadius.circular(10),
+    color: cardVisualSpec.colors.first,
+    borderRadius: BorderRadius.circular(12),
     child: InkWell(
                                       onTap: onMoreDue,
-                                      borderRadius: BorderRadius.circular(10),
+                                      borderRadius: BorderRadius.circular(12),
                                       child: Container(
                                         decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              cardVisualSpec.colors.first.withValues(alpha: .96),
+                                              cardVisualSpec.colors.last.withValues(alpha: .94),
+                                              cardVisualSpec.colors.first,
+                                            ],
+                                          ),
                                           border: Border.all(
-                                            color: const ui.Color.fromARGB(255, 241, 253, 80),
+                                            color: (cardVisualSpec.accent ?? cardVisualSpec.colors.last).withValues(alpha: .95),
                                             width: 1.5,
                                           ),
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: (cardVisualSpec.accent ?? cardVisualSpec.colors.last).withValues(alpha: .20),
+                                              blurRadius: 8,
+                                              spreadRadius: 1,
+                                            ),
+                                          ],
                                         ),
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 6,
@@ -847,8 +868,8 @@ class _CardSummaryVisual extends StatelessWidget {
                                               MainAxisAlignment.center,
                                           children: [
                                             Icon(
-                                              Icons.chevron_left_rounded,
-                                              color: Color(0xFFFF2D8D),
+                                              Icons.more_vert_rounded,
+                                              color: ui.Color.fromARGB(255, 247, 245, 246),
                                               size: 23,
                                             ),
                                             SizedBox(height: 4),
@@ -857,7 +878,7 @@ class _CardSummaryVisual extends StatelessWidget {
                                                 context,
                                               )!.more,
                                               style: TextStyle(
-                                                color: Color(0xFFFF2D8D),
+                                                color: ui.Color.fromARGB(255, 246, 244, 245),
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.w800,
                                               ),
