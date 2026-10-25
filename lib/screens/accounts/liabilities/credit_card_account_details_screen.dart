@@ -26,6 +26,8 @@ import '../../../widgets/shared/wafferly_card_visual_layout.dart' hide WafferlyC
 import 'credit_card_installment_conversion_screen.dart';
 import 'credit_card_payment_screen.dart';
 import 'credit_card_installment_month_screen.dart';
+import 'credit_card_monthly_due_details_screen.dart';
+import 'credit_card_transaction_details_screen.dart';
 import '../../expenses_screen.dart';
 
 class CreditCardAccountDetailsScreen extends StatefulWidget {
@@ -40,8 +42,8 @@ class CreditCardAccountDetailsScreen extends StatefulWidget {
 
 class _CreditCardAccountDetailsScreenState
     extends State<CreditCardAccountDetailsScreen> {
-  // Open the card on the monthly installment overview, matching the approved design.
-  int _tab = 1;
+  // Open the card on Transactions by default, matching the approved design.
+  int _tab = 0;
 
   Future<CreditCardDetailsProjection?> _projection() =>
       CreditCardDetailsProjectionService().project(widget.accountId);
@@ -164,7 +166,7 @@ class _CreditCardAccountDetailsScreenState
                   nextMonthInstallments: dueBreakdown.nextMonthInstallments
                       .toDouble(),
                   onMoreDue: () => _showMonthlyDueBreakdown(
-                    projection.account.currency,
+                    projection,
                     dueBreakdown.months,
                   ),
                 ),
@@ -200,6 +202,9 @@ class _CreditCardAccountDetailsScreenState
                     contracts: projection.contracts,
                     installments: installments,
                     convertedChargeIds: projection.convertedChargeIds,
+                    onTransactionTap: (transaction) =>
+                        _openTransactionDetails(projection, transaction),
+                    onViewAll: () => _openAllTransactions(projection),
                   )
                 else if (_tab == 1)
                   _InstallmentsSection(
@@ -222,7 +227,11 @@ class _CreditCardAccountDetailsScreenState
                         ),
                   )
                 else
-                  _StatementsSection(profile: projection.profile),
+                  _StatementsSection(
+                    profile: projection.profile,
+                    summary: projection.statementDue,
+                    currency: projection.account.currency,
+                  ),
               ],
             ),
           ),
@@ -232,12 +241,17 @@ class _CreditCardAccountDetailsScreenState
   }
 
   void _showMonthlyDueBreakdown(
-    String currency,
+    CreditCardDetailsProjection projection,
     List<CreditCardMonthDueProjection> months,
   ) {
+    final currency = projection.account.currency;
     final locale = Localizations.localeOf(context).toLanguageTag();
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final visibleMonths = months.where((month) => month.total > Money.zero).toList();
+    // This sheet is a forecast: show the nearest due month first, then later months.
+    final visibleMonths = months
+        .where((month) => month.total > Money.zero)
+        .toList()
+      ..sort((a, b) => a.monthStart.compareTo(b.monthStart));
 
     showModalBottomSheet<void>(
       context: context,
@@ -279,68 +293,95 @@ class _CreditCardAccountDetailsScreenState
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (itemContext, index) {
                           final month = visibleMonths[index];
-                          return Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF13283A),
+                          return Material(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(14),
+                            child: InkWell(
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: Colors.white.withValues(alpha: .08)),
-                            ),
-                            child: Column(
-                              children: [
-                                Row(
+                              onTap: () {
+                                Navigator.of(sheetContext).pop();
+                                Navigator.of(context).push<bool>(
+                                  MaterialPageRoute(
+                                    builder: (_) => CreditCardMonthlyDueDetailsScreen(
+                                      monthProjection: month,
+                                      currency: currency,
+                                      account: projection.account,
+                                      profile: projection.profile,
+                                      transactions: projection.transactions,
+                                      contracts: projection.contracts,
+                                      installments: projection.installments,
+                                    ),
+                                  ),
+                                ).then((changed) {
+                                  if (changed == true && mounted) setState(() {});
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF13283A),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: Colors.white.withValues(alpha: .08)),
+                                ),
+                                child: Column(
                                   children: [
-                                    Expanded(
-                                      child: Text(
-                                        DateFormat.yMMMM(locale).format(month.monthStart),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 15,
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            DateFormat.yMMMM(locale).format(month.monthStart),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 15,
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                        Text(
+                                          _money(month.total.toDouble(), currency),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+                                      ],
                                     ),
-                                    Text(
-                                      _money(month.total.toDouble(), currency),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 15,
-                                      ),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            isArabic ? 'المشتريات العادية' : 'Regular expenses',
+                                            style: const TextStyle(color: Colors.white60, fontSize: 11),
+                                          ),
+                                        ),
+                                        Text(
+                                          _money(month.expenses.toDouble(), currency),
+                                          style: const TextStyle(color: Color(0xFFFF6D9D), fontWeight: FontWeight.w700, fontSize: 11),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            isArabic ? 'الأقساط' : 'Installments',
+                                            style: const TextStyle(color: Colors.white60, fontSize: 11),
+                                          ),
+                                        ),
+                                        Text(
+                                          _money(month.installments.toDouble(), currency),
+                                          style: const TextStyle(color: Color(0xFF42C9FF), fontWeight: FontWeight.w700, fontSize: 11),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        isArabic ? 'المشتريات العادية' : 'Regular expenses',
-                                        style: const TextStyle(color: Colors.white60, fontSize: 11),
-                                      ),
-                                    ),
-                                    Text(
-                                      _money(month.expenses.toDouble(), currency),
-                                      style: const TextStyle(color: Color(0xFFFF6D9D), fontWeight: FontWeight.w700, fontSize: 11),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 5),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        isArabic ? 'الأقساط' : 'Installments',
-                                        style: const TextStyle(color: Colors.white60, fontSize: 11),
-                                      ),
-                                    ),
-                                    Text(
-                                      _money(month.installments.toDouble(), currency),
-                                      style: const TextStyle(color: Color(0xFF42C9FF), fontWeight: FontWeight.w700, fontSize: 11),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                              ),
                             ),
                           );
                         },
@@ -351,6 +392,33 @@ class _CreditCardAccountDetailsScreenState
         ),
       ),
     );
+  }
+
+  Future<void> _openTransactionDetails(
+    CreditCardDetailsProjection projection,
+    Transaction transaction,
+  ) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => CreditCardTransactionDetailsScreen(
+          transaction: transaction,
+          account: projection.account,
+          profile: projection.profile,
+          contracts: projection.contracts,
+          installments: projection.installments,
+        ),
+      ),
+    );
+    if (changed == true && mounted) setState(() {});
+  }
+
+  Future<void> _openAllTransactions(CreditCardDetailsProjection projection) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => CreditCardAllTransactionsScreen(projection: projection),
+      ),
+    );
+    if (changed == true && mounted) setState(() {});
   }
 
   Future<void> _openEntry(
@@ -1533,6 +1601,36 @@ class _TransactionCategoryIcon extends StatelessWidget {
   }
 }
 
+String? _installmentProgressLabel(
+  String chargeId,
+  List<FinancingContract> contracts,
+  List<FinancingInstallment> installments,
+) {
+  final linked = contracts.where((contract) {
+    final state = contract.lifecycleState.trim().toLowerCase();
+    return contract.originReference == chargeId &&
+        state != 'cancelled' &&
+        state != 'canceled' &&
+        state != 'terminated';
+  }).toList()
+    ..sort((a, b) => b.effectiveDate.compareTo(a.effectiveDate));
+  if (linked.isEmpty) return null;
+  final contract = linked.first;
+  final rows = installments.where((item) => item.contractId == contract.contractId).toList()
+    ..sort((a, b) {
+      final bySequence = a.sequence.compareTo(b.sequence);
+      return bySequence != 0 ? bySequence : a.dueDate.compareTo(b.dueDate);
+    });
+  if (rows.isEmpty) return null;
+  final outstanding = rows.where((item) {
+    final status = item.status.trim().toLowerCase();
+    return status != 'settled' && status != 'paid' && status != 'cancelled' &&
+        status != 'canceled' && status != 'superseded' && status != 'terminated';
+  }).toList();
+  final sequence = outstanding.isNotEmpty ? outstanding.first.sequence : contract.installmentCount;
+  return '$sequence/${contract.installmentCount}';
+}
+
 class _TransactionPaymentMonthRow {
   const _TransactionPaymentMonthRow({
     required this.transaction,
@@ -1558,6 +1656,9 @@ class _TransactionsSection extends StatefulWidget {
     required this.contracts,
     required this.installments,
     required this.convertedChargeIds,
+    required this.onTransactionTap,
+    this.onViewAll,
+    this.showAllMonths = false,
   });
 
   final List<Transaction> transactions;
@@ -1567,6 +1668,9 @@ class _TransactionsSection extends StatefulWidget {
   final List<FinancingContract> contracts;
   final List<FinancingInstallment> installments;
   final Set<String> convertedChargeIds;
+  final ValueChanged<Transaction> onTransactionTap;
+  final VoidCallback? onViewAll;
+  final bool showAllMonths;
 
   @override
   State<_TransactionsSection> createState() => _TransactionsSectionState();
@@ -1574,7 +1678,6 @@ class _TransactionsSection extends StatefulWidget {
 
 class _TransactionsSectionState extends State<_TransactionsSection> {
   static const int _initialVisibleMonthCount = 2;
-  bool _showAllMonths = false;
 
   DateTime? _paymentDateFor({
     required Transaction transaction,
@@ -1652,11 +1755,11 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
       );
     }
 
-    final months = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+    final months = grouped.keys.toList()..sort((a, b) => a.compareTo(b));
     for (final rows in grouped.values) {
       rows.sort((a, b) => b.transaction.date.compareTo(a.transaction.date));
     }
-    final visibleMonths = _showAllMonths
+    final visibleMonths = widget.showAllMonths
         ? months
         : months.take(_initialVisibleMonthCount).toList();
 
@@ -1694,9 +1797,11 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                   ),
                 ),
               ),
-              if (months.length > _initialVisibleMonthCount)
+              if (!widget.showAllMonths &&
+                  months.length > _initialVisibleMonthCount &&
+                  widget.onViewAll != null)
                 TextButton(
-                  onPressed: () => setState(() => _showAllMonths = !_showAllMonths),
+                  onPressed: widget.onViewAll,
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFFFF3D81),
                     padding: EdgeInsets.symmetric(horizontal: m.spacing(4)),
@@ -1704,9 +1809,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: Text(
-                    _showAllMonths
-                        ? (isArabic ? 'عرض أقل' : 'Show Less')
-                        : (isArabic ? 'عرض الكل' : 'View All'),
+                    isArabic ? 'عرض الكل' : 'View All',
                     style: TextStyle(
                       fontSize: m.text(10),
                       fontWeight: FontWeight.w800,
@@ -1809,20 +1912,22 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                 final amountText =
                     '${isPayment ? '+' : '-'}${tx.amount.toStringAsFixed(2)}';
 
-                return Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: m.spacing(5),
-                    vertical: m.isCompactHeight ? m.spacing(5) : m.spacing(7),
-                  ),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(color: Colors.white.withValues(alpha: .08)),
+                return InkWell(
+                  onTap: () => widget.onTransactionTap(tx),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: m.spacing(5),
+                      vertical: m.isCompactHeight ? m.spacing(5) : m.spacing(7),
                     ),
-                  ),
-                  child: Row(
-                    textDirection: isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: Colors.white.withValues(alpha: .08)),
+                      ),
+                    ),
+                    child: Row(
+                      textDirection: isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
                       Expanded(
                         flex: 11,
                         child: Row(
@@ -1874,28 +1979,11 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                       ),
                       Expanded(
                         flex: 9,
-                        child: Center(
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: m.spacing(4),
-                              vertical: m.spacing(4),
-                            ),
-                            decoration: BoxDecoration(
-                              color: isPayment
-                                  ? const Color(0xFF183B35)
-                                  : isInstallment
-                                      ? const Color(0xFF102D50)
-                                      : const Color(0xFF123D34),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: isPayment
-                                    ? const Color(0xFF58D6A2)
-                                    : isInstallment
-                                        ? const Color(0xFF329DFF)
-                                        : const Color(0xFF18B88A),
-                              ),
-                            ),
-                            child: Text(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
                               isPayment
                                   ? (isArabic ? 'سداد' : 'Payment')
                                   : isInstallment
@@ -1905,14 +1993,32 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: isInstallment
-                                    ? const Color(0xFF58B9FF)
-                                    : const Color(0xFF4DDEAA),
+                                color: isPayment
+                                    ? const Color(0xFF58D6A2)
+                                    : isInstallment
+                                        ? const Color(0xFF42C9FF)
+                                        : const Color(0xFF00D99A),
                                 fontWeight: FontWeight.w800,
-                                fontSize: m.text(8),
+                                fontSize: m.text(8.5),
                               ),
                             ),
-                          ),
+                            if (isInstallment) ...[
+                              SizedBox(height: m.spacing(1)),
+                              Text(
+                                _installmentProgressLabel(
+                                  tx.id,
+                                  widget.contracts,
+                                  widget.installments,
+                                ) ?? '',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: m.text(8),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       SizedBox(width: m.spacing(5)),
@@ -1949,7 +2055,8 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                           ),
                         ),
                       ),
-                    ],
+                      ],
+                    ),
                   ),
                 );
               }).toList(),
@@ -1973,6 +2080,56 @@ String? _transactionSubcategoryTitle(BuildContext context, Transaction tx) {
     }
   }
   return null;
+}
+
+class CreditCardAllTransactionsScreen extends StatelessWidget {
+  const CreditCardAllTransactionsScreen({super.key, required this.projection});
+  final CreditCardDetailsProjection projection;
+
+  Future<void> _openDetails(BuildContext context, Transaction transaction) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => CreditCardTransactionDetailsScreen(
+          transaction: transaction,
+          account: projection.account,
+          profile: projection.profile,
+          contracts: projection.contracts,
+          installments: projection.installments,
+        ),
+      ),
+    );
+    if (changed == true && context.mounted) Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final m = ResponsiveMetrics.of(context);
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(isArabic ? 'كل العمليات' : 'All Transactions', style: const TextStyle(fontWeight: FontWeight.w800)),
+      ),
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(m.spacing(16), 4, m.spacing(16), 24),
+        children: [
+          _TransactionsSection(
+            transactions: projection.transactions,
+            payments: projection.payments,
+            currency: projection.account.currency,
+            profile: projection.profile,
+            contracts: projection.contracts,
+            installments: projection.installments,
+            convertedChargeIds: projection.convertedChargeIds,
+            onTransactionTap: (tx) => _openDetails(context, tx),
+            showAllMonths: true,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _InstallmentsSection extends StatelessWidget {
@@ -2173,22 +2330,161 @@ class _InstallmentsSection extends StatelessWidget {
 }
 
 class _StatementsSection extends StatelessWidget {
-  const _StatementsSection({required this.profile});
+  const _StatementsSection({required this.profile, required this.summary, required this.currency});
   final CreditCardProfile profile;
+  final CreditCardStatementDueSummary summary;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
-    return _EmptySection(
-      title: Localizations.localeOf(context).languageCode == 'ar'
-          ? 'كشوف الحساب'
-          : 'Statements',
-      subtitle: profile.statementDay == null
-          ? (Localizations.localeOf(context).languageCode == 'ar'
-                ? 'لم يتم تحديد يوم كشف الحساب.'
-                : 'Statement day is not configured.')
-          : (Localizations.localeOf(context).languageCode == 'ar'
-                ? 'يُغلق كشف الحساب يوم ${profile.statementDay}. استيراد كشف الحساب الشهري قريبًا.'
-                : 'Statement closes on day ${profile.statementDay}. Monthly statement import is coming soon.'),
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final m = ResponsiveMetrics.of(context);
+
+    if (!summary.isConfigured) {
+      return _EmptySection(
+        title: isArabic ? 'كشوف الحساب' : 'Statements',
+        subtitle: isArabic
+            ? 'حدد يوم كشف الحساب وموعد السداد لعرض تقدير الاستحقاق.'
+            : 'Configure the statement and due days to see the current due estimate.',
+      );
+    }
+
+    final closeDate = summary.statementCloseDate!;
+    final dueDate = summary.paymentDueDate!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(m.spacing(2), m.spacing(8), m.spacing(2), m.spacing(8)),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  isArabic ? 'كشوف الحساب' : 'Statements',
+                  style: TextStyle(fontSize: m.text(16), fontWeight: FontWeight.w800),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: m.spacing(8), vertical: m.spacing(4)),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0C382F),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFF00D99A).withValues(alpha: .45)),
+                ),
+                child: Text(
+                  isArabic ? 'تقديري' : 'Estimate',
+                  style: TextStyle(color: const Color(0xFF00D99A), fontSize: m.text(9), fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Container(
+          padding: EdgeInsets.all(m.spacing(13)),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A1C29),
+            borderRadius: BorderRadius.circular(m.radius.md),
+            border: Border.all(color: Colors.white.withValues(alpha: .08)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: m.size(42),
+                    height: m.size(42),
+                    decoration: const BoxDecoration(color: Color(0x22FF3D81), shape: BoxShape.circle),
+                    child: Icon(Icons.calendar_month_rounded, color: const Color(0xFFFF3D81), size: m.size(21)),
+                  ),
+                  SizedBox(width: m.spacing(10)),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          DateFormat.yMMMM(locale).format(closeDate),
+                          style: TextStyle(fontSize: m.text(14), fontWeight: FontWeight.w800),
+                        ),
+                        SizedBox(height: m.spacing(2)),
+                        Text(
+                          isArabic ? 'تقدير كشف الحساب الحالي' : 'Current statement estimate',
+                          style: TextStyle(color: Colors.white60, fontSize: m.text(10)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    _money(summary.amountDue.toDouble(), currency),
+                    style: TextStyle(fontSize: m.text(13), fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+              SizedBox(height: m.spacing(12)),
+              Divider(color: Colors.white.withValues(alpha: .08), height: 1),
+              SizedBox(height: m.spacing(10)),
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatementMeta(
+                      label: isArabic ? 'تاريخ قفل الكشف' : 'Statement Date',
+                      value: DateFormat('dd MMM yyyy', locale).format(closeDate),
+                    ),
+                  ),
+                  SizedBox(width: m.spacing(8)),
+                  Expanded(
+                    child: _StatementMeta(
+                      label: isArabic ? 'موعد السداد' : 'Due Date',
+                      value: DateFormat('dd MMM yyyy', locale).format(dueDate),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: m.spacing(12)),
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(m.spacing(10)),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF13283A),
+                  borderRadius: BorderRadius.circular(m.radius.sm),
+                ),
+                child: Text(
+                  isArabic
+                      ? 'هذا تقدير مبني على العمليات المسجلة، وليس كشفًا رسميًا مستوردًا من البنك. دورة الكشف يوم ${profile.statementDay} والاستحقاق يوم ${profile.paymentDueDay}.'
+                      : 'This estimate is based on recorded activity, not an imported official bank statement. Statement day: ${profile.statementDay}; due day: ${profile.paymentDueDay}.',
+                  style: TextStyle(color: Colors.white60, fontSize: m.text(10), height: 1.35),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: m.spacing(8)),
+        Text(
+          isArabic
+              ? 'الكشوف التاريخية ستظهر عند توفر بيانات كشوف البنك داخل التطبيق.'
+              : 'Historical statement cards will appear once bank statement records are available in the app.',
+          style: TextStyle(color: Colors.white38, fontSize: m.text(10)),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatementMeta extends StatelessWidget {
+  const _StatementMeta({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = ResponsiveMetrics.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: Colors.white54, fontSize: m.text(9))),
+        SizedBox(height: m.spacing(3)),
+        Text(value, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: m.text(10))),
+      ],
     );
   }
 }
