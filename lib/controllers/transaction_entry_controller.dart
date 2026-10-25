@@ -1178,6 +1178,9 @@ class TransactionEntryController extends ChangeNotifier {
           charge: charge,
           installmentCount: installmentCount,
           firstDueDate: firstDueDate,
+          // This workflow creates the charge as an installment purchase from
+          // the outset, even if the user records it later with a past date.
+          effectiveDate: charge.date,
         );
 
         debugPrint(

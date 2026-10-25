@@ -1,5 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/money/money.dart';
+import 'credit_card_first_due_date_policy.dart';
 import '../../financing/domain/credit_card_financing_conversion.dart';
 import '../../models/account.dart';
 import '../../models/enums/account_enums.dart';
@@ -55,6 +56,7 @@ final class CreditCardFinancingApplicationService {
     required Transaction charge,
     required int installmentCount,
     required DateTime firstDueDate,
+    required DateTime effectiveDate,
   }) async {
     if (charge.type != 'credit_card_charge' || charge.toAccountId == null) {
       throw ArgumentError('A Credit Card charge is required for conversion.');
@@ -94,7 +96,10 @@ final class CreditCardFinancingApplicationService {
       (index) {
         final cents = baseCents + (index == installmentCount - 1 ? remainder : 0);
         final value = (cents / 100).toStringAsFixed(2);
-        final dueDate = _addMonths(firstDueDate, index);
+        final dueDate = CreditCardFirstDueDatePolicy.installmentDueDate(
+          firstDueDate: firstDueDate,
+          installmentIndex: index,
+        );
         return FinancingInstallmentDraft(
           dueDate: dueDate,
           principal: Money.parse(value),
@@ -126,7 +131,11 @@ final class CreditCardFinancingApplicationService {
           paymentFrequency: 'monthly',
           firstDueDate: firstDueDate,
           installments: drafts,
-          effectiveDate: now,
+          // This date comes from the caller's domain intent. An installment
+          // purchase entered late with its historical purchase date uses the
+          // charge date; a genuine later conversion uses the conversion date.
+          // The record creation timestamp always remains the actual write time.
+          effectiveDate: effectiveDate,
           createdAt: now,
         ),
       );
@@ -136,10 +145,4 @@ final class CreditCardFinancingApplicationService {
     }
   }
 
-  DateTime _addMonths(DateTime date, int months) {
-    final target = DateTime(date.year, date.month + months, 1);
-    final lastDay = DateTime(target.year, target.month + 1, 0).day;
-    final day = date.day > lastDay ? lastDay : date.day;
-    return DateTime(target.year, target.month, day);
-  }
 }

@@ -4,8 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:wafferly/controllers/transaction_entry_controller.dart';
 import 'package:wafferly/credit_card/domain/credit_card_profile.dart';
-import 'package:wafferly/application/credit_card/credit_card_due_date_policy.dart';
-import 'package:wafferly/application/credit_card/credit_card_expense_projection_service.dart';
+import 'package:wafferly/application/credit_card/credit_card_first_due_date_policy.dart';
 import 'package:wafferly/credit_card/infrastructure/hive_credit_card_profile_repository.dart';
 import 'package:wafferly/core/planning/bootstrap/planning_engine_bootstrap.dart';
 import 'package:wafferly/core/planning/services/available_balance_projection_service.dart';
@@ -137,36 +136,16 @@ class _PaymentMethodSheetState extends State<_PaymentMethodSheet> {
   }
 
   DateTime _defaultFirstDueDate(_CreditCardSource card) {
-    // Pre-fill the financing schedule using the card's saved issuer rule.
-    // This remains an estimate and the user can override the first date.
     final transactionDate = controller.selectedDate;
     final profile = card.profile;
-    if (profile.statementDay != null &&
-        (profile.dueDateCalculationMethod ==
-                CreditCardDueDatePolicy.fixedOffsetDays
-            ? profile.dueDaysAfterStatement != null
-            : profile.paymentDueDay != null)) {
-      final closeDate =
-          CreditCardExpenseProjectionService.statementCloseDateForCharge(
-            transactionDate,
-            profile.statementDay,
-          );
-      return CreditCardDueDatePolicy.forStatementClose(
-        statementCloseDate: closeDate,
-        calculationMethod: profile.dueDateCalculationMethod,
-        paymentDueDay: profile.paymentDueDay,
-        dueDaysAfterStatement: profile.dueDaysAfterStatement,
-        weekendHolidayPolicy: profile.weekendHolidayPolicy,
-      );
-    }
-    final nextMonth = DateTime(
-      transactionDate.year,
-      transactionDate.month + 1,
-      1,
+    return CreditCardFirstDueDatePolicy.defaultFirstDueDate(
+      referenceDate: transactionDate,
+      statementDay: profile.statementDay,
+      paymentDueDay: profile.paymentDueDay,
+      dueDateCalculationMethod: profile.dueDateCalculationMethod,
+      dueDaysAfterStatement: profile.dueDaysAfterStatement,
+      weekendHolidayPolicy: profile.weekendHolidayPolicy,
     );
-    final lastDay = DateTime(nextMonth.year, nextMonth.month + 1, 0).day;
-    final day = transactionDate.day.clamp(1, lastDay).toInt();
-    return DateTime(nextMonth.year, nextMonth.month, day);
   }
 
   void _selectFinancingCard(_CreditCardSource card) {

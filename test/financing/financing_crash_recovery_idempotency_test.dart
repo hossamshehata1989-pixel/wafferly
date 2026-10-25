@@ -319,6 +319,7 @@ void main() {
       // -------------------- Recovery: finish conversion --------------------
       final charge = transactionsBox.get(firstChargeId);
       expect(charge, isNotNull);
+      final originatingCharge = charge!;
 
       final financing = CreditCardFinancingApplicationService(
         accounts: accountsBox,
@@ -331,20 +332,23 @@ void main() {
       );
 
       final firstConversion = await financing.convertCharge(
-        charge: charge!,
+        charge: originatingCharge,
         installmentCount: installmentCount,
         firstDueDate: firstDueDate,
+        effectiveDate: originatingCharge.date,
       );
 
       expect(firstConversion.alreadyCompleted, isFalse);
       expect(firstConversion.contract.originReference, firstChargeId);
+      expect(firstConversion.contract.effectiveDate, originatingCharge.date);
       expect(firstConversion.installments, hasLength(installmentCount));
 
       // A second recovery attempt must converge to the same contractual state.
       final secondConversion = await financing.convertCharge(
-        charge: charge,
+        charge: originatingCharge,
         installmentCount: installmentCount,
         firstDueDate: firstDueDate,
+        effectiveDate: originatingCharge.date,
       );
 
       expect(secondConversion.alreadyCompleted, isTrue);

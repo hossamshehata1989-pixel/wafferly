@@ -32,14 +32,24 @@ class _CreditCardInstallmentConversionScreenState
   final _searchController = TextEditingController();
   int _count = 12;
   late DateTime _firstDueDate;
+  bool _firstDueDateManuallySet = false;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _firstDueDate = CreditCardFirstDueDatePolicy.defaultFirstDueDate(
-      referenceDate: DateTime.now(),
-      paymentDueDay: widget.profile.paymentDueDay,
+    _firstDueDate = _defaultFirstDueDate(DateTime.now());
+  }
+
+  DateTime _defaultFirstDueDate(DateTime conversionDate) {
+    final profile = widget.profile;
+    return CreditCardFirstDueDatePolicy.defaultFirstDueDate(
+      referenceDate: conversionDate,
+      statementDay: profile.statementDay,
+      paymentDueDay: profile.paymentDueDay,
+      dueDateCalculationMethod: profile.dueDateCalculationMethod,
+      dueDaysAfterStatement: profile.dueDaysAfterStatement,
+      weekendHolidayPolicy: profile.weekendHolidayPolicy,
     );
   }
 
@@ -130,7 +140,12 @@ class _CreditCardInstallmentConversionScreenState
                     lastDate: DateTime(2100),
                     initialDate: _firstDueDate,
                   );
-                  if (value != null) setState(() => _firstDueDate = value);
+                  if (value != null) {
+                    setState(() {
+                      _firstDueDate = value;
+                      _firstDueDateManuallySet = true;
+                    });
+                  }
                 },
               ),
               const SizedBox(height: 14),
@@ -157,10 +172,17 @@ class _CreditCardInstallmentConversionScreenState
     if (selected == null) return;
     setState(() => _saving = true);
     try {
+      // Capture the actual conversion moment once. If the cycle-derived date
+      // wasn't manually changed, recompute it from this exact event date.
+      final conversionEffectiveDate = DateTime.now();
+      final firstDueDate = _firstDueDateManuallySet
+          ? _firstDueDate
+          : _defaultFirstDueDate(conversionEffectiveDate);
       await context.read<CreditCardFinancingApplicationService>().convertCharge(
         charge: selected,
         installmentCount: _count,
-        firstDueDate: _firstDueDate,
+        firstDueDate: firstDueDate,
+        effectiveDate: conversionEffectiveDate,
       );
       if (mounted) Navigator.pop(context, true);
     } catch (e) {

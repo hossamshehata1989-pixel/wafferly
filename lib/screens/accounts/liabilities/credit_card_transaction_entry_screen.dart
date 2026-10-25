@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../application/credit_card/credit_card_financing_application_service.dart';
+import '../../../application/credit_card/credit_card_first_due_date_policy.dart';
 import '../../../credit_card/domain/credit_card_profile.dart';
 import '../../../models/account.dart';
 import '../../../services/transaction_application_service.dart';
@@ -40,13 +41,29 @@ class _CreditCardTransactionEntryScreenState
   DateTime _date = DateTime.now();
   String _categoryId = 'supermarket';
   int _installmentCount = 12;
-  DateTime _firstPaymentDate = DateTime.now();
+  late DateTime _firstPaymentDate;
+  bool _firstPaymentDateManuallySet = false;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     _mode = widget.initialMode;
+    // Default first installment follows the card's statement cycle from the
+    // purchase date, even if the purchase is recorded later.
+    _firstPaymentDate = _defaultFirstPaymentDate(_date);
+  }
+
+  DateTime _defaultFirstPaymentDate(DateTime purchaseDate) {
+    final profile = widget.profile;
+    return CreditCardFirstDueDatePolicy.defaultFirstDueDate(
+      referenceDate: purchaseDate,
+      statementDay: profile.statementDay,
+      paymentDueDay: profile.paymentDueDay,
+      dueDateCalculationMethod: profile.dueDateCalculationMethod,
+      dueDaysAfterStatement: profile.dueDaysAfterStatement,
+      weekendHolidayPolicy: profile.weekendHolidayPolicy,
+    );
   }
 
   @override
@@ -145,7 +162,10 @@ class _CreditCardTransactionEntryScreenState
                 count: _installmentCount,
                 firstPaymentDate: _firstPaymentDate,
                 onCountChanged: (value) => setState(() => _installmentCount = value),
-                onDateChanged: (value) => setState(() => _firstPaymentDate = value),
+                onDateChanged: (value) => setState(() {
+                  _firstPaymentDate = value;
+                  _firstPaymentDateManuallySet = true;
+                }),
               ),
               SizedBox(height: m.space.md),
               _InstallmentSummary(
@@ -223,6 +243,8 @@ class _CreditCardTransactionEntryScreenState
               charge: tx,
               installmentCount: _installmentCount,
               firstDueDate: _firstPaymentDate,
+              // Installment purchase from the outset, not a later conversion.
+              effectiveDate: tx.date,
             );
           }
         }
@@ -311,7 +333,14 @@ class _CreditCardTransactionEntryScreenState
       lastDate: DateTime(2100),
       initialDate: _date,
     );
-    if (value != null) setState(() => _date = value);
+    if (value != null) {
+      setState(() {
+        _date = value;
+        if (!_firstPaymentDateManuallySet) {
+          _firstPaymentDate = _defaultFirstPaymentDate(value);
+        }
+      });
+    }
   }
 
   void _showPaymentInfo() {
@@ -478,7 +507,7 @@ class _InstallmentOptions extends StatelessWidget {
             title: const Text('First payment date', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
             trailing: Text('${firstPaymentDate.day}/${firstPaymentDate.month}/${firstPaymentDate.year}', style: const TextStyle(color: Colors.black54)),
             onTap: () async {
-              final date = await showDatePicker(context: context, firstDate: DateTime.now(), lastDate: DateTime(2100), initialDate: firstPaymentDate);
+              final date = await showDatePicker(context: context, firstDate: DateTime(2000), lastDate: DateTime(2100), initialDate: firstPaymentDate);
               if (date != null) onDateChanged(date);
             },
           ),

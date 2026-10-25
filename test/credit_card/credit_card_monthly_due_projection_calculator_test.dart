@@ -26,16 +26,21 @@ void main() {
         source: TransactionSource.creditCardCharge,
       );
 
-  FinancingContract contract() => FinancingContract(
+  FinancingContract contract({
+    DateTime? effectiveDate,
+    String principal = '500',
+    int installmentCount = 2,
+    DateTime? firstDueDate,
+  }) => FinancingContract(
         contractId: 'contract-1',
         liabilityAccountId: 'card-1',
         originReference: 'charge-installment',
-        principalValue: '500',
-        installmentCount: 2,
+        principalValue: principal,
+        installmentCount: installmentCount,
         paymentFrequency: 'monthly',
-        firstDueDate: DateTime(2026, 10, 11),
+        firstDueDate: firstDueDate ?? DateTime(2026, 10, 11),
         lifecycleState: 'active',
-        effectiveDate: DateTime(2026, 10, 11),
+        effectiveDate: effectiveDate ?? DateTime(2026, 10, 11),
         createdAt: DateTime(2026, 10, 11),
       );
 
@@ -247,6 +252,68 @@ void main() {
     expect(result.nextMonthExpenses, Money.fromDouble(500));
   });
 
+
+  test(
+    'installment purchase recorded late uses purchase effective date and is not forecast twice',
+    () {
+      final purchaseDate = DateTime(2026, 10, 6);
+      final result = calculator.calculate(
+        liabilityAccountId: 'card-1',
+        charges: [
+          charge(
+            id: 'charge-installment',
+            amount: 1800,
+            date: purchaseDate,
+          ),
+          charge(
+            id: 'health-purchase',
+            amount: 500,
+            date: DateTime(2026, 10, 24),
+          ),
+        ],
+        payments: const [],
+        contracts: [
+          contract(
+            effectiveDate: purchaseDate,
+            principal: '1800',
+            installmentCount: 6,
+            firstDueDate: DateTime(2026, 11, 15),
+          ),
+        ],
+        installments: [
+          for (var month = 0; month < 6; month++)
+            installment(
+              id: 'installment-${month + 1}',
+              dueDate: DateTime(2026, 11 + month, 15),
+              amount: 300,
+              sequence: month + 1,
+            ),
+        ],
+        statementDay: 15,
+        paymentDueDay: 15,
+        currentOutstanding: Money.fromDouble(2300),
+        now: DateTime(2026, 10, 25, 12),
+        monthsToProject: 12,
+      );
+
+      // The 1,800 charge was an installment purchase from the outset. Although
+      // entered into the app on Oct 25, its effective date is Oct 6, before the
+      // Oct 15 close. Only the 300 installment is due in November; the 500
+      // regular charge belongs to the next eligible cycle in December.
+      expect(result.nextMonthExpenses, Money.zero);
+      expect(result.nextMonthInstallments, Money.fromDouble(300));
+      expect(result.nextMonthTotal, Money.fromDouble(300));
+      expect(result.months[2].expenses, Money.fromDouble(500));
+      expect(result.months[2].installments, Money.fromDouble(300));
+      expect(
+        result.months.fold<Money>(
+          Money.zero,
+          (total, month) => total + month.total,
+        ),
+        Money.fromDouble(2300),
+      );
+    },
+  );
 
   test('offset due date keeps October purchase visible in December forecast', () {
     final result = calculator.calculate(
