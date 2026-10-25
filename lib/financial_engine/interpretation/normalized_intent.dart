@@ -15,6 +15,9 @@ final class NormalizedIntent {
   /// Used by expense/income operations.
   final String? categoryId;
 
+  /// Optional detail category carried through to the persisted transaction.
+  final String? subCategoryId;
+
   final String? actorMemberId;
   final bool isExceptional;
 
@@ -39,6 +42,7 @@ final class NormalizedIntent {
     this.currencyCode,
     this.destinationAccountId,
     this.categoryId,
+    this.subCategoryId,
     this.goalId,
     this.actorMemberId,
     this.isExceptional = false,

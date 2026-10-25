@@ -32,6 +32,7 @@ final class DefaultFinancialInterpreter implements FinancialInterpreter {
           amount: operation.intent.amount,
           currencyCode: operation.metadata.currencyCode,
           categoryId: operation.intent.categoryId,
+          subCategoryId: operation.intent.subCategoryId,
           actorMemberId: operation.intent.actorMemberId,
           isExceptional: operation.intent.isExceptional,
           resolution: operation.resolution ?? Resolution.execute,

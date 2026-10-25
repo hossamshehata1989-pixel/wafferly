@@ -54,6 +54,7 @@ class TransactionApplicationService {
     required String creditCardAccountId,
     required double amount,
     required String categoryId,
+    String? subCategoryId,
     required DateTime occurredAt,
     required String currencyCode,
     String? note,
@@ -73,6 +74,7 @@ class TransactionApplicationService {
       intent: CreditCardChargeIntent(
         creditCardAccountId: creditCardAccountId,
         categoryId: categoryId,
+        subCategoryId: subCategoryId,
         amount: Money.fromDouble(amount),
         isExceptional: isExceptional,
         actorMemberId: actorMemberId,

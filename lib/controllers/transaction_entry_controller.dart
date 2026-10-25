@@ -836,6 +836,9 @@ class TransactionEntryController extends ChangeNotifier {
           creditCardAccountId: _selectedAccountId,
           amount: amountValue,
           categoryId: _getMainCategoryId(_selectedCategoryId),
+          subCategoryId: _isSubCategory(_selectedCategoryId)
+              ? _selectedCategoryId
+              : null,
           occurredAt: _selectedDate,
           currencyCode: currentCurrency,
           note: _note.isEmpty ? null : _note,
@@ -1134,6 +1137,9 @@ class TransactionEntryController extends ChangeNotifier {
         creditCardAccountId: creditCardAccountId,
         amount: financedAmount,
         categoryId: categoryId,
+        subCategoryId: _isSubCategory(_selectedCategoryId)
+            ? _selectedCategoryId
+            : null,
         occurredAt: _selectedDate,
         currencyCode: card.currency,
         note: _note.isEmpty
@@ -1178,8 +1184,7 @@ class TransactionEntryController extends ChangeNotifier {
           charge: charge,
           installmentCount: installmentCount,
           firstDueDate: firstDueDate,
-          // This workflow creates the charge as an installment purchase from
-          // the outset, even if the user records it later with a past date.
+          // This is an installment purchase from the outset, even when entered late.
           effectiveDate: charge.date,
         );
 
@@ -1223,6 +1228,9 @@ class TransactionEntryController extends ChangeNotifier {
             creditCardAccountId: downPaymentSource.id,
             amount: downPayment,
             categoryId: categoryId,
+            subCategoryId: _isSubCategory(_selectedCategoryId)
+                ? _selectedCategoryId
+                : null,
             occurredAt: _selectedDate,
             currencyCode: downPaymentSource.currency,
             note: _note.isEmpty

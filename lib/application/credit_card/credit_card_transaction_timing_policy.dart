@@ -1,6 +1,7 @@
 import '../../models/financing/financing_contract.dart';
 import '../../models/financing/financing_installment.dart';
 import 'credit_card_cycle_resolver.dart';
+import 'credit_card_due_date_policy.dart';
 
 /// Read-side date policy for the credit-card transaction history.
 ///
@@ -19,6 +20,42 @@ abstract final class CreditCardTransactionTimingPolicy {
       return CreditCardCycleResolver.fallbackMonthFor(purchaseDate);
     }
     return CreditCardCycleResolver.closeDateFor(purchaseDate, statementDay);
+  }
+
+
+
+  /// Resolves the payment date associated with a previously resolved statement
+  /// close. When cycle settings are incomplete, retains the established
+  /// next-calendar-month fallback based on the original purchase date.
+  static DateTime paymentDateForStatementClose({
+    required DateTime purchaseDate,
+    required DateTime statementCloseDate,
+    required int? statementDay,
+    required int? paymentDueDay,
+    required String dueDateCalculationMethod,
+    required int? dueDaysAfterStatement,
+    required String weekendHolidayPolicy,
+  }) {
+    final hasValidDueConfiguration =
+        dueDateCalculationMethod == CreditCardDueDatePolicy.fixedOffsetDays
+            ? dueDaysAfterStatement != null &&
+                dueDaysAfterStatement >= 1 &&
+                dueDaysAfterStatement <= 90
+            : paymentDueDay != null &&
+                paymentDueDay >= 1 &&
+                paymentDueDay <= 31;
+
+    if (statementDay == null || !hasValidDueConfiguration) {
+      return CreditCardCycleResolver.fallbackMonthFor(purchaseDate);
+    }
+
+    return CreditCardDueDatePolicy.forStatementClose(
+      statementCloseDate: statementCloseDate,
+      calculationMethod: dueDateCalculationMethod,
+      paymentDueDay: paymentDueDay,
+      dueDaysAfterStatement: dueDaysAfterStatement,
+      weekendHolidayPolicy: weekendHolidayPolicy,
+    );
   }
 
   /// Returns the earliest unsettled contractual installment date linked to a

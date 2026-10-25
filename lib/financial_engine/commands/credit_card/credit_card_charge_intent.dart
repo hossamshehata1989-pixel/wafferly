@@ -4,6 +4,7 @@ import '../../../core/money/money.dart';
 final class CreditCardChargeIntent {
   final String creditCardAccountId;
   final String categoryId;
+  final String? subCategoryId;
   final Money amount;
   final bool isExceptional;
   final String? actorMemberId;
@@ -11,6 +12,7 @@ final class CreditCardChargeIntent {
   const CreditCardChargeIntent({
     required this.creditCardAccountId,
     required this.categoryId,
+    this.subCategoryId,
     required this.amount,
     this.isExceptional = false,
     this.actorMemberId,

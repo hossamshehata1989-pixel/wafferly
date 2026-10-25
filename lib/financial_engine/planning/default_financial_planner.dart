@@ -98,7 +98,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       fromAccountId: null,
       toAccountId: intent.sourceAccountId,
       categoryId: categoryId,
-      subCategoryId: null,
+      subCategoryId: intent.subCategoryId,
       amount: intent.amount,
       currencyCode: context.metadata.currencyCode,
       paymentMethod: context.metadata.paymentMethod,
