@@ -188,50 +188,78 @@ class _CreditCardAccountDetailsScreenState
                   ),
                 ),
                 SizedBox(height: m.space.md),
-                _SegmentTabs(
-                  selected: _tab,
-                  onChanged: (value) => setState(() => _tab = value),
-                ),
-                SizedBox(height: m.space.sm),
-                if (_tab == 0)
-                  _TransactionsSection(
-                    transactions: transactions,
-                    payments: projection.payments,
-                    currency: projection.account.currency,
-                    profile: projection.profile,
-                    contracts: projection.contracts,
-                    installments: installments,
-                    convertedChargeIds: projection.convertedChargeIds,
-                    onTransactionTap: (transaction) =>
-                        _openTransactionDetails(projection, transaction),
-                    onViewAll: () => _openAllTransactions(projection),
-                  )
-                else if (_tab == 1)
-                  _InstallmentsSection(
-                    installments: installments,
-                    contracts: projection.contracts,
-                    transactions: transactions,
-                    currency: projection.account.currency,
-                    onMonthTap: (month, monthInstallments) =>
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => CreditCardInstallmentMonthScreen(
-                              month: month,
-                              monthInstallments: monthInstallments,
-                              allInstallments: installments,
-                              contracts: projection.contracts,
-                              transactions: transactions,
-                              currency: projection.account.currency,
-                            ),
-                          ),
-                        ),
-                  )
-                else
-                  _StatementsSection(
-                    profile: projection.profile,
-                    summary: projection.statementDue,
-                    currency: projection.account.currency,
+                // Keep the tabs and their selected content inside one shared panel.
+                // This is a presentation-only change: tab selection and data flows
+                // remain unchanged.
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF061A27),
+                    borderRadius: BorderRadius.circular(m.radius.lg),
+                    border: Border.all(
+                      color: const Color(0xFF284356),
+                      width: m.size(1),
+                    ),
                   ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _SegmentTabs(
+                        selected: _tab,
+                        onChanged: (value) => setState(() => _tab = value),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          m.spacing(3),
+                          m.spacing(2),
+                          m.spacing(3),
+                          m.spacing(4),
+                        ),
+                        child: _tab == 0
+                            ? _TransactionsSection(
+                                transactions: transactions,
+                                payments: projection.payments,
+                                currency: projection.account.currency,
+                                profile: projection.profile,
+                                contracts: projection.contracts,
+                                installments: installments,
+                                convertedChargeIds: projection.convertedChargeIds,
+                                onTransactionTap: (transaction) =>
+                                    _openTransactionDetails(projection, transaction),
+                                onViewAll: (groupByPaymentMonth) =>
+                                    _openAllTransactions(
+                                      projection,
+                                      groupByPaymentMonth: groupByPaymentMonth,
+                                    ),
+                              )
+                            : _tab == 1
+                                ? _InstallmentsSection(
+                                    installments: installments,
+                                    contracts: projection.contracts,
+                                    transactions: transactions,
+                                    currency: projection.account.currency,
+                                    onMonthTap: (month, monthInstallments) =>
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => CreditCardInstallmentMonthScreen(
+                                              month: month,
+                                              monthInstallments: monthInstallments,
+                                              allInstallments: installments,
+                                              contracts: projection.contracts,
+                                              transactions: transactions,
+                                              currency: projection.account.currency,
+                                            ),
+                                          ),
+                                        ),
+                                  )
+                                : _StatementsSection(
+                                    profile: projection.profile,
+                                    summary: projection.statementDue,
+                                    currency: projection.account.currency,
+                                  ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -412,10 +440,16 @@ class _CreditCardAccountDetailsScreenState
     if (changed == true && mounted) setState(() {});
   }
 
-  Future<void> _openAllTransactions(CreditCardDetailsProjection projection) async {
+  Future<void> _openAllTransactions(
+    CreditCardDetailsProjection projection, {
+    required bool groupByPaymentMonth,
+  }) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => CreditCardAllTransactionsScreen(projection: projection),
+        builder: (_) => CreditCardAllTransactionsScreen(
+          projection: projection,
+          initialGroupByPaymentMonth: groupByPaymentMonth,
+        ),
       ),
     );
     if (changed == true && mounted) setState(() {});
@@ -1387,7 +1421,7 @@ class _CardCycleInfo extends StatelessWidget {
   }
 }
 
-// تم تكبير الخطوط الخاصة بشريط الحالة
+// Polished quick actions. Only presentation and language-aware ordering change.
 class _ActionGrid extends StatelessWidget {
   const _ActionGrid({
     required this.onAddTransaction,
@@ -1404,18 +1438,20 @@ class _ActionGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
-    final gap = m.spacing(8);
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final gap = m.spacing(7);
 
+    // Use the locale's natural reading direction. The same actions and callbacks
+    // are kept in the same logical order; their visual order mirrors in Arabic.
     return Directionality(
-      // Keep each action and its callback in the same visual slot in Arabic
-      // and English; only the text itself follows the selected locale.
-      textDirection: ui.TextDirection.ltr,
+      textDirection: isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
       child: Row(
         children: [
           Expanded(
             child: _Action(
               icon: Icons.add_rounded,
-              label: '${AppLocalizations.of(context)!.addTransaction}',
+              label: AppLocalizations.of(context)!.addTransaction,
+              accent: const Color(0xFFFF3D81),
               onTap: onAddTransaction,
             ),
           ),
@@ -1423,7 +1459,8 @@ class _ActionGrid extends StatelessWidget {
           Expanded(
             child: _Action(
               icon: Icons.calendar_month_rounded,
-              label: '${AppLocalizations.of(context)!.addInstallment}',
+              label: AppLocalizations.of(context)!.addInstallment,
+              accent: const Color(0xFF42C9FF),
               onTap: onAddInstallment,
             ),
           ),
@@ -1431,7 +1468,8 @@ class _ActionGrid extends StatelessWidget {
           Expanded(
             child: _Action(
               icon: Icons.autorenew_rounded,
-              label: '${AppLocalizations.of(context)!.convertToInstallment}',
+              label: AppLocalizations.of(context)!.convertToInstallment,
+              accent: const Color(0xFFB68CFF),
               onTap: onConvert,
             ),
           ),
@@ -1439,7 +1477,8 @@ class _ActionGrid extends StatelessWidget {
           Expanded(
             child: _Action(
               icon: Icons.credit_card_rounded,
-              label: '${AppLocalizations.of(context)!.payCard}',
+              label: AppLocalizations.of(context)!.payCard,
+              accent: const Color(0xFFFFC857),
               onTap: onPay,
             ),
           ),
@@ -1450,36 +1489,107 @@ class _ActionGrid extends StatelessWidget {
 }
 
 class _Action extends StatelessWidget {
-  const _Action({required this.icon, required this.label, required this.onTap});
+  const _Action({
+    required this.icon,
+    required this.label,
+    required this.accent,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
+  final Color accent;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
+    final radius = BorderRadius.circular(m.radius.md);
 
     return Material(
-      color: const Color(0xFF0A1C29),
-      borderRadius: BorderRadius.circular(m.radius.md),
+      color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(m.radius.md),
-        child: SizedBox(
-          height: m.isCompactHeight ? m.h(68) : m.h(74),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        borderRadius: radius,
+        child: Ink(
+          height: m.isCompactHeight ? m.h(72) : m.h(80),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF102B3B), Color(0xFF071925)],
+            ),
+            borderRadius: radius,
+            border: Border.all(
+              color: accent.withValues(alpha: .35),
+              width: m.size(1),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: .07),
+                blurRadius: m.size(10),
+                offset: Offset(0, m.size(3)),
+              ),
+            ],
+          ),
+          child: Stack(
             children: [
-              Icon(icon, color: const Color(0xFFFF3D81), size: m.size(20)),
-              SizedBox(height: m.spacing(4)),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: m.text(9),
-                  fontWeight: FontWeight.w700,
+              Positioned(
+                top: 0,
+                left: m.spacing(12),
+                right: m.spacing(12),
+                child: Container(
+                  height: m.size(2),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: .8),
+                    borderRadius: BorderRadius.vertical(
+                      bottom: Radius.circular(m.size(2)),
+                    ),
+                  ),
+                ),
+              ),
+              Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: m.spacing(2),
+                    vertical: m.spacing(4),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: m.size(30),
+                        height: m.size(30),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: accent.withValues(alpha: .13),
+                          border: Border.all(
+                            color: accent.withValues(alpha: .48),
+                            width: m.size(1),
+                          ),
+                        ),
+                        child: Icon(
+                          icon,
+                          color: accent,
+                          size: m.size(18),
+                        ),
+                      ),
+                      SizedBox(height: m.spacing(3)),
+                      Text(
+                        label,
+                        maxLines: 2,
+                        softWrap: true,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: m.isCompactHeight ? m.text(8.5) : m.text(9),
+                          height: 1.12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1492,6 +1602,7 @@ class _Action extends StatelessWidget {
 
 class _SegmentTabs extends StatelessWidget {
   const _SegmentTabs({required this.selected, required this.onChanged});
+
   final int selected;
   final ValueChanged<int> onChanged;
 
@@ -1499,40 +1610,106 @@ class _SegmentTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
 
-    return Row(
-      children: [
-        _seg(m, AppLocalizations.of(context)!.transactionsTab, 0),
-        _seg(m, AppLocalizations.of(context)!.installments, 1),
-        _seg(m, AppLocalizations.of(context)!.statements, 2),
-      ],
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        m.spacing(2),
+        m.spacing(2),
+        m.spacing(2),
+        0,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          _seg(
+            m,
+            AppLocalizations.of(context)!.transactionsTab,
+            Icons.format_list_bulleted_rounded,
+            0,
+          ),
+          _seg(
+            m,
+            AppLocalizations.of(context)!.installments,
+            Icons.pie_chart_outline_rounded,
+            1,
+          ),
+          _seg(
+            m,
+            AppLocalizations.of(context)!.statements,
+            Icons.description_outlined,
+            2,
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _seg(ResponsiveMetrics m, String label, int value) {
+  Widget _seg(
+    ResponsiveMetrics m,
+    String label,
+    IconData icon,
+    int value,
+  ) {
     final active = selected == value;
+    final accent = const Color(0xFFFF2D6F);
+    final edge = active ? accent : const Color(0xFF284356);
+
     return Expanded(
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => onChanged(value),
         child: Container(
+          margin: EdgeInsets.symmetric(horizontal: m.spacing(1)),
           padding: EdgeInsets.symmetric(
-            vertical: m.isCompactHeight ? m.spacing(5) : m.spacing(6),
+            horizontal: m.spacing(1),
+            vertical: m.isCompactHeight ? m.spacing(7) : m.spacing(8),
           ),
           decoration: BoxDecoration(
+            color: active ? const Color(0xFF35152C) : const Color(0xFF0A2030),
+            gradient: active
+                ? const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF4A1B38), Color(0xFF2D142A)],
+                  )
+                : null,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(m.radius.md),
+            ),
             border: Border(
-              bottom: BorderSide(
-                color: active ? const Color(0xFFFF2D6F) : Colors.white12,
-                width: active ? m.size(2) : m.size(1),
-              ),
+              top: BorderSide(color: edge, width: active ? m.size(1.3) : m.size(1)),
+              left: BorderSide(color: edge, width: active ? m.size(1.3) : m.size(1)),
+              right: BorderSide(color: edge, width: active ? m.size(1.3) : m.size(1)),
+              // The selected tab has no bottom stroke, so it visually joins
+              // the shared content panel like a folder tab.
+              bottom: active
+                  ? BorderSide.none
+                  : BorderSide(color: const Color(0xFF284356), width: m.size(1)),
             ),
           ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: active ? const Color(0xFFFF2D6F) : Colors.white70,
-              fontWeight: FontWeight.w800,
-              fontSize: m.isCompactHeight ? m.text(10) : m.text(11),
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              Icon(
+                icon,
+                size: m.isCompactHeight ? m.size(15) : m.size(17),
+                color: active ? accent : Colors.white60,
+              ),
+              SizedBox(width: m.spacing(2)),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: active ? Colors.white : Colors.white70,
+                    fontWeight: FontWeight.w800,
+                    fontSize: m.isCompactHeight ? m.text(9) : m.text(10),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1659,6 +1836,7 @@ class _TransactionsSection extends StatefulWidget {
     required this.onTransactionTap,
     this.onViewAll,
     this.showAllMonths = false,
+    this.initialGroupByPaymentMonth = false,
   });
 
   final List<Transaction> transactions;
@@ -1669,8 +1847,9 @@ class _TransactionsSection extends StatefulWidget {
   final List<FinancingInstallment> installments;
   final Set<String> convertedChargeIds;
   final ValueChanged<Transaction> onTransactionTap;
-  final VoidCallback? onViewAll;
+  final ValueChanged<bool>? onViewAll;
   final bool showAllMonths;
+  final bool initialGroupByPaymentMonth;
 
   @override
   State<_TransactionsSection> createState() => _TransactionsSectionState();
@@ -1678,6 +1857,15 @@ class _TransactionsSection extends StatefulWidget {
 
 class _TransactionsSectionState extends State<_TransactionsSection> {
   static const int _initialVisibleMonthCount = 2;
+  static const int _initialVisibleTransactionCount = 8;
+
+  late bool _groupByPaymentMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    _groupByPaymentMonth = widget.initialGroupByPaymentMonth;
+  }
 
   DateTime? _paymentDateFor({
     required Transaction transaction,
@@ -1696,8 +1884,8 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
     }
 
     // Keep the statement-cycle policy explicit, then resolve the corresponding
-    // payment date through the same shared policy. This keeps month grouping and
-    // the Payment Month column aligned with the expected bill payment month.
+    // payment date through the same shared policy. This keeps the Payment Month
+    // column aligned with the expected bill payment month.
     final statementCloseDate =
         CreditCardTransactionTimingPolicy.statementDateForPurchase(
       purchaseDate: transaction.date,
@@ -1720,6 +1908,10 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final locale = Localizations.localeOf(context).toLanguageTag();
     final t = AppLocalizations.of(context)!;
+
+    // The source records are always ordered by transaction date, newest first.
+    // This is the default view. Grouping by payment month is an optional UI mode
+    // and does not change the dates or values supplied by the timing policy.
     final events = <Transaction>[...widget.transactions, ...widget.payments]
       ..sort((a, b) => b.date.compareTo(a.date));
 
@@ -1730,8 +1922,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
       );
     }
 
-    final grouped = <DateTime, List<_TransactionPaymentMonthRow>>{};
-    for (final tx in events) {
+    final rows = events.map((tx) {
       final isPayment = tx.source == TransactionSource.creditCardPayment;
       final isInstallment =
           !isPayment && widget.convertedChargeIds.contains(tx.id);
@@ -1740,34 +1931,48 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
         isPayment: isPayment,
         isInstallment: isInstallment,
       );
-      // If a legacy installment has no linked schedule, keep it visible under
-      // its transaction month while marking the Payment Month as not scheduled.
+      // Legacy installments without a linked schedule remain visible. Their
+      // Payment Month is shown as not scheduled, while grouping (when selected)
+      // falls back to the transaction month as before.
       final groupingDate = paymentDate ?? tx.date;
       final month = DateTime(groupingDate.year, groupingDate.month);
-      (grouped[month] ??= <_TransactionPaymentMonthRow>[]).add(
-        _TransactionPaymentMonthRow(
-          transaction: tx,
-          isPayment: isPayment,
-          isInstallment: isInstallment,
-          paymentDate: paymentDate,
-          month: month,
-        ),
+      return _TransactionPaymentMonthRow(
+        transaction: tx,
+        isPayment: isPayment,
+        isInstallment: isInstallment,
+        paymentDate: paymentDate,
+        month: month,
+      );
+    }).toList(growable: false);
+
+    final grouped = <DateTime, List<_TransactionPaymentMonthRow>>{};
+    for (final row in rows) {
+      (grouped[row.month] ??= <_TransactionPaymentMonthRow>[]).add(row);
+    }
+    final months = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+    for (final groupRows in grouped.values) {
+      groupRows.sort(
+        (a, b) => b.transaction.date.compareTo(a.transaction.date),
       );
     }
 
-    final months = grouped.keys.toList()..sort((a, b) => a.compareTo(b));
-    for (final rows in grouped.values) {
-      rows.sort((a, b) => b.transaction.date.compareTo(a.transaction.date));
-    }
     final visibleMonths = widget.showAllMonths
         ? months
         : months.take(_initialVisibleMonthCount).toList();
+    final visibleRows = widget.showAllMonths
+        ? rows
+        : rows.take(_initialVisibleTransactionCount).toList();
+    // Keep View All visible on the main card screen, even when the preview
+    // currently contains only a few transactions. The destination screen
+    // displays the complete list; this is navigation-only and does not alter
+    // transaction, payment-month, or installment calculations.
+    final showViewAll = !widget.showAllMonths && widget.onViewAll != null;
 
-    Widget header(String text) => Text(
+    Widget header(String text, {TextAlign align = TextAlign.center}) => Text(
           text,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
+          textAlign: align,
           style: TextStyle(
             color: Colors.white70,
             fontSize: m.isCompactHeight ? m.text(9) : m.text(10),
@@ -1775,51 +1980,51 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
           ),
         );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(
-            m.spacing(2),
-            m.spacing(5),
-            m.spacing(2),
-            m.spacing(6),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  isArabic ? 'العمليات حسب شهر الدفع' : 'Transactions by Payment Month',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w800,
-                    fontSize: m.text(11),
-                  ),
+    Widget modeOption({
+      required String label,
+      required bool selected,
+      required VoidCallback onTap,
+    }) {
+      return Expanded(
+        child: Material(
+          color: selected ? const Color(0xFF183A51) : Colors.transparent,
+          borderRadius: BorderRadius.circular(m.radius.sm),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(m.radius.sm),
+            child: Container(
+              constraints: BoxConstraints(minHeight: m.size(32)),
+              padding: EdgeInsets.symmetric(
+                horizontal: m.spacing(4),
+                vertical: m.spacing(5),
+              ),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(m.radius.sm),
+                border: Border.all(
+                  color: selected
+                      ? const Color(0xFF42C9FF)
+                      : Colors.white.withValues(alpha: .05),
                 ),
               ),
-              if (!widget.showAllMonths &&
-                  months.length > _initialVisibleMonthCount &&
-                  widget.onViewAll != null)
-                TextButton(
-                  onPressed: widget.onViewAll,
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFFF3D81),
-                    padding: EdgeInsets.symmetric(horizontal: m.spacing(4)),
-                    minimumSize: Size(0, m.size(32)),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: Text(
-                    isArabic ? 'عرض الكل' : 'View All',
-                    style: TextStyle(
-                      fontSize: m.text(10),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: selected ? Colors.white : Colors.white60,
+                  fontSize: m.isCompactHeight ? m.text(9) : m.text(10),
+                  fontWeight: FontWeight.w800,
                 ),
-            ],
+              ),
+            ),
           ),
         ),
-        Container(
+      );
+    }
+
+    Widget buildColumnHeader() => Container(
           padding: EdgeInsets.symmetric(
             horizontal: m.spacing(5),
             vertical: m.spacing(7),
@@ -1830,29 +2035,241 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
             border: Border.all(color: Colors.white.withValues(alpha: .10)),
           ),
           child: Row(
-            textDirection: isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+            textDirection:
+                isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
             children: [
-              Expanded(flex: 11, child: header(isArabic ? 'المعاملة' : 'Transaction')),
-              Expanded(flex: 9, child: header(isArabic ? 'النوع' : 'Type')),
-              SizedBox(width: m.spacing(5)),
-              Expanded(flex: 14, child: header(isArabic ? 'شهر الدفع' : 'Payment Month')),
-              Expanded(flex: 9, child: header(isArabic ? 'القيمة' : 'Amount')),
+              Expanded(
+                flex: 15,
+                child: header(
+                  isArabic ? 'المعاملة' : 'Transaction',
+                  align: TextAlign.start,
+                ),
+              ),
+              SizedBox(width: m.spacing(3)),
+              Expanded(
+                flex: 8,
+                child: header(isArabic ? 'النوع' : 'Type'),
+              ),
+              // A deliberately wider gap separates Type from Payment Month.
+              SizedBox(width: m.spacing(6)),
+              Expanded(
+                flex: 11,
+                child: header(
+                  isArabic ? 'شهر الدفع' : 'Payment Month',
+                  align: TextAlign.start,
+                ),
+              ),
+              // Keep Amount close to the payment-month column, not far away.
+              SizedBox(width: m.spacing(2)),
+              Expanded(
+                flex: 5,
+                child: header(
+                  isArabic ? 'القيمة' : 'Amount',
+                  align: TextAlign.end,
+                ),
+              ),
+            ],
+          ),
+        );
+
+    Widget buildTransactionRow(_TransactionPaymentMonthRow row) {
+      final tx = row.transaction;
+      final isPayment = row.isPayment;
+      final isInstallment = row.isInstallment;
+      final categoryTitle = _transactionCategoryTitle(context, tx.categoryId);
+      final subcategoryTitle = _transactionSubcategoryTitle(context, tx);
+      final title = isPayment
+          ? t.creditCardPayment
+          : subcategoryTitle ??
+              categoryTitle ??
+              (tx.note?.split(' • ').first ?? t.creditCardPurchase);
+      final paymentMonth = row.paymentDate == null
+          ? (isArabic ? 'غير محدد' : 'Not scheduled')
+          : DateFormat.yMMM(locale).format(row.paymentDate!);
+      final transactionDate = DateFormat('dd/MM/yy', locale).format(tx.date);
+      final secondaryText = !isPayment &&
+              subcategoryTitle != null &&
+              categoryTitle != null &&
+              subcategoryTitle != categoryTitle
+          ? '$categoryTitle • $transactionDate'
+          : transactionDate;
+      final amountText =
+          '${isPayment ? '+' : '-'}${tx.amount.toStringAsFixed(2)}';
+
+      return InkWell(
+        onTap: () => widget.onTransactionTap(tx),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: m.spacing(5),
+            vertical: m.isCompactHeight ? m.spacing(5) : m.spacing(7),
+          ),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: .08)),
+            ),
+          ),
+          child: Row(
+            textDirection:
+                isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                flex: 14,
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: m.isCompactHeight ? m.size(10) : m.size(11),
+                      backgroundColor: const Color(0xFF182B45),
+                      child: isPayment
+                          ? Icon(
+                              Icons.payments_outlined,
+                              color: const Color(0xFF8CB3FF),
+                              size: m.size(12),
+                            )
+                          : _TransactionCategoryIcon(
+                              categoryId: tx.categoryId,
+                              size: m.size(13),
+                            ),
+                    ),
+                    SizedBox(width: m.spacing(3)),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: m.isCompactHeight
+                                  ? m.text(10)
+                                  : m.text(11),
+                            ),
+                          ),
+                          Text(
+                            secondaryText,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: m.text(8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: m.spacing(3)),
+              Expanded(
+                flex: 8,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      isPayment
+                          ? (isArabic ? 'سداد' : 'Payment')
+                          : isInstallment
+                              ? (isArabic ? 'تقسيط' : 'Installment')
+                              : (isArabic ? 'شراء عادي' : 'Regular'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isPayment
+                            ? const Color(0xFF58D6A2)
+                            : isInstallment
+                                ? const Color(0xFF42C9FF)
+                                : const Color(0xFF00D99A),
+                        fontWeight: FontWeight.w800,
+                        fontSize: m.text(8.5),
+                      ),
+                    ),
+                    if (isInstallment) ...[
+                      SizedBox(height: m.spacing(1)),
+                      Text(
+                        _installmentProgressLabel(
+                              tx.id,
+                              widget.contracts,
+                              widget.installments,
+                            ) ??
+                            '',
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w600,
+                          fontSize: m.text(8),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              SizedBox(width: m.spacing(13)),
+              Expanded(
+                flex: 8,
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    paymentMonth,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.start,
+                    style: TextStyle(
+                      color: row.paymentDate == null
+                          ? Colors.white54
+                          : const Color(0xFFFFBD3F),
+                      fontWeight: FontWeight.w700,
+                      fontSize: m.text(9),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: m.spacing(0)),
+              Expanded(
+                flex: 7,
+                child: Text(
+                  amountText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: isArabic ? TextAlign.left : TextAlign.right,
+                  style: TextStyle(
+                    color: isPayment ? const Color(0xFF58D6A2) : Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: m.isCompactHeight ? m.text(10) : m.text(12),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        SizedBox(height: m.spacing(3)),
-        for (final month in visibleMonths) ...[
+      );
+    }
+
+    Widget buildMonthGroup(DateTime month) {
+      final groupRows = grouped[month]!;
+      return Column(
+        children: [
           Container(
             padding: EdgeInsets.symmetric(
               horizontal: m.spacing(10),
-              vertical: m.spacing(7),
+              vertical: m.spacing(8),
             ),
             decoration: BoxDecoration(
-              color: const Color(0xFF12283A),
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(m.radius.sm),
+              gradient: const LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [Color(0xFF19374F), Color(0xFF142638)],
               ),
-              border: Border.all(color: Colors.white.withValues(alpha: .08)),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(m.radius.md),
+              ),
+              border: Border.all(color: const Color(0xFF31516A)),
             ),
             child: Row(
               children: [
@@ -1874,8 +2291,8 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                 ),
                 Text(
                   isArabic
-                      ? '${grouped[month]!.length} عمليات'
-                      : '${grouped[month]!.length} ${grouped[month]!.length == 1 ? 'transaction' : 'transactions'}',
+                      ? '${groupRows.length} عمليات'
+                      : '${groupRows.length} ${groupRows.length == 1 ? 'transaction' : 'transactions'}',
                   style: TextStyle(
                     color: Colors.white54,
                     fontSize: m.text(8),
@@ -1894,184 +2311,136 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
               border: Border.all(color: Colors.white.withValues(alpha: .08)),
             ),
             child: Column(
-              children: grouped[month]!.map((row) {
-                final tx = row.transaction;
-                final isPayment = row.isPayment;
-                final isInstallment = row.isInstallment;
-                final categoryTitle = _transactionCategoryTitle(context, tx.categoryId);
-                final subcategoryTitle = _transactionSubcategoryTitle(context, tx);
-                final title = isPayment
-                    ? t.creditCardPayment
-                    : subcategoryTitle ??
-                        categoryTitle ??
-                        (tx.note?.split(' • ').first ?? t.creditCardPurchase);
-                final paymentMonth = row.paymentDate == null
-                    ? (isArabic ? 'غير محدد' : 'Not scheduled')
-                    : DateFormat.yMMM(locale).format(row.paymentDate!);
-                final secondaryText = DateFormat('dd/MM/yy', locale).format(tx.date);
-                final amountText =
-                    '${isPayment ? '+' : '-'}${tx.amount.toStringAsFixed(2)}';
-
-                return InkWell(
-                  onTap: () => widget.onTransactionTap(tx),
-                  child: Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: m.spacing(5),
-                      vertical: m.isCompactHeight ? m.spacing(5) : m.spacing(7),
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        top: BorderSide(color: Colors.white.withValues(alpha: .08)),
-                      ),
-                    ),
-                    child: Row(
-                      textDirection: isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                      Expanded(
-                        flex: 11,
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: m.isCompactHeight ? m.size(10) : m.size(11),
-                              backgroundColor: const Color(0xFF182B45),
-                              child: isPayment
-                                  ? Icon(
-                                      Icons.payments_outlined,
-                                      color: const Color(0xFF8CB3FF),
-                                      size: m.size(12),
-                                    )
-                                  : _TransactionCategoryIcon(
-                                      categoryId: tx.categoryId,
-                                      size: m.size(13),
-                                    ),
-                            ),
-                            SizedBox(width: m.spacing(3)),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: m.isCompactHeight ? m.text(10) : m.text(11),
-                                    ),
-                                  ),
-                                  Text(
-                                    secondaryText,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: m.text(8),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        flex: 9,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              isPayment
-                                  ? (isArabic ? 'سداد' : 'Payment')
-                                  : isInstallment
-                                      ? (isArabic ? 'تقسيط' : 'Installment')
-                                      : (isArabic ? 'شراء عادي' : 'Regular'),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: isPayment
-                                    ? const Color(0xFF58D6A2)
-                                    : isInstallment
-                                        ? const Color(0xFF42C9FF)
-                                        : const Color(0xFF00D99A),
-                                fontWeight: FontWeight.w800,
-                                fontSize: m.text(8.5),
-                              ),
-                            ),
-                            if (isInstallment) ...[
-                              SizedBox(height: m.spacing(1)),
-                              Text(
-                                _installmentProgressLabel(
-                                  tx.id,
-                                  widget.contracts,
-                                  widget.installments,
-                                ) ?? '',
-                                maxLines: 1,
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: m.text(8),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: m.spacing(5)),
-                      Expanded(
-                        flex: 14,
-                        child: Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: Text(
-                            paymentMonth,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.start,
-                            style: TextStyle(
-                              color: row.paymentDate == null
-                                  ? Colors.white54
-                                  : const Color(0xFFFFBD3F),
-                              fontWeight: FontWeight.w700,
-                              fontSize: m.text(9),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 9,
-                        child: Text(
-                          amountText,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: isArabic ? TextAlign.left : TextAlign.right,
-                          style: TextStyle(
-                            color: isPayment ? const Color(0xFF58D6A2) : Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: m.isCompactHeight ? m.text(9) : m.text(10),
-                          ),
-                        ),
-                      ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+              children: groupRows.map(buildTransactionRow).toList(),
             ),
           ),
         ],
+      );
+    }
+
+    final sectionTitle = _groupByPaymentMonth
+        ? (isArabic ? 'العمليات حسب شهر الدفع' : 'Transactions by Payment Month')
+        : (isArabic ? 'العمليات حسب تاريخها' : 'Transactions by Date');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            m.spacing(2),
+            m.spacing(5),
+            m.spacing(2),
+            m.spacing(4),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  sectionTitle,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w800,
+                    fontSize: m.text(11),
+                  ),
+                ),
+              ),
+              if (showViewAll)
+                TextButton(
+                  onPressed: () => widget.onViewAll?.call(_groupByPaymentMonth),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFFFF3D81),
+                    padding: EdgeInsets.symmetric(horizontal: m.spacing(4)),
+                    minimumSize: Size(0, m.size(32)),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    isArabic ? 'عرض الكل' : 'View All',
+                    style: TextStyle(
+                      fontSize: m.text(10),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        Container(
+          padding: EdgeInsets.all(m.spacing(3)),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A1C29),
+            borderRadius: BorderRadius.circular(m.radius.md),
+            border: Border.all(color: Colors.white.withValues(alpha: .08)),
+          ),
+          child: Row(
+            children: [
+              modeOption(
+                label: isArabic ? 'تاريخ العملية' : 'Transaction Date',
+                selected: !_groupByPaymentMonth,
+                onTap: () {
+                  if (_groupByPaymentMonth) {
+                    setState(() => _groupByPaymentMonth = false);
+                  }
+                },
+              ),
+              SizedBox(width: m.spacing(3)),
+              modeOption(
+                label: isArabic ? 'شهر الدفع' : 'Payment Month',
+                selected: _groupByPaymentMonth,
+                onTap: () {
+                  if (!_groupByPaymentMonth) {
+                    setState(() => _groupByPaymentMonth = true);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: m.spacing(4)),
+        buildColumnHeader(),
+        SizedBox(height: m.spacing(3)),
+        if (_groupByPaymentMonth)
+          ...visibleMonths.map(buildMonthGroup)
+        else
+          Container(
+            margin: EdgeInsets.only(bottom: m.spacing(8)),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(m.radius.md),
+              border: Border.all(color: Colors.white.withValues(alpha: .08)),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(m.radius.md),
+              child: Column(
+                children: visibleRows.map(buildTransactionRow).toList(),
+              ),
+            ),
+          ),
       ],
     );
   }
 }
 
 String? _transactionSubcategoryTitle(BuildContext context, Transaction tx) {
-  final subCategoryId = tx.subCategoryId;
+  final subCategoryId = tx.subCategoryId?.trim();
   if (subCategoryId == null || subCategoryId.isEmpty) return null;
+
   final t = AppLocalizations.of(context)!;
+  final parentCategoryId = tx.categoryId;
+
+  // Prefer the subcategory under the transaction's stored parent category.
+  // This avoids resolving a duplicate subcategory ID from another category.
+  if (parentCategoryId != null && parentCategoryId.isNotEmpty) {
+    for (final type in CategoryType.values) {
+      for (final category in getCategories(type)) {
+        if (category.id != parentCategoryId) continue;
+        for (final sub in category.subCategories ?? const <SubCategoryConfig>[]) {
+          if (sub.id == subCategoryId) return sub.title(t);
+        }
+      }
+    }
+  }
+
+  // Backward-compatible fallback for older records that may have a subcategory
+  // ID but no parent category ID.
   for (final type in CategoryType.values) {
     for (final category in getCategories(type)) {
       for (final sub in category.subCategories ?? const <SubCategoryConfig>[]) {
@@ -2083,8 +2452,14 @@ String? _transactionSubcategoryTitle(BuildContext context, Transaction tx) {
 }
 
 class CreditCardAllTransactionsScreen extends StatelessWidget {
-  const CreditCardAllTransactionsScreen({super.key, required this.projection});
+  const CreditCardAllTransactionsScreen({
+    super.key,
+    required this.projection,
+    this.initialGroupByPaymentMonth = false,
+  });
+
   final CreditCardDetailsProjection projection;
+  final bool initialGroupByPaymentMonth;
 
   Future<void> _openDetails(BuildContext context, Transaction transaction) async {
     final changed = await Navigator.of(context).push<bool>(
@@ -2125,6 +2500,7 @@ class CreditCardAllTransactionsScreen extends StatelessWidget {
             convertedChargeIds: projection.convertedChargeIds,
             onTransactionTap: (tx) => _openDetails(context, tx),
             showAllMonths: true,
+            initialGroupByPaymentMonth: initialGroupByPaymentMonth,
           ),
         ],
       ),
