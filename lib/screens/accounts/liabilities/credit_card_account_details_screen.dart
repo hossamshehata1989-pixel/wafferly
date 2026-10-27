@@ -52,6 +52,10 @@ class _CreditCardAccountDetailsScreenState
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
     final t = AppLocalizations.of(context)!;
+    // Compact the vertical layout on typical phone-sized viewports so the
+    // transaction list gets more of the first screen without changing data.
+    final compactPhoneLayout =
+        m.isMobile && (m.height < 900 || m.width < 400);
 
     return FutureBuilder<CreditCardDetailsProjection?>(
       future: _projection(),
@@ -139,7 +143,12 @@ class _CreditCardAccountDetailsScreenState
               ],
             ),
             body: ListView(
-              padding: EdgeInsets.fromLTRB(m.spacing(16), 6, m.spacing(16), 28),
+              padding: EdgeInsets.fromLTRB(
+                m.spacing(16),
+                compactPhoneLayout ? m.spacing(1) : 6,
+                m.spacing(16),
+                compactPhoneLayout ? m.spacing(10) : 28,
+              ),
               children: [
                 _CardSummaryVisual(
                   account: projection.account,
@@ -170,7 +179,9 @@ class _CreditCardAccountDetailsScreenState
                     dueBreakdown.months,
                   ),
                 ),
-                SizedBox(height: m.space.md),
+                SizedBox(
+                  height: compactPhoneLayout ? m.spacing(5) : m.space.md,
+                ),
                 _ActionGrid(
                   onAddTransaction: () =>
                       _openEntry(projection.account, installmentOnly: false),
@@ -187,7 +198,10 @@ class _CreditCardAccountDetailsScreenState
                     dueBreakdown.thisMonthInstallments,
                   ),
                 ),
-                SizedBox(height: m.space.md),
+                // Keep a clear breathing gap between quick actions and the tab panel.
+                SizedBox(
+                  height: compactPhoneLayout ? m.spacing(8) : m.spacing(6),
+                ),
                 // Keep the tabs and their selected content inside one shared panel.
                 // This is a presentation-only change: tab selection and data flows
                 // remain unchanged.
@@ -210,9 +224,9 @@ class _CreditCardAccountDetailsScreenState
                       Padding(
                         padding: EdgeInsets.fromLTRB(
                           m.spacing(3),
-                          m.spacing(2),
+                          compactPhoneLayout ? m.spacing(2) : m.spacing(3),
                           m.spacing(3),
-                          m.spacing(4),
+                          compactPhoneLayout ? m.spacing(2) : m.spacing(4),
                         ),
                         child: _tab == 0
                             ? _TransactionsSection(
@@ -292,7 +306,7 @@ class _CreditCardAccountDetailsScreenState
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+                padding: const EdgeInsets.fromLTRB(40, 8, 20, 14),
                 child: Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: Text(
@@ -650,8 +664,9 @@ class _CardScrim extends StatelessWidget {
 /// generic card-management layout: the main card prioritizes the two due
 /// summaries and statement/payment days, without the extra Used/Available bar.
 CardVisualLayout _creditCardDashboardLayout(
-  String visualId,
-) => CardVisualLayout(
+  String visualId, {
+  required bool isArabic,
+}) => CardVisualLayout(
   visualId: visualId,
   aspectRatio: 1.55,
   slots: <CardTextSlot, CardVisualSlot>{
@@ -694,15 +709,26 @@ CardVisualLayout _creditCardDashboardLayout(
     // them. Footer starts at .795, so there is no overlap.
     CardTextSlot.thisMonthDue: CardVisualSlot(
       zone: CardZone.financialPrimary,
-      // Widen due panels to the left while preserving their right edge and keeping a small gap after More.
-      area: CardVisualZone(x: .404, y: .325, width: .548, height: .225),
+      // Arabic keeps the approved layout. English moves the due panels left
+      // so the More control can occupy the right-hand position.
+      area: CardVisualZone(
+        x: isArabic ? .404 : .25,
+        y: .325,
+        width: isArabic ? .548 : .53,
+        height: .225,
+      ),
       maxLines: 2,
       minFontScale: .60,
     ),
     CardTextSlot.nextMonthDue: CardVisualSlot(
       zone: CardZone.financialPrimary,
-      // Widen due panels to the left while preserving their right edge and keeping a small gap after More.
-      area: CardVisualZone(x: .404, y: .565, width: .548, height: .225),
+      // Match the same language-specific column positions as this month's panel.
+      area: CardVisualZone(
+        x: isArabic ? .404 : .25,
+        y: .565,
+        width: isArabic ? .548 : .53,
+        height: .225,
+      ),
       maxLines: 2,
       minFontScale: .60,
     ),
@@ -750,7 +776,11 @@ class _CardSummaryVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final layout = _creditCardDashboardLayout(profile.cardVisual);
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final layout = _creditCardDashboardLayout(
+      profile.cardVisual,
+      isArabic: isArabic,
+    );
     // Use the same palette and accent as the selected card artwork.
     final cardVisualSpec = WafferlyCardVisuals.resolve(
       profile.cardVisual,
@@ -758,9 +788,15 @@ class _CardSummaryVisual extends StatelessWidget {
     );
 
     final m = ResponsiveMetrics.of(context);
-    // Small/compact screens: enlarge the complete card + all of its contents
-    // by about 20% relative to the current compact presentation.
-    final cardScale = m.isCompactHeight ? 0.98 : 1.0;
+    final compactPhoneLayout =
+        m.isMobile && (m.height < 900 || m.width < 400);
+    // Reduce the visual card height on smaller phones; the FittedBox scales the
+    // complete card artwork and overlay together, without changing any values.
+    final cardScale = !compactPhoneLayout
+        ? 1.0
+        : m.height < 760
+            ? 0.87
+            : 0.91;
 
     return LayoutBuilder(
       builder: (context, outerConstraints) {
@@ -939,7 +975,8 @@ class _CardSummaryVisual extends StatelessWidget {
                                   ),
                                 ),
                                 Positioned(
-  left: 94,
+  // Arabic keeps More on the left; English moves it to the right of the due panels.
+  left: isArabic ? 94 : size.width - 70,
   top: size.height * .325,
   width: 52,
   height: size.height * .465,
@@ -1439,7 +1476,9 @@ class _ActionGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final gap = m.spacing(7);
+    final compactPhoneLayout =
+        m.isMobile && (m.height < 900 || m.width < 400);
+    final gap = m.spacing(compactPhoneLayout ? 4 : 7);
 
     // Use the locale's natural reading direction. The same actions and callbacks
     // are kept in the same logical order; their visual order mirrors in Arabic.
@@ -1504,6 +1543,8 @@ class _Action extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
+    final compactPhoneLayout =
+        m.isMobile && (m.height < 900 || m.width < 400);
     final radius = BorderRadius.circular(m.radius.md);
 
     return Material(
@@ -1512,7 +1553,7 @@ class _Action extends StatelessWidget {
         onTap: onTap,
         borderRadius: radius,
         child: Ink(
-          height: m.isCompactHeight ? m.h(72) : m.h(80),
+          height: m.h(compactPhoneLayout ? 61 : 76),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
@@ -1552,14 +1593,16 @@ class _Action extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: m.spacing(2),
-                    vertical: m.spacing(4),
+                    // The compact action tiles have a tight height. Reduce only
+                    // their internal vertical padding to avoid RenderFlex overflow.
+                    vertical: m.spacing(compactPhoneLayout ? 1 : 4),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: m.size(30),
-                        height: m.size(30),
+                        width: m.size(compactPhoneLayout ? 25 : 29),
+                        height: m.size(compactPhoneLayout ? 25 : 29),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: accent.withValues(alpha: .13),
@@ -1571,10 +1614,12 @@ class _Action extends StatelessWidget {
                         child: Icon(
                           icon,
                           color: accent,
-                          size: m.size(18),
+                          size: m.size(compactPhoneLayout ? 16 : 18),
                         ),
                       ),
-                      SizedBox(height: m.spacing(3)),
+                      SizedBox(
+                        height: m.spacing(compactPhoneLayout ? 2 : 3),
+                      ),
                       Text(
                         label,
                         maxLines: 2,
@@ -1583,7 +1628,7 @@ class _Action extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: m.isCompactHeight ? m.text(8.5) : m.text(9),
+                          fontSize: m.text(compactPhoneLayout ? 8 : 9),
                           height: 1.12,
                           fontWeight: FontWeight.w800,
                         ),
@@ -1609,11 +1654,13 @@ class _SegmentTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final m = ResponsiveMetrics.of(context);
+    final compactPhoneLayout =
+        m.isMobile && (m.height < 900 || m.width < 400);
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
         m.spacing(2),
-        m.spacing(2),
+        compactPhoneLayout ? m.spacing(2) : m.spacing(3),
         m.spacing(2),
         0,
       ),
@@ -1622,18 +1669,21 @@ class _SegmentTabs extends StatelessWidget {
         children: [
           _seg(
             m,
+            compactPhoneLayout,
             AppLocalizations.of(context)!.transactionsTab,
             Icons.format_list_bulleted_rounded,
             0,
           ),
           _seg(
             m,
+            compactPhoneLayout,
             AppLocalizations.of(context)!.installments,
             Icons.pie_chart_outline_rounded,
             1,
           ),
           _seg(
             m,
+            compactPhoneLayout,
             AppLocalizations.of(context)!.statements,
             Icons.description_outlined,
             2,
@@ -1645,6 +1695,7 @@ class _SegmentTabs extends StatelessWidget {
 
   Widget _seg(
     ResponsiveMetrics m,
+    bool compactPhoneLayout,
     String label,
     IconData icon,
     int value,
@@ -1661,7 +1712,7 @@ class _SegmentTabs extends StatelessWidget {
           margin: EdgeInsets.symmetric(horizontal: m.spacing(1)),
           padding: EdgeInsets.symmetric(
             horizontal: m.spacing(1),
-            vertical: m.isCompactHeight ? m.spacing(7) : m.spacing(8),
+            vertical: m.spacing(compactPhoneLayout ? 4 : 7),
           ),
           decoration: BoxDecoration(
             color: active ? const Color(0xFF35152C) : const Color(0xFF0A2030),
@@ -1692,7 +1743,7 @@ class _SegmentTabs extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                size: m.isCompactHeight ? m.size(15) : m.size(17),
+                size: m.size(compactPhoneLayout ? 14 : 17),
                 color: active ? accent : Colors.white60,
               ),
               SizedBox(width: m.spacing(2)),
@@ -1705,7 +1756,7 @@ class _SegmentTabs extends StatelessWidget {
                   style: TextStyle(
                     color: active ? Colors.white : Colors.white70,
                     fontWeight: FontWeight.w800,
-                    fontSize: m.isCompactHeight ? m.text(9) : m.text(10),
+                    fontSize: m.text(compactPhoneLayout ? 8.5 : 10),
                   ),
                 ),
               ),
@@ -1908,6 +1959,8 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final locale = Localizations.localeOf(context).toLanguageTag();
     final t = AppLocalizations.of(context)!;
+    final compactPhoneLayout =
+        m.isMobile && (m.height < 900 || m.width < 400);
 
     // The source records are always ordered by transaction date, newest first.
     // This is the default view. Grouping by payment month is an optional UI mode
@@ -1975,7 +2028,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
           textAlign: align,
           style: TextStyle(
             color: Colors.white70,
-            fontSize: m.isCompactHeight ? m.text(9) : m.text(10),
+            fontSize: m.text(compactPhoneLayout ? 8.5 : 10),
             fontWeight: FontWeight.w800,
           ),
         );
@@ -1993,10 +2046,12 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
             onTap: onTap,
             borderRadius: BorderRadius.circular(m.radius.sm),
             child: Container(
-              constraints: BoxConstraints(minHeight: m.size(32)),
+              constraints: BoxConstraints(
+                minHeight: m.size(compactPhoneLayout ? 29 : 32),
+              ),
               padding: EdgeInsets.symmetric(
-                horizontal: m.spacing(4),
-                vertical: m.spacing(5),
+                horizontal: m.spacing(compactPhoneLayout ? 2 : 4),
+                vertical: m.spacing(compactPhoneLayout ? 3 : 5),
               ),
               alignment: Alignment.center,
               decoration: BoxDecoration(
@@ -2014,7 +2069,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: selected ? Colors.white : Colors.white60,
-                  fontSize: m.isCompactHeight ? m.text(9) : m.text(10),
+                  fontSize: m.text(compactPhoneLayout ? 8.5 : 10),
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -2027,7 +2082,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
     Widget buildColumnHeader() => Container(
           padding: EdgeInsets.symmetric(
             horizontal: m.spacing(5),
-            vertical: m.spacing(7),
+            vertical: m.spacing(compactPhoneLayout ? 4 : 7),
           ),
           decoration: BoxDecoration(
             color: const Color(0xFF101E2D),
@@ -2101,7 +2156,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: m.spacing(5),
-            vertical: m.isCompactHeight ? m.spacing(5) : m.spacing(7),
+            vertical: m.spacing(compactPhoneLayout ? 2.5 : 6),
           ),
           decoration: BoxDecoration(
             border: Border(
@@ -2118,7 +2173,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                 child: Row(
                   children: [
                     CircleAvatar(
-                      radius: m.isCompactHeight ? m.size(10) : m.size(11),
+                      radius: m.size(compactPhoneLayout ? 10 : 11),
                       backgroundColor: const Color(0xFF182B45),
                       child: isPayment
                           ? Icon(
@@ -2144,9 +2199,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w800,
-                              fontSize: m.isCompactHeight
-                                  ? m.text(10)
-                                  : m.text(11),
+                              fontSize: m.text(compactPhoneLayout ? 9.5 : 11),
                             ),
                           ),
                           Text(
@@ -2155,7 +2208,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: Colors.white54,
-                              fontSize: m.text(8),
+                              fontSize: m.text(compactPhoneLayout ? 7.5 : 8),
                             ),
                           ),
                         ],
@@ -2187,7 +2240,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                                 ? const Color(0xFF42C9FF)
                                 : const Color(0xFF00D99A),
                         fontWeight: FontWeight.w800,
-                        fontSize: m.text(8.5),
+                        fontSize: m.text(compactPhoneLayout ? 8 : 8.5),
                       ),
                     ),
                     if (isInstallment) ...[
@@ -2203,7 +2256,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                         style: TextStyle(
                           color: Colors.white70,
                           fontWeight: FontWeight.w600,
-                          fontSize: m.text(8),
+                          fontSize: m.text(compactPhoneLayout ? 7.5 : 8),
                         ),
                       ),
                     ],
@@ -2225,7 +2278,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                           ? Colors.white54
                           : const Color(0xFFFFBD3F),
                       fontWeight: FontWeight.w700,
-                      fontSize: m.text(9),
+                      fontSize: m.text(compactPhoneLayout ? 8.5 : 9),
                     ),
                   ),
                 ),
@@ -2241,7 +2294,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                   style: TextStyle(
                     color: isPayment ? const Color(0xFF58D6A2) : Colors.white,
                     fontWeight: FontWeight.w900,
-                    fontSize: m.isCompactHeight ? m.text(10) : m.text(12),
+                    fontSize: m.text(compactPhoneLayout ? 10 : 12),
                   ),
                 ),
               ),
@@ -2257,8 +2310,8 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
         children: [
           Container(
             padding: EdgeInsets.symmetric(
-              horizontal: m.spacing(10),
-              vertical: m.spacing(8),
+              horizontal: m.spacing(compactPhoneLayout ? 6 : 10),
+              vertical: m.spacing(compactPhoneLayout ? 4 : 8),
             ),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -2276,15 +2329,15 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                 Icon(
                   Icons.calendar_month_rounded,
                   color: const Color(0xFFFF3D81),
-                  size: m.size(15),
+                  size: m.size(compactPhoneLayout ? 13 : 15),
                 ),
-                SizedBox(width: m.spacing(5)),
+                SizedBox(width: m.spacing(compactPhoneLayout ? 3 : 5)),
                 Expanded(
                   child: Text(
                     DateFormat.yMMMM(locale).format(month),
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: m.text(11),
+                      fontSize: m.text(compactPhoneLayout ? 10 : 11),
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -2295,7 +2348,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                       : '${groupRows.length} ${groupRows.length == 1 ? 'transaction' : 'transactions'}',
                   style: TextStyle(
                     color: Colors.white54,
-                    fontSize: m.text(8),
+                    fontSize: m.text(compactPhoneLayout ? 7.5 : 8),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -2303,7 +2356,9 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
             ),
           ),
           Container(
-            margin: EdgeInsets.only(bottom: m.spacing(8)),
+            margin: EdgeInsets.only(
+              bottom: m.spacing(compactPhoneLayout ? 4 : 8),
+            ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.vertical(
                 bottom: Radius.circular(m.radius.md),
@@ -2328,9 +2383,9 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
         Padding(
           padding: EdgeInsets.fromLTRB(
             m.spacing(2),
-            m.spacing(5),
+            compactPhoneLayout ? m.spacing(2) : m.spacing(5),
             m.spacing(2),
-            m.spacing(4),
+            compactPhoneLayout ? m.spacing(2) : m.spacing(4),
           ),
           child: Row(
             children: [
@@ -2340,7 +2395,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                   style: TextStyle(
                     color: Colors.white70,
                     fontWeight: FontWeight.w800,
-                    fontSize: m.text(11),
+                    fontSize: m.text(compactPhoneLayout ? 10 : 11),
                   ),
                 ),
               ),
@@ -2349,14 +2404,16 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                   onPressed: () => widget.onViewAll?.call(_groupByPaymentMonth),
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFFFF3D81),
-                    padding: EdgeInsets.symmetric(horizontal: m.spacing(4)),
-                    minimumSize: Size(0, m.size(32)),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: m.spacing(compactPhoneLayout ? 2 : 4),
+                    ),
+                    minimumSize: Size(0, m.size(compactPhoneLayout ? 28 : 32)),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: Text(
                     isArabic ? 'عرض الكل' : 'View All',
                     style: TextStyle(
-                      fontSize: m.text(10),
+                      fontSize: m.text(compactPhoneLayout ? 9 : 10),
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -2365,7 +2422,9 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
           ),
         ),
         Container(
-          padding: EdgeInsets.all(m.spacing(3)),
+          padding: EdgeInsets.all(
+            m.spacing(compactPhoneLayout ? 2 : 3),
+          ),
           decoration: BoxDecoration(
             color: const Color(0xFF0A1C29),
             borderRadius: BorderRadius.circular(m.radius.md),
@@ -2382,7 +2441,7 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
                   }
                 },
               ),
-              SizedBox(width: m.spacing(3)),
+              SizedBox(width: m.spacing(compactPhoneLayout ? 2 : 3)),
               modeOption(
                 label: isArabic ? 'شهر الدفع' : 'Payment Month',
                 selected: _groupByPaymentMonth,
@@ -2395,14 +2454,20 @@ class _TransactionsSectionState extends State<_TransactionsSection> {
             ],
           ),
         ),
-        SizedBox(height: m.spacing(4)),
+        SizedBox(
+          height: m.spacing(compactPhoneLayout ? 2 : 4),
+        ),
         buildColumnHeader(),
-        SizedBox(height: m.spacing(3)),
+        SizedBox(
+          height: m.spacing(compactPhoneLayout ? 2 : 3),
+        ),
         if (_groupByPaymentMonth)
           ...visibleMonths.map(buildMonthGroup)
         else
           Container(
-            margin: EdgeInsets.only(bottom: m.spacing(8)),
+            margin: EdgeInsets.only(
+              bottom: m.spacing(compactPhoneLayout ? 4 : 8),
+            ),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(m.radius.md),
               border: Border.all(color: Colors.white.withValues(alpha: .08)),
