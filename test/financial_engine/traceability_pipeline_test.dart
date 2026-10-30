@@ -38,14 +38,31 @@ void main() {
     Hive.init(testDirectory.path);
 
     if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(AccountAdapter());
-    if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(AccountNatureAdapter());
-    if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(AccountGroupAdapter());
-    if (!Hive.isAdapterRegistered(10)) Hive.registerAdapter(TransactionAdapter());
-    if (!Hive.isAdapterRegistered(20)) Hive.registerAdapter(EntryTypeAdapter());
-    if (!Hive.isAdapterRegistered(21)) Hive.registerAdapter(LedgerPurposeAdapter());
-    if (!Hive.isAdapterRegistered(22)) Hive.registerAdapter(LedgerEntryAdapter());
-    if (!Hive.isAdapterRegistered(30)) Hive.registerAdapter(LedgerAccountTypeAdapter());
-    if (!Hive.isAdapterRegistered(31)) Hive.registerAdapter(LedgerAccountAdapter());
+
+    if (!Hive.isAdapterRegistered(2)) {
+      Hive.registerAdapter(AccountNatureAdapter());
+    }
+    if (!Hive.isAdapterRegistered(3)) {
+      Hive.registerAdapter(AccountGroupAdapter());
+    }
+    if (!Hive.isAdapterRegistered(10)) {
+      Hive.registerAdapter(TransactionAdapter());
+    }
+    if (!Hive.isAdapterRegistered(20)) {
+      Hive.registerAdapter(EntryTypeAdapter());
+    }
+    if (!Hive.isAdapterRegistered(21)) {
+      Hive.registerAdapter(LedgerPurposeAdapter());
+    }
+    if (!Hive.isAdapterRegistered(22)) {
+      Hive.registerAdapter(LedgerEntryAdapter());
+    }
+    if (!Hive.isAdapterRegistered(30)) {
+      Hive.registerAdapter(LedgerAccountTypeAdapter());
+    }
+    if (!Hive.isAdapterRegistered(31)) {
+      Hive.registerAdapter(LedgerAccountAdapter());
+    }
 
     transactionBox = await Hive.openBox<Transaction>('transactions');
     accountsBox = await Hive.openBox<Account>('accounts');
@@ -129,39 +146,46 @@ void main() {
     );
   }
 
-  test('successful execution creates durable trace with financial links', () async {
-    final context = FinancialEngineBootstrap.create(
-      balanceService: buildBalanceService(),
-      transactionBox: transactionBox,
-      traceabilityBox: traceabilityBox,
-    );
+  test(
+    'successful execution creates durable trace with financial links',
+    () async {
+      final context = FinancialEngineBootstrap.create(
+        balanceService: buildBalanceService(),
+        transactionBox: transactionBox,
+        traceabilityBox: traceabilityBox,
+      );
 
-    const key = 'trace-success-key';
-    final executionContext = ExecutionContext(
-      idempotencyKey: key,
-      actorMemberId: 'member-42',
-      source: 'manual',
-      commandType: 'ExpenseCommand',
-    );
+      const key = 'trace-success-key';
+      final executionContext = ExecutionContext(
+        idempotencyKey: key,
+        actorMemberId: 'member-42',
+        source: 'manual',
+        commandType: 'ExpenseCommand',
+      );
 
-    final result = await context.engine.execute(
-      buildOperation(key),
-      executionContext,
-    );
+      final result = await context.engine.execute(
+        buildOperation(key),
+        executionContext,
+      );
 
-    expect(result, isA<OperationSucceeded>());
-    expect(traceabilityBox, hasLength(1));
+      expect(result, isA<OperationSucceeded>());
+      expect(traceabilityBox, hasLength(1));
 
-    final trace = context.traceabilityPort;
-    final records = await trace.findByIdempotencyKey(key);
-    expect(records, hasLength(1));
-    expect(records.single.status, 'succeeded');
-    expect(records.single.operationType, 'ExpenseCommand');
-    expect(records.single.actorMemberId, 'member-42');
-    expect(records.single.source, 'manual');
-    expect(records.single.transactionIds, hasLength(1));
-    expect(records.single.mutationIds, isNotEmpty);
-  });
+      final trace = context.traceabilityPort;
+      final records = await trace.findByIdempotencyKey(key);
+      expect(records, hasLength(1));
+      expect(records.single.status, 'succeeded');
+      expect(records.single.operationType, 'ExpenseCommand');
+      expect(records.single.actorMemberId, 'member-42');
+      expect(records.single.source, 'manual');
+      expect(records.single.transactionIds, hasLength(1));
+      expect(records.single.mutationIds, hasLength(1));
+      expect(
+        records.single.mutationIds,
+        contains(context.repository.entries.single.journalEntryId),
+      );
+    },
+  );
 
   test('failed execution is traced without becoming financial truth', () async {
     final context = FinancialEngineBootstrap.create(
@@ -234,8 +258,9 @@ void main() {
       traceabilityBox: traceabilityBox,
     );
 
-    final records = await secondContext.traceabilityPort
-        .findByIdempotencyKey(key);
+    final records = await secondContext.traceabilityPort.findByIdempotencyKey(
+      key,
+    );
     expect(records, hasLength(1));
     expect(records.single.status, 'succeeded');
   });

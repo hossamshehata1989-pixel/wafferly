@@ -7,9 +7,8 @@ final class JournalEntryMutationHandler
     implements FinancialMutationHandler<JournalEntryMutation> {
   final JournalEntryPort _port;
 
-  const JournalEntryMutationHandler({
-    required JournalEntryPort port,
-  }) : _port = port;
+  const JournalEntryMutationHandler({required JournalEntryPort port})
+    : _port = port;
 
   @override
   Future<void> execute(
@@ -19,7 +18,7 @@ final class JournalEntryMutationHandler
     await _port.persist(mutation);
 
     context.registerRollback(() {
-      return _port.delete(mutation.journalEntryId);
+      return _port.delete(mutation);
     });
   }
 }

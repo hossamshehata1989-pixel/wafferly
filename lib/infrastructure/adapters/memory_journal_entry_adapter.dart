@@ -13,7 +13,7 @@ final class MemoryJournalEntryAdapter implements JournalEntryPort {
   }
 
   @override
-  Future<void> delete(String journalEntryId) {
-    return repository.delete(journalEntryId);
+  Future<void> delete(JournalEntryMutation mutation) {
+    return repository.delete(mutation);
   }
 }

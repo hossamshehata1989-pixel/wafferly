@@ -82,7 +82,9 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     final intent = context.intent;
 
     if (intent.amount <= Money.zero) {
-      throw ArgumentError('Credit Card charge amount must be greater than zero.');
+      throw ArgumentError(
+        'Credit Card charge amount must be greater than zero.',
+      );
     }
 
     final categoryId =
@@ -115,7 +117,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       idempotencyKey: context.executionContext.idempotencyKey,
       mutations: [
         JournalEntryMutation(
-          journalEntryId: 'journal-${DateTime.now().microsecondsSinceEpoch}',
+          journalEntryId: _journalEntryIdFor(transactionRecord),
           description: 'Credit Card Charge',
           lines: [
             EntryLine(accountId: expenseAccountId, debit: intent.amount),
@@ -133,9 +135,12 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
   FinancialExecutionPlan _planCreditCardPayment(PlanningContext context) {
     final intent = context.intent;
     if (intent.amount <= Money.zero) {
-      throw ArgumentError('Credit Card payment amount must be greater than zero.');
+      throw ArgumentError(
+        'Credit Card payment amount must be greater than zero.',
+      );
     }
-    final creditCardAccountId = intent.destinationAccountId ??
+    final creditCardAccountId =
+        intent.destinationAccountId ??
         (throw StateError('Credit Card liability account is required'));
 
     final transactionRecord = FinancialTransactionRecord(
@@ -163,7 +168,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       mutations: [
         CreateTransactionMutation(record: transactionRecord),
         JournalEntryMutation(
-          journalEntryId: 'journal-credit-card-payment-$timestamp',
+          journalEntryId: _journalEntryIdFor(transactionRecord),
           description: 'Credit Card Payment',
           lines: [
             EntryLine(accountId: creditCardAccountId, debit: intent.amount),
@@ -211,7 +216,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       idempotencyKey: 'temporary',
       mutations: [
         JournalEntryMutation(
-          journalEntryId: 'journal-1',
+          journalEntryId: _journalEntryIdFor(transactionRecord),
           description: 'Expense',
           lines: [
             EntryLine(accountId: expenseAccountId, debit: intent.amount),
@@ -256,7 +261,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       idempotencyKey: 'temporary',
       mutations: [
         JournalEntryMutation(
-          journalEntryId: 'journal-1',
+          journalEntryId: _journalEntryIdFor(transactionRecord),
           description: 'Income',
           lines: [
             EntryLine(accountId: intent.sourceAccountId, debit: intent.amount),
@@ -300,7 +305,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       mutations: [
         CreateTransactionMutation(record: transactionRecord),
         JournalEntryMutation(
-          journalEntryId: 'journal-1',
+          journalEntryId: _journalEntryIdFor(transactionRecord),
           description: 'Transfer',
           lines: [
             EntryLine(accountId: destinationAccountId, debit: intent.amount),
@@ -345,7 +350,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       mutations: [
         CreateTransactionMutation(record: transactionRecord),
         JournalEntryMutation(
-          journalEntryId: 'journal-1',
+          journalEntryId: _journalEntryIdFor(transactionRecord),
           description: 'Commitment Payment',
           lines: [
             EntryLine(accountId: liabilityAccountId, debit: intent.amount),
@@ -392,7 +397,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
 
         // 2. Accounting
         JournalEntryMutation(
-          journalEntryId: 'journal-1',
+          journalEntryId: _journalEntryIdFor(transactionRecord),
           description: 'Goal Transfer',
           lines: [
             EntryLine(accountId: destinationAccountId, debit: intent.amount),
@@ -452,7 +457,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       mutations: [
         CreateTransactionMutation(record: transactionRecord),
         JournalEntryMutation(
-          journalEntryId: 'journal-1',
+          journalEntryId: _journalEntryIdFor(transactionRecord),
           description: 'Goal Saving Transfer',
           lines: [
             EntryLine(accountId: destinationAccountId, debit: intent.amount),
@@ -520,7 +525,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       idempotencyKey: 'temporary',
       mutations: [
         JournalEntryMutation(
-          journalEntryId: 'journal-1',
+          journalEntryId: _journalEntryIdFor(transactionRecord),
           description: 'Opening Balance',
           lines: accountReceivesDebit
               ? [
@@ -537,9 +542,9 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     );
   }
 
-
   FinancialExecutionPlan _planBalanceReconciliation(PlanningContext context) {
-    final reconciliation = context.balanceReconciliation ??
+    final reconciliation =
+        context.balanceReconciliation ??
         (throw StateError('Balance reconciliation context is required'));
 
     final difference = reconciliation.difference;
@@ -562,10 +567,14 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
     // liability decreased: the liability is debited and equity is credited.
     final debitAccountId = reconciliation.isLiability
         ? (difference > Money.zero ? reconciliation.accountId : equityAccountId)
-        : (difference > Money.zero ? reconciliation.accountId : equityAccountId);
+        : (difference > Money.zero
+              ? reconciliation.accountId
+              : equityAccountId);
     final creditAccountId = reconciliation.isLiability
         ? (difference > Money.zero ? equityAccountId : reconciliation.accountId)
-        : (difference > Money.zero ? equityAccountId : reconciliation.accountId);
+        : (difference > Money.zero
+              ? equityAccountId
+              : reconciliation.accountId);
 
     final transactionId =
         'reconciliation-${context.executionContext.idempotencyKey}';
@@ -598,7 +607,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       idempotencyKey: context.executionContext.idempotencyKey,
       mutations: [
         JournalEntryMutation(
-          journalEntryId: 'journal-$transactionId',
+          journalEntryId: _journalEntryIdFor(transactionRecord),
           description: 'Balance Reconciliation',
           lines: [
             EntryLine(accountId: debitAccountId, debit: amount),
@@ -611,7 +620,8 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
   }
 
   FinancialExecutionPlan _planCorrection(PlanningContext context) {
-    final correction = context.correction ??
+    final correction =
+        context.correction ??
         (throw StateError('Correction context is required'));
 
     final before = correction.before;
@@ -679,15 +689,13 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       planId: 'plan-$correctionId',
       operationId: correctionId,
       idempotencyKey: context.executionContext.idempotencyKey,
-      mutations: [
-        CreateCorrectionMutation(record: record),
-      ],
+      mutations: [CreateCorrectionMutation(record: record)],
     );
   }
 
   FinancialExecutionPlan _planDeletion(PlanningContext context) {
-    final deletion = context.deletion ??
-        (throw StateError('Deletion context is required'));
+    final deletion =
+        context.deletion ?? (throw StateError('Deletion context is required'));
 
     final invalidationId =
         'invalidation-${context.executionContext.idempotencyKey}';
@@ -702,9 +710,11 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
       planId: 'plan-$invalidationId',
       operationId: invalidationId,
       idempotencyKey: context.executionContext.idempotencyKey,
-      mutations: [
-        InvalidateTransactionMutation(record: record),
-      ],
+      mutations: [InvalidateTransactionMutation(record: record)],
     );
+  }
+
+  String _journalEntryIdFor(FinancialTransactionRecord transactionRecord) {
+    return 'journal-${transactionRecord.transactionId}';
   }
 }

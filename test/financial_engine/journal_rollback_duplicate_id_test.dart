@@ -13,95 +13,49 @@ import 'package:wafferly/infrastructure/memory/memory_journal_entry_repository.d
 
 void main() {
   test(
-    'KNOWN_BUG: rolling back a second journal-1 entry removes the first successful entry',
+    'rolling back a second journal entry with the same ID preserves the first entry',
     () async {
       final repository = MemoryJournalEntryRepository();
       final executor = _buildExecutor(repository);
 
+      final firstMutation = JournalEntryMutation(
+        journalEntryId: 'journal-1',
+        description: 'first-successful-entry',
+        lines: const [],
+      );
       final firstResult = await executor.execute(
-        const FinancialExecutionPlan(
+        FinancialExecutionPlan(
           planId: 'plan-first-success',
           operationId: 'operation-first-success',
           idempotencyKey: 'key-first-success',
-          mutations: <FinancialMutation>[
-            JournalEntryMutation(
-              journalEntryId: 'journal-1',
-              description: 'first-successful-entry',
-              lines: [],
-            ),
-          ],
+          mutations: <FinancialMutation>[firstMutation],
         ),
       );
 
       expect(firstResult, isA<OperationSucceeded>());
       expect(repository.entries, hasLength(1));
-      expect(repository.entries.single.description, 'first-successful-entry');
+      expect(repository.entries.single, same(firstMutation));
 
+      final secondMutation = JournalEntryMutation(
+        journalEntryId: 'journal-1',
+        description: 'second-failing-entry',
+        lines: const [],
+      );
       final secondResult = await executor.execute(
-        const FinancialExecutionPlan(
+        FinancialExecutionPlan(
           planId: 'plan-second-failure',
           operationId: 'operation-second-failure',
           idempotencyKey: 'key-second-failure',
-          mutations: <FinancialMutation>[
-            JournalEntryMutation(
-              journalEntryId: 'journal-1',
-              description: 'second-failing-entry',
-              lines: [],
-            ),
-            _FailMutation(),
-          ],
+          mutations: <FinancialMutation>[secondMutation, const _FailMutation()],
         ),
       );
 
       expect(secondResult, isA<OperationFailed>());
       expect(repository.entries, hasLength(1));
-      // MemoryJournalEntryRepository.delete uses indexWhere and removes the
-      // first matching ID, so the successful record is removed instead.
-      expect(repository.entries.single.description, 'second-failing-entry');
-    },
-  );
-
-  test(
-    'M2 REGRESSION: rollback removes only the journal entry from the failed operation',
-    () async {
-      final repository = MemoryJournalEntryRepository();
-      final executor = _buildExecutor(repository);
-
-      await executor.execute(
-        const FinancialExecutionPlan(
-          planId: 'plan-first-success',
-          operationId: 'operation-first-success',
-          idempotencyKey: 'key-first-success',
-          mutations: <FinancialMutation>[
-            JournalEntryMutation(
-              journalEntryId: 'journal-1',
-              description: 'first-successful-entry',
-              lines: [],
-            ),
-          ],
-        ),
-      );
-
-      await executor.execute(
-        const FinancialExecutionPlan(
-          planId: 'plan-second-failure',
-          operationId: 'operation-second-failure',
-          idempotencyKey: 'key-second-failure',
-          mutations: <FinancialMutation>[
-            JournalEntryMutation(
-              journalEntryId: 'journal-1',
-              description: 'second-failing-entry',
-              lines: [],
-            ),
-            _FailMutation(),
-          ],
-        ),
-      );
-
-      expect(repository.entries, hasLength(1));
+      expect(repository.entries.single, same(firstMutation));
       expect(repository.entries.single.description, 'first-successful-entry');
+      expect(repository.entries, isNot(contains(secondMutation)));
     },
-    skip: 'يتفعّل في M2 بعد ربط rollback بسجل العملية نفسها بدل المعرّف المتكرر.',
   );
 }
 

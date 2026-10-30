@@ -3,5 +3,5 @@ import '../mutations/journal_entry_mutation.dart';
 abstract interface class JournalEntryPort {
   Future<void> persist(JournalEntryMutation mutation);
 
-  Future<void> delete(String journalEntryId);
+  Future<void> delete(JournalEntryMutation mutation);
 }

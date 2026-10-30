@@ -17,14 +17,12 @@ final class MemoryJournalEntryRepository
   }
 
   @override
-  Future<void> delete(String journalEntryId) async {
-    final index = _entries.indexWhere(
-      (entry) => entry.journalEntryId == journalEntryId,
-    );
+  Future<void> delete(JournalEntryMutation mutation) async {
+    final index = _entries.indexWhere((entry) => identical(entry, mutation));
 
     if (index == -1) {
       throw StateError(
-        'Journal entry not found: $journalEntryId',
+        'Journal mutation not found: ${mutation.journalEntryId}',
       );
     }
 
