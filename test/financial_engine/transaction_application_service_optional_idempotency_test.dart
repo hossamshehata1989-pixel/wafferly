@@ -25,7 +25,6 @@ void main() {
   late Box<Transaction> transactionBox;
   late Box<Account> accountsBox;
   late Box<LedgerEntry> ledgerBox;
-  late Box<LedgerAccount> ledgerAccountsBox;
   late Box<Map> idempotencyBox;
 
   setUpAll(() async {
@@ -61,7 +60,7 @@ void main() {
     transactionBox = await Hive.openBox<Transaction>('transactions');
     accountsBox = await Hive.openBox<Account>('accounts');
     ledgerBox = await Hive.openBox<LedgerEntry>('ledger_entries');
-    ledgerAccountsBox = await Hive.openBox<LedgerAccount>('ledger_accounts');
+await Hive.openBox<LedgerAccount>('ledger_accounts');
     idempotencyBox = await Hive.openBox<Map>('financial_idempotency_test');
     await LedgerAccountSeeder().seedIfNeeded();
   });
