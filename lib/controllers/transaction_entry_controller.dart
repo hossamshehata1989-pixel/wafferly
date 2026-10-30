@@ -1,6 +1,9 @@
 // lib/controllers/transaction_entry_controller.dart
 
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/account.dart';
 import '../models/transaction.dart';
@@ -58,8 +61,12 @@ class SaveResult {
 }
 
 class TransactionEntryController extends ChangeNotifier {
+  static const Uuid _uuid = Uuid();
+
   final TransactionApplicationService _transactionService;
   final AccountService _accountService = AccountService();
+  late final ValueListenable<Box<Account>> _accountsListenable =
+      _accountService.accountsListenable;
   final CalculatorEngine _calculatorEngine = CalculatorEngine();
   CalculatorState _calculatorState = CalculatorState.initial;
 
@@ -68,13 +75,13 @@ class TransactionEntryController extends ChangeNotifier {
   }) : _transactionService = transactionService {
     _initializeDefaultMember();
     // ✅ الاستماع لتغييرات الحسابات عبر AccountService
-    _accountService.accountsListenable.addListener(_syncAccountSelection);
+    _accountsListenable.addListener(_syncAccountSelection);
     _syncAccountSelection();
   }
 
   @override
   void dispose() {
-    _accountService.accountsListenable.removeListener(_syncAccountSelection);
+    _accountsListenable.removeListener(_syncAccountSelection);
     super.dispose();
   }
 
@@ -120,6 +127,9 @@ class TransactionEntryController extends ChangeNotifier {
     if (exists) return;
 
     final account = accounts.first;
+    if (_selectedAccountId != account.id) {
+      _invalidateEntryIdempotencyKey();
+    }
     _selectedAccountId = account.id;
     _selectedAccountName = account.name;
   }
@@ -148,6 +158,16 @@ class TransactionEntryController extends ChangeNotifier {
   String _selectedTransactionType = TransactionType.expense;
   SaveStatus _saveStatus = SaveStatus.idle;
   Transaction? _editingTransaction;
+
+  // Stable identity for the current manual Expense/Income draft. The signature
+  // guards against a missed invalidation; setters also invalidate on edits so
+  // changing a value and then restoring it still creates a new user intent.
+  String? _entryIdempotencyKey;
+  String? _entryIdempotencySignature;
+
+  // Transfer has a separate draft and therefore a separate idempotency key.
+  String? _transferIdempotencyKey;
+  String? _transferIdempotencySignature;
 
   // Stable logical identity for the current installment workflow. It is reused
   // on retries so the Financial Engine sees the same idempotency keys instead
@@ -285,27 +305,23 @@ class TransactionEntryController extends ChangeNotifier {
     return activeAccounts.where(_isExpenseSource).toList();
   }
 
-  List<Account> get savingsAccounts => activeAccounts
-      .where((acc) => acc.group == AccountGroup.savings)
-      .toList();
+  List<Account> get savingsAccounts =>
+      activeAccounts.where((acc) => acc.group == AccountGroup.savings).toList();
 
-  List<Account> get prepaidAccounts => activeAccounts
-      .where((acc) => acc.type == 'prepaid')
-      .toList();
+  List<Account> get prepaidAccounts =>
+      activeAccounts.where((acc) => acc.type == 'prepaid').toList();
 
   List<Account> get creditCardAccounts => activeAccounts
       .where(
         (acc) =>
-            acc.group == AccountGroup.liabilities &&
-            acc.type == 'creditCard',
+            acc.group == AccountGroup.liabilities && acc.type == 'creditCard',
       )
       .toList();
 
   List<Account> get installmentProviderAccounts => activeAccounts
       .where(
         (acc) =>
-            acc.group == AccountGroup.liabilities &&
-            acc.type == 'installment',
+            acc.group == AccountGroup.liabilities && acc.type == 'installment',
       )
       .toList();
 
@@ -342,6 +358,7 @@ class TransactionEntryController extends ChangeNotifier {
       );
     }
 
+    _invalidateEntryIdempotencyKey();
     _isCreditCardEntryContext = true;
     _creditCardInstallmentOnly = installmentOnly;
     _lockedCreditCardSourceAccountId = account.id;
@@ -362,6 +379,9 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   void setExpensePaymentMode(ExpensePaymentMode mode) {
+    if (_expensePaymentMode != mode) {
+      _invalidateEntryIdempotencyKey();
+    }
     if (_creditCardInstallmentOnly && mode != ExpensePaymentMode.installment) {
       _expensePaymentMode = ExpensePaymentMode.installment;
       notifyListeners();
@@ -475,6 +495,10 @@ class TransactionEntryController extends ChangeNotifier {
   // ==============================
 
   void setAmount(String v) {
+    if (_amount != v) {
+      _invalidateEntryIdempotencyKey();
+      _invalidateTransferIdempotencyKey();
+    }
     _amount = v;
     _syncCalculatorState();
     notifyListeners();
@@ -486,11 +510,19 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   void setSelectedDate(DateTime v) {
+    if (_selectedDate != v) {
+      _invalidateEntryIdempotencyKey();
+      _invalidateTransferIdempotencyKey();
+    }
     _selectedDate = v;
     notifyListeners();
   }
 
   void setNote(String v) {
+    if (_note != v) {
+      _invalidateEntryIdempotencyKey();
+      _invalidateTransferIdempotencyKey();
+    }
     _note = v;
     notifyListeners();
   }
@@ -504,6 +536,9 @@ class TransactionEntryController extends ChangeNotifier {
     if (isCreditCardEntrySourceLocked &&
         id != _lockedCreditCardSourceAccountId) {
       return;
+    }
+    if (_selectedAccountId != id) {
+      _invalidateEntryIdempotencyKey();
     }
     _selectedAccountId = id;
     _selectedAccountName = name;
@@ -524,18 +559,27 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   void selectFromAccount(String id, String name) {
+    if (_selectedFromAccountId != id) {
+      _invalidateTransferIdempotencyKey();
+    }
     _selectedFromAccountId = id;
     _selectedFromAccountName = name;
     notifyListeners();
   }
 
   void selectToAccount(String id, String name) {
+    if (_selectedToAccountId != id) {
+      _invalidateTransferIdempotencyKey();
+    }
     _selectedToAccountId = id;
     _selectedToAccountName = name;
     notifyListeners();
   }
 
   void selectCategory(String id) {
+    if (_selectedCategoryId != id) {
+      _invalidateEntryIdempotencyKey();
+    }
     _selectedCategoryId = id;
     notifyListeners();
   }
@@ -543,11 +587,13 @@ class TransactionEntryController extends ChangeNotifier {
   void selectMember(String memberId) {
     if (_selectedMemberId == memberId) return;
 
+    _invalidateEntryIdempotencyKey();
     _selectedMemberId = memberId;
     notifyListeners();
   }
 
   void toggleExceptional() {
+    _invalidateEntryIdempotencyKey();
     _isExceptional = !_isExceptional;
     notifyListeners();
   }
@@ -620,11 +666,16 @@ class TransactionEntryController extends ChangeNotifier {
 
   // =======================================================
   void setTransactionType(String type) {
+    if (_selectedTransactionType != type || _selectedCategoryId.isNotEmpty) {
+      _invalidateEntryIdempotencyKey();
+    }
     if (isCreditCardEntrySourceLocked) {
       _selectedTransactionType = TransactionType.creditCardCharge;
       _selectedAccountId = _lockedCreditCardSourceAccountId!;
       _selectedAccountName =
-          Hive.box<Account>('accounts').get(_lockedCreditCardSourceAccountId!)?.name ??
+          Hive.box<Account>(
+            'accounts',
+          ).get(_lockedCreditCardSourceAccountId!)?.name ??
           _selectedAccountName;
       _paymentMethod = 'credit_card';
       notifyListeners();
@@ -650,6 +701,8 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   void loadTransaction(Transaction tx) {
+    _invalidateEntryIdempotencyKey();
+    _invalidateTransferIdempotencyKey();
     _installmentWorkflowId = null;
     _installmentWorkflowSignature = null;
     _editingTransaction = tx;
@@ -691,6 +744,10 @@ class TransactionEntryController extends ChangeNotifier {
   void onCalculatorTap(String value) {
     final newState = _calculatorEngine.press(_calculatorState, value);
 
+    if (_amount != newState.expression) {
+      _invalidateEntryIdempotencyKey();
+      _invalidateTransferIdempotencyKey();
+    }
     _calculatorState = newState;
     _amount = newState.expression;
 
@@ -739,6 +796,64 @@ class TransactionEntryController extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  void _invalidateEntryIdempotencyKey() {
+    _entryIdempotencyKey = null;
+    _entryIdempotencySignature = null;
+  }
+
+  void _invalidateTransferIdempotencyKey() {
+    _transferIdempotencyKey = null;
+    _transferIdempotencySignature = null;
+  }
+
+  String _ensureEntryIdempotencyKey({
+    required String operationType,
+    required double amount,
+    required String categoryId,
+    required bool isExceptional,
+  }) {
+    final signature = jsonEncode(<Object?>[
+      operationType,
+      _selectedAccountId,
+      amount.toString(),
+      categoryId,
+      _selectedDate.toIso8601String(),
+      _selectedDate.isUtc,
+      _note.isEmpty ? null : _note,
+      isExceptional,
+      _selectedMemberId,
+    ]);
+
+    if (_entryIdempotencyKey == null ||
+        _entryIdempotencySignature != signature) {
+      _entryIdempotencyKey = 'transaction-entry-${_uuid.v4()}';
+      _entryIdempotencySignature = signature;
+    }
+
+    return _entryIdempotencyKey!;
+  }
+
+  String _ensureTransferIdempotencyKey({required double amount}) {
+    final signature = jsonEncode(<Object?>[
+      'transfer',
+      _selectedFromAccountId,
+      _selectedToAccountId,
+      amount.toString(),
+      _selectedDate.toIso8601String(),
+      _selectedDate.isUtc,
+      _note.isEmpty ? null : _note,
+      transferCurrency,
+    ]);
+
+    if (_transferIdempotencyKey == null ||
+        _transferIdempotencySignature != signature) {
+      _transferIdempotencyKey = 'transaction-transfer-${_uuid.v4()}';
+      _transferIdempotencySignature = signature;
+    }
+
+    return _transferIdempotencyKey!;
   }
 
   Future<SaveResult> submitEntry() async {
@@ -877,14 +992,22 @@ class TransactionEntryController extends ChangeNotifier {
 
         result = await _transactionService.updateExpense(updated);
       } else {
+        final categoryId = _getMainCategoryId(_selectedCategoryId);
+        final idempotencyKey = _ensureEntryIdempotencyKey(
+          operationType: TransactionType.expense,
+          amount: amountValue,
+          categoryId: categoryId,
+          isExceptional: isExceptional,
+        );
         result = await _transactionService.addExpense(
           sourceAccountId: _selectedAccountId,
           amount: amountValue,
-          categoryId: _getMainCategoryId(_selectedCategoryId),
+          categoryId: categoryId,
           occurredAt: _selectedDate,
           note: _note.isEmpty ? null : _note,
           isExceptional: isExceptional,
           actorMemberId: _selectedMemberId,
+          idempotencyKey: idempotencyKey,
         );
       }
 
@@ -920,14 +1043,22 @@ class TransactionEntryController extends ChangeNotifier {
 
         result = await _transactionService.updateIncome(updated);
       } else {
+        final categoryId = _getMainCategoryId(_selectedCategoryId);
+        final idempotencyKey = _ensureEntryIdempotencyKey(
+          operationType: TransactionType.income,
+          amount: amountValue,
+          categoryId: categoryId,
+          isExceptional: isExceptional,
+        );
         result = await _transactionService.addIncome(
           sourceAccountId: _selectedAccountId,
           amount: amountValue,
-          categoryId: _getMainCategoryId(_selectedCategoryId),
+          categoryId: categoryId,
           occurredAt: _selectedDate,
           note: _note.isEmpty ? null : _note,
           isExceptional: isExceptional,
           actorMemberId: _selectedMemberId,
+          idempotencyKey: idempotencyKey,
         );
       }
 
@@ -988,7 +1119,8 @@ class TransactionEntryController extends ChangeNotifier {
           creditCardAccountId != _lockedCreditCardSourceAccountId) {
         return const SaveResult(
           success: false,
-          errorMessage: 'This purchase must use the credit card that opened the screen.',
+          errorMessage:
+              'This purchase must use the credit card that opened the screen.',
         );
       }
       final amountValue = double.tryParse(_amount) ?? 0;
@@ -1082,11 +1214,12 @@ class TransactionEntryController extends ChangeNotifier {
           }
 
           final outstanding = _creditCardOutstanding(source.id);
-          final availableCredit =
-              (profile.creditLimit.toDouble() - outstanding)
-                  .clamp(0.0, double.infinity)
-                  .toDouble();
-          final requiredCredit = isSameFinancingCard ? amountValue : downPayment;
+          final availableCredit = (profile.creditLimit.toDouble() - outstanding)
+              .clamp(0.0, double.infinity)
+              .toDouble();
+          final requiredCredit = isSameFinancingCard
+              ? amountValue
+              : downPayment;
           if (requiredCredit > availableCredit + 0.000001) {
             return SaveResult(
               success: false,
@@ -1117,10 +1250,8 @@ class TransactionEntryController extends ChangeNotifier {
       );
       final workflowId = _ensureInstallmentWorkflowId(workflowSignature);
 
-      final chargeIdempotencyKey =
-          'installment:$workflowId:credit-card-charge';
-      final downPaymentIdempotencyKey =
-          'installment:$workflowId:down-payment';
+      final chargeIdempotencyKey = 'installment:$workflowId:credit-card-charge';
+      final downPaymentIdempotencyKey = 'installment:$workflowId:down-payment';
 
       debugPrint(
         'INSTALLMENT WORKFLOW: id=$workflowId signature=$workflowSignature',
@@ -1142,9 +1273,7 @@ class TransactionEntryController extends ChangeNotifier {
             : null,
         occurredAt: _selectedDate,
         currencyCode: card.currency,
-        note: _note.isEmpty
-            ? 'Installment purchase'
-            : '$_note • Installment',
+        note: _note.isEmpty ? 'Installment purchase' : '$_note • Installment',
         actorMemberId: _selectedMemberId,
         idempotencyKey: chargeIdempotencyKey,
         isExceptional: isExceptional,
@@ -1164,9 +1293,9 @@ class TransactionEntryController extends ChangeNotifier {
 
       final chargeTransactionId =
           chargeResult.summary.createdTransactionIds.first;
-      final charge = Hive.box<Transaction>('transactions').get(
-        chargeTransactionId,
-      );
+      final charge = Hive.box<Transaction>(
+        'transactions',
+      ).get(chargeTransactionId);
       if (charge == null) {
         return const SaveResult(
           success: false,
@@ -1179,14 +1308,14 @@ class TransactionEntryController extends ChangeNotifier {
       // derived from charge.id, so retries converge on the same contract,
       // schedule, rule and installments.
       try {
-        final conversionResult =
-            await CreditCardFinancingApplicationService().convertCharge(
-          charge: charge,
-          installmentCount: installmentCount,
-          firstDueDate: firstDueDate,
-          // This is an installment purchase from the outset, even when entered late.
-          effectiveDate: charge.date,
-        );
+        final conversionResult = await CreditCardFinancingApplicationService()
+            .convertCharge(
+              charge: charge,
+              installmentCount: installmentCount,
+              firstDueDate: firstDueDate,
+              // This is an installment purchase from the outset, even when entered late.
+              effectiveDate: charge.date,
+            );
 
         debugPrint(
           'INSTALLMENT CONVERSION: alreadyCompleted=${conversionResult.alreadyCompleted} '
@@ -1212,8 +1341,9 @@ class TransactionEntryController extends ChangeNotifier {
       // covers the full purchase amount. Both mutations use stable,
       // workflow-derived idempotency keys.
       if (downPayment > 0) {
-        final downPaymentSource =
-            Hive.box<Account>('accounts').get(downPaymentAccountId);
+        final downPaymentSource = Hive.box<Account>(
+          'accounts',
+        ).get(downPaymentAccountId);
 
         if (downPaymentSource == null) {
           return const SaveResult(
@@ -1233,9 +1363,7 @@ class TransactionEntryController extends ChangeNotifier {
                 : null,
             occurredAt: _selectedDate,
             currencyCode: downPaymentSource.currency,
-            note: _note.isEmpty
-                ? 'Down payment'
-                : '$_note • Down payment',
+            note: _note.isEmpty ? 'Down payment' : '$_note • Down payment',
             actorMemberId: _selectedMemberId,
             idempotencyKey: downPaymentIdempotencyKey,
             isExceptional: isExceptional,
@@ -1372,9 +1500,7 @@ class TransactionEntryController extends ChangeNotifier {
     try {
       final result = await _transactionService.delete(transactionId);
       if (result is! OperationSucceeded) {
-        debugPrint(
-          'INSTALLMENT ROLLBACK FAILED for $transactionId: $result',
-        );
+        debugPrint('INSTALLMENT ROLLBACK FAILED for $transactionId: $result');
       }
     } catch (error) {
       debugPrint('INSTALLMENT ROLLBACK ERROR for $transactionId: $error');
@@ -1450,6 +1576,7 @@ class TransactionEntryController extends ChangeNotifier {
         toAccountId: _selectedToAccountId,
         amount: amountValue,
         occurredAt: _selectedDate,
+        idempotencyKey: _ensureTransferIdempotencyKey(amount: amountValue),
         note: _note.isEmpty ? null : _note,
       );
 
@@ -1504,6 +1631,7 @@ class TransactionEntryController extends ChangeNotifier {
   // ==============================
 
   void _resetExpenseForm() {
+    _invalidateEntryIdempotencyKey();
     _installmentWorkflowId = null;
     _installmentWorkflowSignature = null;
     _amount = "0";
@@ -1520,8 +1648,9 @@ class TransactionEntryController extends ChangeNotifier {
 
     _selectBestAccount();
     if (isCreditCardEntrySourceLocked) {
-      final fixedAccount = Hive.box<Account>('accounts')
-          .get(_lockedCreditCardSourceAccountId);
+      final fixedAccount = Hive.box<Account>(
+        'accounts',
+      ).get(_lockedCreditCardSourceAccountId);
       if (fixedAccount != null) {
         _selectedAccountId = fixedAccount.id;
         _selectedAccountName = fixedAccount.name;
@@ -1546,6 +1675,7 @@ class TransactionEntryController extends ChangeNotifier {
   }
 
   void _resetTransferForm() {
+    _invalidateTransferIdempotencyKey();
     _amount = "0";
     _syncCalculatorState();
     _expression = "";
