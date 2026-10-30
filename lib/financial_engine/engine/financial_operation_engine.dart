@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../domain_guard/domain_guard_pipeline.dart';
 import '../execution/financial_executor.dart';
 import '../execution_context/execution_context.dart';
+import '../idempotency/financial_operation_fingerprint.dart';
 import '../idempotency/idempotency_guard.dart';
 import '../mutations/create_correction_mutation.dart';
 import '../mutations/create_transaction_mutation.dart';
@@ -47,29 +48,88 @@ final class FinancialOperationEngine {
        _idempotencyGuard = idempotencyGuard,
        _traceabilityPort = traceabilityPort;
 
+  /// Executes a financial operation through the fingerprint-aware guard.
+  ///
+  /// The guard reservation is created synchronously before store lookup or
+  /// financial execution begins. Same-key/same-request calls share one Future.
   Future<OperationResult> execute(
     FinancialOperation operation,
     ExecutionContext context,
   ) async {
-    // ====================================================
-    // Step 0 — Idempotency
-    // ====================================================
-
-    final cached = await _idempotencyGuard.check(context);
-
-    if (cached != null) {
-      debugPrint('ENGINE: Idempotency cache hit');
-      return cached;
-    }
-
     final startedAt = DateTime.now();
+    _FinancialOperationExecution? execution;
 
+    try {
+      final fingerprint = FinancialOperationFingerprint.compute(
+        operation: operation,
+        executionContext: context,
+      );
+
+      final result = await _idempotencyGuard.run(
+        key: context.idempotencyKey,
+        requestFingerprint: fingerprint,
+        action: () async {
+          execution = await _executeOnce(operation: operation);
+          return execution!.result;
+        },
+      );
+
+      // Persist traceability after the Guard has durably remembered a success.
+      // A cache hit has no local execution outcome and therefore adds no trace.
+      final completedExecution = execution;
+      if (completedExecution != null) {
+        await _recordTrace(
+          operation: operation,
+          context: context,
+          startedAt: startedAt,
+          status: completedExecution.status,
+          operationId: completedExecution.operationId,
+          transactionIds: completedExecution.transactionIds,
+          mutationIds: completedExecution.mutationIds,
+          error: completedExecution.error,
+        );
+      }
+
+      return result;
+    } on IdempotencyConflictException catch (error, stackTrace) {
+      debugPrint('ENGINE: Idempotency conflict: $error');
+      debugPrint(stackTrace.toString());
+      await _recordTrace(
+        operation: operation,
+        context: context,
+        startedAt: startedAt,
+        status: 'idempotency_conflict',
+        operationId: execution?.operationId,
+        transactionIds: execution?.transactionIds ?? const <String>[],
+        mutationIds: execution?.mutationIds ?? const <String>[],
+        error: error.toString(),
+      );
+      return OperationFailed(error: error.toString());
+    } catch (error, stackTrace) {
+      debugPrint('ENGINE: Execution boundary exception: $error');
+      debugPrint(stackTrace.toString());
+      await _recordTrace(
+        operation: operation,
+        context: context,
+        startedAt: startedAt,
+        status: 'failed',
+        operationId: execution?.operationId,
+        transactionIds: execution?.transactionIds ?? const <String>[],
+        mutationIds: execution?.mutationIds ?? const <String>[],
+        error: error.toString(),
+      );
+      return OperationFailed(error: error.toString());
+    }
+  }
+
+  Future<_FinancialOperationExecution> _executeOnce({
+    required FinancialOperation operation,
+  }) async {
     // ====================================================
     // Step 1 — Interpretation
     // ====================================================
 
     final intent = _interpreter.interpret(operation);
-
     debugPrint('ENGINE: Interpreter ✓');
 
     // ====================================================
@@ -79,15 +139,14 @@ final class FinancialOperationEngine {
     final domainResult = await _domainGuardPipeline.validate(intent);
 
     if (domainResult.hasViolation) {
-      final result = DomainViolationResult(reason: domainResult.violation!.reason);
-      await _recordTrace(
-        operation: operation,
-        context: context,
-        startedAt: startedAt,
+      final result = DomainViolationResult(
+        reason: domainResult.violation!.reason,
+      );
+      return _FinancialOperationExecution(
+        result: result,
         status: 'domain_violation',
         error: result.reason,
       );
-      return result;
     }
 
     debugPrint('ENGINE: DomainGuard ✓');
@@ -97,7 +156,7 @@ final class FinancialOperationEngine {
     }
 
     // ====================================================
-    // Step 3 — Policy
+    // Step 3 — Policy, Planning, Integrity and Execution
     // ====================================================
 
     try {
@@ -110,94 +169,59 @@ final class FinancialOperationEngine {
 
       if (policyResult is PolicyRejected) {
         final result = OperationRejected(reason: policyResult.reason);
-        await _recordTrace(
-          operation: operation,
-          context: context,
-          startedAt: startedAt,
+        return _FinancialOperationExecution(
+          result: result,
           status: 'rejected',
           error: result.reason,
         );
-        return result;
       }
 
       if (policyResult is PolicyRequiresConfirmation) {
         final result = ConfirmationRequired(options: policyResult.options);
-        await _recordTrace(
-          operation: operation,
-          context: context,
-          startedAt: startedAt,
+        return _FinancialOperationExecution(
+          result: result,
           status: 'confirmation_required',
         );
-        return result;
       }
 
       debugPrint('ENGINE: Policy ✓');
-
-      // ====================================================
-      // Step 4 — Planning
-      // ====================================================
 
       final planningContext = operation.createPlanningContext(
         intent: intent,
         constraints: domainResult.constraints,
       );
-
       final plan = await _planner.build(planningContext);
-
       debugPrint('ENGINE: Planner ✓');
 
-      // ====================================================
-      // Step 5 — Integrity
-      // ====================================================
-
       _integrityChecker.validate(plan);
-
       debugPrint('ENGINE: Integrity ✓');
 
-      // ====================================================
-      // Step 6 — Execution
-      // ====================================================
-
       debugPrint('ENGINE: Executor...');
-
       final result = await _executor.execute(plan);
-
       debugPrint('ENGINE RESULT = ${result.runtimeType}');
 
       if (result is OperationFailed) {
         debugPrint(result.toString());
       }
 
-      if (result is OperationSucceeded) {
-        await _idempotencyGuard.remember(context, result);
-      }
-
-      await _recordTrace(
-        operation: operation,
-        context: context,
-        startedAt: startedAt,
+      return _FinancialOperationExecution(
+        result: result,
         status: result is OperationSucceeded ? 'succeeded' : 'failed',
         operationId: plan.operationId,
         transactionIds: _transactionIds(plan.mutations),
         mutationIds: _mutationIds(plan.mutations),
         error: result is OperationFailed ? result.error.toString() : null,
       );
+    } catch (error, stackTrace) {
+      debugPrint('POLICY/EXECUTION EXCEPTION:');
+      debugPrint(error.toString());
+      debugPrint(stackTrace.toString());
 
-      return result;
-    } catch (e, s) {
-      debugPrint('POLICY EXCEPTION:');
-      debugPrint(e.toString());
-      debugPrint(s.toString());
-
-      final result = OperationFailed(error: e.toString());
-      await _recordTrace(
-        operation: operation,
-        context: context,
-        startedAt: startedAt,
+      return _FinancialOperationExecution(
+        result: OperationFailed(error: error.toString()),
         status: 'failed',
-        error: e.toString(),
+        error: error.toString(),
       );
-      return result;
     }
   }
 
@@ -214,7 +238,8 @@ final class FinancialOperationEngine {
     try {
       await _traceabilityPort.save(
         TraceabilityRecord(
-          traceId: 'trace-${context.idempotencyKey}-${startedAt.microsecondsSinceEpoch}',
+          traceId:
+              'trace-${context.idempotencyKey}-${startedAt.microsecondsSinceEpoch}',
           operationType: context.commandType ?? operation.runtimeType.toString(),
           operationId: operationId,
           idempotencyKey: context.idempotencyKey,
@@ -268,4 +293,24 @@ final class FinancialOperationEngine {
     }
     return ids.toSet().toList(growable: false);
   }
+}
+
+/// Captures the operation result and trace data produced by the single action.
+/// It is kept outside OperationResult so the Guard persists only public results.
+final class _FinancialOperationExecution {
+  final OperationResult result;
+  final String status;
+  final String? operationId;
+  final List<String> transactionIds;
+  final List<String> mutationIds;
+  final String? error;
+
+  const _FinancialOperationExecution({
+    required this.result,
+    required this.status,
+    this.operationId,
+    this.transactionIds = const <String>[],
+    this.mutationIds = const <String>[],
+    this.error,
+  });
 }

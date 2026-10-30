@@ -123,16 +123,21 @@ void main() {
     );
   }
 
-  ExpenseOperation buildOperation(String key) {
+  ExpenseOperation buildOperation(
+    String key, {
+    Money? amount,
+    String? note,
+  }) {
     return ExpenseOperation(
       intent: ExpenseIntent(
         sourceAccountId: 'wallet',
         categoryId: 'dailyTransport',
-        amount: Money.fromDouble(100),
+        amount: amount ?? Money.fromDouble(100),
         isExceptional: false,
       ),
       metadata: TransactionMetadata(
         occurredAt: DateTime(2026, 1, 1),
+        note: note,
         paymentMethod: 'cash',
         currencyCode: 'EGP',
       ),
@@ -161,6 +166,11 @@ void main() {
     expect(transactionBox.values.where((t) => t.type == TransactionType.expense),
         hasLength(1));
     expect(idempotencyBox.containsKey('durable-restart-key'), isTrue);
+    final storedRecord = Map<String, dynamic>.from(
+      idempotencyBox.get('durable-restart-key')!,
+    );
+    expect(storedRecord['version'], 2);
+    expect(storedRecord['requestFingerprint'], isA<String>());
 
     await idempotencyBox.close();
     idempotencyBox = await Hive.openBox<Map>('financial_idempotency_test');
@@ -227,4 +237,66 @@ void main() {
     expect(transactionBox.values.where((t) => t.type == TransactionType.expense),
         hasLength(1));
   });
+
+  test('same key with a different request is rejected without a second write',
+      () async {
+    final context = FinancialEngineBootstrap.create(
+      balanceService: buildBalanceService(),
+      transactionBox: transactionBox,
+      idempotencyBox: idempotencyBox,
+    );
+    const key = 'same-key-different-request';
+    const executionContext = ExecutionContext(idempotencyKey: key);
+
+    final first = await context.engine.execute(
+      buildOperation(key),
+      executionContext,
+    );
+    expect(first, isA<OperationSucceeded>());
+
+    final changed = await context.engine.execute(
+      buildOperation(key, amount: Money.fromDouble(101)),
+      executionContext,
+    );
+
+    expect(changed, isA<OperationFailed>());
+    expect(
+      transactionBox.values.where((t) => t.type == TransactionType.expense),
+      hasLength(1),
+    );
+  });
+
+  test('legacy v1 record is retained but is not replayed without a fingerprint',
+      () async {
+    const key = 'legacy-v1-idempotency-key';
+    await idempotencyBox.put(key, <String, dynamic>{
+      'version': 1,
+      'resultType': 'operationSucceeded',
+      'summary': <String, dynamic>{
+        'createdTransactionIds': <String>['legacy-transaction'],
+        'balanceChanges': <String, double>{},
+        'createdMutationIds': <String>[],
+      },
+    });
+
+    final context = FinancialEngineBootstrap.create(
+      balanceService: buildBalanceService(),
+      transactionBox: transactionBox,
+      idempotencyBox: idempotencyBox,
+    );
+    const executionContext = ExecutionContext(idempotencyKey: key);
+
+    final result = await context.engine.execute(
+      buildOperation(key),
+      executionContext,
+    );
+
+    expect(result, isA<OperationFailed>());
+    expect(
+      transactionBox.values.where((t) => t.type == TransactionType.expense),
+      isEmpty,
+    );
+    expect(idempotencyBox.get(key)?['version'], 1);
+  });
+
 }
