@@ -3,15 +3,26 @@ import 'package:wafferly/financial_engine/execution/memory_financial_unit_of_wor
 
 void main() {
   test(
-    'KNOWN_BUG: rollback stops at the first callback error and masks the original error',
+    'all rollback callbacks are attempted and the original error is preserved',
     () async {
       final calls = <String>[];
+      final reportedErrors = <Object>[];
+      final reportedStackTraces = <StackTrace>[];
+      final originalError = StateError('original-operation');
+      final originalStackTrace = StackTrace.current;
       Object? caughtError;
+      StackTrace? caughtStackTrace;
 
       try {
-        await const MemoryFinancialUnitOfWork().execute((context) async {
+        await MemoryFinancialUnitOfWork(
+          onRollbackError: (error, stackTrace) {
+            reportedErrors.add(error);
+            reportedStackTraces.add(stackTrace);
+          },
+        ).execute((context) async {
           context.registerRollback(() async {
             calls.add('A');
+            throw StateError('cleanup-A');
           });
           context.registerRollback(() async {
             calls.add('B');
@@ -21,50 +32,74 @@ void main() {
             calls.add('C');
           });
 
-          throw StateError('original-operation');
+          Error.throwWithStackTrace(originalError, originalStackTrace);
         });
-      } catch (error) {
+      } catch (error, stackTrace) {
         caughtError = error;
+        caughtStackTrace = stackTrace;
       }
 
-      // The callbacks are run in reverse order: C, then B, then A.
-      // Current behavior stops at B and never attempts A.
-      expect(calls, <String>['C', 'B']);
-      expect(caughtError, isA<StateError>());
-      expect(caughtError.toString(), contains('cleanup-B'));
-      expect(caughtError.toString(), isNot(contains('original-operation')));
+      expect(calls, <String>['C', 'B', 'A']);
+      expect(caughtError, same(originalError));
+      expect(caughtStackTrace, isNotNull);
+      expect(caughtStackTrace.toString(), originalStackTrace.toString());
+      expect(reportedErrors, hasLength(2));
+      expect(reportedErrors[0].toString(), contains('cleanup-B'));
+      expect(reportedErrors[1].toString(), contains('cleanup-A'));
+      expect(reportedStackTraces, hasLength(2));
     },
   );
 
   test(
-    'M2 REGRESSION: all rollback callbacks are attempted and the original error is preserved',
+    'reporter failure does not mask the original error or stop remaining callbacks',
     () async {
       final calls = <String>[];
+      final reportedErrors = <Object>[];
+      final reportedStackTraces = <StackTrace>[];
+
+      final originalError = StateError('original-operation');
+      final originalStackTrace = StackTrace.current;
+
       Object? caughtError;
+      StackTrace? caughtStackTrace;
 
       try {
-        await const MemoryFinancialUnitOfWork().execute((context) async {
+        await MemoryFinancialUnitOfWork(
+          onRollbackError: (error, stackTrace) {
+            reportedErrors.add(error);
+            reportedStackTraces.add(stackTrace);
+
+            throw StateError('rollback-reporter-failure');
+          },
+        ).execute((context) async {
           context.registerRollback(() async {
             calls.add('A');
+            throw StateError('cleanup-A');
           });
+
           context.registerRollback(() async {
             calls.add('B');
             throw StateError('cleanup-B');
           });
-          context.registerRollback(() async {
-            calls.add('C');
-          });
 
-          throw StateError('original-operation');
+          Error.throwWithStackTrace(originalError, originalStackTrace);
         });
-      } catch (error) {
+      } catch (error, stackTrace) {
         caughtError = error;
+        caughtStackTrace = stackTrace;
       }
 
-      expect(calls, <String>['C', 'B', 'A']);
-      expect(caughtError, isA<StateError>());
-      expect(caughtError.toString(), contains('original-operation'));
+      expect(calls, <String>['B', 'A']);
+
+      expect(reportedErrors, hasLength(2));
+      expect(reportedErrors[0].toString(), contains('cleanup-B'));
+      expect(reportedErrors[1].toString(), contains('cleanup-A'));
+
+      expect(reportedStackTraces, hasLength(2));
+
+      expect(caughtError, same(originalError));
+      expect(caughtStackTrace, isNotNull);
+      expect(caughtStackTrace.toString(), originalStackTrace.toString());
     },
-    skip: 'يتفعّل في M2 بعد عزل أخطاء callbacks والحفاظ على الخطأ الأصلي.',
   );
 }
