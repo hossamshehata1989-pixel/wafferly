@@ -28,6 +28,7 @@ import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/services/balance_service.dart';
 import 'package:wafferly/services/ledger_account_seeder.dart';
 import 'package:wafferly/core/money/money.dart';
+
 void main() {
   late Directory testDirectory;
   late Box<Transaction> transactionBox;
@@ -140,105 +141,102 @@ void main() {
     );
   });
 
-  test(
-    'Goal transfer reaches the Financial Engine pipeline',
-    () async {
-      final planningAllocationRepository = MemoryAllocationRepository();
+  test('Goal transfer reaches the Financial Engine pipeline', () async {
+    final planningAllocationRepository = MemoryAllocationRepository();
 
-      final availableBalanceProjectionService =
-          AvailableBalanceProjectionService(
-        allocationRepository: planningAllocationRepository,
-      );
+    final availableBalanceProjectionService = AvailableBalanceProjectionService(
+      allocationRepository: planningAllocationRepository,
+    );
 
-      final balanceService = BalanceService(
-        availableBalanceProjectionService: availableBalanceProjectionService,
-      );
+    final balanceService = BalanceService(
+      availableBalanceProjectionService: availableBalanceProjectionService,
+    );
 
-      final context = FinancialEngineBootstrap.create(
-        balanceService: balanceService,
-        transactionBox: transactionBox,
-        allocationRepository: planningAllocationRepository,
-      );
+    final context = FinancialEngineBootstrap.create(
+      balanceService: balanceService,
+      transactionBox: transactionBox,
+      allocationRepository: planningAllocationRepository,
+    );
 
-      // Create the reservation in the same Planning repository that the
-      // Financial Engine will later use for ReleaseAllocationMutation.
-      final planningEngine = PlanningEngineBootstrap.create(
-        allocationRepository: planningAllocationRepository,
-      );
+    // Create the reservation in the same Planning repository that the
+    // Financial Engine will later use for ReleaseAllocationMutation.
+    final planningEngine = PlanningEngineBootstrap.create(
+      allocationRepository: planningAllocationRepository,
+    );
 
-      await planningEngine.execute(
-        ReserveOperation(
-          id: 'reserve-goal-1',
-          createdAt: DateTime(2026, 1, 1),
-          sourceId: 'goal-1',
-          sourceType: PlanningSourceType.goal,
-          accountId: 'cash',
-amount: Money.fromDouble(500),        ),
-      );
-
-      const executionContext = ExecutionContext(
-        idempotencyKey: 'goal-transfer-test',
-      );
-
-      final occurredAt = DateTime(2026, 1, 2);
-
-      final operation = GoalTransferOperation(
-        sourceAccountId: 'cash',
-        savingsAccountId: 'saving',
-        goalId: 'goal-1',
+    await planningEngine.execute(
+      ReserveOperation(
+        id: 'reserve-goal-1',
+        createdAt: DateTime(2026, 1, 1),
+        sourceId: 'goal-1',
+        sourceType: PlanningSourceType.goal,
+        accountId: 'cash',
         amount: Money.fromDouble(500),
-        metadata: TransactionMetadata(
-          occurredAt: occurredAt,
-          paymentMethod: 'cash',
-          currencyCode: 'EGP',
-          note: 'Transfer to goal savings',
-        ),
-        context: executionContext,
-        resolution: Resolution.execute,
-      );
+      ),
+    );
 
-      final result = await context.engine.execute(
-        operation,
-        executionContext,
-      );
+    const executionContext = ExecutionContext(
+      idempotencyKey: 'goal-transfer-test',
+    );
 
-      expect(result, isA<OperationSucceeded>());
+    final occurredAt = DateTime(2026, 1, 2);
 
-      final allocation =
-          await planningAllocationRepository.findActiveBySource('goal-1');
-      expect(allocation, isNull);
+    final operation = GoalTransferOperation(
+      sourceAccountId: 'cash',
+      savingsAccountId: 'saving',
+      goalId: 'goal-1',
+      amount: Money.fromDouble(500),
+      metadata: TransactionMetadata(
+        occurredAt: occurredAt,
+        paymentMethod: 'cash',
+        currencyCode: 'EGP',
+        note: 'Transfer to goal savings',
+      ),
+      context: executionContext,
+      resolution: Resolution.execute,
+    );
 
-      final allocations =
-          await planningAllocationRepository.findBySource('goal-1');
-      expect(allocations, hasLength(1));
-      expect(allocations.single.status, AllocationStatus.released);
+    final result = await context.engine.execute(operation, executionContext);
+    final retry = await context.engine.execute(operation, executionContext);
 
-      final transactions = transactionBox.values.toList();
-      expect(
-        transactions.where((tx) => tx.id != 'initial-cash-balance').length,
-        1,
-      );
+    expect(result, isA<OperationSucceeded>());
+    expect(retry, isA<OperationSucceeded>());
 
-      final transfer = transactions.firstWhere(
-        (tx) => tx.id != 'initial-cash-balance',
-      );
-      expect(transfer.type, TransactionType.transfer);
-      expect(transfer.fromAccountId, 'cash');
-      expect(transfer.toAccountId, 'saving');
-      expect(transfer.amount, 500);
+    final allocation = await planningAllocationRepository.findActiveBySource(
+      'goal-1',
+    );
+    expect(allocation, isNull);
 
-      expect(context.repository.entries.length, 1);
-      final journal = context.repository.entries.single;
-      expect(journal.lines.length, 2);
-      expect(journal.lines.first.debit, Money.fromDouble(500));
-      expect(journal.lines.last.credit, Money.fromDouble(500));
+    final allocations = await planningAllocationRepository.findBySource(
+      'goal-1',
+    );
+    expect(allocations, hasLength(1));
+    expect(allocations.single.status, AllocationStatus.released);
 
-      expect(goalActivitiesBox.values.length, 1);
-      final activity = goalActivitiesBox.values.single;
-      expect(activity.goalId, 'goal-1');
-      expect(activity.type, GoalActivityType.transferToSaving);
-      expect(activity.amount, 500);
-    },
-  );
+    final transactions = transactionBox.values.toList();
+    expect(
+      transactions.where((tx) => tx.id != 'initial-cash-balance').length,
+      1,
+    );
+
+    final transfer = transactions.firstWhere(
+      (tx) => tx.id != 'initial-cash-balance',
+    );
+    expect(transfer.type, TransactionType.transfer);
+    expect(transfer.fromAccountId, 'cash');
+    expect(transfer.toAccountId, 'saving');
+    expect(transfer.amount, 500);
+
+    expect(context.repository.entries.length, 1);
+    final journal = context.repository.entries.single;
+    expect(journal.lines.length, 2);
+    expect(journal.lines.first.debit, Money.fromDouble(500));
+    expect(journal.lines.last.credit, Money.fromDouble(500));
+
+    expect(goalActivitiesBox.values.length, 1);
+    final activity = goalActivitiesBox.values.single;
+    expect(activity.goalId, 'goal-1');
+    expect(activity.type, GoalActivityType.transferToSaving);
+    expect(activity.amount, 500);
+  });
 }
-

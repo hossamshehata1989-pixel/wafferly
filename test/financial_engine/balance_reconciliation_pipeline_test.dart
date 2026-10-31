@@ -23,6 +23,9 @@ import 'package:wafferly/models/ledger_entry.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/services/balance_service.dart';
+import 'package:wafferly/application/accounts/account_transaction_service.dart';
+import 'package:wafferly/services/account_service.dart';
+import 'package:wafferly/infrastructure/memory/memory_balance_port.dart';
 
 void main() {
   late Directory testDirectory;
@@ -38,12 +41,17 @@ void main() {
     Hive.init(testDirectory.path);
 
     if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(AccountAdapter());
-    if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(AccountNatureAdapter());
-    if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(AccountGroupAdapter());
-    if (!Hive.isAdapterRegistered(10)) Hive.registerAdapter(TransactionAdapter());
+    if (!Hive.isAdapterRegistered(2))
+      Hive.registerAdapter(AccountNatureAdapter());
+    if (!Hive.isAdapterRegistered(3))
+      Hive.registerAdapter(AccountGroupAdapter());
+    if (!Hive.isAdapterRegistered(10))
+      Hive.registerAdapter(TransactionAdapter());
     if (!Hive.isAdapterRegistered(20)) Hive.registerAdapter(EntryTypeAdapter());
-    if (!Hive.isAdapterRegistered(21)) Hive.registerAdapter(LedgerPurposeAdapter());
-    if (!Hive.isAdapterRegistered(22)) Hive.registerAdapter(LedgerEntryAdapter());
+    if (!Hive.isAdapterRegistered(21))
+      Hive.registerAdapter(LedgerPurposeAdapter());
+    if (!Hive.isAdapterRegistered(22))
+      Hive.registerAdapter(LedgerEntryAdapter());
 
     transactionBox = await Hive.openBox<Transaction>('transactions');
     ledgerBox = await Hive.openBox<LedgerEntry>('ledger_entries');
@@ -150,190 +158,233 @@ void main() {
     );
   }
 
-  test('asset reconciliation increases balance through a balanced journal', () async {
-    await seedAccount('wallet');
-    await seedBalance(
-      accountId: 'wallet',
-      amount: 8500,
-      nature: AccountNature.asset,
-    );
-
-    final context = buildContext();
-    final executionContext = const ExecutionContext(
-      idempotencyKey: 'asset-plus',
-    );
-
-    final result = await context.engine.execute(
-      operation(
+  test(
+    'asset reconciliation increases balance through a balanced journal',
+    () async {
+      await seedAccount('wallet');
+      await seedBalance(
         accountId: 'wallet',
-        systemBalance: 8500,
-        observedBalance: 10000,
-        isLiability: false,
-        idempotencyKey: executionContext.idempotencyKey,
-      ),
-      executionContext,
-    );
+        amount: 8500,
+        nature: AccountNature.asset,
+      );
 
-    expect(result, isA<OperationSucceeded>());
-    expect(transactionBox.length, 2);
-    expect(
-      transactionBox.values.where(
+      final context = buildContext();
+      final executionContext = const ExecutionContext(
+        idempotencyKey: 'asset-plus',
+      );
+
+      final result = await context.engine.execute(
+        operation(
+          accountId: 'wallet',
+          systemBalance: 8500,
+          observedBalance: 10000,
+          isLiability: false,
+          idempotencyKey: executionContext.idempotencyKey,
+        ),
+        executionContext,
+      );
+
+      expect(result, isA<OperationSucceeded>());
+      expect(transactionBox.length, 2);
+      expect(
+        transactionBox.values.where(
+          (t) => t.type == TransactionType.balanceReconciliation,
+        ),
+        hasLength(1),
+      );
+
+      final reconciliation = transactionBox.values.firstWhere(
         (t) => t.type == TransactionType.balanceReconciliation,
-      ),
-      hasLength(1),
-    );
+      );
+      expect(reconciliation.amount, 1500);
+      expect(
+        reconciliation.fromAccountId,
+        ChartOfAccounts.balanceReconciliationEquityAccountId,
+      );
+      expect(reconciliation.toAccountId, 'wallet');
 
-    final reconciliation = transactionBox.values
-        .firstWhere((t) => t.type == TransactionType.balanceReconciliation);
-    expect(reconciliation.amount, 1500);
-    expect(reconciliation.fromAccountId, ChartOfAccounts.balanceReconciliationEquityAccountId);
-    expect(reconciliation.toAccountId, 'wallet');
+      final entries = ledgerBox.values
+          .where((e) => e.transactionId == 'reconciliation-asset-plus')
+          .toList();
+      expect(entries, hasLength(2));
+      expect(
+        entries.firstWhere((e) => e.accountId == 'wallet').entryType,
+        EntryType.debit,
+      );
+      expect(
+        entries
+            .firstWhere(
+              (e) =>
+                  e.accountId ==
+                  ChartOfAccounts.balanceReconciliationEquityAccountId,
+            )
+            .entryType,
+        EntryType.credit,
+      );
+      expect(
+        entries.every((e) => e.purpose == LedgerPurpose.adjustment),
+        isTrue,
+      );
+      expect(BalanceService().getBalance('wallet'), 10000);
+    },
+  );
 
-    final entries = ledgerBox.values
-        .where((e) => e.transactionId == 'reconciliation-asset-plus')
-        .toList();
-    expect(entries, hasLength(2));
-    expect(entries.firstWhere((e) => e.accountId == 'wallet').entryType, EntryType.debit);
-    expect(entries.firstWhere((e) => e.accountId == ChartOfAccounts.balanceReconciliationEquityAccountId).entryType, EntryType.credit);
-    expect(entries.every((e) => e.purpose == LedgerPurpose.adjustment), isTrue);
-    expect(BalanceService().getBalance('wallet'), 10000);
-  });
-
-  test('asset reconciliation decrease debits reconciliation equity and credits the account', () async {
-    await seedAccount('wallet');
-    await seedBalance(
-      accountId: 'wallet',
-      amount: 10000,
-      nature: AccountNature.asset,
-    );
-
-    final context = buildContext();
-    const executionContext = ExecutionContext(
-      idempotencyKey: 'asset-minus',
-    );
-
-    final result = await context.engine.execute(
-      operation(
+  test(
+    'asset reconciliation decrease debits reconciliation equity and credits the account',
+    () async {
+      await seedAccount('wallet');
+      await seedBalance(
         accountId: 'wallet',
-        systemBalance: 10000,
-        observedBalance: 8500,
-        isLiability: false,
-        idempotencyKey: executionContext.idempotencyKey,
-      ),
-      executionContext,
-    );
+        amount: 10000,
+        nature: AccountNature.asset,
+      );
 
-    expect(result, isA<OperationSucceeded>());
-    final reconciliation = transactionBox.values
-        .firstWhere((t) => t.type == TransactionType.balanceReconciliation);
-    expect(reconciliation.fromAccountId, 'wallet');
-    expect(reconciliation.toAccountId, ChartOfAccounts.balanceReconciliationEquityAccountId);
-    expect(BalanceService().getBalance('wallet'), 8500);
-  });
+      final context = buildContext();
+      const executionContext = ExecutionContext(idempotencyKey: 'asset-minus');
 
-  test('liability reconciliation uses liability nature for debit/credit semantics', () async {
-    await seedAccount('loan', nature: AccountNature.liability);
-    await seedBalance(
-      accountId: 'loan',
-      amount: 1000,
-      nature: AccountNature.liability,
-    );
+      final result = await context.engine.execute(
+        operation(
+          accountId: 'wallet',
+          systemBalance: 10000,
+          observedBalance: 8500,
+          isLiability: false,
+          idempotencyKey: executionContext.idempotencyKey,
+        ),
+        executionContext,
+      );
 
-    final context = buildContext();
-    const executionContext = ExecutionContext(
-      idempotencyKey: 'liability-plus',
-    );
+      expect(result, isA<OperationSucceeded>());
+      final reconciliation = transactionBox.values.firstWhere(
+        (t) => t.type == TransactionType.balanceReconciliation,
+      );
+      expect(reconciliation.fromAccountId, 'wallet');
+      expect(
+        reconciliation.toAccountId,
+        ChartOfAccounts.balanceReconciliationEquityAccountId,
+      );
+      expect(BalanceService().getBalance('wallet'), 8500);
+    },
+  );
 
-    final result = await context.engine.execute(
-      operation(
+  test(
+    'liability reconciliation uses liability nature for debit/credit semantics',
+    () async {
+      await seedAccount('loan', nature: AccountNature.liability);
+      await seedBalance(
         accountId: 'loan',
-        systemBalance: -1000,
-        observedBalance: -1300,
-        isLiability: true,
-        idempotencyKey: executionContext.idempotencyKey,
-      ),
-      executionContext,
-    );
+        amount: 1000,
+        nature: AccountNature.liability,
+      );
 
-    expect(result, isA<OperationSucceeded>());
-    final reconciliation = transactionBox.values
-        .firstWhere((t) => t.type == TransactionType.balanceReconciliation);
-    expect(reconciliation.fromAccountId, 'loan');
-    expect(reconciliation.toAccountId, ChartOfAccounts.balanceReconciliationEquityAccountId);
+      final context = buildContext();
+      const executionContext = ExecutionContext(
+        idempotencyKey: 'liability-plus',
+      );
 
-    final journalEntries = ledgerBox.values
-        .where((entry) => entry.transactionId == reconciliation.id)
-        .toList();
-    expect(journalEntries, hasLength(2));
-    expect(
-      journalEntries.any(
-        (entry) =>
-            entry.accountId == 'loan' && entry.entryType == EntryType.credit,
-      ),
-      isTrue,
-    );
-    expect(
-      journalEntries.any(
-        (entry) =>
-            entry.accountId == ChartOfAccounts.balanceReconciliationEquityAccountId &&
-            entry.entryType == EntryType.debit,
-      ),
-      isTrue,
-    );
-    expect(BalanceService().getBalance('loan'), -1300);
-  });
+      final result = await context.engine.execute(
+        operation(
+          accountId: 'loan',
+          systemBalance: -1000,
+          observedBalance: -1300,
+          isLiability: true,
+          idempotencyKey: executionContext.idempotencyKey,
+        ),
+        executionContext,
+      );
 
-  test('liability reconciliation decrease debits the liability and credits equity', () async {
-    await seedAccount('loan', nature: AccountNature.liability);
-    await seedBalance(
-      accountId: 'loan',
-      amount: 1000,
-      nature: AccountNature.liability,
-    );
+      expect(result, isA<OperationSucceeded>());
+      final reconciliation = transactionBox.values.firstWhere(
+        (t) => t.type == TransactionType.balanceReconciliation,
+      );
+      expect(reconciliation.fromAccountId, 'loan');
+      expect(
+        reconciliation.toAccountId,
+        ChartOfAccounts.balanceReconciliationEquityAccountId,
+      );
 
-    final context = buildContext();
-    const executionContext = ExecutionContext(
-      idempotencyKey: 'liability-minus',
-    );
+      final journalEntries = ledgerBox.values
+          .where((entry) => entry.transactionId == reconciliation.id)
+          .toList();
+      expect(journalEntries, hasLength(2));
+      expect(
+        journalEntries.any(
+          (entry) =>
+              entry.accountId == 'loan' && entry.entryType == EntryType.credit,
+        ),
+        isTrue,
+      );
+      expect(
+        journalEntries.any(
+          (entry) =>
+              entry.accountId ==
+                  ChartOfAccounts.balanceReconciliationEquityAccountId &&
+              entry.entryType == EntryType.debit,
+        ),
+        isTrue,
+      );
+      expect(BalanceService().getBalance('loan'), -1300);
+    },
+  );
 
-    final result = await context.engine.execute(
-      operation(
+  test(
+    'liability reconciliation decrease debits the liability and credits equity',
+    () async {
+      await seedAccount('loan', nature: AccountNature.liability);
+      await seedBalance(
         accountId: 'loan',
-        systemBalance: -1000,
-        observedBalance: -700,
-        isLiability: true,
-        idempotencyKey: executionContext.idempotencyKey,
-      ),
-      executionContext,
-    );
+        amount: 1000,
+        nature: AccountNature.liability,
+      );
 
-    expect(result, isA<OperationSucceeded>());
-    final reconciliation = transactionBox.values
-        .firstWhere((t) => t.type == TransactionType.balanceReconciliation);
-    expect(reconciliation.fromAccountId, ChartOfAccounts.balanceReconciliationEquityAccountId);
-    expect(reconciliation.toAccountId, 'loan');
+      final context = buildContext();
+      const executionContext = ExecutionContext(
+        idempotencyKey: 'liability-minus',
+      );
 
-    final journalEntries = ledgerBox.values
-        .where((entry) => entry.transactionId == reconciliation.id)
-        .toList();
-    expect(journalEntries, hasLength(2));
-    expect(
-      journalEntries.any(
-        (entry) =>
-            entry.accountId == 'loan' && entry.entryType == EntryType.debit,
-      ),
-      isTrue,
-    );
-    expect(
-      journalEntries.any(
-        (entry) =>
-            entry.accountId == ChartOfAccounts.balanceReconciliationEquityAccountId &&
-            entry.entryType == EntryType.credit,
-      ),
-      isTrue,
-    );
-    expect(BalanceService().getBalance('loan'), -700);
-  });
+      final result = await context.engine.execute(
+        operation(
+          accountId: 'loan',
+          systemBalance: -1000,
+          observedBalance: -700,
+          isLiability: true,
+          idempotencyKey: executionContext.idempotencyKey,
+        ),
+        executionContext,
+      );
+
+      expect(result, isA<OperationSucceeded>());
+      final reconciliation = transactionBox.values.firstWhere(
+        (t) => t.type == TransactionType.balanceReconciliation,
+      );
+      expect(
+        reconciliation.fromAccountId,
+        ChartOfAccounts.balanceReconciliationEquityAccountId,
+      );
+      expect(reconciliation.toAccountId, 'loan');
+
+      final journalEntries = ledgerBox.values
+          .where((entry) => entry.transactionId == reconciliation.id)
+          .toList();
+      expect(journalEntries, hasLength(2));
+      expect(
+        journalEntries.any(
+          (entry) =>
+              entry.accountId == 'loan' && entry.entryType == EntryType.debit,
+        ),
+        isTrue,
+      );
+      expect(
+        journalEntries.any(
+          (entry) =>
+              entry.accountId ==
+                  ChartOfAccounts.balanceReconciliationEquityAccountId &&
+              entry.entryType == EntryType.credit,
+        ),
+        isTrue,
+      );
+      expect(BalanceService().getBalance('loan'), -700);
+    },
+  );
 
   test('zero difference is rejected before planning', () async {
     await seedAccount('wallet');
@@ -390,9 +441,64 @@ void main() {
     expect(first, isA<OperationSucceeded>());
     expect(second, isA<OperationSucceeded>());
     expect(transactionBox.length, 2);
-    expect(ledgerBox.values.where(
-      (e) => e.transactionId == 'reconciliation-reconciliation-idempotency',
-    ), hasLength(2));
+    expect(
+      ledgerBox.values.where(
+        (e) => e.transactionId == 'reconciliation-reconciliation-idempotency',
+      ),
+      hasLength(2),
+    );
     expect(BalanceService().getBalance('wallet'), 1200);
   });
+
+  test(
+    'AccountTransactionService replays the same reconciliation key and timestamp',
+    () async {
+      await seedAccount('wallet');
+      await seedBalance(
+        accountId: 'wallet',
+        amount: 1000,
+        nature: AccountNature.asset,
+      );
+
+      final context = buildContext();
+      final service = AccountTransactionService(
+        engine: context.engine,
+        balancePort: MemoryBalancePort(
+          balances: {'wallet': Money.fromDouble(1000)},
+        ),
+        accountService: AccountService(),
+      );
+      final occurredAt = DateTime(2026, 9, 24, 10, 30);
+
+      Future<void> reconcile(double observedBalance) {
+        return service.createBalanceReconciliation(
+          accountId: 'wallet',
+          observedBalance: observedBalance,
+          paymentMethod: 'cash',
+          currency: 'EGP',
+          occurredAt: occurredAt,
+          idempotencyKey: 'account-service-reconciliation-retry',
+          reason: ReconciliationReason.cashCountDifference,
+        );
+      }
+
+      await reconcile(1200);
+      await reconcile(1200);
+
+      expect(
+        transactionBox.values.where(
+          (t) => t.type == TransactionType.balanceReconciliation,
+        ),
+        hasLength(1),
+      );
+
+      await expectLater(reconcile(1300), throwsA(isA<StateError>()));
+      expect(
+        transactionBox.values.where(
+          (t) => t.type == TransactionType.balanceReconciliation,
+        ),
+        hasLength(1),
+      );
+    },
+  );
 }

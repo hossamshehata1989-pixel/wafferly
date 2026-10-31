@@ -71,8 +71,9 @@ class AccountTransactionService {
     required double observedBalance,
     required String paymentMethod,
     required String currency,
+    required DateTime occurredAt,
+    required String idempotencyKey,
     ReconciliationReason reason = ReconciliationReason.other,
-    String? idempotencyKey,
   }) async {
     final account = _accountService.getAccountById(accountId);
     if (account == null) {
@@ -84,10 +85,7 @@ class AccountTransactionService {
 
     if (systemBalance == observedMoney) return;
 
-    final context = ExecutionContext(
-      idempotencyKey: idempotencyKey ??
-          'balance-reconciliation-$accountId-${DateTime.now().microsecondsSinceEpoch}',
-    );
+    final context = ExecutionContext(idempotencyKey: idempotencyKey);
 
     final result = await _engine.execute(
       BalanceReconciliationOperation(
@@ -99,7 +97,7 @@ class AccountTransactionService {
           reason: reason,
         ),
         metadata: TransactionMetadata(
-          occurredAt: DateTime.now(),
+          occurredAt: occurredAt,
           note: 'Balance reconciliation',
           paymentMethod: paymentMethod,
           currencyCode: currency,
@@ -124,12 +122,16 @@ class AccountTransactionService {
     required double newBalance,
     required String paymentMethod,
     required String currency,
+    required DateTime occurredAt,
+    required String idempotencyKey,
   }) async {
     await createBalanceReconciliation(
       accountId: accountId,
       observedBalance: newBalance,
       paymentMethod: paymentMethod,
       currency: currency,
+      occurredAt: occurredAt,
+      idempotencyKey: idempotencyKey,
     );
   }
 }

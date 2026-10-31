@@ -18,6 +18,7 @@ import '../../models/enums/goal_status.dart';
 import 'dialogs/complete_goal_dialog.dart';
 import 'dialogs/transfer_to_saving_dialog.dart';
 import 'dialogs/reserved_sources_transfer_dialog.dart';
+import 'goal_transfer_idempotency_manager.dart';
 import '../../services/goal_details_projection_service.dart';
 import 'package:provider/provider.dart';
 import '../../financial_engine/engine/financial_operation_engine.dart';
@@ -41,6 +42,8 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
   late final GoalActivityService _activityService;
   late final GoalFundingProjectionService _fundingProjectionService;
   late final GoalService _goalService;
+  final GoalTransferIdempotencyManager _goalTransferIdempotency =
+      GoalTransferIdempotencyManager();
   List<GoalFundingSource> _fundingSources = [];
   List<GoalFundingSource> _savedSources = [];
 
@@ -113,10 +116,15 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     required double amount,
     required String goalId,
   }) async {
-    final occurredAt = DateTime.now();
+    final identity = _goalTransferIdempotency.obtain(
+      operationType: 'goal-transfer',
+      goalId: goalId,
+      sourceAccountId: sourceAccountId,
+      savingAccountId: savingAccountId,
+      amount: amount,
+    );
     final executionContext = ExecutionContext(
-      idempotencyKey:
-          'goal-transfer-$goalId-${occurredAt.microsecondsSinceEpoch}',
+      idempotencyKey: identity.idempotencyKey,
     );
     final engine = context.read<FinancialOperationEngine>();
     final result = await engine.execute(
@@ -126,7 +134,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         goalId: goalId,
         amount: Money.fromDouble(amount),
         metadata: TransactionMetadata(
-          occurredAt: occurredAt,
+          occurredAt: identity.occurredAt,
           note: 'Transfer to saving from goal funding',
           paymentMethod: 'transfer',
           currencyCode: 'EGP',
@@ -141,6 +149,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     }
 
     await _loadData();
+    _goalTransferIdempotency.markSucceeded(identity);
   }
 
   Future<bool> _transferAllToSaving() async {
@@ -231,10 +240,15 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
       return;
     }
 
-    final occurredAt = DateTime.now();
+    final identity = _goalTransferIdempotency.obtain(
+      operationType: 'goal-saving-transfer',
+      goalId: widget.goal.id,
+      sourceAccountId: result.sourceAccountId!,
+      savingAccountId: result.savingAccountId,
+      amount: result.amount,
+    );
     final executionContext = ExecutionContext(
-      idempotencyKey:
-          'goal-saving-transfer-${widget.goal.id}-${occurredAt.microsecondsSinceEpoch}',
+      idempotencyKey: identity.idempotencyKey,
     );
     final engine = context.read<FinancialOperationEngine>();
     final engineResult = await engine.execute(
@@ -244,7 +258,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         goalId: widget.goal.id,
         amount: Money.fromDouble(result.amount),
         metadata: TransactionMetadata(
-          occurredAt: occurredAt,
+          occurredAt: identity.occurredAt,
           note: 'Saving Goal Contribution',
           paymentMethod: 'transfer',
           currencyCode: 'EGP',
@@ -259,6 +273,7 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
     }
 
     await _loadData();
+    _goalTransferIdempotency.markSucceeded(identity);
 
     if (!mounted) return;
 
@@ -300,7 +315,6 @@ class _GoalDetailsScreenState extends State<GoalDetailsScreen> {
         amount: result.amount,
         goalId: widget.goal.id,
       );
-      await _loadData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

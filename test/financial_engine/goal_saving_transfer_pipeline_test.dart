@@ -179,8 +179,10 @@ void main() {
       );
 
       final result = await context.engine.execute(operation, executionContext);
+      final retry = await context.engine.execute(operation, executionContext);
 
       expect(result, isA<OperationSucceeded>());
+      expect(retry, isA<OperationSucceeded>());
 
       final activeAllocation = await planningAllocationRepository
           .findActiveBySource('goal-1');
