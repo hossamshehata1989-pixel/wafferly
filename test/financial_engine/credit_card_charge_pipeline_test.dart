@@ -26,6 +26,8 @@ import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/services/balance_service.dart';
 import 'package:wafferly/services/ledger_account_seeder.dart';
+import 'package:wafferly/services/transaction_application_service.dart';
+import 'package:wafferly/services/transaction_query_service.dart';
 
 void main() {
   late Directory testDirectory;
@@ -243,19 +245,31 @@ void main() {
     expect(BalanceService().getBalance('card'), -10000);
   });
 
-  test('credit card charge rejects a currency different from the card', () async {
-    await seedCard(outstanding: 0);
-    final context = await buildContext();
+  test(
+    'credit card charge rejects a currency different from the card',
+    () async {
+      await seedCard(outstanding: 0);
+      final context = await buildContext();
 
-    final result = await context.engine.execute(
-      operation(amount: 100, idempotencyKey: 'charge-usd-on-egp', currencyCode: 'USD'),
-      const ExecutionContext(idempotencyKey: 'charge-usd-on-egp'),
-    );
+      final result = await context.engine.execute(
+        operation(
+          amount: 100,
+          idempotencyKey: 'charge-usd-on-egp',
+          currencyCode: 'USD',
+        ),
+        const ExecutionContext(idempotencyKey: 'charge-usd-on-egp'),
+      );
 
-    expect(result, isA<DomainViolationResult>());
-    expect(transactionBox.values.where((tx) => tx.type == TransactionType.creditCardCharge), isEmpty);
-    expect(BalanceService().getBalance('card'), 0);
-  });
+      expect(result, isA<DomainViolationResult>());
+      expect(
+        transactionBox.values.where(
+          (tx) => tx.type == TransactionType.creditCardCharge,
+        ),
+        isEmpty,
+      );
+      expect(BalanceService().getBalance('card'), 0);
+    },
+  );
 
   test('zero and negative credit card charges are rejected', () async {
     await seedCard(outstanding: 0);
@@ -274,6 +288,90 @@ void main() {
     expect(negative, isA<DomainViolationResult>());
     expect(transactionBox.values, isEmpty);
   });
+
+  test(
+    'application service requires a stable key and replays the same card charge',
+    () async {
+      await seedCard(outstanding: 7000);
+      final context = await buildContext();
+      final service = TransactionApplicationService(
+        engine: context.engine,
+        transactionQueryService: const TransactionQueryService(),
+      );
+
+      Future<OperationResult> addCharge({
+        required String idempotencyKey,
+        double amount = 1000,
+      }) {
+        return service.addCreditCardCharge(
+          creditCardAccountId: 'card',
+          amount: amount,
+          categoryId: 'dailyTransport',
+          occurredAt: DateTime(2026, 9, 26, 10),
+          currencyCode: 'EGP',
+          note: 'Card purchase',
+          idempotencyKey: idempotencyKey,
+        );
+      }
+
+      final first = await addCharge(idempotencyKey: 'service-charge-retry');
+      final retry = await addCharge(idempotencyKey: 'service-charge-retry');
+      final changedRequest = await addCharge(
+        idempotencyKey: 'service-charge-retry',
+        amount: 1100,
+      );
+
+      expect(first, isA<OperationSucceeded>());
+      expect(retry, isA<OperationSucceeded>());
+      expect(changedRequest, isA<OperationFailed>());
+      expect(
+        (retry as OperationSucceeded).summary.createdTransactionIds,
+        (first as OperationSucceeded).summary.createdTransactionIds,
+      );
+      expect(
+        transactionBox.values.where(
+          (tx) => tx.type == TransactionType.creditCardCharge,
+        ),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'a new key allows an intentional second identical card charge',
+    () async {
+      await seedCard(outstanding: 7000);
+      final context = await buildContext();
+      final service = TransactionApplicationService(
+        engine: context.engine,
+        transactionQueryService: const TransactionQueryService(),
+      );
+
+      Future<OperationResult> addCharge(String idempotencyKey) {
+        return service.addCreditCardCharge(
+          creditCardAccountId: 'card',
+          amount: 1000,
+          categoryId: 'dailyTransport',
+          occurredAt: DateTime(2026, 9, 26, 10),
+          currencyCode: 'EGP',
+          note: 'Card purchase',
+          idempotencyKey: idempotencyKey,
+        );
+      }
+
+      final first = await addCharge('service-charge-first');
+      final intentionalSecond = await addCharge('service-charge-second');
+
+      expect(first, isA<OperationSucceeded>());
+      expect(intentionalSecond, isA<OperationSucceeded>());
+      expect(
+        transactionBox.values.where(
+          (tx) => tx.type == TransactionType.creditCardCharge,
+        ),
+        hasLength(2),
+      );
+    },
+  );
 
   test('same credit card charge is idempotent', () async {
     await seedCard(outstanding: 7000);

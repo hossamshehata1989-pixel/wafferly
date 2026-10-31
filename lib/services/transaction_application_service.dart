@@ -59,12 +59,11 @@ class TransactionApplicationService {
     required String currencyCode,
     String? note,
     String? actorMemberId,
-    String? idempotencyKey,
+    required String idempotencyKey,
     bool isExceptional = false,
   }) async {
     final context = ExecutionContext(
-      idempotencyKey:
-          idempotencyKey ?? 'cc-${DateTime.now().microsecondsSinceEpoch}',
+      idempotencyKey: idempotencyKey,
       actorMemberId: actorMemberId,
       source: 'manual',
       commandType: 'CreditCardCharge',

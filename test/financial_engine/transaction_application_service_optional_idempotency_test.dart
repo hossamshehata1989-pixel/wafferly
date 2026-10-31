@@ -7,6 +7,7 @@ import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/controllers/transaction_entry_controller.dart';
 import 'package:wafferly/core/planning/infrastructure/repositories/memory_allocation_repository.dart';
 import 'package:wafferly/core/planning/services/available_balance_projection_service.dart';
+import 'package:wafferly/financial_engine/execution/financial_execution_summary.dart';
 import 'package:wafferly/financial_engine/results/operation_result.dart';
 import 'package:wafferly/models/account.dart';
 import 'package:wafferly/models/enums/account_enums.dart';
@@ -60,6 +61,48 @@ class _FailOnceExpenseTransactionApplicationService
       actorMemberId: actorMemberId,
       note: note,
       idempotencyKey: idempotencyKey,
+    );
+  }
+}
+
+class _FailOnceCreditCardChargeTransactionApplicationService
+    extends TransactionApplicationService {
+  _FailOnceCreditCardChargeTransactionApplicationService({
+    required super.engine,
+    required super.transactionQueryService,
+  });
+
+  final List<String> creditCardChargeIdempotencyKeys = <String>[];
+  bool _failNextCreditCardCharge = true;
+
+  @override
+  Future<OperationResult> addCreditCardCharge({
+    required String creditCardAccountId,
+    required double amount,
+    required String categoryId,
+    String? subCategoryId,
+    required DateTime occurredAt,
+    required String currencyCode,
+    String? note,
+    String? actorMemberId,
+    required String idempotencyKey,
+    bool isExceptional = false,
+  }) async {
+    creditCardChargeIdempotencyKeys.add(idempotencyKey);
+
+    if (_failNextCreditCardCharge) {
+      _failNextCreditCardCharge = false;
+      return const OperationFailed(
+        error: 'Injected transient card-charge failure',
+      );
+    }
+
+    return const OperationSucceeded(
+      summary: FinancialExecutionSummary(
+        createdTransactionIds: <String>['credit-card-charge-test-id'],
+        balanceChanges: <String, double>{},
+        createdMutationIds: <String>[],
+      ),
     );
   }
 }
@@ -194,6 +237,36 @@ void main() {
     return _FailOnceExpenseTransactionApplicationService(
       engine: engineContext.engine,
       transactionQueryService: const TransactionQueryService(),
+    );
+  }
+
+  _FailOnceCreditCardChargeTransactionApplicationService
+  buildFailOnceCreditCardChargeApplicationService() {
+    final engineContext = FinancialEngineBootstrap.create(
+      balanceService: buildBalanceService(),
+      transactionBox: transactionBox,
+      idempotencyBox: idempotencyBox,
+    );
+    return _FailOnceCreditCardChargeTransactionApplicationService(
+      engine: engineContext.engine,
+      transactionQueryService: const TransactionQueryService(),
+    );
+  }
+
+  Future<void> seedCreditCardAccount() async {
+    await accountsBox.put(
+      'card',
+      Account(
+        id: 'card',
+        bookId: 'default',
+        memberId: 'owner',
+        name: 'Test Card',
+        type: 'creditCard',
+        nature: AccountNature.liability,
+        currency: 'EGP',
+        createdAt: DateTime(2026, 1, 1),
+        group: AccountGroup.liabilities,
+      ),
     );
   }
 
@@ -378,6 +451,69 @@ void main() {
     expect(transactionCount(TransactionType.expense), 1);
     expect(idempotencyBox.length, 1);
   });
+
+  test(
+    'a failed credit-card charge save reuses the same key when retried unchanged',
+    () async {
+      await seedCreditCardAccount();
+      final service = buildFailOnceCreditCardChargeApplicationService();
+      final controller = TransactionEntryController(
+        transactionService: service,
+      );
+      addTearDown(controller.dispose);
+
+      controller.selectAccount('card', 'Test Card');
+      controller.setAmount('100');
+      controller.selectCategory('dailyTransport');
+
+      final failed = await controller.saveEntry();
+      expect(failed.success, isFalse);
+      expect(service.creditCardChargeIdempotencyKeys, hasLength(1));
+      expect(
+        service.creditCardChargeIdempotencyKeys.single,
+        startsWith('transaction-credit-card-charge-'),
+      );
+
+      final retry = await controller.saveEntry();
+
+      expect(retry.success, isTrue);
+      expect(service.creditCardChargeIdempotencyKeys, hasLength(2));
+      expect(
+        service.creditCardChargeIdempotencyKeys[1],
+        service.creditCardChargeIdempotencyKeys[0],
+      );
+    },
+  );
+
+  test(
+    'changing a credit-card charge draft after failure generates a new key',
+    () async {
+      await seedCreditCardAccount();
+      final service = buildFailOnceCreditCardChargeApplicationService();
+      final controller = TransactionEntryController(
+        transactionService: service,
+      );
+      addTearDown(controller.dispose);
+
+      controller.selectAccount('card', 'Test Card');
+      controller.setAmount('100');
+      controller.selectCategory('dailyTransport');
+
+      final failed = await controller.saveEntry();
+      expect(failed.success, isFalse);
+      expect(service.creditCardChargeIdempotencyKeys, hasLength(1));
+
+      controller.setAmount('125');
+      final retryWithChangedDraft = await controller.saveEntry();
+
+      expect(retryWithChangedDraft.success, isTrue);
+      expect(service.creditCardChargeIdempotencyKeys, hasLength(2));
+      expect(
+        service.creditCardChargeIdempotencyKeys[1],
+        isNot(service.creditCardChargeIdempotencyKeys[0]),
+      );
+    },
+  );
 
   test('a new entry after a successful save receives a new UUID key', () async {
     final controller = TransactionEntryController(

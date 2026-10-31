@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../application/credit_card/credit_card_financing_application_service.dart';
 import '../../../application/credit_card/credit_card_first_due_date_policy.dart';
@@ -34,6 +37,7 @@ enum CreditCardEntryMode { expense, installment, payment }
 
 class _CreditCardTransactionEntryScreenState
     extends State<CreditCardTransactionEntryScreen> {
+  static const Uuid _uuid = Uuid();
   late CreditCardEntryMode _mode;
   final _amountController = TextEditingController();
   final _merchantController = TextEditingController();
@@ -44,10 +48,17 @@ class _CreditCardTransactionEntryScreenState
   late DateTime _firstPaymentDate;
   bool _firstPaymentDateManuallySet = false;
   bool _saving = false;
+  String? _chargeIdempotencyKey;
+  String? _chargeIdempotencySignature;
+  late String _observedChargeTextSignature;
 
   @override
   void initState() {
     super.initState();
+    _observedChargeTextSignature = _chargeTextSignature();
+    _amountController.addListener(_handleChargeTextChanged);
+    _merchantController.addListener(_handleChargeTextChanged);
+    _noteController.addListener(_handleChargeTextChanged);
     _mode = widget.initialMode;
     // Default first installment follows the card's statement cycle from the
     // purchase date, even if the purchase is recorded later.
@@ -67,7 +78,19 @@ class _CreditCardTransactionEntryScreenState
   }
 
   @override
+  void didUpdateWidget(covariant CreditCardTransactionEntryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.account.id != widget.account.id ||
+        oldWidget.account.currency != widget.account.currency) {
+      _invalidateChargeIdempotencyKey();
+    }
+  }
+
+  @override
   void dispose() {
+    _amountController.removeListener(_handleChargeTextChanged);
+    _merchantController.removeListener(_handleChargeTextChanged);
+    _noteController.removeListener(_handleChargeTextChanged);
     _amountController.dispose();
     _merchantController.dispose();
     _noteController.dispose();
@@ -161,7 +184,8 @@ class _CreditCardTransactionEntryScreenState
               _InstallmentOptions(
                 count: _installmentCount,
                 firstPaymentDate: _firstPaymentDate,
-                onCountChanged: (value) => setState(() => _installmentCount = value),
+                onCountChanged: (value) =>
+                    setState(() => _installmentCount = value),
                 onDateChanged: (value) => setState(() {
                   _firstPaymentDate = value;
                   _firstPaymentDateManuallySet = true;
@@ -201,6 +225,46 @@ class _CreditCardTransactionEntryScreenState
     );
   }
 
+  void _invalidateChargeIdempotencyKey() {
+    _chargeIdempotencyKey = null;
+    _chargeIdempotencySignature = null;
+  }
+
+  String _chargeTextSignature() => jsonEncode(<String>[
+    _amountController.text,
+    _merchantController.text,
+    _noteController.text,
+  ]);
+
+  void _handleChargeTextChanged() {
+    final signature = _chargeTextSignature();
+    if (signature == _observedChargeTextSignature) return;
+
+    _observedChargeTextSignature = signature;
+    _invalidateChargeIdempotencyKey();
+  }
+
+  String _ensureChargeIdempotencyKey({required double amount}) {
+    final signature = jsonEncode(<Object?>[
+      'credit-card-charge',
+      widget.account.id,
+      amount.toString(),
+      _categoryId,
+      _date.toIso8601String(),
+      _date.isUtc,
+      widget.account.currency,
+      _combinedNote(),
+    ]);
+
+    if (_chargeIdempotencyKey == null ||
+        _chargeIdempotencySignature != signature) {
+      _chargeIdempotencyKey = 'credit-card-charge-${_uuid.v4()}';
+      _chargeIdempotencySignature = signature;
+    }
+
+    return _chargeIdempotencyKey!;
+  }
+
   Future<void> _save() async {
     final amount = double.tryParse(_amountController.text.trim());
     if (amount == null || amount <= 0) {
@@ -208,6 +272,7 @@ class _CreditCardTransactionEntryScreenState
       return;
     }
 
+    final idempotencyKey = _ensureChargeIdempotencyKey(amount: amount);
     setState(() => _saving = true);
     try {
       final txService = context.read<TransactionApplicationService>();
@@ -218,16 +283,17 @@ class _CreditCardTransactionEntryScreenState
         occurredAt: _date,
         currencyCode: widget.account.currency,
         note: _combinedNote(),
+        idempotencyKey: idempotencyKey,
       );
 
       if (result is! OperationSucceeded) {
         final reason = result is DomainViolationResult
             ? result.reason
             : result is OperationRejected
-                ? result.reason
-                : result is OperationFailed
-                    ? result.error.toString()
-                    : 'Unable to save the transaction.';
+            ? result.reason
+            : result is OperationFailed
+            ? result.error.toString()
+            : 'Unable to save the transaction.';
         _snack(reason);
         return;
       }
@@ -236,8 +302,11 @@ class _CreditCardTransactionEntryScreenState
         final transactionIds = result.summary.createdTransactionIds;
         if (transactionIds.isNotEmpty) {
           final transactionId = transactionIds.first;
-          final financing = context.read<CreditCardFinancingApplicationService>();
-          final tx = context.read<TransactionQueryService>().getById(transactionId);
+          final financing = context
+              .read<CreditCardFinancingApplicationService>();
+          final tx = context.read<TransactionQueryService>().getById(
+            transactionId,
+          );
           if (tx != null) {
             await financing.convertCharge(
               charge: tx,
@@ -257,7 +326,6 @@ class _CreditCardTransactionEntryScreenState
       if (mounted) setState(() => _saving = false);
     }
   }
-
 
   String? _combinedNote() {
     final merchant = _merchantController.text.trim();
@@ -286,7 +354,10 @@ class _CreditCardTransactionEntryScreenState
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: expenseCategories.take(10).map((category) {
             return ListTile(
-              leading: const Icon(Icons.category_outlined, color: Colors.white70),
+              leading: const Icon(
+                Icons.category_outlined,
+                color: Colors.white70,
+              ),
               title: Text(category.resolveTitle(AppLocalizations.of(context)!)),
               trailing: category.id == _categoryId
                   ? const Icon(Icons.check_rounded, color: Color(0xFFFF2D6F))
@@ -297,7 +368,10 @@ class _CreditCardTransactionEntryScreenState
         );
       },
     );
-    if (selected != null) setState(() => _categoryId = selected);
+    if (selected != null && selected != _categoryId) {
+      _invalidateChargeIdempotencyKey();
+      setState(() => _categoryId = selected);
+    }
   }
 
   Future<void> _editMerchant() async {
@@ -319,8 +393,14 @@ class _CreditCardTransactionEntryScreenState
         title: Text(title),
         content: TextField(controller: controller, autofocus: true),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Done')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Done'),
+          ),
         ],
       ),
     );
@@ -334,6 +414,7 @@ class _CreditCardTransactionEntryScreenState
       initialDate: _date,
     );
     if (value != null) {
+      if (value != _date) _invalidateChargeIdempotencyKey();
       setState(() {
         _date = value;
         if (!_firstPaymentDateManuallySet) {
@@ -354,9 +435,14 @@ class _CreditCardTransactionEntryScreenState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Pay Card', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            Text(
+              'Pay Card',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
             SizedBox(height: 8),
-            Text('Card payments use the existing Financial Operation Engine. The payment flow will be connected here.'),
+            Text(
+              'Card payments use the existing Financial Operation Engine. The payment flow will be connected here.',
+            ),
           ],
         ),
       ),
@@ -364,13 +450,29 @@ class _CreditCardTransactionEntryScreenState
   }
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  String _formatDate(DateTime value) => '${value.day} ${_month(value.month)} ${value.year}';
+  String _formatDate(DateTime value) =>
+      '${value.day} ${_month(value.month)} ${value.year}';
 
   String _month(int month) {
-    const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const names = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return names[month - 1];
   }
 }
@@ -399,13 +501,20 @@ class _ModeTabs extends StatelessWidget {
         child: FilledButton(
           onPressed: () => onChanged(value),
           style: FilledButton.styleFrom(
-            backgroundColor: active ? const Color(0xFFFF2D6F) : const Color(0xFFEFF2F8),
+            backgroundColor: active
+                ? const Color(0xFFFF2D6F)
+                : const Color(0xFFEFF2F8),
             foregroundColor: active ? Colors.white : const Color(0xFF24324A),
             elevation: 0,
             padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-          child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          child: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
       ),
     );
@@ -431,13 +540,28 @@ class _AmountField extends StatelessWidget {
             child: TextField(
               controller: controller,
               autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 44, fontWeight: FontWeight.w900, color: Colors.black),
-              decoration: const InputDecoration(border: InputBorder.none, hintText: '0'),
+              style: const TextStyle(
+                fontSize: 44,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
+              ),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                hintText: '0',
+              ),
             ),
           ),
-          Text(currency, style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.black87)),
+          Text(
+            currency,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              color: Colors.black87,
+            ),
+          ),
           const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.black54),
         ],
       ),
@@ -446,7 +570,12 @@ class _AmountField extends StatelessWidget {
 }
 
 class _FieldTile extends StatelessWidget {
-  const _FieldTile({required this.icon, required this.title, required this.value, required this.onTap});
+  const _FieldTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onTap,
+  });
   final IconData icon;
   final String title;
   final String value;
@@ -466,7 +595,15 @@ class _FieldTile extends StatelessWidget {
             children: [
               Icon(icon, color: const Color(0xFF243B63)),
               const SizedBox(width: 12),
-              Expanded(child: Text(title, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w700))),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
               Text(value, style: const TextStyle(color: Colors.black54)),
               const SizedBox(width: 4),
               const Icon(Icons.chevron_right_rounded, color: Colors.black45),
@@ -479,7 +616,12 @@ class _FieldTile extends StatelessWidget {
 }
 
 class _InstallmentOptions extends StatelessWidget {
-  const _InstallmentOptions({required this.count, required this.firstPaymentDate, required this.onCountChanged, required this.onDateChanged});
+  const _InstallmentOptions({
+    required this.count,
+    required this.firstPaymentDate,
+    required this.onCountChanged,
+    required this.onDateChanged,
+  });
   final int count;
   final DateTime firstPaymentDate;
   final ValueChanged<int> onCountChanged;
@@ -489,32 +631,80 @@ class _InstallmentOptions extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         children: [
-          Row(children: [
-            const Icon(Icons.calendar_month_rounded, color: Color(0xFF243B63)),
-            const SizedBox(width: 12),
-            const Expanded(child: Text('Number of installments', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700))),
-            IconButton(onPressed: count > 1 ? () => onCountChanged(count - 1) : null, icon: const Icon(Icons.remove_circle_outline)),
-            Text('$count', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w800)),
-            IconButton(onPressed: () => onCountChanged(count + 1), icon: const Icon(Icons.add_circle_outline)),
-          ]),
+          Row(
+            children: [
+              const Icon(
+                Icons.calendar_month_rounded,
+                color: Color(0xFF243B63),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Number of installments',
+                  style: TextStyle(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: count > 1 ? () => onCountChanged(count - 1) : null,
+                icon: const Icon(Icons.remove_circle_outline),
+              ),
+              Text(
+                '$count',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              IconButton(
+                onPressed: () => onCountChanged(count + 1),
+                icon: const Icon(Icons.add_circle_outline),
+              ),
+            ],
+          ),
           const Divider(),
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.event_rounded, color: Color(0xFF243B63)),
-            title: const Text('First payment date', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
-            trailing: Text('${firstPaymentDate.day}/${firstPaymentDate.month}/${firstPaymentDate.year}', style: const TextStyle(color: Colors.black54)),
+            title: const Text(
+              'First payment date',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            trailing: Text(
+              '${firstPaymentDate.day}/${firstPaymentDate.month}/${firstPaymentDate.year}',
+              style: const TextStyle(color: Colors.black54),
+            ),
             onTap: () async {
-              final date = await showDatePicker(context: context, firstDate: DateTime(2000), lastDate: DateTime(2100), initialDate: firstPaymentDate);
+              final date = await showDatePicker(
+                context: context,
+                firstDate: DateTime(2000),
+                lastDate: DateTime(2100),
+                initialDate: firstPaymentDate,
+              );
               if (date != null) onDateChanged(date);
             },
           ),
           const ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Icon(Icons.repeat_rounded, color: Color(0xFF243B63)),
-            title: Text('Recurring', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
+            title: Text(
+              'Recurring',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             trailing: Text('Monthly', style: TextStyle(color: Colors.black54)),
           ),
         ],
@@ -524,7 +714,11 @@ class _InstallmentOptions extends StatelessWidget {
 }
 
 class _InstallmentSummary extends StatelessWidget {
-  const _InstallmentSummary({required this.amount, required this.count, required this.currency});
+  const _InstallmentSummary({
+    required this.amount,
+    required this.count,
+    required this.currency,
+  });
   final double amount;
   final int count;
   final String currency;
@@ -534,15 +728,42 @@ class _InstallmentSummary extends StatelessWidget {
     final monthly = count <= 0 ? 0 : amount / count;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: const Color(0xFFFFEAF1), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEAF1),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
         children: [
-          Expanded(child: _summary('Monthly installment', '${monthly.toStringAsFixed(2)} $currency')),
-          Expanded(child: _summary('Total amount', '${amount.toStringAsFixed(2)} $currency')),
+          Expanded(
+            child: _summary(
+              'Monthly installment',
+              '${monthly.toStringAsFixed(2)} $currency',
+            ),
+          ),
+          Expanded(
+            child: _summary(
+              'Total amount',
+              '${amount.toStringAsFixed(2)} $currency',
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _summary(String title, String value) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(color: Colors.black54)), const SizedBox(height: 4), Text(value, style: const TextStyle(color: Colors.black, fontSize: 17, fontWeight: FontWeight.w900))]);
+  Widget _summary(String title, String value) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title, style: const TextStyle(color: Colors.black54)),
+      const SizedBox(height: 4),
+      Text(
+        value,
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 17,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    ],
+  );
 }

@@ -169,6 +169,10 @@ class TransactionEntryController extends ChangeNotifier {
   String? _transferIdempotencyKey;
   String? _transferIdempotencySignature;
 
+  // Credit-card charge draft identity is separate from cash Expense/Income.
+  String? _creditCardChargeIdempotencyKey;
+  String? _creditCardChargeIdempotencySignature;
+
   // Stable logical identity for the current installment workflow. It is reused
   // on retries so the Financial Engine sees the same idempotency keys instead
   // of creating a second charge/expense. A changed workflow signature creates
@@ -801,6 +805,12 @@ class TransactionEntryController extends ChangeNotifier {
   void _invalidateEntryIdempotencyKey() {
     _entryIdempotencyKey = null;
     _entryIdempotencySignature = null;
+    _invalidateCreditCardChargeIdempotencyKey();
+  }
+
+  void _invalidateCreditCardChargeIdempotencyKey() {
+    _creditCardChargeIdempotencyKey = null;
+    _creditCardChargeIdempotencySignature = null;
   }
 
   void _invalidateTransferIdempotencyKey() {
@@ -833,6 +843,37 @@ class TransactionEntryController extends ChangeNotifier {
     }
 
     return _entryIdempotencyKey!;
+  }
+
+  String _ensureCreditCardChargeIdempotencyKey({
+    required double amount,
+    required String categoryId,
+    required String? subCategoryId,
+    required String currencyCode,
+    required bool isExceptional,
+  }) {
+    final signature = jsonEncode(<Object?>[
+      'credit-card-charge',
+      _selectedAccountId,
+      amount.toString(),
+      categoryId,
+      subCategoryId,
+      _selectedDate.toIso8601String(),
+      _selectedDate.isUtc,
+      currencyCode,
+      _note.isEmpty ? null : _note,
+      isExceptional,
+      _selectedMemberId,
+    ]);
+
+    if (_creditCardChargeIdempotencyKey == null ||
+        _creditCardChargeIdempotencySignature != signature) {
+      _creditCardChargeIdempotencyKey =
+          'transaction-credit-card-charge-${_uuid.v4()}';
+      _creditCardChargeIdempotencySignature = signature;
+    }
+
+    return _creditCardChargeIdempotencyKey!;
   }
 
   String _ensureTransferIdempotencyKey({required double amount}) {
@@ -947,17 +988,30 @@ class TransactionEntryController extends ChangeNotifier {
         );
         result = await _transactionService.updateCreditCardCharge(updated);
       } else {
+        final categoryId = _getMainCategoryId(_selectedCategoryId);
+        final subCategoryId = _isSubCategory(_selectedCategoryId)
+            ? _selectedCategoryId
+            : null;
+        final currencyCode = currentCurrency;
+        final idempotencyKey = _ensureCreditCardChargeIdempotencyKey(
+          amount: amountValue,
+          categoryId: categoryId,
+          subCategoryId: subCategoryId,
+          currencyCode: currencyCode,
+          isExceptional: isExceptional,
+        );
+
         result = await _transactionService.addCreditCardCharge(
           creditCardAccountId: _selectedAccountId,
           amount: amountValue,
-          categoryId: _getMainCategoryId(_selectedCategoryId),
-          subCategoryId: _isSubCategory(_selectedCategoryId)
-              ? _selectedCategoryId
-              : null,
+          categoryId: categoryId,
+          subCategoryId: subCategoryId,
           occurredAt: _selectedDate,
-          currencyCode: currentCurrency,
+          currencyCode: currencyCode,
           note: _note.isEmpty ? null : _note,
           actorMemberId: _selectedMemberId,
+          idempotencyKey: idempotencyKey,
+          isExceptional: isExceptional,
         );
       }
 
