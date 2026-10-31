@@ -287,8 +287,12 @@ class TransactionApplicationService {
   }
 
   Future<OperationResult> _updateViaEngine(Transaction transaction) async {
+    // M2.3-B4: the key identifies the target transaction, not the moment of the
+    // call. An effective transaction can be corrected at most once (the
+    // correction produces a new transaction id), so a retry of the same
+    // request reuses the same key. Do not derive it from amount/date/content.
     final context = ExecutionContext(
-      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
+      idempotencyKey: 'correction-v1-${transaction.id}',
       source: 'manual',
       commandType: 'CorrectionCommand',
     );
@@ -324,8 +328,10 @@ class TransactionApplicationService {
   // ==================== Delete (Temporary Legacy Delegation) ====================
 
   Future<OperationResult> delete(String transactionId) async {
+    // M2.3-B4: a transaction can be invalidated only once, so the key is
+    // derived from the target identity and is stable across retries.
     final context = ExecutionContext(
-      idempotencyKey: DateTime.now().millisecondsSinceEpoch.toString(),
+      idempotencyKey: 'delete-v1-$transactionId',
       source: 'manual',
       commandType: 'DeleteTransactionCommand',
     );

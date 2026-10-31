@@ -16,6 +16,7 @@ import '../../config/category_config.dart';
 import '../../config/category_type.dart';
 import 'package:provider/provider.dart';
 import '../../services/transaction_application_service.dart';
+import '../../financial_engine/results/operation_result.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -33,6 +34,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   final TransactionQueryService _transactionQueryService = const TransactionQueryService();
   final AccountService _accountService = AccountService();
   late final TransactionApplicationService _transactionApplicationService;
+
+  // Transactions whose delete request is currently in flight (B4).
+  final Set<String> _deletingTransactionIds = <String>{};
 
   String _searchQuery = '';
   Map<String, dynamic> _filters = {
@@ -401,16 +405,45 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   void _handleDeleteTransaction(String transactionId) async {
+    // M2.3-B4: ignore repeated taps while the same delete is in flight.
+    if (!_deletingTransactionIds.add(transactionId)) return;
+
+    var succeeded = false;
+
     try {
       final result = await _transactionApplicationService.delete(transactionId);
 
       debugPrint('DELETE RESULT: $result');
 
-      _refreshTransactions();
+      if (result is OperationSucceeded) {
+        succeeded = true;
+      }
     } catch (e, st) {
       debugPrint('DELETE ERROR: $e');
       debugPrint('$st');
+    } finally {
+      _deletingTransactionIds.remove(transactionId);
     }
+
+    // `context` is only used after this check.
+    if (!mounted) return;
+
+    if (succeeded) {
+      _refreshTransactions();
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_deleteFailureMessage())),
+    );
+  }
+
+  String _deleteFailureMessage() {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+
+    return isArabic
+        ? 'تعذر حذف العملية. حاول مرة أخرى.'
+        : 'The transaction could not be deleted. Please try again.';
   }
 
   void _handleEditTransaction(Transaction transaction) {

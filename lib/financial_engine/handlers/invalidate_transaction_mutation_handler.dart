@@ -37,9 +37,11 @@ final class InvalidateTransactionMutationHandler
       () => _invalidationPort.delete(record.invalidationId),
     );
 
-    await _ledgerProjectionService.projectInvalidation(record);
+    // M2.3-B4: register the rollback BEFORE projecting so a partial ledger
+    // write is cleaned up; deleting a projection that wrote nothing is a no-op.
     context.registerRollback(
       () => _ledgerProjectionService.deleteProjection(record.invalidationId),
     );
+    await _ledgerProjectionService.projectInvalidation(record);
   }
 }

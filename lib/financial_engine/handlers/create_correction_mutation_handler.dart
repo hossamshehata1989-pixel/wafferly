@@ -38,9 +38,12 @@ final class CreateCorrectionMutationHandler
       () => _transactionPort.delete(record.after.transactionId),
     );
 
-    await _ledgerProjectionService.projectCorrection(record);
+    // M2.3-B4: register the rollback BEFORE projecting. If the ledger write
+    // fails halfway, entries already persisted under this correction id must
+    // still be removed; deleting a projection that wrote nothing is a no-op.
     context.registerRollback(
       () => _ledgerProjectionService.deleteProjection(record.correctionId),
     );
+    await _ledgerProjectionService.projectCorrection(record);
   }
 }
