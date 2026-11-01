@@ -18,6 +18,39 @@ class LedgerAccountService {
 
   // ==================== CRUD ====================
 
+  /// Ensures a system account exists under its stable canonical identifier.
+  ///
+  /// Existing records are validated rather than silently rewritten. A
+  /// conflicting record must be investigated because system IDs are part of
+  /// the persisted accounting contract.
+  Future<LedgerAccount> ensureSystemAccount({
+    required String id,
+    required String name,
+    required LedgerAccountType type,
+  }) async {
+    final existing = getById(id);
+    if (existing != null) {
+      if (existing.id != id ||
+          !existing.isSystem ||
+          existing.type != type ||
+          existing.categoryId != null) {
+        throw StateError(
+          'System Ledger account "$id" exists with an incompatible definition.',
+        );
+      }
+      return existing;
+    }
+
+    final account = LedgerAccount(
+      id: id,
+      name: name,
+      type: type,
+      isSystem: true,
+    );
+    await _box.put(id, account);
+    return account;
+  }
+
   Future<LedgerAccount> createAccount({
     required String name,
     required LedgerAccountType type,
@@ -51,11 +84,17 @@ class LedgerAccountService {
 
   // ✅ Sprint 3C: دالة الربط بين Category و LedgerAccount
   LedgerAccount? getByCategoryId(String categoryId) {
-    try {
-      return _box.values.firstWhere((a) => a.categoryId == categoryId);
-    } catch (_) {
-      return null;
+    final matches = _box.values
+        .where((account) => account.categoryId == categoryId)
+        .toList(growable: false);
+
+    if (matches.length > 1) {
+      throw StateError(
+        'Category "$categoryId" has multiple Ledger account mappings.',
+      );
     }
+
+    return matches.isEmpty ? null : matches.single;
   }
 
   List<LedgerAccount> getSystemAccounts() {

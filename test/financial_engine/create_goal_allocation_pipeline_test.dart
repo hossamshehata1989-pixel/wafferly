@@ -16,6 +16,8 @@ import 'package:wafferly/financial_engine/resolution/resolution.dart';
 import 'package:wafferly/financial_engine/results/operation_result.dart';
 import 'package:wafferly/models/account.dart';
 import 'package:wafferly/models/enums/account_enums.dart';
+import 'package:wafferly/models/enums/entry_type.dart';
+import 'package:wafferly/models/enums/ledger_purpose.dart';
 import 'package:wafferly/models/transaction.dart';
 import 'package:wafferly/models/ledger_entry.dart';
 import 'package:wafferly/services/balance_service.dart';
@@ -33,8 +35,10 @@ void main() {
     Hive.registerAdapter(AccountAdapter());
     Hive.registerAdapter(AccountNatureAdapter());
     Hive.registerAdapter(AccountGroupAdapter());
+    Hive.registerAdapter(EntryTypeAdapter());
+    Hive.registerAdapter(LedgerPurposeAdapter());
     Hive.registerAdapter(TransactionAdapter());
-Hive.registerAdapter(LedgerEntryAdapter());
+    Hive.registerAdapter(LedgerEntryAdapter());
     await Hive.openBox<Account>('accounts');
       await Hive.openBox<Transaction>('transactions');
 

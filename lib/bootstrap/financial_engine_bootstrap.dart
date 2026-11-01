@@ -44,6 +44,7 @@ import '../financial_engine/domain_guard/domain_guard_pipeline.dart';
 import '../infrastructure/hive/hive_balance_port.dart';
 import '../infrastructure/memory/memory_journal_entry_repository.dart';
 import '../models/transaction.dart';
+import '../config/category_config.dart';
 import '../services/balance_service.dart';
 import '../services/ledger_projection_service.dart';
 import 'financial_engine_context.dart';
@@ -203,10 +204,18 @@ final class FinancialEngineBootstrap {
     );
 
     final planner = DefaultFinancialPlanner(
-      chartOfAccounts: const ChartOfAccounts(
+      chartOfAccounts: ChartOfAccounts(
         mappings: [
-          AccountMapping(categoryId: 'dailyTransport', accountId: 'expense_account'),
-          AccountMapping(categoryId: 'salary', accountId: 'income_account'),
+          for (final category in expenseCategories)
+            AccountMapping(
+              categoryId: category.id,
+              accountId: 'expense_account',
+            ),
+          for (final category in incomeCategories)
+            AccountMapping(
+              categoryId: category.id,
+              accountId: 'income_account',
+            ),
         ],
       ),
       transactionLookupPort: transactionPort,

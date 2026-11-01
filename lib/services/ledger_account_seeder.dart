@@ -1,46 +1,76 @@
 // Sprint 3C — Category Ledger Mapping
 import '../models/enums/ledger_account_type.dart';
+import '../constants/ledger_system_account_ids.dart';
 import '../config/category_config.dart';
 import 'ledger_account_service.dart';
 
 class LedgerAccountSeeder {
   final LedgerAccountService _service = LedgerAccountService();
 
-  /// Seeds system ledger accounts for all expense and income categories.
-  /// Idempotent: safe to call multiple times.
+  /// Seeds every configured category mapping and the canonical system
+  /// accounts. Idempotent: safe to call repeatedly.
   Future<void> seedIfNeeded() async {
-    final existing = _service.getAllAccounts();
-    final existingIds = existing.map((a) => a.categoryId).toSet();
-
-    // Create expense ledger accounts
     for (final category in expenseCategories) {
-      if (!existingIds.contains(category.id)) {
-        await _service.createAccount(
-          name: _generateAccountName(category.id),
-          type: LedgerAccountType.expense,
-          categoryId: category.id,
-          isSystem: true,
-        );
-        print("✅ Seeded expense ledger account for category: ${category.id}");
-      }
+      await _ensureCategoryAccount(
+        category,
+        LedgerAccountType.expense,
+      );
     }
 
-    // Create income ledger accounts
     for (final category in incomeCategories) {
-      if (!existingIds.contains(category.id)) {
-        await _service.createAccount(
-          name: _generateAccountName(category.id),
-          type: LedgerAccountType.income,
-          categoryId: category.id,
-          isSystem: true,
-        );
-        print("✅ Seeded income ledger account for category: ${category.id}");
-      }
+      await _ensureCategoryAccount(
+        category,
+        LedgerAccountType.income,
+      );
     }
+
+    await _service.ensureSystemAccount(
+      id: LedgerSystemAccountIds.openingBalanceEquity,
+      name: 'ledger.opening_balance_equity',
+      type: LedgerAccountType.equity,
+    );
+    await _service.ensureSystemAccount(
+      id: LedgerSystemAccountIds.balanceReconciliationEquity,
+      name: 'ledger.balance_reconciliation_equity',
+      type: LedgerAccountType.equity,
+    );
+  }
+
+  Future<void> _ensureCategoryAccount(
+    CategoryConfig category,
+    LedgerAccountType expectedType,
+  ) async {
+    final matches = _service
+        .getAllAccounts()
+        .where((account) => account.categoryId == category.id)
+        .toList(growable: false);
+
+    if (matches.length > 1) {
+      throw StateError(
+        'Category "${category.id}" has multiple Ledger account mappings.',
+      );
+    }
+
+    if (matches.isNotEmpty) {
+      final account = matches.single;
+      if (!account.isSystem || account.type != expectedType) {
+        throw StateError(
+          'Category "${category.id}" has an incompatible Ledger mapping '
+          '(expected system ${expectedType.name} account).',
+        );
+      }
+      return;
+    }
+
+    await _service.createAccount(
+      name: _generateAccountName(category.id),
+      type: expectedType,
+      categoryId: category.id,
+      isSystem: true,
+    );
   }
 
   String _generateAccountName(String categoryId) {
-    // Human-readable name (can be improved with localization later)
-    return "ledger.$categoryId";
+    return 'ledger.$categoryId';
   }
 }

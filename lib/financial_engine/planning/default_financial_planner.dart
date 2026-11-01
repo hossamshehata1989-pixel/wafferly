@@ -91,8 +91,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
         intent.categoryId ?? (throw StateError('Category is required'));
 
     final expenseAccountId =
-        _chartOfAccounts.accountForCategory(categoryId) ??
-        (throw StateError('No account mapping found for category $categoryId'));
+        _chartOfAccounts.requireAccountForCategory(categoryId);
 
     final transactionRecord = FinancialTransactionRecord(
       transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
@@ -190,8 +189,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
         intent.categoryId ?? (throw StateError('Category is required'));
 
     final expenseAccountId =
-        _chartOfAccounts.accountForCategory(categoryId) ??
-        (throw StateError('No account mapping found for category $categoryId'));
+        _chartOfAccounts.requireAccountForCategory(categoryId);
 
     final transactionRecord = FinancialTransactionRecord(
       transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',
@@ -235,8 +233,7 @@ final class DefaultFinancialPlanner implements FinancialPlanner {
         intent.categoryId ?? (throw StateError('Category is required'));
 
     final incomeAccountId =
-        _chartOfAccounts.accountForCategory(categoryId) ??
-        (throw StateError('No account mapping found for category $categoryId'));
+        _chartOfAccounts.requireAccountForCategory(categoryId);
 
     final transactionRecord = FinancialTransactionRecord(
       transactionId: 'txn-${DateTime.now().microsecondsSinceEpoch}',

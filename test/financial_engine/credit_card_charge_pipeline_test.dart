@@ -211,6 +211,15 @@ void main() {
       ),
       isTrue,
     );
+    expect(
+      ledgerEntries.any(
+        (entry) =>
+            entry.accountId != 'card' &&
+            entry.entryType == EntryType.debit &&
+            entry.purpose == LedgerPurpose.expense,
+      ),
+      isTrue,
+    );
   });
 
   test('credit card charge rejects when exposure exceeds limit', () async {

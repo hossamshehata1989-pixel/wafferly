@@ -8,6 +8,7 @@ import 'package:wafferly/financial_engine/interpretation/normalized_intent.dart'
 import 'package:wafferly/financial_engine/mutations/create_transaction_mutation.dart';
 import 'package:wafferly/financial_engine/mutations/journal_entry_mutation.dart';
 import 'package:wafferly/financial_engine/planning/balance_reconciliation_context.dart';
+import 'package:wafferly/financial_engine/planning/account_mapping.dart';
 import 'package:wafferly/financial_engine/planning/chart_of_accounts.dart';
 import 'package:wafferly/financial_engine/planning/default_financial_planner.dart';
 import 'package:wafferly/financial_engine/planning/financial_execution_plan.dart';
@@ -19,7 +20,12 @@ void main() {
     'every planned journal entry ID is derived from its financial transaction ID',
     () async {
       const planner = DefaultFinancialPlanner(
-        chartOfAccounts: ChartOfAccounts(),
+        chartOfAccounts: ChartOfAccounts(
+          mappings: const [
+            AccountMapping(categoryId: 'dailyTransport', accountId: 'expense_account'),
+            AccountMapping(categoryId: 'salary', accountId: 'income_account'),
+          ],
+        ),
       );
 
       final contexts = <PlanningContext>[

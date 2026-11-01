@@ -6,6 +6,7 @@ import '../core/money/money.dart';
 import '../models/ledger_entry.dart';
 import '../models/enums/entry_type.dart';
 import '../models/enums/ledger_purpose.dart';
+import '../constants/ledger_system_account_ids.dart';
 
 class TransactionLedgerBuilder {
   final Uuid _uuid = const Uuid();
@@ -106,7 +107,7 @@ class TransactionLedgerBuilder {
         entryType: EntryType.debit,
         amount: amount,
         date: date,
-        purpose: LedgerPurpose.debt,
+        purpose: LedgerPurpose.expense,
       ),
       _createEntry(
         transactionId: transactionId,
@@ -117,6 +118,58 @@ class TransactionLedgerBuilder {
         purpose: LedgerPurpose.debt,
       ),
     ];
+  }
+
+  /// Builds the double-entry projection for an account's opening balance.
+  ///
+  /// Asset opening balances debit the account and credit opening equity.
+  /// Liability opening balances debit opening equity and credit the account.
+  /// Zero-value opening balances still emit both lines as a genesis marker.
+  List<LedgerEntry> buildOpeningBalanceEntries({
+    required String transactionId,
+    required String accountId,
+    required bool accountReceivesDebit,
+    required Money amount,
+    required DateTime date,
+  }) {
+    final equityAccountId = LedgerSystemAccountIds.openingBalanceEquity;
+    return accountReceivesDebit
+        ? [
+            _createEntry(
+              transactionId: transactionId,
+              accountId: accountId,
+              entryType: EntryType.debit,
+              amount: amount,
+              date: date,
+              purpose: LedgerPurpose.adjustment,
+            ),
+            _createEntry(
+              transactionId: transactionId,
+              accountId: equityAccountId,
+              entryType: EntryType.credit,
+              amount: amount,
+              date: date,
+              purpose: LedgerPurpose.adjustment,
+            ),
+          ]
+        : [
+            _createEntry(
+              transactionId: transactionId,
+              accountId: equityAccountId,
+              entryType: EntryType.debit,
+              amount: amount,
+              date: date,
+              purpose: LedgerPurpose.adjustment,
+            ),
+            _createEntry(
+              transactionId: transactionId,
+              accountId: accountId,
+              entryType: EntryType.credit,
+              amount: amount,
+              date: date,
+              purpose: LedgerPurpose.adjustment,
+            ),
+          ];
   }
 
   /// Builds the double-entry projection for Balance Reconciliation.
@@ -254,6 +307,21 @@ class TransactionLedgerBuilder {
           transactionId: originalTransactionId,
           fromAccountId: fromAccountId,
           toAccountId: toAccountId,
+          amount: amount,
+          date: date,
+        );
+        break;
+      case 'initial_balance':
+        if ((fromAccountId == null) == (toAccountId == null)) {
+          throw StateError(
+            'Opening balance reversal must define exactly one account side',
+          );
+        }
+        final openingBalanceAccountId = toAccountId ?? fromAccountId!;
+        original = buildOpeningBalanceEntries(
+          transactionId: originalTransactionId,
+          accountId: openingBalanceAccountId,
+          accountReceivesDebit: toAccountId != null,
           amount: amount,
           date: date,
         );

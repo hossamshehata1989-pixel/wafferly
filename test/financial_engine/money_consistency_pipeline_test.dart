@@ -12,6 +12,7 @@ import 'package:wafferly/financial_engine/interpretation/normalized_intent.dart'
 import 'package:wafferly/financial_engine/resolution/resolution.dart';
 import 'package:wafferly/financial_engine/mutations/journal_entry_mutation.dart';
 import 'package:wafferly/financial_engine/operations/expense_operation.dart';
+import 'package:wafferly/financial_engine/planning/account_mapping.dart';
 import 'package:wafferly/financial_engine/planning/chart_of_accounts.dart';
 import 'package:wafferly/financial_engine/planning/default_financial_planner.dart';
 import 'package:wafferly/infrastructure/memory/memory_balance_port.dart';
@@ -43,7 +44,11 @@ void main() {
     expect(intent.amount, Money.parse('125.50'));
 
     final planner = DefaultFinancialPlanner(
-      chartOfAccounts: const ChartOfAccounts(),
+      chartOfAccounts: const ChartOfAccounts(
+        mappings: [
+          AccountMapping(categoryId: 'food', accountId: 'expense_account'),
+        ],
+      ),
     );
     final plan = await planner.build(
       operation.createPlanningContext(intent: intent, constraints: const []),

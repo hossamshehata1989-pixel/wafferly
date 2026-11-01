@@ -15,6 +15,7 @@ import 'package:wafferly/models/enums/ledger_account_type.dart';
 import 'package:wafferly/models/ledger_account.dart';
 import 'package:wafferly/models/ledger_entry.dart';
 import 'package:wafferly/services/ledger_projection_service.dart';
+import 'package:wafferly/services/ledger_projection_exceptions.dart';
 
 void main() {
   late Directory testDirectory;
@@ -45,36 +46,12 @@ void main() {
 
   setUp(() async {
     // Use a real configured category but deliberately leave its expected
-    // LedgerAccount unseeded to characterize the current missing-seed path.
+    // LedgerAccount unseeded to verify strict projection failure.
     await ledgerAccountsBox.clear();
   });
 
   test(
-    'KNOWN_BUG: transaction write succeeds when the configured category has no ledger mapping',
-    () async {
-      final transactionPort = _MemoryTransactionPort();
-      final ledgerPort = _MemoryLedgerPort();
-      final projectionService = LedgerProjectionService(ledgerPort: ledgerPort);
-      final handler = CreateTransactionMutationHandler(
-        transactionPort,
-        projectionService,
-      );
-      final record = _expenseRecordUsingConfiguredCategory();
-
-      await const MemoryFinancialUnitOfWork().execute((context) async {
-        await handler.execute(
-          CreateTransactionMutation(record: record),
-          context,
-        );
-      });
-
-      expect(transactionPort.records, contains(record.transactionId));
-      expect(ledgerPort.entries, isEmpty);
-    },
-  );
-
-  test(
-    'M2 REGRESSION: a configured category without a ledger mapping fails instead of committing without projection',
+    'missing category mapping fails and rolls back the transaction write',
     () async {
       final transactionPort = _MemoryTransactionPort();
       final ledgerPort = _MemoryLedgerPort();
@@ -91,13 +68,12 @@ void main() {
             context,
           );
         }),
-        throwsA(anything),
+        throwsA(isA<MissingCategoryLedgerMappingException>()),
       );
 
       expect(transactionPort.records, isEmpty);
       expect(ledgerPort.entries, isEmpty);
     },
-    skip: 'يتفعّل في M2 بعد تحديد استثناء صريح لحالة غياب الـ mapping.',
   );
 }
 

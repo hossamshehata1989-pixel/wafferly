@@ -286,7 +286,9 @@ void main() {
       expect(failed, isA<OperationFailed>());
       expect(
         (failed as OperationFailed).error.toString(),
-        contains('Correction projection cannot be empty'),
+        contains(
+          'Missing Ledger mapping for category "b4-unsupported-category"',
+        ),
       );
       expect(correctionBox.isEmpty, isTrue);
       expect(transactionBox.containsKey(original.id), isTrue);
