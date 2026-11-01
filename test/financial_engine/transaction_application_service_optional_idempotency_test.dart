@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:wafferly/bootstrap/financial_engine_bootstrap.dart';
 import 'package:wafferly/constants/transaction_constants.dart';
 import 'package:wafferly/controllers/transaction_entry_controller.dart';
+import 'package:wafferly/features/analysis/registry/category_registry.dart';
 import 'package:wafferly/core/planning/infrastructure/repositories/memory_allocation_repository.dart';
 import 'package:wafferly/core/planning/services/available_balance_projection_service.dart';
 import 'package:wafferly/financial_engine/execution/financial_execution_summary.dart';
@@ -73,6 +74,7 @@ class _FailOnceCreditCardChargeTransactionApplicationService
   });
 
   final List<String> creditCardChargeIdempotencyKeys = <String>[];
+  final List<String?> creditCardChargeSubCategoryIds = <String?>[];
   bool _failNextCreditCardCharge = true;
 
   @override
@@ -89,6 +91,7 @@ class _FailOnceCreditCardChargeTransactionApplicationService
     bool isExceptional = false,
   }) async {
     creditCardChargeIdempotencyKeys.add(idempotencyKey);
+    creditCardChargeSubCategoryIds.add(subCategoryId);
 
     if (_failNextCreditCardCharge) {
       _failNextCreditCardCharge = false;
@@ -150,6 +153,7 @@ void main() {
     await Hive.openBox<LedgerAccount>('ledger_accounts');
     idempotencyBox = await Hive.openBox<Map>('financial_idempotency_test');
     await LedgerAccountSeeder().seedIfNeeded();
+    CategoryRegistry.initialize();
   });
 
   tearDownAll(() async {
@@ -511,6 +515,84 @@ void main() {
       expect(
         service.creditCardChargeIdempotencyKeys[1],
         isNot(service.creditCardChargeIdempotencyKeys[0]),
+      );
+    },
+  );
+
+  test(
+    'an unchanged installment workflow retry reuses its charge key',
+    () async {
+      await seedCreditCardAccount();
+      final service = buildFailOnceCreditCardChargeApplicationService();
+      final controller = TransactionEntryController(
+        transactionService: service,
+      );
+      addTearDown(controller.dispose);
+
+      controller.setAmount('3000');
+      controller.selectCategory('tuktuk');
+
+      final first = await controller.saveCreditCardInstallment(
+        creditCardAccountId: 'card',
+        installmentCount: 6,
+        firstDueDate: DateTime(2026, 11, 7),
+      );
+      final retry = await controller.saveCreditCardInstallment(
+        creditCardAccountId: 'card',
+        installmentCount: 6,
+        firstDueDate: DateTime(2026, 11, 7),
+      );
+
+      expect(first.success, isFalse);
+      expect(retry.success, isFalse);
+      expect(service.creditCardChargeIdempotencyKeys, hasLength(2));
+      expect(
+        service.creditCardChargeIdempotencyKeys[1],
+        service.creditCardChargeIdempotencyKeys[0],
+      );
+      expect(
+        service.creditCardChargeSubCategoryIds,
+        <String?>['tuktuk', 'tuktuk'],
+      );
+    },
+  );
+
+  test(
+    'changing only installment subcategory generates a new workflow key',
+    () async {
+      await seedCreditCardAccount();
+      final service = buildFailOnceCreditCardChargeApplicationService();
+      final controller = TransactionEntryController(
+        transactionService: service,
+      );
+      addTearDown(controller.dispose);
+
+      controller.setAmount('3000');
+      controller.selectCategory('tuktuk');
+
+      final first = await controller.saveCreditCardInstallment(
+        creditCardAccountId: 'card',
+        installmentCount: 6,
+        firstDueDate: DateTime(2026, 11, 7),
+      );
+
+      controller.selectCategory('microbus');
+      final changedSubcategory = await controller.saveCreditCardInstallment(
+        creditCardAccountId: 'card',
+        installmentCount: 6,
+        firstDueDate: DateTime(2026, 11, 7),
+      );
+
+      expect(first.success, isFalse);
+      expect(changedSubcategory.success, isFalse);
+      expect(service.creditCardChargeIdempotencyKeys, hasLength(2));
+      expect(
+        service.creditCardChargeIdempotencyKeys[1],
+        isNot(service.creditCardChargeIdempotencyKeys[0]),
+      );
+      expect(
+        service.creditCardChargeSubCategoryIds,
+        <String?>['tuktuk', 'microbus'],
       );
     },
   );

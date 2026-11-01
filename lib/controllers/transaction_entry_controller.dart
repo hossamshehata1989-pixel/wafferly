@@ -1138,21 +1138,25 @@ class TransactionEntryController extends ChangeNotifier {
 
   /// Saves a manual expense financed through a Credit Card installment plan.
   ///
-  /// A no-down-payment plan creates one Credit Card charge for the purchase
-  /// amount and then creates the financing contract/schedule around that
-  /// already-posted charge. A down-payment plan creates a normal expense for
-  /// the amount paid now, then charges only the financed remainder to the
-  /// Credit Card before creating the financing contract.
+  /// A plan without a down payment posts one Credit Card charge for the full
+  /// purchase amount, then creates the financing contract/schedule around that
+  /// already-posted charge.
   ///
-  /// Financing persistence itself is contractual state; the actual financial
+  /// A plan with a down payment first posts a Credit Card charge for the
+  /// financed remainder, then converts that charge into a financing contract.
+  /// Only after conversion succeeds, the down payment is posted as a separate
+  /// financial operation: a normal expense when funded from a non-card account,
+  /// or an ordinary Credit Card charge when funded from a credit card. The
+  /// down-payment operation is never converted into installments.
+  ///
+  /// Each financial mutation has its own stable idempotency key derived from
+  /// the workflow identity. Financing conversion derives its contractual
+  /// identity from the immutable financed-charge ID. Retrying an unchanged
+  /// workflow therefore reuses successful results instead of creating
+  /// duplicate transactions or financing contracts.
+  ///
+  /// Financing persistence itself is contractual state; actual financial
   /// effects always go through [TransactionApplicationService]/FinancialEngine.
-  /// Saves a manual expense financed through a Credit Card installment plan.
-  ///
-  /// The workflow has one stable logical identity. Each financial mutation
-  /// derives its own stable idempotency key from that identity, while financing
-  /// conversion derives its contractual identity from the immutable charge id.
-  /// This means a retry after a successful write reuses the same result instead
-  /// of creating a second transaction or second financing contract.
   Future<SaveResult> saveCreditCardInstallment({
     required String creditCardAccountId,
     required int installmentCount,
@@ -1293,10 +1297,14 @@ class TransactionEntryController extends ChangeNotifier {
         );
       }
 
+      final subCategoryId = _isSubCategory(_selectedCategoryId)
+          ? _selectedCategoryId
+          : null;
       final workflowSignature = _buildInstallmentWorkflowSignature(
         creditCardAccountId: creditCardAccountId,
         amount: amountValue,
         categoryId: categoryId,
+        subCategoryId: subCategoryId,
         installmentCount: installmentCount,
         firstDueDate: firstDueDate,
         downPayment: downPayment,
@@ -1322,9 +1330,7 @@ class TransactionEntryController extends ChangeNotifier {
         creditCardAccountId: creditCardAccountId,
         amount: financedAmount,
         categoryId: categoryId,
-        subCategoryId: _isSubCategory(_selectedCategoryId)
-            ? _selectedCategoryId
-            : null,
+        subCategoryId: subCategoryId,
         occurredAt: _selectedDate,
         currencyCode: card.currency,
         note: _note.isEmpty ? 'Installment purchase' : '$_note • Installment',
@@ -1412,9 +1418,7 @@ class TransactionEntryController extends ChangeNotifier {
             creditCardAccountId: downPaymentSource.id,
             amount: downPayment,
             categoryId: categoryId,
-            subCategoryId: _isSubCategory(_selectedCategoryId)
-                ? _selectedCategoryId
-                : null,
+            subCategoryId: subCategoryId,
             occurredAt: _selectedDate,
             currencyCode: downPaymentSource.currency,
             note: _note.isEmpty ? 'Down payment' : '$_note • Down payment',
@@ -1469,6 +1473,7 @@ class TransactionEntryController extends ChangeNotifier {
     required String creditCardAccountId,
     required double amount,
     required String categoryId,
+    required String? subCategoryId,
     required int installmentCount,
     required DateTime firstDueDate,
     required double downPayment,
@@ -1478,6 +1483,7 @@ class TransactionEntryController extends ChangeNotifier {
       creditCardAccountId,
       amount.toStringAsFixed(2),
       categoryId,
+      subCategoryId ?? '',
       installmentCount.toString(),
       firstDueDate.toIso8601String(),
       downPayment.toStringAsFixed(2),
