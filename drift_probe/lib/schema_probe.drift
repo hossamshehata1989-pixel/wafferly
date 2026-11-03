@@ -1,0 +1,104 @@
+-- Representative DDL only. This file is intentionally a small parser/codegen probe.
+-- PRAGMA setup belongs in NativeDatabase.setup, not in a .drift file.
+
+CREATE TABLE books (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+  is_default INTEGER NOT NULL CHECK (typeof(is_default) = 'integer' AND is_default IN (0, 1))
+);
+
+CREATE UNIQUE INDEX uq_books_single_default
+  ON books(is_default)
+  WHERE is_default = 1;
+
+CREATE TABLE ledger_accounts (
+  id TEXT NOT NULL PRIMARY KEY,
+  account_type TEXT NOT NULL CHECK (account_type IN ('asset','liability','expense','income','equity','system')),
+  linked_account_nature TEXT CHECK (linked_account_nature IN ('asset','liability')),
+  UNIQUE (id, linked_account_nature)
+);
+
+CREATE TABLE accounts (
+  book_id TEXT NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
+  id TEXT NOT NULL,
+  nature TEXT NOT NULL CHECK (nature IN ('asset','liability')),
+  ledger_account_id TEXT NOT NULL UNIQUE,
+  PRIMARY KEY (book_id, id),
+  FOREIGN KEY (ledger_account_id, nature)
+    REFERENCES ledger_accounts(id, linked_account_nature)
+    ON UPDATE RESTRICT ON DELETE RESTRICT
+);
+
+CREATE TABLE transactions (
+  book_id TEXT NOT NULL REFERENCES books(id),
+  id TEXT NOT NULL,
+  source_account_id TEXT NOT NULL,
+  amount_minor INTEGER NOT NULL CHECK (
+    typeof(amount_minor) = 'integer'
+    AND amount_minor BETWEEN 0 AND 9000000000000000
+  ),
+  PRIMARY KEY (book_id, id),
+  FOREIGN KEY (book_id, source_account_id)
+    REFERENCES accounts(book_id, id)
+);
+
+CREATE TABLE ledger_entries (
+  id TEXT NOT NULL PRIMARY KEY,
+  book_id TEXT NOT NULL REFERENCES books(id),
+  ledger_account_id TEXT NOT NULL REFERENCES ledger_accounts(id),
+  transaction_id TEXT NOT NULL,
+  amount_minor INTEGER NOT NULL CHECK (
+    typeof(amount_minor) = 'integer'
+    AND amount_minor BETWEEN 0 AND 9000000000000000
+  ),
+  FOREIGN KEY (book_id, transaction_id)
+    REFERENCES transactions(book_id, id)
+);
+
+CREATE TRIGGER ledger_entry_book_scope_insert
+BEFORE INSERT ON ledger_entries
+BEGIN
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM ledger_accounts la
+      WHERE la.id = NEW.ledger_account_id
+        AND la.linked_account_nature IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM accounts a
+          WHERE a.ledger_account_id = la.id
+            AND a.book_id = NEW.book_id
+            AND a.nature = la.linked_account_nature
+        )
+    )
+    THEN RAISE(ABORT, 'user ledger account belongs to another book')
+  END;
+END;
+
+-- allBooks:
+SELECT * FROM books ORDER BY id;
+
+-- insertBook:
+INSERT INTO books (id, name, is_default) VALUES (:id, :name, :isDefault);
+
+CREATE TRIGGER ledger_entry_book_scope_update
+BEFORE UPDATE OF book_id, ledger_account_id ON ledger_entries
+BEGIN
+  SELECT CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM ledger_accounts la
+      WHERE la.id = NEW.ledger_account_id
+        AND la.linked_account_nature IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM accounts a
+          WHERE a.ledger_account_id = la.id
+            AND a.book_id = NEW.book_id
+            AND a.nature = la.linked_account_nature
+        )
+    )
+    THEN RAISE(ABORT, 'user ledger account belongs to another book')
+  END;
+END;

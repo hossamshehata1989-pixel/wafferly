@@ -1,0 +1,37 @@
+SQLite engine: 3.46.1
+Foreign keys are OFF by default: 0
+PASS negative: partial unique index permits only one default Book
+PASS negative: composite FK rejects Account nature mismatch
+PASS positive: shared Chart account can be used in a Book
+PASS positive: direct Transaction source snapshot
+PASS negative: direct source snapshot rejects wrong amount
+PASS negative: user Ledger counterpart cannot be posted in another Book
+PASS positive: correction reversal and replacement can follow different source snapshots
+PASS negative: replacement must match corrected Transaction snapshot
+PASS positive: invalidation source snapshot
+PASS negative: terminal source guard rejects invalidating an already corrected Transaction
+PASS negative: exactly-one source CHECK rejects source-less Ledger Entry
+PASS positive: Expense uses Asset source
+PASS negative: credit-card charge rejects Asset destination
+PASS negative: composite account FK rejects cross-Book Transaction
+PASS negative: Transaction type-shape CHECK rejects Expense with destination only
+PASS negative: conversion receipt cannot be inserted before Contract/Schedule/Rule
+PASS positive: Financing Conversion inserts in dependency order
+PASS negative: financing principal must reject fractional Minor Units
+PASS negative: installment component Minor Units must be stored as integers
+PASS negative: installment interest Minor Units must be stored as integers
+PASS negative: installment fee Minor Units must be stored as integers
+PASS negative: installment total Minor Units must be stored as integers
+PASS positive: SQLite rollback removes all earlier writes in transaction
+PASS negative: Occurrence CHECK rejects non-canonical timestamp-based identity
+PASS negative: INTEGER affinity alone is insufficient; typeof CHECK rejects fractional minor units
+PASS negative: Ledger amount must reject fractional Minor Units
+PASS negative: currency scale must be stored as an integer
+PASS negative: currency scale cannot be changed in place
+PASS negative: Transaction UPDATE cannot change Expense source to Liability
+PASS negative: Transaction UPDATE cannot store fractional Minor Units
+PASS negative: Ledger Account Book scope is enforced on UPDATE
+PASS negative: Ledger source snapshot is enforced on UPDATE
+PASS positive: transaction, ledger, Idempotency receipt and result rows roll back together
+
+ALL SQLITE SPIKE TESTS PASSED
