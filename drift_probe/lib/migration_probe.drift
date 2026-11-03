@@ -1,0 +1,11 @@
+-- V2 target schema for the isolated migration probe.
+-- V1 fixtures are created explicitly in run_migration_probe.dart.
+
+CREATE TABLE migration_records (
+  id TEXT NOT NULL PRIMARY KEY,
+  amount_minor INTEGER NOT NULL CHECK (
+    typeof(amount_minor) = 'integer'
+    AND amount_minor BETWEEN 0 AND 9000000000000000
+  ),
+  note TEXT
+);
